@@ -1,0 +1,445 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  displayName String     @map("display_name")
+  email       String     @unique
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userSessions      UserSession[]
+  portfolios        Portfolio[]
+  assignedUserRoles UserRole[]       @relation("AssignedRoles")
+  userRoles         UserRole[]       @relation("UserRoles")
+  userPermissions   UserPermission[]
+
+  // ── Watchlist feature ──────────────────────────────────────────────────────
+  watchlistItems    Watchlist[]
+  watchlistAlerts   WatchlistAlert[]
+  notifications     Notification[]
+  newsReadStates    NewsReadState[]
+  newsSavedArticles NewsSavedArticle[]
+  decisionRuns      DecisionRun[]
+
+  @@index([status], map: "idx_users_status")
+  @@index([createdAt], map: "idx_users_created_at")
+  @@index([updatedAt], map: "idx_users_updated_at")
+  @@index([email], map: "idx_users_email")
+  @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  jti       String   @unique
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jti], map: "idx_usersessions_jti")
+  @@index([userId], map: "idx_usersessions_userid")
+  @@index([expiresAt], map: "idx_usersessions_expires_at")
+  @@index([isRevoked], map: "idx_usersessions_is_revoked")
+  @@map("user_sessions")
+}
+
+model Portfolio {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions    Position[]
+  decisionRuns DecisionRun[]
+
+  @@index([userId], map: "idx_portfolios_user_id")
+  @@map("portfolios")
+}
+
+model Position {
+  id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  portfolioId   String   @map("portfolio_id") @db.Uuid
+  symbol        String
+  quantity      Float
+  avgEntryPrice Float    @map("avg_entry_price")
+  sector        String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId], map: "idx_positions_portfolio_id")
+  @@index([symbol], map: "idx_positions_symbol")
+  @@map("positions")
+}
+
+model Role {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+  screens         Screen[]
+
+  @@index([name], map: "idx_roles_name")
+  @@map("roles")
+}
+
+model UserRole {
+  id           String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedById String   @map("assigned_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assignedBy   User     @relation("AssignedRoles", fields: [assignedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user         User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId], map: "idx_userroles_userid")
+  @@index([roleId], map: "idx_userroles_roleid")
+  @@index([assignedById], map: "idx_userroles_assignedbyid")
+  @@index([createdAt], map: "idx_userroles_created_at")
+  @@map("user_roles")
+}
+
+model Resource {
+  id          String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  permissions Permission[]
+  screens     Screen[]
+
+  @@index([name], map: "idx_resources_name")
+  @@map("resources")
+}
+
+model Permission {
+  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  action          String
+  resourceId      String           @map("resource_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resource        Resource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@unique([action, resourceId])
+  @@index([action], map: "idx_permissions_action")
+  @@index([resourceId], map: "idx_permissions_resourceid")
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([roleId], map: "idx_rolepermissions_roleid")
+  @@index([permissionId], map: "idx_rolepermissions_permissionid")
+  @@map("role_permissions")
+}
+
+model Screen {
+  id         String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  resourceId String  @map("resource_id") @db.Uuid
+  roleId     String  @map("role_id") @db.Uuid
+  canRead    Boolean @default(false) @map("can_read")
+  canCreate  Boolean @default(false) @map("can_create")
+  canUpdate  Boolean @default(false) @map("can_update")
+  canArchive Boolean @default(false) @map("can_archive")
+  canManage  Boolean @default(false) @map("can_manage")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, roleId], map: "uniq_screen_resource_role")
+  @@index([resourceId], map: "idx_screen_resourceid")
+  @@index([roleId], map: "idx_screen_roleid")
+  @@map("screens")
+}
+
+model UserPermission {
+  id           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@index([userId], map: "idx_userpermissions_userid")
+  @@index([permissionId], map: "idx_userpermissions_permissionid")
+  @@map("user_permissions")
+}
+
+// ─── Magic Link Feature ──────────────────────────────────────────────────────
+
+model MagicLinkToken {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  email     String
+  tokenHash String   @unique @map("token_hash")
+  isUsed    Boolean  @default(false) @map("is_used")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tokenHash], map: "idx_magic_link_token_hash")
+  @@index([email], map: "idx_magic_link_email")
+  @@map("magic_link_tokens")
+}
+
+// ─── Watchlist Feature ────────────────────────────────────────────────────────
+
+model Watchlist {
+  id     String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  symbol String
+
+  // User-defined trade plan — never overwritten by AI fields
+  targetEntryPrice Float?  @map("target_entry_price")
+  stopLoss         Float?  @map("stop_loss")
+  notes            String? @db.VarChar(500)
+
+  // Captured by async job (M2) — used to compute priceSinceAdded on GET
+  priceAtCreatedAt Float? @map("price_at_created_at")
+
+  // AI-computed suggestions — never overwrite user-defined fields (M7)
+  aiSuggestedEntry  Float?        @map("ai_suggested_entry")
+  aiTakeProfit      Float?        @map("ai_take_profit")
+  aiStopLoss        Float?        @map("ai_stop_loss")
+  aiConfidence      AiConfidence?
+  aiSuggestionBasis String?       @map("ai_suggestion_basis")
+  aiComputedAt      DateTime?     @map("ai_computed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alerts WatchlistAlert[]
+
+  @@unique([userId, symbol], map: "uniq_watchlist_user_symbol")
+  @@index([userId], map: "idx_watchlist_user_id")
+  @@map("watchlists")
+}
+
+model WatchlistAlert {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  watchlistId String    @map("watchlist_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        AlertType
+  threshold   Float?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  watchlist Watchlist  @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs      AlertLog[]
+
+  @@index([watchlistId], map: "idx_watchlist_alerts_watchlist_id")
+  @@index([userId], map: "idx_watchlist_alerts_user_id")
+  @@index([isActive], map: "idx_watchlist_alerts_is_active")
+  @@map("watchlist_alerts")
+}
+
+model AlertLog {
+  id      String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  alertId String   @map("alert_id") @db.Uuid
+  firedAt DateTime @default(now()) @map("fired_at") @db.Timestamptz(6)
+
+  alert WatchlistAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@index([alertId], map: "idx_alert_logs_alert_id")
+  @@index([firedAt], map: "idx_alert_logs_fired_at")
+  @@map("alert_logs")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_notifications_user_id")
+  @@index([read], map: "idx_notifications_read")
+  @@index([createdAt], map: "idx_notifications_created_at")
+  @@map("notifications")
+}
+
+model NewsArticle {
+  id             String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  url            String         @unique // deduplication key
+  headline       String
+  summaryBullets String[] // max 3 bullets, parsed at ingest @map("summary_bullets")
+  source         String // e.g. "Reuters", "Bloomberg"
+  imageUrl       String?        @map("image_url")
+  publishedAt    DateTime       @map("published_at") @db.Timestamptz(6)
+  category       NewsCategory
+  sentiment      NewsSentiment?
+  sentimentScore Float?         @map("sentiment_score") // -1.0 to 1.0, from Polygon.io only
+  relatedSymbols String[]       @map("related_symbols") // e.g. ["NVDA", "AMD"]
+  sector         String? // populated for sector-level articles
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  readStates   NewsReadState[]
+  savedByUsers NewsSavedArticle[]
+
+  @@index([publishedAt(sort: Desc)], map: "idx_news_published_at")
+  @@index([relatedSymbols], map: "idx_news_related_symbols")
+  @@index([category], map: "idx_news_category")
+  @@index([sentiment], map: "idx_news_sentiment")
+  @@index([createdAt], map: "idx_news_created_at")
+  @@map("news_articles")
+}
+
+model NewsReadState {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  readAt    DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId], map: "uniq_news_read_user_article")
+  @@index([userId], map: "idx_news_read_user_id")
+  @@index([articleId], map: "idx_news_read_article_id")
+  @@map("news_read_states")
+}
+
+model NewsSavedArticle {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  savedAt   DateTime @default(now()) @map("saved_at") @db.Timestamptz(6)
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId], map: "uniq_news_saved_user_article")
+  @@index([userId], map: "idx_news_saved_user_id")
+  @@index([articleId], map: "idx_news_saved_article_id")
+  @@index([savedAt], map: "idx_news_saved_saved_at")
+  @@map("news_saved_articles")
+}
+
+model DecisionRun {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  portfolioId String   @map("portfolio_id") @db.Uuid
+  mode        String   @default("DETAILED")
+  runAt       DateTime @default(now()) @map("run_at") @db.Timestamptz(6)
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  results   DecisionResult[]
+
+  @@index([userId], map: "idx_decision_runs_user_id")
+  @@index([portfolioId], map: "idx_decision_runs_portfolio_id")
+  @@index([runAt(sort: Desc)], map: "idx_decision_runs_run_at")
+  @@map("decision_runs")
+}
+
+model DecisionResult {
+  id                String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  runId             String  @map("run_id") @db.Uuid
+  symbol            String
+  sector            String?
+  marketDecision    String  @map("market_decision")
+  portfolioDecision String  @map("portfolio_decision")
+  confidence        Float
+  riskLevel         String  @map("risk_level")
+  reasoning         Json
+  exposure          Json
+  actionGuidance    Json    @map("action_guidance")
+
+  run DecisionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId], map: "idx_decision_results_run_id")
+  @@index([symbol], map: "idx_decision_results_symbol")
+  @@map("decision_results")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum NewsCategory {
+  EARNINGS
+  ANALYST
+  FILING
+  MERGER
+  MACRO
+  SECTOR
+  GENERAL
+}
+
+enum NewsSentiment {
+  BULLISH
+  BEARISH
+  NEUTRAL
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum RoleName {
+  ADMIN
+  PORTFOLIO_MANAGER
+  ANALYST
+}
+
+enum AlertType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  PCT_CHANGE_UP
+  PCT_CHANGE_DOWN
+  ENTRY_ZONE
+  STOP_LOSS_BREACHED
+  EARNINGS_APPROACHING
+  DIVIDEND_APPROACHING
+  ANALYST_RATING_CHANGE
+  NEWS_PUBLISHED
+  SEC_FILING
+  AI_SIGNAL_CHANGED
+}
+
+enum AiConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
