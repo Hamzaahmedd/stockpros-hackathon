@@ -1,0 +1,89 @@
+/* Grid background and container */
+.react-grid-layout {
+  background: linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+              linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+  background-size: 50px 50px;
+  position: relative;
+  padding: 16px;
+}
+
+/* Grid items */
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+
+.react-grid-item:hover {
+  box-shadow: 0 0 0 1px #e5e7eb;
+}
+
+/* Dragging states */
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+  cursor: grabbing !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Drag handle */
+.drag-handle {
+  width: 100%;
+  height: 100%;
+  cursor: move; /* fallback */
+  cursor: grab;
+  position: relative;
+}
+
+.drag-handle::after {
+  content: "::";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 1px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+/* Show handles only when dragging is enabled */
+.drag-handle:hover::after {
+  opacity: 1;
+}
+
+/* Hide resize handle when dragging is disabled */
+.react-grid-item:not(.react-draggable-dragging) .react-resizable-handle {
+  display: none;
+}
+
+/* Show resize handle when dragging is enabled */
+.react-grid-item.react-draggable-dragging .react-resizable-handle {
+  display: block;
+}
+
+/* Resize handle */
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 8px;
+  right: 8px;
+  background-image: none !important;
+  cursor: se-resize;
+}
+
+.react-resizable-handle::after {
+  content: "::";
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Placeholder while dragging */
+.react-grid-placeholder {
+  background: rgba(59, 130, 246, 0.05) !important;
+  border: 1px dashed #3b82f6;
+  border-radius: 8px;
+  transition: all 100ms linear;
+} 
