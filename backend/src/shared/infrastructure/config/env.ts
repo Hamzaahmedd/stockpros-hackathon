@@ -1,7 +1,3 @@
-import dotenv from 'dotenv'
-
-dotenv.config()
-
 const config = {
   database: {
     url: process.env.DATABASE_URL || '',

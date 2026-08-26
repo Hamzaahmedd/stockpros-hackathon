@@ -177,33 +177,12 @@ export function getLocalIpAddress(): string | null {
 }
 
 export function resolveFrontendUrl(clientOrigin?: string): string {
-  // If in production and custom domain is set
-  if (config.server.nodeEnv === 'production') {
-    if (config.server.frontendUrl && !config.server.frontendUrl.includes('localhost')) {
-      return config.server.frontendUrl;
-    }
-    throw new Error('FRONTEND_URL must be configured in production to generate magic links');
-  }
-
-  // In development, prefer LAN IP address so links can be opened on both mobile and laptop
-  const lanIp = getLocalIpAddress();
-  if (lanIp) {
-    let port = '5173';
-    if (clientOrigin) {
-      try {
-        const parsed = new URL(clientOrigin);
-        if (parsed.port) port = parsed.port;
-      } catch {}
-    }
-    return `http://${lanIp}:${port}`;
-  }
-
-  if (clientOrigin) {
-    return clientOrigin;
-  }
-
   if (config.server.frontendUrl) {
     return config.server.frontendUrl;
+  }
+
+  if (config.server.nodeEnv === 'production') {
+    throw new Error('FRONTEND_URL must be configured in production to generate magic links');
   }
 
   return 'http://localhost:5173';
