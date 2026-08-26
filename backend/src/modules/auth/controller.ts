@@ -1,21 +1,21 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { NotFoundError, UnauthorizedError, validateOrThrow, ValidationError } from '../../shared/errors';
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie';
 import config from '../../shared/infrastructure/config/env';
 import { prisma } from '../../shared/infrastructure/database';
-import { UnauthorizedError, NotFoundError, validateOrThrow, ValidationError } from '../../shared/errors';
+import { convertToMilliseconds, getUserId } from '../../shared/utils';
 import {
-  logoutUser,
-  refreshAccessToken,
+  completeOnboarding,
   fetchMe,
   generateMagicLink,
-  verifyMagicLink,
-  completeOnboarding,
   googleLogin as googleLoginService,
+  logoutUser,
+  refreshAccessToken,
+  verifyMagicLink,
 } from './service';
-import { emailValidator, googleLoginValidator } from './validation';
 import { AuthenticatedRequest } from './types';
-import { convertToMilliseconds, getUserId } from '../../shared/utils';
+import { emailValidator, googleLoginValidator } from './validation';
 
 export const getMyInfo = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -129,11 +129,11 @@ export const verifyMagicLinkToken = async (req: Request, res: Response, next: Ne
 
 export const completeOnboardingHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { onboardingToken, displayName, firstName, lastName } = req.body;
-    const resolvedName = (displayName || [firstName, lastName].filter(Boolean).join(' ') || '').trim();
+    const { onboardingToken, displayName } = req.body;
+    const resolvedName = (displayName || '').trim();
 
     if (!resolvedName) {
-      throw new ValidationError('Display name / First name is required');
+      throw new ValidationError('Display name is required');
     }
 
     let email: string | undefined;

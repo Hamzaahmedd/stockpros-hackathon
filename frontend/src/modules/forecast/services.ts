@@ -1,5 +1,5 @@
 import api from '@/shared/api/axios';
-import { ForecastData, ForecastResponse, ForecastInsight } from './types';
+import { ForecastData, ForecastInsight, ForecastResponse } from './types';
 
 class ForecastService {
   constructor() {
@@ -33,6 +33,20 @@ class ForecastService {
       console.error('Forecast service error:', error);
       throw new Error(`Failed to fetch forecast: ${error.message}`);
     }
+  }
+
+  async getRawForecast(symbol: string, period: string): Promise<ForecastData> {
+    // Fetches the backend /api/v1/forecast payload as-is,
+    // without any client-side enrichment (used by the CSV download).
+    const response = await api.get<ForecastResponse>(
+      `/api/v1/forecast?symbol=${symbol}&period=${period}`
+    );
+
+    if (response.status !== 200 || !response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Failed to get forecast data');
+    }
+
+    return response.data.data;
   }
 
   private enrichForecastData(data: ForecastData): ForecastData {

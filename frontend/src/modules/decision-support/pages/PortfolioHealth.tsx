@@ -2,31 +2,43 @@ import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { FileSpreadsheet, FileText } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  FiActivity,
-  FiAlertCircle,
-  FiBriefcase,
-  FiCheckCircle,
-  FiChevronDown,
-  FiChevronUp,
-  FiDownload,
-  FiPieChart,
-  FiShield,
-  FiTarget,
-  FiTrendingUp,
-  FiUpload,
-  FiX,
+    FiActivity,
+    FiAlertCircle,
+    FiBriefcase,
+    FiCheckCircle,
+    FiChevronDown,
+    FiChevronUp,
+    FiDownload,
+    FiPieChart,
+    FiShield,
+    FiTarget,
+    FiTrendingUp,
+    FiUpload,
+    FiX,
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import type {
-  DetailedDecision,
-  MergedRow,
-  OverviewDecision,
-  PortfolioData
+    DetailedDecision,
+    MergedRow,
+    OverviewDecision,
+    PortfolioData
 } from "../types";
+import { downloadPortfolioReportCsv } from "../utils/downloadPortfolioReportCsv";
+import { downloadPortfolioReportPdf } from "../utils/downloadPortfolioReportPdf";
+import { computeRiskProfileLabel } from "../utils/portfolioReport";
 
 /* ───────────── component ───────────── */
 
@@ -144,12 +156,13 @@ const PortfolioHealth: React.FC = () => {
     return { ...p, ...d };
   });
 
-  // ── download detailed report ──
-  const downloadReport = async () => {
+  // ── download detailed report (CSV or PDF) ──
+  const handleDownloadReport = async (format: 'csv' | 'pdf') => {
     if (!portfolioData) return;
     try {
       setReportLoading(true);
-      // Always fetch fresh DETAILED data for the report
+      // Always fetch fresh DETAILED data for the report so it contains
+      // only backend-produced analysis, for the selected format.
       const res = await api.post("/api/v1/decision-support/portfolio/decision", {
         portfolioId: portfolioData.portfolioId,
         decisionMode: "DETAILED",
@@ -157,52 +170,14 @@ const PortfolioHealth: React.FC = () => {
       if (!res.data.success) { toast.error("Failed to generate report"); return; }
 
       const detailedPositions: DetailedDecision[] = res.data.data.positions;
-      const reportRows = (portfolioData.positions ?? []).map((p) => {
-        const d = detailedPositions.find((dd) => dd.symbol === p.symbol);
-        return { ...p, ...d };
-      });
 
-      const headers = [
-        "Symbol", "Sector", "Qty", "Entry Price", "Current Price", "Market Value",
-        "Unrealized PnL", "ROI %", "Market Decision", "Portfolio Decision",
-        "Confidence %", "Risk Level", "Reasoning", "Risk Flags",
-        "Position Exposure %", "Sector Exposure %", "Over Exposed",
-        "Strategy - Add", "Strategy - Hold", "Strategy - Trim", "Strategy - Exit",
-        "Hold Duration", "Take Profit Zone", "Stop Loss Zone", "Watch For",
-      ];
-
-      const rows = reportRows.map((r: any) => [
-        r.symbol, r.sector || "", r.quantity,
-        r.avg_entry_price?.toFixed(2) ?? "", r.currentPrice?.toFixed(2) ?? "",
-        r.currentValue?.toFixed(2) ?? "", r.unrealizedPnL?.toFixed(2) ?? "",
-        (r.unrealizedPnLPercent?.toFixed(2) ?? "") + "%",
-        r.marketDecision ?? "", r.portfolioDecision ?? "",
-        r.confidence != null ? (r.confidence * 100).toFixed(0) + "%" : "",
-        r.riskLevel ?? "",
-        `"${r.reasoning?.summary ?? ""}"`,
-        `"${(r.reasoning?.details ?? []).join("; ")}"`,
-        r.exposure?.positionPercent?.toFixed(2) ?? "",
-        r.exposure?.sectorPercent?.toFixed(2) ?? "",
-        r.exposure?.isOverExposed ? "YES" : "NO",
-        r.actionGuidance?.positionStrategy?.add ? "YES" : "NO",
-        r.actionGuidance?.positionStrategy?.hold ? "YES" : "NO",
-        r.actionGuidance?.positionStrategy?.trim ? "YES" : "NO",
-        r.actionGuidance?.positionStrategy?.exit ? "YES" : "NO",
-        r.actionGuidance?.holdDuration ?? "",
-        r.actionGuidance?.takeProfitZone ?? "",
-        r.actionGuidance?.stopLossZone ?? "",
-        `"${(r.actionGuidance?.watchFor ?? []).join("; ")}"`,
-      ]);
-
-      const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `portfolio_detailed_report_${new Date().toISOString().split("T")[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Detailed report downloaded");
+      if (format === 'csv') {
+        downloadPortfolioReportCsv(portfolioData, detailedPositions);
+        toast.success("Report downloaded as CSV");
+      } else {
+        downloadPortfolioReportPdf(portfolioData, detailedPositions);
+        toast.success("Report downloaded as PDF");
+      }
     } catch {
       toast.error("Failed to generate report");
     } finally {
@@ -210,15 +185,12 @@ const PortfolioHealth: React.FC = () => {
     }
   };
 
-  // ── risk profile from overview ──
-  const riskProfile = (() => {
-    if (overviewDecisions.length === 0) return { label: "—", color: "text-gray-400" };
-    const highCount = overviewDecisions.filter((d) => d.riskLevel === "HIGH").length;
-    const ratio = highCount / overviewDecisions.length;
-    if (ratio >= 0.6) return { label: "Aggressive", color: "text-rose-400" };
-    if (ratio >= 0.3) return { label: "Moderate", color: "text-orange-400" };
-    return { label: "Conservative", color: "text-emerald-400" };
-  })();
+  // ── risk profile (label shared with the report exporters) ──
+  const riskProfileLabel = computeRiskProfileLabel(overviewDecisions);
+  const riskProfileColor =
+    riskProfileLabel === "Aggressive" ? "text-rose-400" :
+    riskProfileLabel === "Moderate" ? "text-orange-400" :
+    riskProfileLabel === "Conservative" ? "text-emerald-400" : "text-gray-400";
 
   // ── decision badge color ──
   const decisionColor = (d?: string) => {
@@ -250,15 +222,34 @@ const PortfolioHealth: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               {portfolioData && (
-                <Button
-                  onClick={downloadReport}
-                  disabled={reportLoading}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  {reportLoading ? <Skeleton className="w-4 h-4 rounded-full" /> : <FiDownload size={16} />}
-                  {reportLoading ? "Generating..." : "Download Report"}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      disabled={reportLoading}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      title="Download the portfolio health report"
+                    >
+                      {reportLoading ? <Skeleton className="w-4 h-4 rounded-full" /> : <FiDownload size={16} />}
+                      {reportLoading ? "Generating..." : "Download Report"}
+                      <FiChevronDown size={14} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Choose export format</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDownloadReport('pdf')} disabled={reportLoading}>
+                      <FileText size={16} className="mr-2" />
+                      <span>PDF Report</span>
+                      <span className="ml-auto text-xs text-muted-foreground">Presentation-ready</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadReport('csv')} disabled={reportLoading}>
+                      <FileSpreadsheet size={16} className="mr-2" />
+                      <span>CSV (Excel)</span>
+                      <span className="ml-auto text-xs text-muted-foreground">Spreadsheet</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               <label className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer font-bold transition-all duration-200 ${uploading ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}>
@@ -367,7 +358,7 @@ const PortfolioHealth: React.FC = () => {
                 </StatCard>
 
                 <StatCard icon={<FiShield />} iconCls="bg-orange-500/10 text-orange-500" label="Risk Profile" card={card}>
-                  <span className={`text-2xl md:text-3xl font-bold tracking-tight italic ${riskProfile.color}`}>{riskProfile.label}</span>
+                  <span className={`text-2xl md:text-3xl font-bold tracking-tight italic ${riskProfileColor}`}>{riskProfileLabel}</span>
                   <span className="block text-[10px] text-muted-foreground mt-1 font-medium italic">AI Computed Rating</span>
                 </StatCard>
               </div>

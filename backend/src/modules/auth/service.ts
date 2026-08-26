@@ -7,10 +7,10 @@ import os from "os";
 import { uuidv7 } from "uuidv7";
 import { NotFoundError, UnauthorizedError } from "../../shared/errors";
 import { transporter } from "../../shared/infrastructure/config/email";
-import { buildMagicLinkEmail } from '../notifications/email-templates/index';
 import config from "../../shared/infrastructure/config/env";
 import { prisma } from "../../shared/infrastructure/database";
 import { convertToMilliseconds, signToken, verifyRefreshToken } from "../../shared/utils";
+import { buildMagicLinkEmail } from '../notifications/email-templates/index';
 import { AuthTokens, UserData } from "./types";
 
 const ACCESS_TOKEN_EXPIRY = config.auth.accessTokenExpiry;
@@ -127,8 +127,6 @@ export async function fetchMe(userId: string): Promise<any> {
     userId: user.id,
     email: user.email,
     displayName: user.displayName,
-    firstName: user.displayName,
-    lastName: '',
     userRoles: user.userRoles
   };
 }
@@ -395,8 +393,6 @@ export async function verifyMagicLink(
       userId: user.id,
       email: user.email,
       displayName: user.displayName,
-      firstName: user.displayName,
-      lastName: '',
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
     },
@@ -468,8 +464,6 @@ export async function completeOnboarding(
       userId: user.id,
       email: user.email,
       displayName: user.displayName,
-      firstName: user.displayName,
-      lastName: '',
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
     },
@@ -606,8 +600,6 @@ export async function googleLogin(
       userId: user.id,
       email: user.email,
       displayName: user.displayName,
-      firstName: user.displayName,
-      lastName: '',
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
     },
