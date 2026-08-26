@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Bell,
   Menu,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import ForecastChart from '../components/ForecastChart';
 import ForecastTable from '../components/ForecastTable';
@@ -18,6 +19,8 @@ import PriceTargetRange from '../components/PriceTargetRange';
 import TrainingTimer from '../components/TrainingTimer';
 import { ForecastData, PeriodOption } from '../types';
 import forecastService from '../services';
+import { downloadForecastCsv } from '../utils/downloadForecast';
+import { toast } from 'react-toastify';
 import { FiHome, FiTrendingUp, FiFileText, FiSettings, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { Sidebar } from '@/shared/components/Sidebar';
@@ -106,6 +109,23 @@ const Forecast: React.FC = () => {
     fetchForecast(true);
   };
 
+  const canDownload =
+    !!forecastData &&
+    !loading &&
+    forecastData.status !== 'training' &&
+    (forecastData.predictions?.length ?? 0) > 0;
+
+  const handleDownload = () => {
+    if (!forecastData || !canDownload) return;
+    try {
+      downloadForecastCsv(forecastData);
+      toast.success('Forecast downloaded as CSV');
+    } catch (err) {
+      console.error('Error downloading forecast:', err);
+      toast.error('Failed to download forecast');
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
       {/* Mobile Sidebar Overlay */}
@@ -138,6 +158,18 @@ const Forecast: React.FC = () => {
               <p className="text-muted-foreground mt-1 text-sm">Analyze historical patterns and model predictions.</p>
             </div>
           </div>
+
+          {/* Download Forecast */}
+          <Button
+            variant="outline"
+            onClick={handleDownload}
+            disabled={!canDownload}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white hover:text-white border-blue-600"
+            title="Download the current forecast as a CSV file"
+          >
+            <Download size={16} />
+            <span className="hidden sm:inline">Download Forecast</span>
+          </Button>
         </div>
 
         <div className="space-y-6">
