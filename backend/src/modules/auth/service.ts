@@ -1,6 +1,7 @@
 // Consolidated auth service
 import { RoleName, UserStatus } from "@prisma/client";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import jwt, { SignOptions } from "jsonwebtoken";
 import os from "os";
 import { uuidv7 } from "uuidv7";
@@ -16,6 +17,9 @@ const ACCESS_TOKEN_EXPIRY = config.auth.accessTokenExpiry;
 const REFRESH_TOKEN_EXPIRY = config.auth.refreshTokenExpiry;
 const ACCESS_TOKEN_SECRET = config.auth.accessTokenSecret;
 const REFRESH_TOKEN_SECRET = config.auth.refreshTokenSecret;
+const GOOGLE_CLIENT_ID = config.auth.googleClientId;
+
+const googleOAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export async function generateTokens(userId: string): Promise<AuthTokens> {
     const refreshJti = uuidv7();
@@ -447,6 +451,144 @@ export async function completeOnboarding(
 
   // Generate session tokens now that signup is complete
   const { accessToken, refreshToken, jti } = await generateTokens(user.id);
+  const refreshTokenExpiryMs = convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000;
+
+  await prisma.userSession.create({
+    data: {
+      userId: user.id,
+      jti,
+      ipAddress: ip,
+      userAgent,
+      expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
+    },
+  });
+
+  return {
+    user: {
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      firstName: user.displayName,
+      lastName: '',
+      roleId: user.userRoles?.[0]?.roleId,
+      status: user.status,
+    },
+    accessToken,
+    refreshToken,
+  };
+}
+
+// ─── Google OAuth (Sign in with Google) ───────────────────────────────────────
+
+export async function googleLogin(
+  idToken: string,
+  ip: string,
+  userAgent: string
+): Promise<{ user: UserData; accessToken: string; refreshToken: string }> {
+  if (!GOOGLE_CLIENT_ID) {
+    throw new UnauthorizedError('Google login is not configured on the server');
+  }
+
+  // 1. Verify the ID token issued by Google Identity Services
+  let payload;
+  try {
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    throw new UnauthorizedError('Invalid Google credentials');
+  }
+
+  if (!payload?.email || payload.email_verified === false) {
+    throw new UnauthorizedError('Google account email is not verified');
+  }
+
+  const email = payload.email.toLowerCase().trim();
+  const displayName = (payload.name || email.split('@')[0]).trim();
+
+  // 2. Find existing user by email
+  let user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      userRoles: {
+        include: {
+          role: true,
+        },
+      },
+    },
+  });
+
+  // 3. New user — create account and assign default ANALYST role
+  if (!user) {
+    user = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          email,
+          displayName,
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      const analystRole = await tx.role.findFirst({
+        where: { name: RoleName.ANALYST },
+      });
+
+      if (analystRole) {
+        await tx.userRole.create({
+          data: {
+            userId: createdUser.id,
+            roleId: analystRole.id,
+            assignedById: createdUser.id,
+          },
+        });
+      }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: createdUser.id },
+        include: {
+          userRoles: {
+            include: { role: true },
+          },
+        },
+      });
+    });
+  } else if (user.userRoles.length === 0) {
+    // Existing user has no roles — assign default ANALYST role
+    const analystRole = await prisma.role.findFirst({
+      where: { name: RoleName.ANALYST },
+    });
+
+    if (analystRole) {
+      await prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: analystRole.id,
+          assignedById: user.id,
+        },
+      });
+
+      user = (await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      }))!;
+    }
+  }
+
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new UnauthorizedError('Account is inactive or suspended');
+  }
+
+  // 4. Generate session tokens (same flow as magic link login)
+  const { accessToken, refreshToken, jti } = await generateTokens(user.id);
+
   const refreshTokenExpiryMs = convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000;
 
   await prisma.userSession.create({

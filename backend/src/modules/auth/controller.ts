@@ -11,8 +11,9 @@ import {
   generateMagicLink,
   verifyMagicLink,
   completeOnboarding,
+  googleLogin as googleLoginService,
 } from './service';
-import { emailValidator } from './validation';
+import { emailValidator, googleLoginValidator } from './validation';
 import { AuthenticatedRequest } from './types';
 import { convertToMilliseconds, getUserId } from '../../shared/utils';
 
@@ -207,6 +208,37 @@ export const completeOnboardingHandler = async (req: Request, res: Response, nex
         message: 'Account created successfully',
         user: result.user,
         accessToken: result.accessToken,
+      });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Google OAuth ──────────────────────────────────────────────────────────────
+
+export const googleLogin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { credential } = validateOrThrow(googleLoginValidator, req.body);
+
+    const loginResult = await googleLoginService(
+      credential,
+      req.ip || 'Unknown',
+      req.headers['user-agent'] || 'Unknown'
+    );
+
+    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(config.auth.refreshTokenExpiry);
+
+    return res
+      .status(200)
+      .cookie('refresh_token', loginResult.refreshToken, {
+        ...defaultCookieOptions,
+        maxAge: REFRESH_TOKEN_EXPIRY,
+      })
+      .json({
+        success: true,
+        message: 'Login successful via Google',
+        user: loginResult.user,
+        accessToken: loginResult.accessToken,
       });
   } catch (error) {
     next(error);

@@ -10,6 +10,9 @@ export const verifyMagicLink = (token: string) =>
 export const completeOnboarding = (payload: OnboardingDto) =>
   api.post("/api/v1/auth/onboarding", payload);
 
+export const googleLogin = (credential: string) =>
+  api.post("/api/v1/auth/google", { credential });
+
 export const logout = () =>
   api.post("/api/v1/auth/logout");
 
