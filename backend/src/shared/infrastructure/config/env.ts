@@ -35,15 +35,17 @@ const config = {
     apiKey: process.env.FINNHUB_API_KEY || '',
     quoteTTL: parseInt(process.env.FINNHUB_QUOTE_TTL || '30', 10),
   },
-  alphavantage: {
-    apiKey: process.env.ALPHAVANTAGE_API_KEY || '',
-  },
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
     otpTTL: parseInt(process.env.OTP_TTL || '30', 10),
+  },
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    resendFrom: process.env.RESEND_FROM_EMAIL || 'StockPros <onboarding@resend.dev>',
+    logoUrl: process.env.EMAIL_LOGO_URL || '',
   },
   fmp: {
     apiKey: process.env.FMP_API_KEY || '',
