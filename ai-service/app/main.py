@@ -17,7 +17,8 @@ class HealthResponse(TypedDict):
 app = FastAPI(lifespan=lifespan)
 
 origins = [
-    "https://stockplatform.vercel.app",  # Your Production Frontend
+    "https://stockplatform.vercel.app",
+    "https://stockpros-platform.vercel.app",  # Your Production Frontend
     "http://localhost:5173",             # Your Local Development (Vite default)
     "http://127.0.0.1:5173",
 ]
