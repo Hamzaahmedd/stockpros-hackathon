@@ -67,7 +67,7 @@ const MarketAnalysis: React.FC = () => {
         "autosize": true,
         "symbol": `NASDAQ:${symbol}`,
         "interval": "D",
-        "timezone": "Etc/UTC",
+        "timezone": "Asia/Karachi",
         "theme": theme,
         "style": "1",
         "locale": "en",

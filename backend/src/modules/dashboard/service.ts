@@ -28,6 +28,7 @@ import { getCache, setCache } from '../../shared/infrastructure/cache'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { getRankedTopStocks } from '../market'
 import type { RankedStockRow } from '../market'
+import { getPakistanHour } from '../../shared/utils'
 
 // ─── Briefing ─────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ const buildBriefing = async (
   userId:      string,
   displayName: string,
 ): Promise<DashboardBriefing> => {
-  const hour     = new Date().getHours()
+  const hour     = getPakistanHour()
   const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
   const greeting  = `Good ${timeOfDay}, ${displayName}`
 

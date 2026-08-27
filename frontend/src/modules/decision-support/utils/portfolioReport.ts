@@ -46,7 +46,7 @@ export const formatSignedCurrency = (value: number): string =>
   `${value >= 0 ? '+' : '-'}${currencyFormatter.format(Math.abs(value))}`;
 
 export const formatGeneratedAt = (): string =>
-  new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Karachi' });
 
 export const computeRiskProfileLabel = (decisions: OverviewDecision[]): string => {
   if (decisions.length === 0) return 'Not Assessed';

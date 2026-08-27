@@ -111,7 +111,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
     return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      timeZone: 'America/New_York'
+      timeZone: 'Asia/Karachi'
     });
   };
 
