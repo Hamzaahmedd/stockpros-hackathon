@@ -1,6 +1,7 @@
 // pages/Forecast.tsx
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { Sidebar } from '@/shared/components/Sidebar';
+import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton';
 import { SmartSearch } from '@/shared/components/SmartSearch';
 import { useTheme } from '@/shared/hooks/useTheme';
 import healthService from '@/shared/services/healthService';
@@ -8,10 +9,6 @@ import {
   AlertCircle,
   BarChart3,
   Calendar,
-  ChevronDown,
-  Download,
-  FileSpreadsheet,
-  FileText,
   Menu
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -27,14 +24,6 @@ import { downloadForecastPdf } from '../utils/downloadForecastPdf';
 
 import { Button } from '@/shared/components/ui/button';
 import { CardContent, CardHeader, CardTitle, Card as ShadcnCard } from '@/shared/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/shared/components/ui/dropdown-menu';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 function Card({ title, actions, children, className = "" }: { 
@@ -61,7 +50,7 @@ function Card({ title, actions, children, className = "" }: {
 const Forecast: React.FC = () => {
   const { theme } = useTheme();
   const [symbol, setSymbol] = useState<string>('IBM');
-  const [period, setPeriod] = useState<string>('1d');
+  const [period, setPeriod] = useState<string>('1w');
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -85,7 +74,7 @@ const Forecast: React.FC = () => {
     }
     
     if (!forecastService.validatePeriod(period)) {
-      setError('Invalid period. Use: 1d, 1w, 1m, or 3m');
+      setError('Invalid period. Use: 1d or 1w');
       return;
     }
     
@@ -126,9 +115,6 @@ const Forecast: React.FC = () => {
     if (!forecastData || !canDownload) return;
     setExporting(true);
     try {
-      // Fetch the raw backend /api/v1/forecast payload for the export
-      // so the report contains only data produced by the backend, not
-      // any client-side derivations shown on screen.
       const raw = await forecastService.getRawForecast(symbol, period);
 
       if (format === 'csv') {
@@ -179,37 +165,12 @@ const Forecast: React.FC = () => {
             </div>
           </div>
 
-          {/* Download Forecast */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={!canDownload}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white hover:text-white border-blue-600"
-                title="Download the current forecast report"
-              >
-                <Download size={16} />
-                <span className="hidden sm:inline">
-                  {exporting ? 'Preparing...' : 'Download Forecast'}
-                </span>
-                <ChevronDown size={14} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Choose export format</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleDownload('pdf')} disabled={exporting}>
-                <FileText size={16} className="mr-2" />
-                <span>PDF Report</span>
-                <span className="ml-auto text-xs text-muted-foreground">Presentation-ready</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownload('csv')} disabled={exporting}>
-                <FileSpreadsheet size={16} className="mr-2" />
-                <span>CSV (Excel)</span>
-                <span className="ml-auto text-xs text-muted-foreground">Spreadsheet</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ReportDownloadButton
+            onDownload={handleDownload}
+            loading={exporting}
+            disabled={!canDownload}
+            title="Download the current forecast report"
+          />
         </div>
 
         <div className="space-y-6">

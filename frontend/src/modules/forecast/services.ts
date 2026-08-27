@@ -182,7 +182,7 @@ class ForecastService {
   }
 
   validatePeriod(period: string): boolean {
-    const validPeriods = ['1d', '1w', '1m', '3m'];
+    const validPeriods = ['1d', '1w'];
     return validPeriods.includes(period);
   }
 }

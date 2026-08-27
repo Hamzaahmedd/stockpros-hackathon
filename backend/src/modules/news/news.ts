@@ -77,7 +77,5 @@ export const resolveCursor = async (cursor: string): Promise<Date> => {
 export const toDateStr = (date: Date): string => date.toISOString().split('T')[0]
 
 export const daysAgo = (n: number): Date => {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000)
 }

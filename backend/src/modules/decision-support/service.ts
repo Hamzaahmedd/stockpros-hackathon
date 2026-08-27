@@ -8,6 +8,7 @@ import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import polygonClient from '../../shared/infrastructure/clients/polygon-client'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { prisma } from '../../shared/infrastructure/database'
+import { getPakistanMonth } from '../../shared/utils'
 import { getCompanySectors, getLivePrices, StockQuote } from '../market'
 import { mapPolygonCategory, mapPolygonSentiment } from '../news'
 import { persistDecisionRun } from './repository'
@@ -173,8 +174,7 @@ export const getHistoricalCloses = async (symbol: string): Promise<number[]> => 
     }
 
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 180);
+    const startDate = new Date(endDate.getTime() - 180 * 24 * 60 * 60 * 1000);
 
     const result = await yahoo.chart(symbol, {
       period1: startDate,
@@ -206,7 +206,7 @@ export const getAnalystRatings = async (symbol: string) => {
 }
 
 export const getNews = async (symbol: string) => {
-  const currentMonth = new Date().getMonth();
+  const currentMonth = getPakistanMonth();
   const earningsMonths = [0, 3, 6, 9];
   const isEarningsSeason = earningsMonths.includes(currentMonth);
 

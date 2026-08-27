@@ -35,10 +35,11 @@ export const formatDate = (dateString: string): string =>
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'Asia/Karachi',
   });
 
 export const formatGeneratedAt = (): string =>
-  new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+  new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Karachi' });
 
 export const getSummaryFields = (data: ForecastData): SummaryField[] => {
   const fields: SummaryField[] = [

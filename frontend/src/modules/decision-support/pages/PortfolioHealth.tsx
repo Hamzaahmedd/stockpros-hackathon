@@ -1,27 +1,17 @@
 import api from "@/shared/api/axios";
+import { ReportDownloadButton } from "@/shared/components/ReportDownloadButton";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
-import { FileSpreadsheet, FileText } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     FiActivity,
     FiAlertCircle,
     FiBriefcase,
     FiCheckCircle,
-    FiChevronDown,
     FiChevronUp,
-    FiDownload,
     FiPieChart,
     FiShield,
     FiTarget,
@@ -222,34 +212,12 @@ const PortfolioHealth: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               {portfolioData && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      disabled={reportLoading}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                      title="Download the portfolio health report"
-                    >
-                      {reportLoading ? <Skeleton className="w-4 h-4 rounded-full" /> : <FiDownload size={16} />}
-                      {reportLoading ? "Generating..." : "Download Report"}
-                      <FiChevronDown size={14} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Choose export format</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleDownloadReport('pdf')} disabled={reportLoading}>
-                      <FileText size={16} className="mr-2" />
-                      <span>PDF Report</span>
-                      <span className="ml-auto text-xs text-muted-foreground">Presentation-ready</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDownloadReport('csv')} disabled={reportLoading}>
-                      <FileSpreadsheet size={16} className="mr-2" />
-                      <span>CSV (Excel)</span>
-                      <span className="ml-auto text-xs text-muted-foreground">Spreadsheet</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ReportDownloadButton
+                  onDownload={handleDownloadReport}
+                  loading={reportLoading}
+                  disabled={!portfolioData}
+                  title="Download the portfolio health report"
+                />
               )}
               <label className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer font-bold transition-all duration-200 ${uploading ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}>
