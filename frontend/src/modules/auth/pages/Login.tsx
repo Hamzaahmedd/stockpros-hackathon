@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,26 @@ import { Mail, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-r
 import { toast } from "react-toastify";
 import api from "@/shared/api/axios";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { GOOGLE_CLIENT_ID } from "@/shared/config";
+import { setAccessToken } from "@/shared/utils/token";
+import { googleLogin } from "../services";
+
+// Minimal typings for the Google Identity Services SDK loaded in index.html
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+          }) => void;
+          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
 
 const schema = z.object({
   email: z
@@ -25,10 +45,12 @@ type Form = z.infer<typeof schema>;
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { loading, user } = useAuth();
+  const { loading, user, refreshMe } = useAuth();
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   const { register, handleSubmit, formState, getValues } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -93,6 +115,64 @@ export const Login: React.FC = () => {
     if (resendCooldown > 0 || !submittedEmail) return;
     await sendLoginLink(submittedEmail);
   };
+
+  // ─── Continue with Google ────────────────────────────────────────────────
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setIsGoogleLoading(true);
+      try {
+        const response = await googleLogin(credential);
+        const accessToken = response.data?.accessToken;
+
+        if (!accessToken) {
+          toast.error("Google sign-in failed. Please try again.");
+          return;
+        }
+
+        setAccessToken(accessToken);
+        await refreshMe();
+        toast.success("Signed in with Google successfully");
+        // The "already logged in" redirect effect above takes over once `user` is set
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    [refreshMe]
+  );
+
+  // Initialize Google Identity Services and render the official sign-in button
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || submittedEmail) return;
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const gis = window.google?.accounts?.id;
+
+      if (gis && googleButtonRef.current) {
+        clearInterval(interval);
+        gis.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (response) => {
+            if (response?.credential) handleGoogleCredential(response.credential);
+          },
+        });
+        gis.renderButton(googleButtonRef.current, {
+          theme: "filled_black",
+          size: "large",
+          text: "continue_with",
+          logo_alignment: "center",
+          width: Math.min(googleButtonRef.current.offsetWidth || 400, 400),
+        });
+      } else if (++attempts > 50) {
+        // GIS script failed to load within ~10s — stop retrying
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [handleGoogleCredential, submittedEmail]);
 
   if (submittedEmail) {
     return (
@@ -204,6 +284,25 @@ export const Login: React.FC = () => {
             </>
           )}
         </Button>
+
+        {GOOGLE_CLIENT_ID && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-800"></div>
+              <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-gray-800"></div>
+            </div>
+
+            <div className="w-full flex justify-center relative">
+              <div ref={googleButtonRef} className="max-w-full" />
+              {isGoogleLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg z-10">
+                  <Skeleton className="w-5 h-5 rounded-full bg-cyan-400/40" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </form>
     </AuthLayout>
   );

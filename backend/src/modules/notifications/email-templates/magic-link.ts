@@ -1,13 +1,29 @@
+// Pakistan Standard Time (PKT, UTC+5) — used for all human-readable timestamps in emails
+const PKT_TIMEZONE = 'Asia/Karachi';
+
+const getPKTPart = (date: Date, type: Intl.DateTimeFormatPartTypes): string =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: PKT_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === type)?.value ?? '';
+
 const getFormattedTimestamp = (): string => {
   const now = new Date();
-  const pad = (num: number) => String(num).padStart(2, '0');
 
-  const year = now.getFullYear();
-  const month = pad(now.getMonth() + 1);
-  const day = pad(now.getDate());
-  const hours = pad(now.getHours());
-  const minutes = pad(now.getMinutes());
-  const seconds = pad(now.getSeconds());
+  const year = getPKTPart(now, 'year');
+  const month = getPKTPart(now, 'month');
+  const day = getPKTPart(now, 'day');
+  const hours = getPKTPart(now, 'hour');
+  const minutes = getPKTPart(now, 'minute');
+  const seconds = getPKTPart(now, 'second');
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
@@ -76,7 +92,7 @@ export const buildMagicLinkEmailHtml = (
 
       <!-- Footer -->
       <p style="color: #6e7681; font-size: 12px; margin: 0; text-align: center; border-top: 1px solid #30363d; padding-top: 20px;">
-        &copy; ${new Date().getFullYear()} StockPros. Advanced Market Intelligence &amp; Analytics.
+        &copy; ${getPKTPart(new Date(), 'year')} StockPros. Advanced Market Intelligence &amp; Analytics.
       </p>
 
       <!-- Invisible dynamic token preventing Gmail footer collapse -->

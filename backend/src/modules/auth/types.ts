@@ -1,15 +1,13 @@
 import type { UserStatus } from '@prisma/client';
+import type * as express from "express";
 import type { SignOptions } from 'jsonwebtoken';
 
 export type TokenExpiry = SignOptions['expiresIn'];
-import type * as express from "express";
 
 export interface UserData {
   userId: string;
   email: string;
   displayName: string;
-  firstName?: string;
-  lastName?: string;
   roleId?: string;
   status: UserStatus;
   createdAt?: Date;

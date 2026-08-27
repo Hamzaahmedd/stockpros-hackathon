@@ -12,6 +12,7 @@ const config = {
       process.env.MAGIC_LINK_EXPIRY_MINUTES || process.env.MAGIC_LINK_EXPIRY || '10',
       10
     ),
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   },
   server: {
     port: parseInt(process.env.PORT || '8081', 10),

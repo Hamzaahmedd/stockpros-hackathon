@@ -1,18 +1,10 @@
 # app/services/model_service.py
-from typing import Any, List, Tuple, cast
 import os
-import gc
-import requests
-import numpy as np
-import pandas as pd
-from numpy.typing import NDArray
-from sklearn.preprocessing import MinMaxScaler
-from app.core.config import settings
-from app.core.logger import logger
-from supabase import create_client, Client
+from typing import Any, List, Tuple, cast
 
 APP_ENV = os.getenv('APP_ENV', 'local')
 
+# Global type placeholders initialized before conditional imports
 _Sequential: Any = None
 load_model: Any = None
 gru_layer: Any = None
@@ -21,6 +13,29 @@ dropout_layer: Any = None
 input_layer: Any = None
 early_stopping: Any = None
 ort: Any = None
+
+# CRITICAL FIX: TensorFlow must be imported BEFORE numpy/pandas/requests on Windows
+if APP_ENV == 'local':
+    import tensorflow as tf  # type: ignore
+    from tensorflow.keras.models import Sequential as _Sequential, load_model  # type: ignore
+    from tensorflow.keras.layers import GRU as gru_layer, Dense as dense_layer, Dropout as dropout_layer, Input as input_layer  # type: ignore
+    from tensorflow.keras.callbacks import EarlyStopping as early_stopping  # type: ignore
+elif APP_ENV == 'prod':
+    import onnxruntime as ort  # type: ignore[reportMissingTypeStubs]
+
+# Remaining standard library & third-party imports
+import gc
+import tempfile
+import subprocess
+import sys
+import requests
+import numpy as np
+import pandas as pd
+from numpy.typing import NDArray
+from sklearn.preprocessing import MinMaxScaler
+from app.core.config import settings
+from app.core.logger import logger
+from supabase import create_client, Client
 
 def trigger_background_training(symbol: str) -> bool:
     """Triggers the GitHub Action to train the model in the background."""
@@ -52,13 +67,6 @@ def trigger_background_training(symbol: str) -> bool:
         logger.error(f"Exception triggering background training: {e}")
         return False
 
-if APP_ENV == 'local':
-    from tensorflow.keras.models import Sequential as _Sequential, load_model  # type: ignore
-    from tensorflow.keras.layers import GRU as gru_layer, Dense as dense_layer, Dropout as dropout_layer, Input as input_layer  # type: ignore
-    from tensorflow.keras.callbacks import EarlyStopping as early_stopping  # type: ignore
-elif APP_ENV == 'prod':
-    import onnxruntime as ort  # type: ignore[reportMissingTypeStubs]
-
 FEATURE_COLS: List[str] = ["close", "volume", "sma_50", "rsi", "macd", "signal"]
 
 # Initialize Supabase Client
@@ -82,9 +90,12 @@ async def sync_model_from_supabase(symbol: str) -> bool:
         # Download from Supabase
         res = supabase.storage.from_(BUCKET_NAME).download(remote_path)
         
-        # CRITICAL FIX: Ensure we got bytes, not an error dictionary
-        with open(local_path, "wb") as f:
-            f.write(res)
+        # Safety Fix: Ensure we got bytes, not an error dictionary
+        if isinstance(res, bytes):
+            with open(local_path, "wb") as f:
+                f.write(res)
+        else:
+            raise ValueError(f"Supabase returned non-byte response: {res}")
             
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
@@ -101,9 +112,6 @@ async def sync_model_from_supabase(symbol: str) -> bool:
 def convert_to_onnx(model: Any, output_path: str) -> None:
     """Internal helper to convert a Keras model to ONNX."""
     logger.info(f"Converting model to ONNX: {output_path}")
-    import tempfile
-    import subprocess
-    import sys
     
     with tempfile.TemporaryDirectory() as temp_dir:
         logger.info("Exporting to temporary SavedModel for conversion...")
@@ -112,8 +120,8 @@ def convert_to_onnx(model: Any, output_path: str) -> None:
             model.export(temp_dir)
         except AttributeError:
             # Fallback for Keras 2 / tf.keras
-            import tensorflow as tf
-            tf.saved_model.save(model, temp_dir)  # type: ignore[reportUnknownMemberType]
+            import tensorflow as tf_local
+            tf_local.saved_model.save(model, temp_dir)  # type: ignore[reportUnknownMemberType]
             
         logger.info("Running tf2onnx converter...")
         result = subprocess.run([
