@@ -91,7 +91,7 @@ const drawSummary = (doc: jsPDF, data: ForecastData, startY: number): number => 
 };
 
 const drawPriceTable = (doc: jsPDF, data: ForecastData, startY: number): number => {
-  const cursorY = drawSectionTitle(doc, 'Price Data', startY);
+  const cursorY = drawSectionTitle(doc, 'Forecast Data', startY);
 
   autoTable(doc, {
     startY: cursorY,
@@ -99,7 +99,6 @@ const drawPriceTable = (doc: jsPDF, data: ForecastData, startY: number): number 
     head: [TABLE_COLUMNS],
     body: getTableRows(data).map((row) => [
       row.date,
-      row.typeLabel,
       `$${row.base.toFixed(2)}`,
       row.bull !== undefined ? `$${row.bull.toFixed(2)}` : '—',
       row.bear !== undefined ? `$${row.bear.toFixed(2)}` : '—',
@@ -122,9 +121,9 @@ const drawPriceTable = (doc: jsPDF, data: ForecastData, startY: number): number 
       lineWidth: 0.4,
     },
     columnStyles: {
+      1: { halign: 'right' },
       2: { halign: 'right' },
       3: { halign: 'right' },
-      4: { halign: 'right' },
     },
     alternateRowStyles: { fillColor: ROW_ZEBRA },
   });

@@ -20,12 +20,11 @@ export const downloadForecastCsv = (data: ForecastData): void => {
     ...getSummaryFields(data).map((field) => toCsvRow([field.label, field.value])),
     toCsvRow(['Generated At', formatGeneratedAt()]),
     '',
-    toCsvRow(['Price Data']),
+    toCsvRow(['Forecast Data']),
     toCsvRow(TABLE_COLUMNS),
     ...getTableRows(data).map((row) =>
       toCsvRow([
         row.date,
-        row.typeLabel,
         row.base.toFixed(2),
         row.bull !== undefined ? row.bull.toFixed(2) : '',
         row.bear !== undefined ? row.bear.toFixed(2) : '',

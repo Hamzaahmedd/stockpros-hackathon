@@ -18,7 +18,7 @@ export interface ForecastRow {
   bear?: number;
 }
 
-export const TABLE_COLUMNS = ['Date', 'Type', 'Base Price', 'Bull Scenario', 'Bear Scenario'];
+export const TABLE_COLUMNS = ['Date', 'Base Price', 'Bull Scenario', 'Bear Scenario'];
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -65,23 +65,14 @@ export const getSummaryFields = (data: ForecastData): SummaryField[] => {
 };
 
 export const getTableRows = (data: ForecastData): ForecastRow[] => {
-  const historical: ForecastRow[] = (data.historicalData || []).map((h) => ({
-    date: formatDate(h.date),
-    type: 'historical',
-    typeLabel: 'Historical',
-    base: h.price,
-  }));
-
-  const forecast: ForecastRow[] = (data.predictions || []).map((p, index) => ({
+  return (data.predictions || []).map((p, index) => ({
     date: formatDate(p.date),
-    type: 'forecast',
+    type: 'forecast' as const,
     typeLabel: `Forecast Day ${index + 1}`,
     base: p.base,
     bull: p.bull,
     bear: p.bear,
   }));
-
-  return [...historical, ...forecast];
 };
 
 export const getReportFileName = (data: ForecastData, extension: 'csv' | 'pdf'): string =>

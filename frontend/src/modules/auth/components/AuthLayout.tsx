@@ -44,7 +44,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           {/* Main Group: Icon on Left, Title & Aligned Description on Right */}
           <div className="flex items-start gap-4 lg:gap-5">
             <img 
-  src="/stockpros-logo.png" 
+  src="/stockpros-logo.png"
   alt="StockPros Logo" 
   className="w-16 h-16 lg:w-28 lg:h-28 object-contain shrink-0 mt-1" 
 />
