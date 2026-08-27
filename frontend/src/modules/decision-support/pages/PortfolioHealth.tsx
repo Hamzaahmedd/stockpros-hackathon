@@ -5,26 +5,28 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    FiActivity,
-    FiAlertCircle,
-    FiBriefcase,
-    FiCheckCircle,
-    FiChevronUp,
-    FiPieChart,
-    FiShield,
-    FiTarget,
-    FiTrendingUp,
-    FiUpload,
-    FiX,
+  FiActivity,
+  FiAlertCircle,
+  FiBriefcase,
+  FiCheckCircle,
+  FiChevronDown,
+  FiChevronUp,
+  FiPieChart,
+  FiShield,
+  FiTarget,
+  FiTrendingUp,
+  FiUpload,
+  FiX,
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import type {
-    DetailedDecision,
-    MergedRow,
-    OverviewDecision,
-    PortfolioData
+  DetailedDecision,
+  MergedRow,
+  OverviewDecision,
+  PortfolioData
 } from "../types";
 import { downloadPortfolioReportCsv } from "../utils/downloadPortfolioReportCsv";
 import { downloadPortfolioReportPdf } from "../utils/downloadPortfolioReportPdf";
@@ -452,7 +454,7 @@ const PortfolioHealth: React.FC = () => {
                                   }}
                                   variant="secondary"
                                   size="sm"
-                                  className="text-[10px] font-bold"
+                                  className={`text-[10px] font-bold ${SECONDARY_ACTION_BTN}`}
                                 >
                                   {detailLoading && !isExpanded
                                     ? <Skeleton className="w-3 h-3 rounded-full" />

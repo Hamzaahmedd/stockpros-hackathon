@@ -1,5 +1,6 @@
 // src/components/TopNav.tsx
 import { LogoutModal, useAuth } from "@/modules/auth";
+import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
@@ -35,6 +36,7 @@ export const TopNav: React.FC = () => {
                   onClick={() => setIsLogoutModalOpen(true)} 
                   variant="secondary"
                   size="sm"
+                  className={SECONDARY_ACTION_BTN}
                 >
                   Logout
                 </Button>

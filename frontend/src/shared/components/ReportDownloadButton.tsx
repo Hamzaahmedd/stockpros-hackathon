@@ -1,3 +1,4 @@
+import { SECONDARY_ACTION_BTN, SECONDARY_ACTION_ICON_BTN } from '@/shared/utils/buttonStyles';
 import { ChevronDown, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
@@ -31,12 +32,12 @@ export const ReportDownloadButton: React.FC<ReportDownloadButtonProps> = ({
       <Button
         disabled={disabled || loading}
         variant="outline"
-        className="flex items-center gap-2 bg-[#0d1117] border border-[#30363d] text-gray-200 hover:bg-[#161b22] hover:text-gray-200"
+        className={`flex items-center gap-2 ${SECONDARY_ACTION_BTN}`}
         title={title}
       >
-        {loading ? <Skeleton className="w-4 h-4 rounded-full" /> : <Download size={16} />}
+        {loading ? <Skeleton className="w-4 h-4 rounded-full" /> : <Download size={16} className={SECONDARY_ACTION_ICON_BTN} />}
         {loading ? 'Generating...' : 'Download Report'}
-        <ChevronDown size={14} />
+        <ChevronDown size={14} className={SECONDARY_ACTION_ICON_BTN} />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-56">
