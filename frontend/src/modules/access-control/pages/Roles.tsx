@@ -4,6 +4,7 @@ import { Sidebar } from "@/shared/components/Sidebar";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
 import { useEffect, useState } from "react";
 import { FiPlus, FiShield, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
@@ -307,7 +308,7 @@ const Roles = () => {
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
-                                                        className="text-[10px] font-bold uppercase tracking-wider"
+                                                        className={`text-[10px] font-bold uppercase tracking-wider ${SECONDARY_ACTION_BTN}`}
                                                         onClick={() => openPermissionsModal(role)}
                                                     >
                                                         Permissions
