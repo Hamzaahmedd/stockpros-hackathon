@@ -5,7 +5,7 @@ import { OAuth2Client } from "google-auth-library";
 import jwt, { SignOptions } from "jsonwebtoken";
 import os from "os";
 import { uuidv7 } from "uuidv7";
-import { NotFoundError, UnauthorizedError } from "../../shared/errors";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../../shared/errors";
 import { transporter } from "../../shared/infrastructure/config/email";
 import config from "../../shared/infrastructure/config/env";
 import { prisma } from "../../shared/infrastructure/database";
@@ -486,6 +486,89 @@ export async function completeOnboarding(
     accessToken,
     refreshToken,
   };
+}
+
+// ─── Onboarding flow orchestration ───────────────────────────────────────────
+
+export type OnboardingFlowResult =
+  | { kind: 'profileUpdated'; user: UserData }
+  | { kind: 'signupCompleted'; user: UserData; accessToken: string; refreshToken: string };
+
+/**
+ * Resolves the caller's identity from either an onboarding token or a bearer
+ * access token, then completes signup (new user) or updates the displayName of
+ * an already-created user. Returns a discriminated result so the HTTP layer
+ * stays free of auth/token/DB logic.
+ */
+export async function completeOnboardingFlow(params: {
+  onboardingToken?: string;
+  displayName?: string;
+  authHeader?: string;
+  emailFromBody?: string;
+  ip: string;
+  userAgent: string;
+}): Promise<OnboardingFlowResult> {
+  const resolvedName = (params.displayName || '').trim();
+  if (!resolvedName) {
+    throw new ValidationError('Display name is required');
+  }
+
+  let email: string | undefined;
+
+  // Preferred path: a short-lived onboarding token issued during magic-link/Google login.
+  if (params.onboardingToken && typeof params.onboardingToken === 'string') {
+    try {
+      const payload = jwt.verify(params.onboardingToken, ACCESS_TOKEN_SECRET) as any;
+      if (payload.type === 'onboarding' && payload.sub) {
+        email = payload.sub as string;
+      }
+    } catch {
+      throw new UnauthorizedError('Invalid or expired onboarding token');
+    }
+  }
+
+  // No onboarding token: fall back to an existing bearer access token, meaning
+  // the user was already created and is only supplying their display name.
+  if (!email) {
+    const bearerToken = params.authHeader?.startsWith('Bearer ') ? params.authHeader.substring(7) : null;
+    if (bearerToken) {
+      try {
+        const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as any;
+        if (decoded?.sub) {
+          const updated = await prisma.user.update({
+            where: { id: decoded.sub },
+            data: { displayName: resolvedName },
+            include: { userRoles: { include: { role: true } } },
+          });
+
+          return {
+            kind: 'profileUpdated',
+            user: {
+              userId: updated.id,
+              email: updated.email,
+              displayName: updated.displayName,
+              roleId: updated.userRoles?.[0]?.roleId,
+              status: updated.status,
+            },
+          };
+        }
+      } catch {
+        // Ignore an invalid bearer token and fall through to body-email handling.
+      }
+    }
+
+    // Last resort: a temporary onboarding email carried in the request body.
+    if (params.emailFromBody && typeof params.emailFromBody === 'string') {
+      email = params.emailFromBody;
+    }
+  }
+
+  if (!email) {
+    throw new ValidationError('Onboarding token or authentication is required');
+  }
+
+  const result = await completeOnboarding(email, resolvedName, params.ip, params.userAgent);
+  return { kind: 'signupCompleted', ...result };
 }
 
 // ─── Google OAuth (Sign in with Google) ───────────────────────────────────────

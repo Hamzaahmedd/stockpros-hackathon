@@ -1,12 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { NotFoundError, UnauthorizedError, validateOrThrow, ValidationError } from '../../shared/errors';
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie';
 import config from '../../shared/infrastructure/config/env';
-import { prisma } from '../../shared/infrastructure/database';
 import { convertToMilliseconds, getUserId } from '../../shared/utils';
 import {
-  completeOnboarding,
+  completeOnboardingFlow,
   fetchMe,
   generateMagicLink,
   googleLogin as googleLoginService,
@@ -129,72 +127,27 @@ export const verifyMagicLinkToken = async (req: Request, res: Response, next: Ne
 
 export const completeOnboardingHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { onboardingToken, displayName } = req.body;
-    const resolvedName = (displayName || '').trim();
+    const { onboardingToken, displayName, email } = req.body;
 
-    if (!resolvedName) {
-      throw new ValidationError('Display name is required');
+    const result = await completeOnboardingFlow({
+      onboardingToken,
+      displayName,
+      emailFromBody: email,
+      authHeader: req.headers.authorization,
+      ip: req.ip || 'Unknown',
+      userAgent: req.headers['user-agent'] || 'Unknown',
+    });
+
+    // Already-created user (authenticated via bearer token): confirm the update.
+    if (result.kind === 'profileUpdated') {
+      return res.status(200).json({
+        success: true,
+        message: 'Onboarding completed successfully',
+        user: result.user,
+      });
     }
 
-    let email: string | undefined;
-
-    if (onboardingToken && typeof onboardingToken === 'string') {
-      try {
-        const payload = jwt.verify(onboardingToken, config.auth.accessTokenSecret) as any;
-        if (payload.type === 'onboarding' && payload.sub) {
-          email = payload.sub as string;
-        }
-      } catch {
-        throw new UnauthorizedError('Invalid or expired onboarding token');
-      }
-    }
-
-    // If no onboarding token provided, check if user has access token / session
-    if (!email) {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-      if (token) {
-        try {
-          const decoded = jwt.verify(token, config.auth.accessTokenSecret) as any;
-          if (decoded?.sub) {
-            // User already created, just update their displayName
-            const updated = await prisma.user.update({
-              where: { id: decoded.sub },
-              data: { displayName: resolvedName },
-              include: { userRoles: { include: { role: true } } },
-            });
-            return res.status(200).json({
-              success: true,
-              message: 'Onboarding completed successfully',
-              user: {
-                userId: updated.id,
-                email: updated.email,
-                displayName: updated.displayName,
-                roleId: updated.userRoles?.[0]?.roleId,
-                status: updated.status,
-              },
-            });
-          }
-        } catch {}
-      }
-
-      // Check if temporary onboarding email was stored in session or body
-      if (req.body.email && typeof req.body.email === 'string') {
-        email = req.body.email;
-      }
-    }
-
-    if (!email) {
-      throw new ValidationError('Onboarding token or authentication is required');
-    }
-
-    const result = await completeOnboarding(
-      email,
-      resolvedName,
-      req.ip || 'Unknown',
-      req.headers['user-agent'] || 'Unknown'
-    );
-
+    // New signup: issue the session cookie + access token.
     const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(config.auth.refreshTokenExpiry);
 
     return res
