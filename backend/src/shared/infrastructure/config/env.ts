@@ -45,6 +45,7 @@ const config = {
   email: {
     resendApiKey: process.env.RESEND_API_KEY || '',
     resendFrom: process.env.RESEND_FROM_EMAIL || 'StockPros <onboarding@resend.dev>',
+    fromAddress: process.env.RESEND_FROM_EMAIL ?? process.env.SMTP_USER ?? 'stockplatform.app@gmail.com',
     logoUrl: process.env.EMAIL_LOGO_URL || '',
   },
   fmp: {

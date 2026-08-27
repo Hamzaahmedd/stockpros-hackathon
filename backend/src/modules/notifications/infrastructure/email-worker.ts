@@ -1,21 +1,18 @@
-import { Queue, Worker }   from 'bullmq';
-import { getRedisClient }     from '../../../shared/infrastructure/cache';
-import { logger } from '../../../shared/infrastructure/logger'
+import { Queue, Worker } from 'bullmq';
+import { getRedisClient } from '../../../shared/infrastructure/cache';
 import { transporter } from '../../../shared/infrastructure/config/email';
+import config from '../../../shared/infrastructure/config/env';
+import { logger } from '../../../shared/infrastructure/logger';
 import { buildAlertEmail } from '../email-templates/watchlist-alert';
 import type { EmailJobPayload } from '../types';
+import {
+  ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
+  ALERT_EMAIL_JOB_NAME,
+  ALERT_EMAIL_QUEUE_NAME,
+  ALERT_EMAIL_QUEUE_OPTIONS,
+} from './alert-email.config';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? process.env.SMTP_USER ?? 'stockplatform.app@gmail.com';
-
-
-
-// ─── BullMQ Queue ─────────────────────────────────────────────────────────────
-
-
-
-const EMAIL_QUEUE_NAME = 'watchlist-email-notifications';
+// ─── Queue ────────────────────────────────────────────────────────────────────
 
 let _emailQueue: Queue<EmailJobPayload> | null = null;
 
@@ -23,15 +20,10 @@ const getEmailQueue = (): Queue<EmailJobPayload> | null => {
   const connection = getRedisClient();
   if (!connection) return null;
   if (!_emailQueue) {
-    _emailQueue = new Queue<EmailJobPayload>(EMAIL_QUEUE_NAME, {
+    _emailQueue = new Queue<EmailJobPayload>(ALERT_EMAIL_QUEUE_NAME, {
       connection,
-      skipVersionCheck: true,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 10_000 },
-        removeOnComplete: { age: 24 * 60 * 60 },
-        removeOnFail: { age: 72 * 60 * 60 },
-      },
+      ...ALERT_EMAIL_QUEUE_OPTIONS,
+      defaultJobOptions: ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
     });
   }
   return _emailQueue;
@@ -53,22 +45,22 @@ export const startEmailWorker = (): void => {
   }
 
   emailWorker = new Worker<EmailJobPayload>(
-    EMAIL_QUEUE_NAME,
+    ALERT_EMAIL_QUEUE_NAME,
     async (job) => {
-      const { to, title, body, symbol } = job.data
+      const { to, title, body, symbol } = job.data;
 
       await transporter.sendMail({
-        from: FROM_ADDRESS,
+        from: config.email.fromAddress,
         to,
         subject: title,
         text: body,
         html: buildAlertEmail(title, body, symbol),
-      })
+      });
 
-      logger.info(`[EmailWorker] Sent "${title}" to ${to}`)
+      logger.info(`[EmailWorker] Sent "${title}" to ${to}`);
     },
-    { connection, skipVersionCheck: true },
-  )
+    { connection, ...ALERT_EMAIL_QUEUE_OPTIONS },
+  );
 
   emailWorker.on('failed', (job, err) =>
     logger.error(
@@ -101,7 +93,7 @@ export const stopEmailWorker = async (): Promise<void> => {
 export const enqueueEmail = async (payload: EmailJobPayload): Promise<void> => {
   const queue = getEmailQueue();
   if (queue) {
-    await queue.add('send-alert-email' as any, payload);
+    await queue.add(ALERT_EMAIL_JOB_NAME, payload);
   } else {
     logger.warn('[EmailWorker] Skipping email enqueue - Redis not connected');
   }

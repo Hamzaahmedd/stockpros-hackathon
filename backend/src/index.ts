@@ -5,15 +5,16 @@ if (process.env.NODE_ENV !== 'development') require('module-alias/register')
 
 import http from 'http'
 import { createApp } from './app'
-import config from './shared/infrastructure/config/env'
-import { startCronScheduler, stopCronScheduler } from './modules/watchlist/infrastructure/scheduler'
-import { startNewsCronJobs, stopNewsCronJobs } from './modules/news/infrastructure/news-jobs'
-import { connectPrismaWithRetry, prisma } from './shared/infrastructure/database'
-import { startEmailWorker, stopEmailWorker } from './modules/notifications/infrastructure/email-worker'
-import { closeRedis, connectRedis } from './shared/infrastructure/cache'
-import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 import { finnhubService } from './modules/market/infrastructure/finnhub-stream'
+import { startNewsCronJobs, stopNewsCronJobs } from './modules/news/infrastructure/news-jobs'
+import { startAuthEmailWorker, stopAuthEmailWorker } from './modules/notifications/infrastructure/auth-email-worker'
+import { startEmailWorker, stopEmailWorker } from './modules/notifications/infrastructure/email-worker'
+import { startCronScheduler, stopCronScheduler } from './modules/watchlist/infrastructure/scheduler'
+import { closeRedis, connectRedis } from './shared/infrastructure/cache'
+import config from './shared/infrastructure/config/env'
+import { connectPrismaWithRetry, prisma } from './shared/infrastructure/database'
 import { logger } from './shared/infrastructure/logger'
+import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 
 export const httpServer = http.createServer(createApp())
 
@@ -27,6 +28,7 @@ const shutdown = async () => {
   stopCronScheduler()
   await stopNewsCronJobs()
   await stopEmailWorker()
+  await stopAuthEmailWorker()
   await prisma.$disconnect()
   httpServer.close(() => process.exit(0))
 }
@@ -45,6 +47,7 @@ const startServer = async () => {
     await startCronScheduler()
     await startNewsCronJobs()
     startEmailWorker()
+    startAuthEmailWorker()
   } catch (error) {
     logger.error('Failed to start server:', error)
     process.exit(1)

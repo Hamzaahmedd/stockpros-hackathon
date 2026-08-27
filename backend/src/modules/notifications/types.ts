@@ -8,6 +8,12 @@ export interface EmailJobPayload {
   body: string
 }
 
+export interface AuthEmailJobPayload {
+  to: string
+  loginLink: string
+  expiryMinutes: number
+}
+
 export interface NotificationItem {
   id: string
   title: string

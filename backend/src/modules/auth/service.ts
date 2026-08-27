@@ -11,6 +11,7 @@ import config from "../../shared/infrastructure/config/env";
 import { prisma } from "../../shared/infrastructure/database";
 import { convertToMilliseconds, signToken, verifyRefreshToken } from "../../shared/utils";
 import { buildMagicLinkEmail } from '../notifications/email-templates/index';
+import { enqueueAuthEmail } from '../notifications/public';
 import { AuthTokens, UserData } from "./types";
 
 const ACCESS_TOKEN_EXPIRY = config.auth.accessTokenExpiry;
@@ -221,7 +222,22 @@ export async function generateMagicLink(rawEmail: string, clientOrigin?: string)
   const frontendUrl = resolveFrontendUrl(clientOrigin);
   const loginLink = `${frontendUrl}/auth/verify?token=${rawToken}`;
 
-    const emailContent = buildMagicLinkEmail(loginLink, config.auth.magicLinkExpiryMinutes);
+  // Production: offload delivery to BullMQ so the login request returns
+  // immediately and transient SMTP failures are retried by the worker rather
+  // than erroring out to the user. Dev: send synchronously to preserve the
+  // console-link fallback and immediate feedback.
+  if (config.server.nodeEnv === 'production') {
+    const enqueued = await enqueueAuthEmail({
+      to: email,
+      loginLink,
+      expiryMinutes: config.auth.magicLinkExpiryMinutes,
+    });
+    // Queue unavailable (e.g. Redis down) — fall through to a direct send so
+    // the user still receives their link instead of silently getting nothing.
+    if (enqueued) return;
+  }
+
+  const emailContent = buildMagicLinkEmail(loginLink, config.auth.magicLinkExpiryMinutes);
   try {
     await transporter.sendMail({
       to: email,
@@ -230,7 +246,7 @@ export async function generateMagicLink(rawEmail: string, clientOrigin?: string)
   } catch (mailErr) {
     console.error('[MagicLink] Failed to send email:', mailErr);
     // In development, fallback to console output
-    if (process.env.NODE_ENV !== 'production') {
+    if (config.server.nodeEnv !== 'production') {
       console.log(`Magic link for ${email}: ${loginLink}`);
     } else {
       // In production, rethrow to propagate error
