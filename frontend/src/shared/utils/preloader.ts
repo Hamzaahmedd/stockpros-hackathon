@@ -153,7 +153,7 @@ class PreloaderService {
             this.preload('/api/v1/market/top-stocks');
             break;
           case '/forecast':
-            this.preload('/api/v1/forecast', { symbol: 'AAPL', period: '30d' });
+            this.preload('/api/v1/forecast', { symbol: 'AAPL', period: '1w' });
             break;
           case '/news':
             this.preload('/api/v1/news/feed', { limit: 20 });

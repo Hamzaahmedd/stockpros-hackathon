@@ -51,6 +51,7 @@ export const Login: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const { register, handleSubmit, formState, getValues } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -158,13 +159,19 @@ export const Login: React.FC = () => {
             if (response?.credential) handleGoogleCredential(response.credential);
           },
         });
+        const formW = formRef.current?.offsetWidth || googleButtonRef.current.offsetWidth || 400;
+        const scale = 48 / 40; // h-12 (48px) / GIS "large" (40px)
         gis.renderButton(googleButtonRef.current, {
-          theme: "filled_black",
+          theme: "outline_white",
           size: "large",
           text: "continue_with",
           logo_alignment: "center",
-          width: Math.min(googleButtonRef.current.offsetWidth || 400, 400),
+          width: Math.floor(formW / scale),
         });
+        if (googleButtonRef.current) {
+          googleButtonRef.current.style.transform = `scale(${scale})`;
+          googleButtonRef.current.style.transformOrigin = 'top left';
+        }
       } else if (++attempts > 50) {
         // GIS script failed to load within ~10s — stop retrying
         clearInterval(interval);
@@ -250,7 +257,26 @@ export const Login: React.FC = () => {
       title="Sign in to StockPros"
       subtitle="Your intelligent companion for stock market analysis and forecasting"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {GOOGLE_CLIENT_ID && (
+          <div className="space-y-5">
+            <div className="relative overflow-hidden rounded-lg h-12">
+              <div ref={googleButtonRef} className="absolute top-0 left-0" />
+              {isGoogleLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg z-10">
+                  <Skeleton className="w-5 h-5 rounded-full bg-cyan-400/40" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-800"></div>
+              <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-gray-800"></div>
+            </div>
+          </div>
+        )}
+
         <div>
           <label htmlFor="email" className="block text-base font-semibold text-[#E2E8F0] tracking-wide mb-2.5">
             Email Address
@@ -284,25 +310,6 @@ export const Login: React.FC = () => {
             </>
           )}
         </Button>
-
-        {GOOGLE_CLIENT_ID && (
-          <div className="space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-800"></div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
-              <div className="flex-1 h-px bg-gray-800"></div>
-            </div>
-
-            <div className="w-full flex justify-center relative">
-              <div ref={googleButtonRef} className="max-w-full" />
-              {isGoogleLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg z-10">
-                  <Skeleton className="w-5 h-5 rounded-full bg-cyan-400/40" />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </form>
     </AuthLayout>
   );

@@ -49,7 +49,7 @@ function Card({ title, actions, children, className = "" }: {
 
 const Forecast: React.FC = () => {
   const { theme } = useTheme();
-  const [symbol, setSymbol] = useState<string>('IBM');
+  const [symbol, setSymbol] = useState<string>('AAPL');
   const [period, setPeriod] = useState<string>('1w');
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
