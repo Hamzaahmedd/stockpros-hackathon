@@ -1,12 +1,12 @@
+import type { WatchlistAlert } from '@prisma/client'
+import { prisma } from '../../../shared/infrastructure/database'
+import { logger } from '../../../shared/infrastructure/logger'
+import { priceCache } from '../../market'
+import { dispatchNotification } from '../../notifications'
+import { getActiveAlertsForSymbol } from '../caches/alert-rule-cache'
+import type { WatchlistPriceLevels } from '../types'
 
-import type { WatchlistAlert } from '@prisma/client';
-import { prisma } from '../../../shared/infrastructure/database';
-import { priceCache } from '../../market';
-import { dispatchNotification } from '../../notifications';
-import { getActiveAlertsForSymbol } from '../caches/alert-rule-cache';
-import type { WatchlistPriceLevels } from '../types';
-
-const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour per spec §9
+const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour per spec §9
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,12 +18,12 @@ const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour per spec §9
  */
 const isInCooldown = async (alertId: string): Promise<boolean> => {
   const lastLog = await prisma.alertLog.findFirst({
-    where:   { alertId },
+    where: { alertId },
     orderBy: { firedAt: 'desc' },
-  });
-  if (!lastLog) return false;
-  return Date.now() - lastLog.firedAt.getTime() < COOLDOWN_MS;
-};
+  })
+  if (!lastLog) return false
+  return Date.now() - lastLog.firedAt.getTime() < COOLDOWN_MS
+}
 
 // ─── Pure Rule Evaluator ─────────────────────────────────────────────────────
 
@@ -35,43 +35,41 @@ const isInCooldown = async (alertId: string): Promise<boolean> => {
  * are evaluated by cron jobs in M8, never by the tick handler.
  */
 const evaluateRule = (
-  alert:         WatchlistAlert,
-  currentPrice:  number,
+  alert: WatchlistAlert,
+  currentPrice: number,
   changePercent: number,
-  levels:        WatchlistPriceLevels,
+  levels: WatchlistPriceLevels,
 ): boolean => {
-  const { type, threshold } = alert;
+  const { type, threshold } = alert
 
   switch (type) {
     case 'PRICE_ABOVE':
       return threshold !== null && threshold !== undefined
         ? currentPrice >= threshold
-        : false;
+        : false
 
     case 'PRICE_BELOW':
       return threshold !== null && threshold !== undefined
         ? currentPrice <= threshold
-        : false;
+        : false
 
     case 'PCT_CHANGE_UP':
       return threshold !== null && threshold !== undefined
         ? changePercent >= threshold
-        : false;
+        : false
 
     case 'PCT_CHANGE_DOWN':
       return threshold !== null && threshold !== undefined
         ? changePercent <= -threshold
-        : false;
+        : false
 
     case 'ENTRY_ZONE':
       return levels.targetEntryPrice !== null
         ? currentPrice <= levels.targetEntryPrice * 1.02
-        : false;
+        : false
 
     case 'STOP_LOSS_BREACHED':
-      return levels.stopLoss !== null
-        ? currentPrice <= levels.stopLoss
-        : false;
+      return levels.stopLoss !== null ? currentPrice <= levels.stopLoss : false
 
     // Evaluated by cron/AI jobs in M8 — never by the tick handler
     case 'EARNINGS_APPROACHING':
@@ -80,12 +78,12 @@ const evaluateRule = (
     case 'NEWS_PUBLISHED':
     case 'SEC_FILING':
     case 'AI_SIGNAL_CHANGED':
-      return false;
+      return false
 
     default:
-      return false;
+      return false
   }
-};
+}
 
 // ─── Main Entry Point ─────────────────────────────────────────────────────────
 
@@ -101,7 +99,7 @@ const evaluateRule = (
  * is never interrupted (spec §10).
  */
 export const evaluateAlertsForTick = async (
-  symbol:       string,
+  symbol: string,
   currentPrice: number,
 ): Promise<void> => {
   try {
@@ -134,27 +132,32 @@ export const evaluateAlertsForTick = async (
     // ── 2. changePercent for PCT_CHANGE rules ──────────────────────────────
     // priceCache is keyed by symbol — populated by REST quote on subscribe
     // and kept current by periodic REST fallback on GET /watchlist.
-    const changePercent = priceCache.get(symbol)?.changePercent ?? 0;
+    const changePercent = priceCache.get(symbol)?.changePercent ?? 0
 
     // ── 3. Evaluate each alert rule ────────────────────────────────────────
     await Promise.all(
       alerts.map(async (alert) => {
         const levels: WatchlistPriceLevels = {
           targetEntryPrice: alert.watchlist.targetEntryPrice,
-          stopLoss:         alert.watchlist.stopLoss,
-        };
+          stopLoss: alert.watchlist.stopLoss,
+        }
 
-        const triggered = evaluateRule(alert, currentPrice, changePercent, levels);
-        if (!triggered) return;
+        const triggered = evaluateRule(
+          alert,
+          currentPrice,
+          changePercent,
+          levels,
+        )
+        if (!triggered) return
 
         // Cooldown — suppress re-fire within 1 hour per rule
-        const inCooldown = await isInCooldown(alert.id);
-        if (inCooldown) return;
+        const inCooldown = await isInCooldown(alert.id)
+        if (inCooldown) return
 
         // Write AlertLog first — this is the deduplication anchor.
         // If notification dispatch fails, the log row still prevents
         // a duplicate fire on the next tick.
-        await prisma.alertLog.create({ data: { alertId: alert.id } });
+        await prisma.alertLog.create({ data: { alertId: alert.id } })
 
         // Dispatch in-app notification — errors logged, never rethrown
         await dispatchNotification(
@@ -164,32 +167,15 @@ export const evaluateAlertsForTick = async (
           currentPrice,
           alert.threshold,
         ).catch((err) =>
-          console.error(
-            `[AlertEvaluator] Notification dispatch failed for alert ${alert.id}:`, err,
+          logger.error(
+            `[AlertEvaluator] Notification dispatch failed for alert ${alert.id}`,
+            err,
           ),
-        );
+        )
       }),
-    );
+    )
   } catch (err) {
     // Catch-all — the tick pipeline must never crash due to alert evaluation
-    console.error(`[AlertEvaluator] Uncaught error for ${symbol}:`, err);
+    logger.error(`[AlertEvaluator] Uncaught error for ${symbol}`, err)
   }
-};
-
-/** Development hook kept behind the module boundary for the existing dev endpoint. */
-export const evaluateAlertForDevelopment = async (
-  symbol: string,
-  price: number,
-  skipCooldown = false,
-) => {
-  const normalizedSymbol = symbol.toUpperCase()
-  if (skipCooldown) {
-    const alerts = await prisma.watchlistAlert.findMany({
-      where: { watchlist: { symbol: normalizedSymbol } },
-    })
-    await prisma.alertLog.deleteMany({
-      where: { alertId: { in: alerts.map((alert) => alert.id) } },
-    })
-  }
-  await evaluateAlertsForTick(normalizedSymbol, price)
 }

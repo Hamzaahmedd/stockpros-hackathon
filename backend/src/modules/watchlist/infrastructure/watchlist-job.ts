@@ -1,7 +1,9 @@
-import { computeAndStoreAiZones } from '../evaluators/ai-zone-calculator';
-import { prisma } from '../../../shared/infrastructure/database';
-import { dispatchNotification } from '../../notifications';
-import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client';
+import type { AlertType } from '@prisma/client'
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
+import { prisma } from '../../../shared/infrastructure/database'
+import { logger } from '../../../shared/infrastructure/logger'
+import { dispatchNotification } from '../../notifications'
+import { computeAndStoreAiZones } from '../evaluators/ai-zone-calculator'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,13 +17,13 @@ const getWatchedSymbolsWithUsers = async (): Promise<
 > => {
   const entries = await prisma.watchlist.findMany({
     select: { symbol: true, userId: true, id: true },
-  });
+  })
   return entries.map((e) => ({
-    symbol:      e.symbol,
-    userId:      e.userId,
+    symbol: e.symbol,
+    userId: e.userId,
     watchlistId: e.id,
-  }));
-};
+  }))
+}
 
 /**
  * Find all active alerts of a given type for a specific watchlist entry.
@@ -29,45 +31,53 @@ const getWatchedSymbolsWithUsers = async (): Promise<
  */
 const hasActiveAlert = async (
   watchlistId: string,
-  type:        string,
+  type: string,
 ): Promise<boolean> => {
   const alert = await prisma.watchlistAlert.findFirst({
-    where: { watchlistId, type: type as any, isActive: true },
-  });
-  return alert !== null;
-};
+    where: { watchlistId, type: type as AlertType, isActive: true },
+  })
+  return alert !== null
+}
 
 /**
  * Check cooldown and dispatch a notification for an event-based alert.
  * Writes AlertLog first so deduplication holds even if dispatch fails.
  */
 const fireEventAlert = async (
-  watchlistId:  string,
-  userId:       string,
-  symbol:       string,
-  alertType:    string,
+  watchlistId: string,
+  userId: string,
+  symbol: string,
+  alertType: string,
   currentPrice: number,
 ): Promise<void> => {
   // Find the active alert rule for this type
   const alert = await prisma.watchlistAlert.findFirst({
-    where: { watchlistId, type: alertType as any, isActive: true },
-  });
-  if (!alert) return;
+    where: { watchlistId, type: alertType as AlertType, isActive: true },
+  })
+  if (!alert) return
 
   // Cooldown check — 1 hour per spec §9
   const lastLog = await prisma.alertLog.findFirst({
-    where:   { alertId: alert.id },
+    where: { alertId: alert.id },
     orderBy: { firedAt: 'desc' },
-  });
-  const COOLDOWN_MS = 60 * 60 * 1000;
-  if (lastLog && Date.now() - lastLog.firedAt.getTime() < COOLDOWN_MS) return;
+  })
+  const COOLDOWN_MS = 60 * 60 * 1000
+  if (lastLog && Date.now() - lastLog.firedAt.getTime() < COOLDOWN_MS) return
 
   // Write log first, then dispatch
-  await prisma.alertLog.create({ data: { alertId: alert.id } });
-  await dispatchNotification(userId, symbol, alertType as any, currentPrice).catch(
-    (err) => console.error(`[CronJob] Notification failed for ${symbol} ${alertType}:`, err),
-  );
-};
+  await prisma.alertLog.create({ data: { alertId: alert.id } })
+  await dispatchNotification(
+    userId,
+    symbol,
+    alertType as AlertType,
+    currentPrice,
+  ).catch((err) =>
+    logger.error(
+      `[CronJob] Notification failed for ${symbol} ${alertType}:`,
+      err,
+    ),
+  )
+}
 
 // ─── Job 1: Earnings Approaching ─────────────────────────────────────────────
 
@@ -82,30 +92,31 @@ const fireEventAlert = async (
  * earnings date in a dedicated approach: compare firedAt in AlertLog).
  */
 export const runEarningsAlertJob = async (): Promise<void> => {
-  console.log('[CronJob] Running earnings alert job');
+  logger.info('[CronJob] Running earnings alert job')
   try {
-    const entries  = await getWatchedSymbolsWithUsers();
-    const symbols  = [...new Set(entries.map((e) => e.symbol))];
-    const now      = new Date();
-    const in3Days  = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-    const from     = now.toISOString().split('T')[0];
-    const to       = in3Days.toISOString().split('T')[0];
+    const entries = await getWatchedSymbolsWithUsers()
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const now = new Date()
+    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+    const from = now.toISOString().split('T')[0]
+    const to = in3Days.toISOString().split('T')[0]
 
     const { data } = await finnhubClient.get<{
-      earningsCalendar: Array<{ symbol: string; date: string }>;
+      earningsCalendar: Array<{ symbol: string; date: string }>
     }>(`/calendar/earnings`, {
       params: { from, to },
-    });
+    })
 
     const upcomingSymbols = new Set(
       (data.earningsCalendar ?? [])
         .filter((e) => symbols.includes(e.symbol))
         .map((e) => e.symbol),
-    );
+    )
 
     for (const entry of entries) {
-      if (!upcomingSymbols.has(entry.symbol)) continue;
-      if (!(await hasActiveAlert(entry.watchlistId, 'EARNINGS_APPROACHING'))) continue;
+      if (!upcomingSymbols.has(entry.symbol)) continue
+      if (!(await hasActiveAlert(entry.watchlistId, 'EARNINGS_APPROACHING')))
+        continue
 
       await fireEventAlert(
         entry.watchlistId,
@@ -113,12 +124,12 @@ export const runEarningsAlertJob = async (): Promise<void> => {
         entry.symbol,
         'EARNINGS_APPROACHING',
         0, // no price needed for earnings notification
-      );
+      )
     }
   } catch (err) {
-    console.error('[CronJob] Earnings alert job failed:', err);
+    logger.error('[CronJob] Earnings alert job failed:', err)
   }
-};
+}
 
 // ─── Job 2: Dividend Ex-Date Approaching ─────────────────────────────────────
 
@@ -127,12 +138,12 @@ export const runEarningsAlertJob = async (): Promise<void> => {
  * if the ex-date falls within the next 3 days.
  */
 export const runDividendAlertJob = async (): Promise<void> => {
-  console.log('[CronJob] Running dividend alert job');
+  logger.info('[CronJob] Running dividend alert job')
   try {
-    const entries = await getWatchedSymbolsWithUsers();
-    const symbols = [...new Set(entries.map((e) => e.symbol))];
-    const now     = new Date();
-    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const entries = await getWatchedSymbolsWithUsers()
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const now = new Date()
+    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
 
     await Promise.all(
       symbols.map(async (symbol) => {
@@ -141,35 +152,38 @@ export const runDividendAlertJob = async (): Promise<void> => {
             Array<{ symbol: string; exDate: string }>
           >(`/stock/dividend`, {
             params: { symbol },
-          });
+          })
 
           const upcoming = (data ?? []).find((d) => {
-            const exDate = new Date(d.exDate);
-            return exDate >= now && exDate <= in3Days;
-          });
+            const exDate = new Date(d.exDate)
+            return exDate >= now && exDate <= in3Days
+          })
 
-          if (!upcoming) return;
+          if (!upcoming) return
 
-          const symbolEntries = entries.filter((e) => e.symbol === symbol);
+          const symbolEntries = entries.filter((e) => e.symbol === symbol)
           for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'DIVIDEND_APPROACHING'))) continue;
+            if (
+              !(await hasActiveAlert(entry.watchlistId, 'DIVIDEND_APPROACHING'))
+            )
+              continue
             await fireEventAlert(
               entry.watchlistId,
               entry.userId,
               symbol,
               'DIVIDEND_APPROACHING',
               0,
-            );
+            )
           }
         } catch (err) {
-          console.error(`[CronJob] Dividend fetch failed for ${symbol}:`, err);
+          logger.error(`[CronJob] Dividend fetch failed for ${symbol}`, err)
         }
       }),
-    );
+    )
   } catch (err) {
-    console.error('[CronJob] Dividend alert job failed:', err);
+    logger.error('[CronJob] Dividend alert job failed:', err)
   }
-};
+}
 
 // ─── Job 3: Analyst Rating Change ────────────────────────────────────────────
 
@@ -184,42 +198,56 @@ export const runDividendAlertJob = async (): Promise<void> => {
  * 24 hours, we treat the latest record as potentially new.
  */
 export const runAnalystRatingJob = async (): Promise<void> => {
-  console.log('[CronJob] Running analyst rating job');
+  logger.info('[CronJob] Running analyst rating job')
   try {
-    const entries = await getWatchedSymbolsWithUsers();
-    const symbols = [...new Set(entries.map((e) => e.symbol))];
+    const entries = await getWatchedSymbolsWithUsers()
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
 
     await Promise.all(
       symbols.map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<
-            Array<{ period: string; strongBuy: number; buy: number; hold: number }>
+            Array<{
+              period: string
+              strongBuy: number
+              buy: number
+              hold: number
+            }>
           >(`/stock/recommendation`, {
             params: { symbol },
-          });
+          })
 
-          if (!data || data.length === 0) return;
+          if (!data || data.length === 0) return
 
-          const latest = data[0]; // most recent period first
+          const latest = data[0] // most recent period first
 
           // Delta check: has any user's ANALYST_RATING_CHANGE alert for this
           // symbol fired in the last 24 hours? If yes, skip (already notified).
-          const oneDayAgo  = new Date(Date.now() - 24 * 60 * 60 * 1000);
-          const symbolEntries = entries.filter((e) => e.symbol === symbol);
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+          const symbolEntries = entries.filter((e) => e.symbol === symbol)
 
           for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'ANALYST_RATING_CHANGE'))) continue;
+            if (
+              !(await hasActiveAlert(
+                entry.watchlistId,
+                'ANALYST_RATING_CHANGE',
+              ))
+            )
+              continue
 
             const alert = await prisma.watchlistAlert.findFirst({
-              where: { watchlistId: entry.watchlistId, type: 'ANALYST_RATING_CHANGE' },
-            });
-            if (!alert) continue;
+              where: {
+                watchlistId: entry.watchlistId,
+                type: 'ANALYST_RATING_CHANGE',
+              },
+            })
+            if (!alert) continue
 
             const recentLog = await prisma.alertLog.findFirst({
-              where:   { alertId: alert.id, firedAt: { gte: oneDayAgo } },
+              where: { alertId: alert.id, firedAt: { gte: oneDayAgo } },
               orderBy: { firedAt: 'desc' },
-            });
-            if (recentLog) continue; // already fired today
+            })
+            if (recentLog) continue // already fired today
 
             await fireEventAlert(
               entry.watchlistId,
@@ -227,17 +255,20 @@ export const runAnalystRatingJob = async (): Promise<void> => {
               symbol,
               'ANALYST_RATING_CHANGE',
               0,
-            );
+            )
           }
         } catch (err) {
-          console.error(`[CronJob] Analyst rating fetch failed for ${symbol}:`, err);
+          logger.error(
+            `[CronJob] Analyst rating fetch failed for ${symbol}:`,
+            err,
+          )
         }
       }),
-    );
+    )
   } catch (err) {
-    console.error('[CronJob] Analyst rating job failed:', err);
+    logger.error('[CronJob] Analyst rating job failed:', err)
   }
-};
+}
 
 // ─── Job 4: News Published ────────────────────────────────────────────────────
 
@@ -252,14 +283,14 @@ export const runAnalystRatingJob = async (): Promise<void> => {
  * Runs every 15-30 minutes (spec §11).
  */
 export const runNewsAlertJob = async (): Promise<void> => {
-  console.log('[CronJob] Running news alert job');
+  logger.info('[CronJob] Running news alert job')
   try {
-    const entries = await getWatchedSymbolsWithUsers();
-    const symbols = [...new Set(entries.map((e) => e.symbol))];
-    const now     = new Date();
-    const from    = new Date(now.getTime() - 30 * 60 * 1000); // last 30 min
-    const fromStr = from.toISOString().split('T')[0];
-    const toStr   = now.toISOString().split('T')[0];
+    const entries = await getWatchedSymbolsWithUsers()
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const now = new Date()
+    const from = new Date(now.getTime() - 30 * 60 * 1000) // last 30 min
+    const fromStr = from.toISOString().split('T')[0]
+    const toStr = now.toISOString().split('T')[0]
 
     await Promise.all(
       symbols.map(async (symbol) => {
@@ -268,36 +299,37 @@ export const runNewsAlertJob = async (): Promise<void> => {
             Array<{ id: number; datetime: number; headline: string }>
           >(`/company-news`, {
             params: { symbol, from: fromStr, to: toStr },
-          });
+          })
 
-          if (!data || data.length === 0) return;
+          if (!data || data.length === 0) return
 
           // Filter to articles published in the last 30 minutes
           const recentArticles = data.filter(
             (a) => a.datetime * 1000 >= from.getTime(),
-          );
-          if (recentArticles.length === 0) return;
+          )
+          if (recentArticles.length === 0) return
 
-          const symbolEntries = entries.filter((e) => e.symbol === symbol);
+          const symbolEntries = entries.filter((e) => e.symbol === symbol)
           for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'NEWS_PUBLISHED'))) continue;
+            if (!(await hasActiveAlert(entry.watchlistId, 'NEWS_PUBLISHED')))
+              continue
             await fireEventAlert(
               entry.watchlistId,
               entry.userId,
               symbol,
               'NEWS_PUBLISHED',
               0,
-            );
+            )
           }
         } catch (err) {
-          console.error(`[CronJob] News fetch failed for ${symbol}:`, err);
+          logger.error(`[CronJob] News fetch failed for ${symbol}`, err)
         }
       }),
-    );
+    )
   } catch (err) {
-    console.error('[CronJob] News alert job failed:', err);
+    logger.error('[CronJob] News alert job failed:', err)
   }
-};
+}
 
 // ─── Job 5: SEC Filing Published ─────────────────────────────────────────────
 
@@ -307,49 +339,50 @@ export const runNewsAlertJob = async (): Promise<void> => {
  * entry for this alert type (delta pattern).
  */
 export const runSecFilingJob = async (): Promise<void> => {
-  console.log('[CronJob] Running SEC filing job');
+  logger.info('[CronJob] Running SEC filing job')
   try {
-    const entries = await getWatchedSymbolsWithUsers();
-    const symbols = [...new Set(entries.map((e) => e.symbol))];
+    const entries = await getWatchedSymbolsWithUsers()
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
 
     await Promise.all(
       symbols.map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<{
-            data: Array<{ filedDate: string; form: string }>;
+            data: Array<{ filedDate: string; form: string }>
           }>(`/stock/filings`, {
             params: { symbol },
-          });
+          })
 
-          if (!data?.data || data.data.length === 0) return;
+          if (!data?.data || data.data.length === 0) return
 
-          const latestFiling  = data.data[0];
-          const filedDate     = new Date(latestFiling.filedDate);
-          const oneDayAgo     = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const latestFiling = data.data[0]
+          const filedDate = new Date(latestFiling.filedDate)
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
           // Only fire if the most recent filing was within the last day
-          if (filedDate < oneDayAgo) return;
+          if (filedDate < oneDayAgo) return
 
-          const symbolEntries = entries.filter((e) => e.symbol === symbol);
+          const symbolEntries = entries.filter((e) => e.symbol === symbol)
           for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING'))) continue;
+            if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING')))
+              continue
             await fireEventAlert(
               entry.watchlistId,
               entry.userId,
               symbol,
               'SEC_FILING',
               0,
-            );
+            )
           }
         } catch (err) {
-          console.error(`[CronJob] SEC filing fetch failed for ${symbol}:`, err);
+          logger.error(`[CronJob] SEC filing fetch failed for ${symbol}`, err)
         }
       }),
-    );
+    )
   } catch (err) {
-    console.error('[CronJob] SEC filing job failed:', err);
+    logger.error('[CronJob] SEC filing job failed:', err)
   }
-};
+}
 
 // ─── Job 6: AI Zone Recomputation ─────────────────────────────────────────────
 
@@ -362,32 +395,32 @@ export const runSecFilingJob = async (): Promise<void> => {
  * that alert type active.
  */
 export const runAiZoneRecomputeJob = async (): Promise<void> => {
-  console.log('[CronJob] Running AI zone recompute job');
+  logger.info('[CronJob] Running AI zone recompute job')
   try {
     const entries = await prisma.watchlist.findMany({
       select: {
-        userId:          true,
-        symbol:          true,
-        id:              true,
-        aiComputedAt:    true,
+        userId: true,
+        symbol: true,
+        id: true,
+        aiComputedAt: true,
         aiSuggestedEntry: true,
       },
-    });
+    })
 
-    const symbols = [...new Set(entries.map((e) => e.symbol))];
+    const symbols = [...new Set(entries.map((e) => e.symbol))]
 
     await Promise.all(
       symbols.map(async (symbol) => {
         // Recompute for the first user watching this symbol —
         // result is stored on the watchlist row per userId+symbol
-        const symbolEntries = entries.filter((e) => e.symbol === symbol);
+        const symbolEntries = entries.filter((e) => e.symbol === symbol)
 
         for (const entry of symbolEntries) {
           try {
-            await computeAndStoreAiZones(entry.userId, symbol);
+            await computeAndStoreAiZones(entry.userId, symbol)
 
             // Notify users with AI_SIGNAL_CHANGED alert active
-            if (!(await hasActiveAlert(entry.id, 'AI_SIGNAL_CHANGED'))) continue;
+            if (!(await hasActiveAlert(entry.id, 'AI_SIGNAL_CHANGED'))) continue
 
             await fireEventAlert(
               entry.id,
@@ -395,14 +428,14 @@ export const runAiZoneRecomputeJob = async (): Promise<void> => {
               symbol,
               'AI_SIGNAL_CHANGED',
               0,
-            );
+            )
           } catch (err) {
-            console.error(`[CronJob] AI recompute failed for ${symbol}:`, err);
+            logger.error(`[CronJob] AI recompute failed for ${symbol}`, err)
           }
         }
       }),
-    );
+    )
   } catch (err) {
-    console.error('[CronJob] AI zone recompute job failed:', err);
+    logger.error('[CronJob] AI zone recompute job failed:', err)
   }
-};
+}

@@ -1,4 +1,4 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue, Worker } from 'bullmq'
 import {
   runEarningsAlertJob,
   runDividendAlertJob,
@@ -6,49 +6,48 @@ import {
   runNewsAlertJob,
   runSecFilingJob,
   runAiZoneRecomputeJob,
-} from './watchlist-job';
-import { logger } from '../../../shared/infrastructure/logger';
-import { getRedisClient } from '../../../shared/infrastructure/cache';
-import type { JobDefinition } from './types';
-
+} from './watchlist-job'
+import { logger } from '../../../shared/infrastructure/logger'
+import { getRedisClient } from '../../../shared/infrastructure/cache'
+import type { JobDefinition } from './types'
 
 // ─── Job Definitions ──────────────────────────────────────────────────────────
 
 const JOB_DEFINITIONS: JobDefinition[] = [
   {
-    name:    'watchlist-earnings-alert',
+    name: 'watchlist-earnings-alert',
     handler: runEarningsAlertJob,
-    pattern: '0 8 * * *',       // daily at 08:00 UTC
+    pattern: '0 8 * * *', // daily at 08:00 UTC
   },
   {
-    name:    'watchlist-dividend-alert',
+    name: 'watchlist-dividend-alert',
     handler: runDividendAlertJob,
     pattern: '0 8 * * *',
   },
   {
-    name:    'watchlist-analyst-rating',
+    name: 'watchlist-analyst-rating',
     handler: runAnalystRatingJob,
-    pattern: '0 9 * * *',       // daily at 09:00 UTC
+    pattern: '0 9 * * *', // daily at 09:00 UTC
   },
   {
-    name:    'watchlist-sec-filing',
+    name: 'watchlist-sec-filing',
     handler: runSecFilingJob,
-    pattern: '0 10 * * *',      // daily at 10:00 UTC
+    pattern: '0 10 * * *', // daily at 10:00 UTC
   },
   {
-    name:    'watchlist-ai-recompute',
+    name: 'watchlist-ai-recompute',
     handler: runAiZoneRecomputeJob,
-    pattern: '0 3 * * *',       // daily at 03:00 UTC (off-peak)
+    pattern: '0 3 * * *', // daily at 03:00 UTC (off-peak)
   },
   {
-    name:    'watchlist-news-alert',
+    name: 'watchlist-news-alert',
     handler: runNewsAlertJob,
-    pattern: '*/15 * * * *',    // every 15 minutes
+    pattern: '*/15 * * * *', // every 15 minutes
   },
-];
+]
 
-const queues:  Queue[]  = [];
-const workers: Worker[] = [];
+const queues: Queue[] = []
+const workers: Worker[] = []
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
@@ -60,15 +59,17 @@ const workers: Worker[] = [];
  * BullMQ processor — no changes to job logic required.
  */
 export const startCronScheduler = async (): Promise<void> => {
-  const connection = getRedisClient();
+  const connection = getRedisClient()
   if (!connection) {
-    logger.warn('[CronScheduler] No Redis connection found — cron jobs will not be registered.');
-    return;
+    logger.warn(
+      '[CronScheduler] No Redis connection found — cron jobs will not be registered.',
+    )
+    return
   }
 
   for (const job of JOB_DEFINITIONS) {
     // Queue holds the repeating job definition
-    const queue = new Queue(job.name, { connection, skipVersionCheck: true });
+    const queue = new Queue(job.name, { connection, skipVersionCheck: true })
 
     // Upsert the repeating job — safe to call on every boot.
     // BullMQ deduplicates by queue name + repeat pattern.
@@ -76,34 +77,36 @@ export const startCronScheduler = async (): Promise<void> => {
       job.name,
       {},
       {
-        repeat:   { pattern: job.pattern },
+        repeat: { pattern: job.pattern },
         attempts: 3,
-        backoff:  { type: 'exponential', delay: 5_000 },
+        backoff: { type: 'exponential', delay: 5_000 },
       },
-    );
+    )
 
-    queues.push(queue);
+    queues.push(queue)
 
     // Worker processes jobs from the queue
     const worker = new Worker(
       job.name,
-      async () => { await job.handler(); },
+      async () => {
+        await job.handler()
+      },
       { connection, skipVersionCheck: true },
-    );
+    )
 
     worker.on('completed', () =>
       logger.info(`[CronScheduler] ${job.name} completed`),
-    );
+    )
     worker.on('failed', (_, err) =>
       logger.error(`[CronScheduler] ${job.name} failed: ${err.message}`),
-    );
+    )
 
-    workers.push(worker);
-    logger.info(`[CronScheduler] Registered: ${job.name} (${job.pattern})`);
+    workers.push(worker)
+    logger.info(`[CronScheduler] Registered: ${job.name} (${job.pattern})`)
   }
 
-  logger.info('[CronScheduler] All jobs registered');
-};
+  logger.info('[CronScheduler] All jobs registered')
+}
 
 // ─── Stop ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +115,7 @@ export const startCronScheduler = async (): Promise<void> => {
  * Call in SIGTERM/SIGINT handlers.
  */
 export const stopCronScheduler = async (): Promise<void> => {
-  await Promise.all(workers.map((w) => w.close()));
-  await Promise.all(queues.map((q) => q.close()));
-  logger.info('[CronScheduler] All jobs stopped');
-};
+  await Promise.all(workers.map((w) => w.close()))
+  await Promise.all(queues.map((q) => q.close()))
+  logger.info('[CronScheduler] All jobs stopped')
+}

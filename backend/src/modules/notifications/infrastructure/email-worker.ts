@@ -1,64 +1,56 @@
-import { Queue, Worker }   from 'bullmq';
-import { getRedisClient }     from '../../../shared/infrastructure/cache';
+import { Queue, Worker } from 'bullmq'
+import { getRedisClient } from '../../../shared/infrastructure/cache'
+import { transporter } from '../../../shared/infrastructure/config/email'
 import { logger } from '../../../shared/infrastructure/logger'
-import { transporter } from '../../../shared/infrastructure/config/email';
-import { buildAlertEmail } from '../email-templates/watchlist-alert';
-import type { EmailJobPayload } from '../types';
+import { buildAlertEmail } from '../email-templates/watchlist-alert'
+import type { EmailJobPayload } from '../types'
+import {
+  ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
+  ALERT_EMAIL_JOB_NAME,
+  ALERT_EMAIL_QUEUE_NAME,
+  ALERT_EMAIL_QUEUE_OPTIONS,
+} from './alert-email.config'
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Queue ────────────────────────────────────────────────────────────────────
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? process.env.SMTP_USER ?? 'stockplatform.app@gmail.com';
-
-
-
-// ─── BullMQ Queue ─────────────────────────────────────────────────────────────
-
-
-
-const EMAIL_QUEUE_NAME = 'watchlist-email-notifications';
-
-let _emailQueue: Queue<EmailJobPayload> | null = null;
+let _emailQueue: Queue<EmailJobPayload> | null = null
 
 const getEmailQueue = (): Queue<EmailJobPayload> | null => {
-  const connection = getRedisClient();
-  if (!connection) return null;
+  const connection = getRedisClient()
+  if (!connection) return null
   if (!_emailQueue) {
-    _emailQueue = new Queue<EmailJobPayload>(EMAIL_QUEUE_NAME, {
+    _emailQueue = new Queue<EmailJobPayload>(ALERT_EMAIL_QUEUE_NAME, {
       connection,
-      skipVersionCheck: true,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 10_000 },
-        removeOnComplete: { age: 24 * 60 * 60 },
-        removeOnFail: { age: 72 * 60 * 60 },
-      },
-    });
+      ...ALERT_EMAIL_QUEUE_OPTIONS,
+      defaultJobOptions: ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
+    })
   }
-  return _emailQueue;
-};
+  return _emailQueue
+}
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-let emailWorker: Worker<EmailJobPayload> | null = null;
+let emailWorker: Worker<EmailJobPayload> | null = null
 
 /**
  * Start the email worker.
  * Call once at server boot alongside startCronScheduler.
  */
 export const startEmailWorker = (): void => {
-  const connection = getRedisClient();
+  const connection = getRedisClient()
   if (!connection) {
-    logger.warn('[EmailWorker] No Redis connection found — email worker will not be started.');
-    return;
+    logger.warn(
+      '[EmailWorker] No Redis connection found — email worker will not be started.',
+    )
+    return
   }
 
   emailWorker = new Worker<EmailJobPayload>(
-    EMAIL_QUEUE_NAME,
+    ALERT_EMAIL_QUEUE_NAME,
     async (job) => {
       const { to, title, body, symbol } = job.data
 
       await transporter.sendMail({
-        from: FROM_ADDRESS,
         to,
         subject: title,
         text: body,
@@ -67,29 +59,29 @@ export const startEmailWorker = (): void => {
 
       logger.info(`[EmailWorker] Sent "${title}" to ${to}`)
     },
-    { connection, skipVersionCheck: true },
+    { connection, ...ALERT_EMAIL_QUEUE_OPTIONS },
   )
 
   emailWorker.on('failed', (job, err) =>
     logger.error(
       `[EmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${err.message}`,
     ),
-  );
+  )
 
-  logger.info('[EmailWorker] Started');
-};
+  logger.info('[EmailWorker] Started')
+}
 
 /**
  * Stop the email worker.
  * Call in SIGTERM/SIGINT handlers.
  */
 export const stopEmailWorker = async (): Promise<void> => {
-  await emailWorker?.close();
+  await emailWorker?.close()
   if (_emailQueue) {
-    await _emailQueue.close();
+    await _emailQueue.close()
   }
-  logger.info('[EmailWorker] Stopped');
-};
+  logger.info('[EmailWorker] Stopped')
+}
 
 // ─── Enqueue Helper ───────────────────────────────────────────────────────────
 
@@ -99,10 +91,10 @@ export const stopEmailWorker = async (): Promise<void> => {
  * Non-blocking — never awaited in the tick pipeline.
  */
 export const enqueueEmail = async (payload: EmailJobPayload): Promise<void> => {
-  const queue = getEmailQueue();
+  const queue = getEmailQueue()
   if (queue) {
-    await queue.add('send-alert-email' as any, payload);
+    await queue.add(ALERT_EMAIL_JOB_NAME, payload)
   } else {
-    logger.warn('[EmailWorker] Skipping email enqueue - Redis not connected');
+    logger.warn('[EmailWorker] Skipping email enqueue - Redis not connected')
   }
-};
+}

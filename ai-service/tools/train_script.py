@@ -1,4 +1,3 @@
-# train_script.py
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
 import argparse

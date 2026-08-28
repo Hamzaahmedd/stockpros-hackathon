@@ -35,7 +35,7 @@ from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
 from app.core.config import settings
 from app.core.logger import logger
-from supabase import create_client, Client
+from app.core.storage import BUCKET_NAME, supabase
 
 def trigger_background_training(symbol: str) -> bool:
     """Triggers the GitHub Action to train the model in the background."""
@@ -60,23 +60,17 @@ def trigger_background_training(symbol: str) -> bool:
         if response.status_code == 204:
             logger.info(f"Successfully triggered GitHub Action training for {symbol}")
             return True
-        else:
-            logger.error(f"Failed to trigger GitHub Action: {response.status_code} - {response.text}")
-            return False
-    except Exception as e:
+        logger.error(f"Failed to trigger GitHub Action: {response.status_code} - {response.text}")
+        return False
+    except requests.RequestException as e:
         logger.error(f"Exception triggering background training: {e}")
         return False
 
 FEATURE_COLS: List[str] = ["close", "volume", "sma_50", "rsi", "macd", "signal"]
 
-# Initialize Supabase Client
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-BUCKET_NAME = "models"
-
 def get_model_path(symbol: str, extension: str | None = None) -> str:
     if extension is None:
         extension = "onnx" if APP_ENV == "prod" else "keras"
-    # Unified naming: Just SYMBOL.extension
     return os.path.join(settings.MODEL_DIR, f"{symbol.upper()}.{extension}")
 
 async def sync_model_from_supabase(symbol: str) -> bool:
@@ -86,25 +80,22 @@ async def sync_model_from_supabase(symbol: str) -> bool:
     
     try:
         os.makedirs(settings.MODEL_DIR, exist_ok=True)
-        
-        # Download from Supabase
+
         res = supabase.storage.from_(BUCKET_NAME).download(remote_path)
-        
-        # Safety Fix: Ensure we got bytes, not an error dictionary
+
         if isinstance(res, bytes):
             with open(local_path, "wb") as f:
                 f.write(res)
         else:
             raise ValueError(f"Supabase returned non-byte response: {res}")
-            
+
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
-            
+
         logger.info(f"Successfully synced {symbol} ONNX model from Supabase.")
         return True
     except Exception as e:
         logger.warning(f"No existing ONNX model for {symbol} in Supabase: {e}")
-        # Clean up if a partial/error file was created
         if os.path.exists(local_path):
             os.remove(local_path)
         return False

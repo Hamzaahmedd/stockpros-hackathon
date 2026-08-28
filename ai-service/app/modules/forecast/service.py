@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from fastapi import BackgroundTasks, HTTPException
 
+from app.core import cache as redis_service
 from app.core.logger import logger
-from app.schemas.prediction import ForecastResponse, PricePoint
-from app.services import redis as redis_service
+from app.modules.forecast.schemas import ForecastResponse, PricePoint
 from app.services.data_service import fetch_stock_data
 from app.services.model_service import (
     APP_ENV,

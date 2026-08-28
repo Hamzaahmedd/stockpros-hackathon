@@ -1,4 +1,3 @@
-# app/core/config.py
 from typing import Final
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,9 +10,8 @@ class Settings(BaseSettings):
     EPOCHS: int = 15
     BATCH_SIZE: int = 32
 
-    # Provide default empty string initializers so static type checkers 
-    # don't expect them as positional/keyword arguments in Settings()
     REDIS_URL: str = ""
+    REDIS_TLS_REJECT_UNAUTHORIZED: bool = True
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
     TIINGO_API_KEY: str = ""

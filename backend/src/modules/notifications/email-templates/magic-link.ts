@@ -1,5 +1,5 @@
 // Pakistan Standard Time (PKT, UTC+5) — used for all human-readable timestamps in emails
-const PKT_TIMEZONE = 'Asia/Karachi';
+const PKT_TIMEZONE = 'Asia/Karachi'
 
 const getPKTPart = (date: Date, type: Intl.DateTimeFormatPartTypes): string =>
   new Intl.DateTimeFormat('en-US', {
@@ -13,23 +13,23 @@ const getPKTPart = (date: Date, type: Intl.DateTimeFormatPartTypes): string =>
     hourCycle: 'h23',
   })
     .formatToParts(date)
-    .find((part) => part.type === type)?.value ?? '';
+    .find((part) => part.type === type)?.value ?? ''
 
 const getFormattedTimestamp = (): string => {
-  const now = new Date();
+  const now = new Date()
 
-  const year = getPKTPart(now, 'year');
-  const month = getPKTPart(now, 'month');
-  const day = getPKTPart(now, 'day');
-  const hours = getPKTPart(now, 'hour');
-  const minutes = getPKTPart(now, 'minute');
-  const seconds = getPKTPart(now, 'second');
+  const year = getPKTPart(now, 'year')
+  const month = getPKTPart(now, 'month')
+  const day = getPKTPart(now, 'day')
+  const hours = getPKTPart(now, 'hour')
+  const minutes = getPKTPart(now, 'minute')
+  const seconds = getPKTPart(now, 'second')
 
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
 
 export const buildMagicLinkSubject = (): string =>
-  `Log in to StockPros [${getFormattedTimestamp()}]`;
+  `Log in to StockPros [${getFormattedTimestamp()}]`
 
 export const buildMagicLinkEmailText = (
   link: string,
@@ -45,13 +45,13 @@ Important Security Information:
 - This link is valid for ${expiryMinutes} minutes only.
 - This link can only be used once.
 - If you did not request this login link, you can safely ignore this email. No action is required.
-`;
+`
 
 export const buildMagicLinkEmailHtml = (
   link: string,
   expiryMinutes = 10,
 ): string => {
-  const antiTrimmingToken = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const antiTrimmingToken = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
 
   return `
 <!DOCTYPE html>
@@ -103,12 +103,12 @@ export const buildMagicLinkEmailHtml = (
     </div>
   </body>
 </html>
-`;
-};
+`
+}
 
 // All-in-one export object for Nodemailer / Resend
 export const buildMagicLinkEmail = (link: string, expiryMinutes = 10) => ({
   subject: buildMagicLinkSubject(),
   html: buildMagicLinkEmailHtml(link, expiryMinutes),
   text: buildMagicLinkEmailText(link, expiryMinutes),
-});
+})

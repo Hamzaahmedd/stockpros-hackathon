@@ -1,9 +1,8 @@
 import cookieParser from 'cookie-parser'
 import express from 'express'
+import { modules } from './modules'
 import { NotFoundError } from './shared/errors'
 import { errorHandler, securityMiddleware } from './shared/middlewares'
-import { modules } from './modules'
-import { evaluateAlertForDevelopment } from './modules/watchlist'
 
 /** Creates the HTTP application without opening sockets or starting workers. */
 export const createApp = () => {
@@ -15,14 +14,10 @@ export const createApp = () => {
 
   for (const module of modules) app.use(module.route, module.router)
 
-  app.post('/api/v1/dev/trigger-alert', async (req, res) => {
-    const { symbol, price, skipCooldown } = req.body
-    await evaluateAlertForDevelopment(symbol, parseFloat(price), skipCooldown)
-    res.json({ message: `Evaluated alerts for ${symbol} @ ${price}` })
+  app.get('/', (_req, res) => res.send('StockPros server is running'))
+  app.use((req) => {
+    throw new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`)
   })
-
-  app.get('/', (_req, res) => res.send('Stock App server is running'))
-  app.use((req) => { throw new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`) })
   app.use(errorHandler)
   return app
 }

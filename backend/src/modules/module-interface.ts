@@ -7,4 +7,5 @@ export interface AppModule {
   readonly router: Router
 }
 
-export const defineModule = (module: AppModule): AppModule => Object.freeze(module)
+export const defineModule = (module: AppModule): AppModule =>
+  Object.freeze(module)

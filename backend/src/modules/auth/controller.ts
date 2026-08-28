@@ -1,102 +1,130 @@
-import { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { NotFoundError, UnauthorizedError, validateOrThrow, ValidationError } from '../../shared/errors';
-import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie';
-import config from '../../shared/infrastructure/config/env';
-import { prisma } from '../../shared/infrastructure/database';
-import { convertToMilliseconds, getUserId } from '../../shared/utils';
+import config from '@/config'
+import { NextFunction, Request, Response } from 'express'
 import {
-  completeOnboarding,
+  NotFoundError,
+  UnauthorizedError,
+  validateOrThrow,
+  ValidationError,
+} from '../../shared/errors'
+import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
+import { convertToMilliseconds, getUserId } from '../../shared/utils'
+import {
+  completeOnboardingFlow,
   fetchMe,
   generateMagicLink,
   googleLogin as googleLoginService,
   logoutUser,
   refreshAccessToken,
   verifyMagicLink,
-} from './service';
-import { AuthenticatedRequest } from './types';
-import { emailValidator, googleLoginValidator } from './validation';
+} from './service'
+import { AuthenticatedRequest } from './types'
+import { emailValidator, googleLoginValidator } from './validation'
 
-export const getMyInfo = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getMyInfo = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const userId = getUserId(req);
-    const myDetails = await fetchMe(userId);
+    const userId = getUserId(req)
+    const myDetails = await fetchMe(userId)
 
     return res.status(200).json({
       success: true,
       message: 'My details fetched successfully',
       user: myDetails,
-    });
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
-export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const refreshToken = req.cookies.refresh_token;
+    const refreshToken = req.cookies.refresh_token
     if (!refreshToken) {
-      throw new UnauthorizedError('No refresh token provided');
+      throw new UnauthorizedError('No refresh token provided')
     }
 
-    const accessToken = await refreshAccessToken(refreshToken);
+    const accessToken = await refreshAccessToken(refreshToken)
 
     return res.status(200).json({
       success: true,
       message: 'Access token refreshed successfully',
       accessToken,
-    });
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
-export const logout = async (req: Request, res: Response, next: NextFunction) => {
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const refreshToken = req.cookies?.refresh_token || req.body?.refresh_token;
+    const refreshToken = req.cookies?.refresh_token || req.body?.refresh_token
     if (!refreshToken) {
-      throw new NotFoundError('No refresh token provided');
+      throw new NotFoundError('No refresh token provided')
     }
 
-    await logoutUser(refreshToken);
+    await logoutUser(refreshToken)
 
-    res.clearCookie('refresh_token', defaultCookieOptions);
+    res.clearCookie('refresh_token', defaultCookieOptions)
 
-    return res.status(200).json({ success: true, message: 'Logged out successfully' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Logged out successfully' })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
 // ─── Magic Link & Onboarding ──────────────────────────────────────────────────
 
-export const requestMagicLink = async (req: Request, res: Response, next: NextFunction) => {
+export const requestMagicLink = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const { email } = validateOrThrow(emailValidator, req.body);
-    const clientOrigin = req.get('origin') || (req.get('referer') ? new URL(req.get('referer')!).origin : undefined);
-    await generateMagicLink(email, clientOrigin);
+    const { email } = validateOrThrow(emailValidator, req.body)
+    const clientOrigin =
+      req.get('origin') ||
+      (req.get('referer') ? new URL(req.get('referer')!).origin : undefined)
+    await generateMagicLink(email, clientOrigin)
 
     return res.status(200).json({
       success: true,
-      message: 'If an account with that email exists or can be created, a magic link has been sent.',
-    });
+      message:
+        'If an account with that email exists or can be created, a magic link has been sent.',
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
-export const verifyMagicLinkToken = async (req: Request, res: Response, next: NextFunction) => {
+export const verifyMagicLinkToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const { token } = req.body;
+    const { token } = req.body
     if (!token || typeof token !== 'string') {
-      throw new ValidationError('Invalid token');
+      throw new ValidationError('Invalid token')
     }
 
     const loginResult = await verifyMagicLink(
       token,
       req.ip || 'Unknown',
-      req.headers['user-agent'] || 'Unknown'
-    );
+      req.headers['user-agent'] || 'Unknown',
+    )
 
     if (loginResult.requiresOnboarding) {
       return res.status(200).json({
@@ -104,10 +132,12 @@ export const verifyMagicLinkToken = async (req: Request, res: Response, next: Ne
         message: 'Onboarding required to complete registration',
         requiresOnboarding: true,
         onboardingToken: loginResult.onboardingToken,
-      });
+      })
     }
 
-    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(config.auth.refreshTokenExpiry);
+    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(
+      config.auth.refreshTokenExpiry,
+    )
 
     return res
       .status(200)
@@ -121,81 +151,42 @@ export const verifyMagicLinkToken = async (req: Request, res: Response, next: Ne
         requiresOnboarding: false,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
-      });
+      })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
-export const completeOnboardingHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const completeOnboardingHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const { onboardingToken, displayName } = req.body;
-    const resolvedName = (displayName || '').trim();
+    const { onboardingToken, displayName, email } = req.body
 
-    if (!resolvedName) {
-      throw new ValidationError('Display name is required');
+    const result = await completeOnboardingFlow({
+      onboardingToken,
+      displayName,
+      emailFromBody: email,
+      authHeader: req.headers.authorization,
+      ip: req.ip || 'Unknown',
+      userAgent: req.headers['user-agent'] || 'Unknown',
+    })
+
+    // Already-created user (authenticated via bearer token): confirm the update.
+    if (result.kind === 'profileUpdated') {
+      return res.status(200).json({
+        success: true,
+        message: 'Onboarding completed successfully',
+        user: result.user,
+      })
     }
 
-    let email: string | undefined;
-
-    if (onboardingToken && typeof onboardingToken === 'string') {
-      try {
-        const payload = jwt.verify(onboardingToken, config.auth.accessTokenSecret) as any;
-        if (payload.type === 'onboarding' && payload.sub) {
-          email = payload.sub as string;
-        }
-      } catch {
-        throw new UnauthorizedError('Invalid or expired onboarding token');
-      }
-    }
-
-    // If no onboarding token provided, check if user has access token / session
-    if (!email) {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-      if (token) {
-        try {
-          const decoded = jwt.verify(token, config.auth.accessTokenSecret) as any;
-          if (decoded?.sub) {
-            // User already created, just update their displayName
-            const updated = await prisma.user.update({
-              where: { id: decoded.sub },
-              data: { displayName: resolvedName },
-              include: { userRoles: { include: { role: true } } },
-            });
-            return res.status(200).json({
-              success: true,
-              message: 'Onboarding completed successfully',
-              user: {
-                userId: updated.id,
-                email: updated.email,
-                displayName: updated.displayName,
-                roleId: updated.userRoles?.[0]?.roleId,
-                status: updated.status,
-              },
-            });
-          }
-        } catch {}
-      }
-
-      // Check if temporary onboarding email was stored in session or body
-      if (req.body.email && typeof req.body.email === 'string') {
-        email = req.body.email;
-      }
-    }
-
-    if (!email) {
-      throw new ValidationError('Onboarding token or authentication is required');
-    }
-
-    const result = await completeOnboarding(
-      email,
-      resolvedName,
-      req.ip || 'Unknown',
-      req.headers['user-agent'] || 'Unknown'
-    );
-
-    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(config.auth.refreshTokenExpiry);
+    // New signup: issue the session cookie + access token.
+    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(
+      config.auth.refreshTokenExpiry,
+    )
 
     return res
       .status(201)
@@ -208,25 +199,31 @@ export const completeOnboardingHandler = async (req: Request, res: Response, nex
         message: 'Account created successfully',
         user: result.user,
         accessToken: result.accessToken,
-      });
+      })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
 // ─── Google OAuth ──────────────────────────────────────────────────────────────
 
-export const googleLogin = async (req: Request, res: Response, next: NextFunction) => {
+export const googleLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const { credential } = validateOrThrow(googleLoginValidator, req.body);
+    const { credential } = validateOrThrow(googleLoginValidator, req.body)
 
     const loginResult = await googleLoginService(
       credential,
       req.ip || 'Unknown',
-      req.headers['user-agent'] || 'Unknown'
-    );
+      req.headers['user-agent'] || 'Unknown',
+    )
 
-    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(config.auth.refreshTokenExpiry);
+    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(
+      config.auth.refreshTokenExpiry,
+    )
 
     return res
       .status(200)
@@ -239,10 +236,8 @@ export const googleLogin = async (req: Request, res: Response, next: NextFunctio
         message: 'Login successful via Google',
         user: loginResult.user,
         accessToken: loginResult.accessToken,
-      });
+      })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
-
-
+}

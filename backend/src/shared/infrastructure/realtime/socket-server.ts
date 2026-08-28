@@ -1,9 +1,9 @@
+import config from '@/config'
 import { Server as IOServer, Socket } from 'socket.io'
 import { httpServer } from '../../..'
 import { updatePriceCache } from '../../../modules/market/caches/price-cache'
 import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
 import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
-import config from '../config/env'
 import { logger } from '../logger'
 import { socketSubscribeValidator } from './subscription-validation'
 
@@ -83,8 +83,10 @@ export class SocketServer {
         snapshot: true,
       })
       logger.info(`Snapshot sent for ${symbol} to socket ${socket.id}`)
-    } catch (err: any) {
-      logger.error(`Error fetching snapshot for ${symbol}: ${err.message}`)
+    } catch (err) {
+      logger.error(
+        `Error fetching snapshot for ${symbol}: ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
 
     socket.emit('subscribed', { symbol })
@@ -123,7 +125,9 @@ export class SocketServer {
         // If this socket is the only one left in the room, size will be 1
         if (roomSize <= 1) {
           finnhubService.unsubscribe(room)
-          logger.info(`Unsubscribed ${room} from Finnhub (no active sockets after disconnect)`)
+          logger.info(
+            `Unsubscribed ${room} from Finnhub (no active sockets after disconnect)`,
+          )
         }
       }
     }
@@ -135,22 +139,22 @@ export class SocketServer {
 
   // REPLACE handleFinnhubEvents with this:
   private handleFinnhubEvents(): void {
-    finnhubService.on("trade", (trade) => {
+    finnhubService.on('trade', (trade) => {
       try {
-        const symbol = String(trade.s).toUpperCase();
-        updatePriceCache(symbol, trade.p, trade.v ?? 0);    // M2 — already there
-        this.io.to(symbol).emit("trade", trade);             // already there
+        const symbol = String(trade.s).toUpperCase()
+        updatePriceCache(symbol, trade.p, trade.v ?? 0) // M2 — already there
+        this.io.to(symbol).emit('trade', trade) // already there
 
         // M6: Evaluate alert rules for this tick — fire-and-forget,
         // errors are caught inside evaluateAlertsForTick so the pipeline
         // is never blocked or crashed
         evaluateAlertsForTick(symbol, trade.p).catch((err) =>
-          logger.error("[AlertEvaluator] Unhandled rejection: " + err.message),
-        );
+          logger.error('[AlertEvaluator] Unhandled rejection: ' + err.message),
+        )
       } catch (err) {
-        logger.error("Error forwarding trade: " + (err as Error).message);
+        logger.error('Error forwarding trade: ' + (err as Error).message)
       }
-    });
+    })
   }
 
   private handleFinnhubErrors(): void {

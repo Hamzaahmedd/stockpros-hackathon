@@ -1,15 +1,16 @@
-import type { AiConfidence } from '@prisma/client';
-import type { AiZones, Candle, TechnicalBaselines } from '../types';
-import twelveDataClient from '../../../shared/infrastructure/clients/twelve-data-client';
-import { prisma } from '../../../shared/infrastructure/database';
+import type { AiConfidence } from '@prisma/client'
+import twelveDataClient from '../../../shared/infrastructure/clients/twelve-data-client'
+import { prisma } from '../../../shared/infrastructure/database'
+import { logger } from '../../../shared/infrastructure/logger'
+import type { Candle, TechnicalBaselines } from '../types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EMA_PERIOD   = 20;  // 20-day EMA for support identification
-const ATR_PERIOD   = 14;  // 14-day ATR for volatility-adjusted stop loss
-const ATR_MULT     = 1.5; // stop loss placed 1.5x ATR below entry (spec §5)
-const RR_MIN       = 2.0; // minimum 2:1 risk/reward for take profit (spec §5)
-const CANDLE_COUNT = 60;  // fetch 60 days so we have enough history for both EMA and ATR
+const EMA_PERIOD = 20 // 20-day EMA for support identification
+const ATR_PERIOD = 14 // 14-day ATR for volatility-adjusted stop loss
+const ATR_MULT = 1.5 // stop loss placed 1.5x ATR below entry (spec §5)
+const RR_MIN = 2.0 // minimum 2:1 risk/reward for take profit (spec §5)
+const CANDLE_COUNT = 60 // fetch 60 days so we have enough history for both EMA and ATR
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,45 +22,45 @@ const CANDLE_COUNT = 60;  // fetch 60 days so we have enough history for both EM
  */
 const fetchCandles = async (symbol: string): Promise<Candle[]> => {
   const { data } = await twelveDataClient.get<{
-    status: string;
+    status: string
     values: Array<{
-      datetime: string;
-      open:     string;
-      high:     string;
-      low:      string;
-      close:    string;
-      volume:   string;
-    }>;
-    message?: string;
+      datetime: string
+      open: string
+      high: string
+      low: string
+      close: string
+      volume: string
+    }>
+    message?: string
   }>(`/time_series`, {
     params: {
       symbol,
-      interval:   '1day',
+      interval: '1day',
       outputsize: CANDLE_COUNT,
-      adjust:     'splits',
+      adjust: 'splits',
     },
-  });
+  })
 
   if (data.status === 'error') {
-    throw new Error(`Twelve Data error for ${symbol}: ${data.message}`);
+    throw new Error(`Twelve Data error for ${symbol}: ${data.message}`)
   }
 
   if (!Array.isArray(data.values) || data.values.length === 0) {
-    throw new Error(`No candle data returned for ${symbol}`);
+    throw new Error(`No candle data returned for ${symbol}`)
   }
 
   // Twelve Data returns newest-first — reverse to ascending (oldest first)
   return data.values
     .map((v) => ({
       datetime: v.datetime,
-      open:     parseFloat(v.open),
-      high:     parseFloat(v.high),
-      low:      parseFloat(v.low),
-      close:    parseFloat(v.close),
-      volume:   parseFloat(v.volume),
+      open: parseFloat(v.open),
+      high: parseFloat(v.high),
+      low: parseFloat(v.low),
+      close: parseFloat(v.close),
+      volume: parseFloat(v.volume),
     }))
-    .reverse();
-};
+    .reverse()
+}
 
 // ─── Technical Indicators ─────────────────────────────────────────────────────
 
@@ -72,24 +73,23 @@ const fetchCandles = async (symbol: string): Promise<Candle[]> => {
  */
 const computeEMA = (candles: Candle[], period: number): number => {
   if (candles.length < period) {
-    throw new Error(`Not enough candles to compute ${period}-day EMA`);
+    throw new Error(`Not enough candles to compute ${period}-day EMA`)
   }
 
-  const multiplier = 2 / (period + 1);
+  const multiplier = 2 / (period + 1)
 
   // Seed: SMA of the first `period` closes
-  const seed = candles
-    .slice(0, period)
-    .reduce((sum, c) => sum + c.close, 0) / period;
+  const seed =
+    candles.slice(0, period).reduce((sum, c) => sum + c.close, 0) / period
 
   // Apply EMA from candle `period` onward
-  let ema = seed;
+  let ema = seed
   for (let i = period; i < candles.length; i++) {
-    ema = candles[i].close * multiplier + ema * (1 - multiplier);
+    ema = candles[i].close * multiplier + ema * (1 - multiplier)
   }
 
-  return ema;
-};
+  return ema
+}
 
 /**
  * Compute Average True Range over `period` days.
@@ -98,26 +98,26 @@ const computeEMA = (candles: Candle[], period: number): number => {
  */
 const computeATR = (candles: Candle[], period: number): number => {
   if (candles.length < period + 1) {
-    throw new Error(`Not enough candles to compute ${period}-day ATR`);
+    throw new Error(`Not enough candles to compute ${period}-day ATR`)
   }
 
-  const trValues: number[] = [];
+  const trValues: number[] = []
 
   for (let i = 1; i < candles.length; i++) {
-    const curr      = candles[i];
-    const prevClose = candles[i - 1].close;
+    const curr = candles[i]
+    const prevClose = candles[i - 1].close
     const tr = Math.max(
       curr.high - curr.low,
       Math.abs(curr.high - prevClose),
-      Math.abs(curr.low  - prevClose),
-    );
-    trValues.push(tr);
+      Math.abs(curr.low - prevClose),
+    )
+    trValues.push(tr)
   }
 
   // Use the last `period` TR values for the average
-  const recentTR = trValues.slice(-period);
-  return recentTR.reduce((sum, tr) => sum + tr, 0) / recentTR.length;
-};
+  const recentTR = trValues.slice(-period)
+  return recentTR.reduce((sum, tr) => sum + tr, 0) / recentTR.length
+}
 
 /**
  * Identify swing lows in the last `lookback` candles.
@@ -125,17 +125,20 @@ const computeATR = (candles: Candle[], period: number): number => {
  * Returns the lowest of all identified swing lows.
  */
 const findSwingLow = (candles: Candle[], lookback = 20): number | null => {
-  const window = candles.slice(-lookback);
-  const swingLows: number[] = [];
+  const window = candles.slice(-lookback)
+  const swingLows: number[] = []
 
   for (let i = 1; i < window.length - 1; i++) {
-    if (window[i].low < window[i - 1].low && window[i].low < window[i + 1].low) {
-      swingLows.push(window[i].low);
+    if (
+      window[i].low < window[i - 1].low &&
+      window[i].low < window[i + 1].low
+    ) {
+      swingLows.push(window[i].low)
     }
   }
 
-  return swingLows.length > 0 ? Math.min(...swingLows) : null;
-};
+  return swingLows.length > 0 ? Math.min(...swingLows) : null
+}
 
 /**
  * Identify swing highs in the last `lookback` candles.
@@ -143,12 +146,12 @@ const findSwingLow = (candles: Candle[], lookback = 20): number | null => {
  * Returns the nearest (lowest) of all identified swing highs above the entry.
  */
 const findNearestResistance = (
-  candles:  Candle[],
+  candles: Candle[],
   abovePrice: number,
-  lookback  = 20,
+  lookback = 20,
 ): number | null => {
-  const window = candles.slice(-lookback);
-  const swingHighs: number[] = [];
+  const window = candles.slice(-lookback)
+  const swingHighs: number[] = []
 
   for (let i = 1; i < window.length - 1; i++) {
     if (
@@ -156,12 +159,12 @@ const findNearestResistance = (
       window[i].high > window[i + 1].high &&
       window[i].high > abovePrice
     ) {
-      swingHighs.push(window[i].high);
+      swingHighs.push(window[i].high)
     }
   }
 
-  return swingHighs.length > 0 ? Math.min(...swingHighs) : null;
-};
+  return swingHighs.length > 0 ? Math.min(...swingHighs) : null
+}
 
 // ─── Confidence Scorer ────────────────────────────────────────────────────────
 
@@ -172,48 +175,48 @@ const findNearestResistance = (
  *   LOW    — no swing lows found; entry is based on EMA alone
  */
 const scoreConfidence = (
-  ema:      number,
+  ema: number,
   swingLow: number | null,
 ): AiConfidence => {
-  if (swingLow === null) return 'LOW';
-  const divergence = Math.abs(ema - swingLow) / ema;
-  return divergence <= 0.01 ? 'HIGH' : 'MEDIUM';
-};
+  if (swingLow === null) return 'LOW'
+  const divergence = Math.abs(ema - swingLow) / ema
+  return divergence <= 0.01 ? 'HIGH' : 'MEDIUM'
+}
 
 // ─── Basis Text Builder ───────────────────────────────────────────────────────
 
 const buildBasis = (
-  ema:        number,
-  atr:        number,
-  swingLow:   number | null,
-  entry:      number,
-  stopLoss:   number,
+  ema: number,
+  atr: number,
+  swingLow: number | null,
+  entry: number,
+  stopLoss: number,
   takeProfit: number,
   resistance: number | null,
 ): string => {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   parts.push(
     `Entry near ${swingLow !== null ? 'swing low' : '20-day EMA'} support at $${entry.toFixed(2)}.`,
-  );
+  )
   parts.push(
     `Stop placed ${ATR_MULT}x ATR ($${atr.toFixed(2)}) below entry at $${stopLoss.toFixed(2)}.`,
-  );
+  )
 
   if (resistance !== null) {
     parts.push(
       `Take profit at prior resistance level $${takeProfit.toFixed(2)}.`,
-    );
+    )
   } else {
     parts.push(
       `Take profit at ${RR_MIN}:1 risk/reward ratio ($${takeProfit.toFixed(2)}) — no clear resistance found.`,
-    );
+    )
   }
 
-  parts.push(`20-day EMA: $${ema.toFixed(2)}.`);
+  parts.push(`20-day EMA: $${ema.toFixed(2)}.`)
 
-  return parts.join(' ');
-};
+  return parts.join(' ')
+}
 
 // ─── Technical Baselines (no DB writes) ───────────────────────────────────────
 
@@ -228,22 +231,22 @@ const buildBasis = (
 export const getTechnicalBaselines = async (
   symbol: string,
 ): Promise<TechnicalBaselines> => {
-  const candles = await fetchCandles(symbol);
+  const candles = await fetchCandles(symbol)
 
   if (candles.length < EMA_PERIOD + ATR_PERIOD) {
     throw new Error(
       `Insufficient candle history for ${symbol}: got ${candles.length}, need ${EMA_PERIOD + ATR_PERIOD}`,
-    );
+    )
   }
 
-  const ema          = computeEMA(candles, EMA_PERIOD);
-  const atr          = computeATR(candles, ATR_PERIOD);
-  const swingLow     = findSwingLow(candles, EMA_PERIOD);
-  const currentPrice = candles[candles.length - 1].close;
-  const resistance   = findNearestResistance(candles, currentPrice);
+  const ema = computeEMA(candles, EMA_PERIOD)
+  const atr = computeATR(candles, ATR_PERIOD)
+  const swingLow = findSwingLow(candles, EMA_PERIOD)
+  const currentPrice = candles[candles.length - 1].close
+  const resistance = findNearestResistance(candles, currentPrice)
 
-  return { atr, ema, swingLow, resistance, currentPrice };
-};
+  return { atr, ema, swingLow, resistance, currentPrice }
+}
 
 // ─── Main Computation ─────────────────────────────────────────────────────────
 
@@ -265,60 +268,66 @@ export const computeAndStoreAiZones = async (
 ): Promise<void> => {
   try {
     // ── 1. Fetch candles ───────────────────────────────────────────────────
-    const candles = await fetchCandles(symbol);
+    const candles = await fetchCandles(symbol)
 
     if (candles.length < EMA_PERIOD + ATR_PERIOD) {
       throw new Error(
         `Insufficient candle history for ${symbol}: got ${candles.length}, need ${EMA_PERIOD + ATR_PERIOD}`,
-      );
+      )
     }
 
     // ── 2. Compute indicators ──────────────────────────────────────────────
-    const ema      = computeEMA(candles, EMA_PERIOD);
-    const atr      = computeATR(candles, ATR_PERIOD);
-    const swingLow = findSwingLow(candles, EMA_PERIOD);
+    const ema = computeEMA(candles, EMA_PERIOD)
+    const atr = computeATR(candles, ATR_PERIOD)
+    const swingLow = findSwingLow(candles, EMA_PERIOD)
 
     // ── 3. Entry: lower of EMA and swing low (prefer swing low as it is
     //      the most recent tested support level)
-    const entry = swingLow !== null
-      ? Math.min(ema, swingLow)
-      : ema;
+    const entry = swingLow !== null ? Math.min(ema, swingLow) : ema
 
     // ── 4. Stop loss: 1.5x ATR below entry
-    const stopLoss = entry - ATR_MULT * atr;
+    const stopLoss = entry - ATR_MULT * atr
 
     // ── 5. Take profit: nearest resistance above entry, with 2:1 floor
-    const minTakeProfit = entry + RR_MIN * (entry - stopLoss);
-    const resistance    = findNearestResistance(candles, entry);
+    const minTakeProfit = entry + RR_MIN * (entry - stopLoss)
+    const resistance = findNearestResistance(candles, entry)
 
     const takeProfit =
       resistance !== null && resistance > minTakeProfit
         ? resistance
-        : minTakeProfit;
+        : minTakeProfit
 
     // ── 6. Confidence and basis ────────────────────────────────────────────
-    const confidence = scoreConfidence(ema, swingLow);
-    const basis      = buildBasis(
-      ema, atr, swingLow, entry, stopLoss, takeProfit, resistance,
-    );
+    const confidence = scoreConfidence(ema, swingLow)
+    const basis = buildBasis(
+      ema,
+      atr,
+      swingLow,
+      entry,
+      stopLoss,
+      takeProfit,
+      resistance,
+    )
 
     // ── 7. Persist — all fields or nothing (spec §5) ───────────────────────
     await prisma.watchlist.update({
       where: { userId_symbol: { userId, symbol } },
       data: {
-        aiSuggestedEntry:  entry,
-        aiTakeProfit:      takeProfit,
-        aiStopLoss:        stopLoss,
-        aiConfidence:      confidence,
+        aiSuggestedEntry: entry,
+        aiTakeProfit: takeProfit,
+        aiStopLoss: stopLoss,
+        aiConfidence: confidence,
         aiSuggestionBasis: basis,
-        aiComputedAt:      new Date(),
+        aiComputedAt: new Date(),
       },
-    });
+    })
 
-    console.log(`[AIZones] Computed zones for ${symbol} — confidence: ${confidence}`);
+    logger.info(
+      `[AIZones] Computed zones for ${symbol} — confidence: ${confidence}`,
+    )
   } catch (err) {
     // Suppress entire suggestion on any failure (spec §5)
     // Do NOT write partial data
-    console.error(`[AIZones] Failed to compute zones for ${symbol}:`, err);
+    logger.error(`[AIZones] Failed to compute zones for ${symbol}`, err)
   }
-};
+}

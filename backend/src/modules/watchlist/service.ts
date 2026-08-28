@@ -1,26 +1,24 @@
-// Consolidated watchlist service
-import { prisma } from '../../shared/infrastructure/database'
 import { AppError } from '../../shared/errors'
-import type {
-  AddToWatchlistInput,
-  ConvertToPositionInput,
-  CreateAlertInput,
-  UpdateWatchlistInput,
-  UpdateAlertInput,
-} from './validation'
-import { WatchlistItemResponse } from './types'
+import { prisma } from '../../shared/infrastructure/database'
+import { logger } from '../../shared/infrastructure/logger'
 import {
-  formatWatchlistItem,
-  getCurrentPrice,
-  MAX_WATCHLIST_ITEMS,
+    finnhubService,
+    formatWatchlistItem,
+    getCompanyLogo,
+    getCurrentPrice,
+    MAX_WATCHLIST_ITEMS,
 } from '../market'
-import { finnhubService } from '../market'
-import { invalidateUserPortfolioFitCache } from './caches/portfolio-fit-cache'
 import { invalidateAlertCache } from './caches/alert-rule-cache'
+import { evictPortfolioFitEntry, getPortfolioFit, invalidateUserPortfolioFitCache } from './caches/portfolio-fit-cache'
 import { computeAndStoreAiZones } from './evaluators/ai-zone-calculator'
-import { getPortfolioFit } from './caches/portfolio-fit-cache'
-import { getCompanyLogo } from '../market'
-import { evictPortfolioFitEntry } from './caches/portfolio-fit-cache'
+import { WatchlistItemResponse } from './types'
+import type {
+    AddToWatchlistInput,
+    ConvertToPositionInput,
+    CreateAlertInput,
+    UpdateAlertInput,
+    UpdateWatchlistInput,
+} from './validation'
 
 // ── GET Operations ──
 export const getWatchlist = async (
@@ -137,8 +135,8 @@ export const addToWatchlist = async (
           data: { priceAtCreatedAt: priceData.price },
         })
       } catch (err) {
-        console.error(
-          `[Watchlist] Failed to store priceAtCreatedAt for ${data.symbol}:`,
+        logger.error(
+          `[Watchlist] Failed to store priceAtCreatedAt for ${data.symbol}`,
           err,
         )
       }
@@ -149,7 +147,7 @@ export const addToWatchlist = async (
     try {
       await computeAndStoreAiZones(userId, data.symbol)
     } catch (err) {
-      console.error(`[Watchlist] AI zone job failed for ${data.symbol}:`, err)
+      logger.error(`[Watchlist] AI zone job failed for ${data.symbol}`, err)
     }
   })
 
@@ -202,32 +200,38 @@ export const convertToPosition = async (
   }
 
   await prisma.$transaction(async (tx) => {
-    let portfolio = await tx.portfolio.findFirst({ 
+    let portfolio = await tx.portfolio.findFirst({
       where: { userId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
-    
+
     if (!portfolio) {
-      throw new AppError('No portfolio is uploaded in Portfolio Health. Please upload your portfolio CSV/Excel first.', 400)
+      throw new AppError(
+        'No portfolio is uploaded in Portfolio Health. Please upload your portfolio CSV/Excel first.',
+        400,
+      )
     }
 
     const quantity = data.quantity ?? 1
     const avgEntryPrice = data.entryPrice ?? defaultEntryPrice
 
     const existingPosition = await tx.position.findFirst({
-      where: { portfolioId: portfolio.id, symbol: normalizedSymbol }
+      where: { portfolioId: portfolio.id, symbol: normalizedSymbol },
     })
 
     if (existingPosition) {
       const totalQuantity = existingPosition.quantity + quantity
-      const newAvgPrice = ((existingPosition.avgEntryPrice * existingPosition.quantity) + (avgEntryPrice * quantity)) / totalQuantity
-      
+      const newAvgPrice =
+        (existingPosition.avgEntryPrice * existingPosition.quantity +
+          avgEntryPrice * quantity) /
+        totalQuantity
+
       await tx.position.update({
         where: { id: existingPosition.id },
         data: {
           quantity: totalQuantity,
-          avgEntryPrice: newAvgPrice
-        }
+          avgEntryPrice: newAvgPrice,
+        },
       })
     } else {
       await tx.position.create({
@@ -253,15 +257,15 @@ export const createAlert = async (
   symbol: string,
   data: CreateAlertInput,
 ) => {
-  const normalizedSymbol = symbol.toUpperCase();
- 
+  const normalizedSymbol = symbol.toUpperCase()
+
   const watchlistEntry = await prisma.watchlist.findUnique({
     where: { userId_symbol: { userId, symbol: normalizedSymbol } },
-  });
+  })
   if (!watchlistEntry) {
-    throw new AppError(`${normalizedSymbol} not found in your watchlist`, 404);
+    throw new AppError(`${normalizedSymbol} not found in your watchlist`, 404)
   }
- 
+
   const alert = await prisma.watchlistAlert.create({
     data: {
       watchlistId: watchlistEntry.id,
@@ -270,12 +274,12 @@ export const createAlert = async (
       threshold: data.threshold ?? null,
       isActive: true,
     },
-  });
- 
-  invalidateAlertCache(normalizedSymbol);
- 
-  return alert;
-};
+  })
+
+  invalidateAlertCache(normalizedSymbol)
+
+  return alert
+}
 
 // ── UPDATE Operations ──
 export const updateWatchlistEntry = async (
@@ -304,7 +308,7 @@ export const updateWatchlistEntry = async (
   })
 
   const item = formatWatchlistItem(updated)
-  
+
   item.logo = await getCompanyLogo(updated.symbol)
   const priceData = await getCurrentPrice(updated.symbol)
 
@@ -339,28 +343,28 @@ export const updateAlert = async (
   alertId: string,
   data: UpdateAlertInput,
 ) => {
-  const normalizedSymbol = symbol.toUpperCase();
- 
+  const normalizedSymbol = symbol.toUpperCase()
+
   const alert = await prisma.watchlistAlert.findFirst({
     where: { id: alertId, userId },
     include: { watchlist: true },
-  });
+  })
   if (!alert || alert.watchlist.symbol !== normalizedSymbol) {
-    throw new AppError('Alert not found', 404);
+    throw new AppError('Alert not found', 404)
   }
- 
+
   const updated = await prisma.watchlistAlert.update({
     where: { id: alertId },
     data: {
       ...(data.threshold !== undefined && { threshold: data.threshold }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     },
-  });
- 
-  invalidateAlertCache(normalizedSymbol);
- 
-  return updated;
-};
+  })
+
+  invalidateAlertCache(normalizedSymbol)
+
+  return updated
+}
 
 // ── DELETE Operations ──
 export const removeFromWatchlist = async (
@@ -395,17 +399,17 @@ export const deleteAlert = async (
   symbol: string,
   alertId: string,
 ): Promise<void> => {
-  const normalizedSymbol = symbol.toUpperCase();
- 
+  const normalizedSymbol = symbol.toUpperCase()
+
   const alert = await prisma.watchlistAlert.findFirst({
     where: { id: alertId, userId },
     include: { watchlist: true },
-  });
+  })
   if (!alert || alert.watchlist.symbol !== normalizedSymbol) {
-    throw new AppError('Alert not found', 404);
+    throw new AppError('Alert not found', 404)
   }
- 
-  await prisma.watchlistAlert.delete({ where: { id: alertId } });
- 
-  invalidateAlertCache(normalizedSymbol);
-};
+
+  await prisma.watchlistAlert.delete({ where: { id: alertId } })
+
+  invalidateAlertCache(normalizedSymbol)
+}

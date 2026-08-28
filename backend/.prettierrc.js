@@ -8,5 +8,5 @@ module.exports = {
   arrowParens: 'always',
 
   // Keep the Prisma plugin loaded to format schema.prisma files
-  plugins: [require("prettier-plugin-prisma")],
-};
+  plugins: [require('prettier-plugin-prisma')],
+}

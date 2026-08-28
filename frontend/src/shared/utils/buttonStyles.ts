@@ -1,10 +1,5 @@
-// Shared Tailwind classes for "secondary action" buttons (e.g. Download Report,
-// View analysis, Permissions, Logout). These need stronger light-mode affordance
-// than the shadcn `secondary`/`outline` variants (which resolve to a near-white
-// `--secondary` surface), while keeping the existing dark surface untouched.
-//
-// Light: distinct slate surface + defined border + high-contrast text.
-// Dark : the exact slate-800/50 + cyan hover treatment used across the app.
+// Shared classes for secondary action buttons: stronger light-mode contrast than
+// the shadcn secondary/outline variants, with the existing dark treatment preserved.
 export const SECONDARY_ACTION_BTN = [
   'border border-slate-400 bg-slate-200/80 text-slate-900',
   'transition-colors duration-200',
@@ -14,6 +9,5 @@ export const SECONDARY_ACTION_BTN = [
   'dark:active:bg-slate-800/70',
 ].join(' ')
 
-// Compact secondary-action buttons carry a muted icon one step below the label
-// text in light mode, while preserving the inherited light surface in dark mode.
+// Muted icon color one step below the label text (light mode).
 export const SECONDARY_ACTION_ICON_BTN = 'text-slate-700 dark:text-slate-200'

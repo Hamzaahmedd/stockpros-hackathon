@@ -1,11 +1,10 @@
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { prisma } from '../../../shared/infrastructure/database'
+import { logger } from '../../../shared/infrastructure/logger'
 import { getCurrentPrice } from '../../market'
 import { CacheEntry, PortfolioFit } from '../types'
 const OVEREXPOSURE_LIMIT = 0.3 // 30% single-sector limit per spec
 const PRICE_DRIFT_THRESHOLD = 0.02 // recompute when price moves >2%
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -44,7 +43,7 @@ const fetchSector = async (symbol: string): Promise<string> => {
     )
     return data.finnhubIndustry || 'Unknown'
   } catch (err) {
-    console.error(`[PortfolioFit] Failed to fetch sector for ${symbol}:`, err)
+    logger.error(`[PortfolioFit] Failed to fetch sector for ${symbol}`, err)
     return 'Unknown'
   }
 }

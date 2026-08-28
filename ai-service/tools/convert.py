@@ -25,8 +25,8 @@ def convert_to_onnx(model_path, output_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python convert.py <input_model_path> <output_model_path>")
-        print("Example: python convert.py app/models/saved/gru_AAPL_model.h5 app/models/saved/gru_AAPL_model.onnx")
+        print("Usage: python tools/convert.py <input_model_path> <output_model_path>")
+        print("Example: python tools/convert.py app/models/saved/gru_AAPL_model.h5 app/models/saved/gru_AAPL_model.onnx")
         sys.exit(1)
     
     model_in = sys.argv[1]

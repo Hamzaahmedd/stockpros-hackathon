@@ -1,10 +1,10 @@
-import axios from 'axios';
-import config from '../config/env';
+import config from '@/config'
+import axios from 'axios'
 
-const TWELVE_DATA_API_KEY = config.twelveData.apiKey;
+const TWELVE_DATA_API_KEY = config.twelveData.apiKey
 
 if (!TWELVE_DATA_API_KEY) {
-  throw new Error('Twelve Data API key is not configured in env.');
+  throw new Error('Twelve Data API key is not configured in env.')
 }
 
 const twelveDataClient = axios.create({
@@ -13,6 +13,6 @@ const twelveDataClient = axios.create({
     apikey: TWELVE_DATA_API_KEY,
   },
   timeout: 10000,
-});
+})
 
-export default twelveDataClient;
+export default twelveDataClient

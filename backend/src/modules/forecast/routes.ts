@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { getStockForecast } from "./controller";
-import { authTokenMiddleware } from '../auth';
+import { Router } from 'express'
+import { getStockForecast } from './controller'
+import { authTokenMiddleware } from '../auth'
 
-const router = Router();
+const router = Router()
 
-router.get("/", authTokenMiddleware, getStockForecast);
+router.get('/', authTokenMiddleware, getStockForecast)
 
-export default router;
+export default router

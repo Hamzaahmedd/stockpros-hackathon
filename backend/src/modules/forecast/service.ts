@@ -1,7 +1,7 @@
-// Consolidated forecast service
-import { ForecastResponse } from './types'
 import mlClient from '../../shared/infrastructure/clients/ml-client'
+import { logger } from '../../shared/infrastructure/logger'
 import { getTechnicalBaselines } from '../watchlist'
+import { ForecastResponse, MlRawPrediction, Prediction } from './types'
 
 const ATR_MULT = 1.5
 
@@ -15,24 +15,25 @@ export async function getForecast(
     const [mlResponse, technicals] = await Promise.all([
       mlClient.get(`/api/v1/forecast`, { params }),
       getTechnicalBaselines(symbol).catch((err) => {
-        console.warn(
-          `[Forecast] Technical baselines failed for ${symbol}:`,
-          (err as Error).message,
+        logger.warn(
+          `[Forecast] Technical baselines failed for ${symbol}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         )
         return null
       }),
     ])
 
     let targetRange: ForecastResponse['data']['targetRange'] = undefined
-    let rawPredictions = mlResponse.data?.predictions || []
-    let enhancedPredictions = []
+    let rawPredictions: MlRawPrediction[] = mlResponse.data?.predictions || []
+    let enhancedPredictions: Prediction[] = []
 
     if (rawPredictions.length > 0 && technicals) {
       const { atr, ema, swingLow, resistance } = technicals
 
       // Extract all base prices for the period to find Highs and Lows
       const basePrices = rawPredictions.map(
-        (p: any) => p.price ?? p.predicted_close,
+        (p) => Number(p.price ?? p.predicted_close),
       )
       const periodHigh = Math.max(...basePrices)
       const periodLow = Math.min(...basePrices)
@@ -69,11 +70,9 @@ export async function getForecast(
         confidence,
       }
 
-      const currentPrice = technicals.currentPrice
       // CHART LOGIC (Mapping to clean keys only)
-      enhancedPredictions = rawPredictions.map((p: any, index: number) => {
-        const rawBase = p.price ?? p.predicted_close
-        const isToday = index === 0
+      enhancedPredictions = rawPredictions.map((p) => {
+        const rawBase = Number(p.price ?? p.predicted_close)
 
         let pointBull = rawBase + ATR_MULT * atr
         let pointBear = rawBase - ATR_MULT * atr
@@ -105,9 +104,9 @@ export async function getForecast(
 
     return combinedData
   } catch (err) {
-    console.error(
-      `ML Forecast fetch failed for ${symbol}:`,
-      (err as Error).message,
+    logger.error(
+      `ML Forecast fetch failed for ${symbol}`,
+      err instanceof Error ? err.message : err,
     )
     throw new Error(`Failed to fetch and process forecast for ${symbol}`)
   }

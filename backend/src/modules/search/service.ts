@@ -1,20 +1,21 @@
-import finnhubClient from '../../shared/infrastructure/clients/finnhub-client';
-import { SymbolSearchResult } from "./types";
-import { getCache, setCache } from "../../shared/infrastructure/cache";
+import { getCache, setCache } from '../../shared/infrastructure/cache'
+import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
+import { logger } from '../../shared/infrastructure/logger'
+import { FinnhubSearchItem, SymbolSearchResult } from './types'
 
 export async function searchSymbols(
   query: string,
-  exchange: string = 'US'
+  exchange: string = 'US',
 ): Promise<SymbolSearchResult[]> {
   // Normalize query to prevent duplicate cache entries for casing
-  const normalizedQuery = query.toLowerCase().trim();
-  const cacheKey = `search:${exchange}:${normalizedQuery}`;
+  const normalizedQuery = query.toLowerCase().trim()
+  const cacheKey = `search:${exchange}:${normalizedQuery}`
 
   try {
-    const cachedResults = await getCache<SymbolSearchResult[]>(cacheKey);
+    const cachedResults = await getCache<SymbolSearchResult[]>(cacheKey)
     if (cachedResults) {
-      console.log(`[Cache Hit] Search results for: ${normalizedQuery}`);
-      return cachedResults;
+      logger.info(`[Cache Hit] Search results for: ${normalizedQuery}`)
+      return cachedResults
     }
 
     const { data } = await finnhubClient.get(`/search`, {
@@ -22,21 +23,21 @@ export async function searchSymbols(
         q: query,
         exchange: exchange,
       },
-    });
+    })
 
-    if (!data || !data.result) return [];
+    if (!data || !data.result) return []
 
-    const results: SymbolSearchResult[] = data.result.map((item: any) => ({
+    const results: SymbolSearchResult[] = data.result.map((item: FinnhubSearchItem) => ({
       symbol: item.symbol,
       description: item.description,
       type: item.type,
-    }));
+    }))
 
-    await setCache(cacheKey, results, 86400); // 24 hours
+    await setCache(cacheKey, results, 86400) // 24 hours
 
-    return results;
+    return results
   } catch (error) {
-    console.error(`Failed to search symbols for query ${query}:`, error);
-    return [];
+    logger.error(`Failed to search symbols for query ${query}`, error)
+    return []
   }
 }

@@ -30,7 +30,7 @@ The backend follows a **modular monolith** pattern — a single deployable proce
 ## Features
 
 - **Authentication** — JWT sessions, magic-link login, Google OAuth
-- **Real-Time Market Data** — Live quotes via Finnhub WebSocket, historical data from AlphaVantage, Polygon.io, Twelve Data, FMP, and Yahoo Finance
+- **Real-Time Market Data** — Live quotes via Finnhub WebSocket, historical data from Polygon.io, Twelve Data, FMP, and Yahoo Finance
 - **AI Forecasting** — GRU-based time-series predictions with evaluation metrics (MSE, RMSE, MAE), exportable as CSV or PDF reports
 - **Dashboard** — Portfolio summary, market overview, and activity feeds
 - **Decision Support** — Per-stock buy/sell/hold recommendations with confidence scores, risk levels, and exposure analysis
@@ -94,7 +94,6 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 ML_INTERNAL_URL=http://localhost:8000
 FINNHUB_API_KEY=...
-ALPHAVANTAGE_API_KEY=...
 FMP_API_KEY=...
 TWELVE_DATA_API_KEY=...
 POLYGON_API_KEY=...
@@ -143,9 +142,12 @@ pip install -r requirements.txt
 Create a `.env` file:
 
 ```env
-ALPHAVANTAGE_API_KEY=...
-ALPHA_URL=...
-```
+REDIS_URL=your_app_env
+SUPABASE_URL=your_app_env
+SUPABASE_KEY=your_app_env
+TIINGO_API_KEY=your_app_env
+APP_ENV=your_app_env
+GITHUB_TOKEN=your_app_env```
 
 ```bash
 uvicorn app.main:app --host localhost --port 8000 --reload
@@ -158,15 +160,9 @@ uvicorn app.main:app --host localhost --port 8000 --reload
 | Backend | `npm run dev` | Start with hot reload (nodemon) |
 | Backend | `npm run build` | Compile TypeScript for production |
 | Backend | `npm start` | Run production build |
-| Backend | `npm test` | Run Jest test suite |
-| Backend | `npm run db:sync` | Push Prisma schema to database |
-| Backend | `npm run rbac:seed` | Seed roles and permissions |
-| Backend | `npm run architecture:check` | Enforce module boundaries |
 | Frontend | `npm run dev` | Start Vite dev server |
 | Frontend | `npm run build` | Production build |
 | Frontend | `npm run preview` | Preview production build |
-| Frontend | `npm run lint` | ESLint check |
-| Frontend | `npm run typecheck` | TypeScript type check |
 | AI Service | `uvicorn app.main:app --reload` | Start dev server |
 
 ## Deployment
@@ -179,9 +175,6 @@ uvicorn app.main:app --host localhost --port 8000 --reload
 
 ## Documentation
 
-- [API Documentation (Postman)](https://documenter.getpostman.com/view/48086882/2sB3WjxiMH)
-- [Database & ERD Schema](https://dbdocs.io/hamzahmed303/Stock-App)
-- [Test Documentation](https://docs.google.com/document/d/1HkD4J1kKJ4aJm2rR-TUTt2EUw1uAufLYQUw_usj92Vs/edit?usp=sharing)
 - [Architecture Overview](backend/ARCHITECTURE.md)
 
 ## License
