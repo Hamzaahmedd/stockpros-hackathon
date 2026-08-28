@@ -1,8 +1,11 @@
-import { validateOrThrow } from '../../shared/errors';
-import { getUserId, sendSuccess } from '../../shared/utils';
-import { getNotificationsValidator, notificationIdsValidator } from './validation';
-import type { Request, Response, NextFunction } from 'express';
-import * as NotificationService from './notification-query-service';
+import { validateOrThrow } from '../../shared/errors'
+import { getUserId, sendSuccess } from '../../shared/utils'
+import {
+  getNotificationsValidator,
+  notificationIdsValidator,
+} from './validation'
+import type { Request, Response, NextFunction } from 'express'
+import * as NotificationService from './notification-query-service'
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -12,9 +15,9 @@ export const getNotifications = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const query = validateOrThrow(getNotificationsValidator, req.query);
-    const result = await NotificationService.getNotifications(userId, query);
+    const userId = getUserId(req)
+    const query = validateOrThrow(getNotificationsValidator, req.query)
+    const result = await NotificationService.getNotifications(userId, query)
     sendSuccess(res, {
       message: 'Notifications retrieved successfully',
       data: result.data,
@@ -23,11 +26,11 @@ export const getNotifications = async (
         hasMore: result.hasMore,
         total: result.total,
       },
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}
 
 /**
  * GET /notifications/summary
@@ -39,16 +42,16 @@ export const getNotificationSummary = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const summary = await NotificationService.getNotificationSummary(userId);
+    const userId = getUserId(req)
+    const summary = await NotificationService.getNotificationSummary(userId)
     sendSuccess(res, {
       message: 'Notification summary retrieved successfully',
       data: summary,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}
 
 /**
  * PATCH /notifications/:id/read
@@ -60,17 +63,17 @@ export const markAsRead = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const id = req.params.id as string;
-    const notification = await NotificationService.markAsRead(userId, id);
+    const userId = getUserId(req)
+    const id = req.params.id as string
+    const notification = await NotificationService.markAsRead(userId, id)
     sendSuccess(res, {
       message: 'Notification marked as read',
       data: notification,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}
 
 /**
  * PATCH /notifications/read-all
@@ -82,16 +85,16 @@ export const markAllAsRead = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const result = await NotificationService.markAllAsRead(userId);
+    const userId = getUserId(req)
+    const result = await NotificationService.markAllAsRead(userId)
     sendSuccess(res, {
       message: 'All notifications marked as read',
       data: result,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}
 
 /**
  * PATCH /notifications/read-multiple
@@ -103,17 +106,23 @@ export const markMultipleAsRead = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const { notificationIds } = validateOrThrow(notificationIdsValidator, req.body);
-    const result = await NotificationService.markMultipleAsRead(userId, notificationIds);
+    const userId = getUserId(req)
+    const { notificationIds } = validateOrThrow(
+      notificationIdsValidator,
+      req.body,
+    )
+    const result = await NotificationService.markMultipleAsRead(
+      userId,
+      notificationIds,
+    )
     sendSuccess(res, {
       message: 'Notifications marked as read',
       data: result,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}
 
 /**
  * DELETE /notifications/:id
@@ -125,13 +134,13 @@ export const deleteNotification = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    const id = req.params.id as string;
-    await NotificationService.deleteNotification(userId, id);
+    const userId = getUserId(req)
+    const id = req.params.id as string
+    await NotificationService.deleteNotification(userId, id)
     sendSuccess(res, {
       message: 'Notification deleted successfully',
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
-};
+}

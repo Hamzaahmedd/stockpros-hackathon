@@ -16,6 +16,7 @@ pydantic-settings==2.13.1
 scikit-learn==1.4.2
 # Use the stable August 2025 release for CPU
 onnxruntime
+tensorflow-cpu==2.15.0 
 
 # Caching & Database
 fastapi-cache2[redis]

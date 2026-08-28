@@ -1,9 +1,11 @@
-# app/schemas/prediction.py
+"""Forecast feature response models."""
 from pydantic import BaseModel
+
 
 class PricePoint(BaseModel):
     date: str
     price: float
+
 
 class ForecastResponse(BaseModel):
     symbol: str

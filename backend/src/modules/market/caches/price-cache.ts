@@ -1,20 +1,21 @@
-import { WatchlistItemResponse } from '../../watchlist';
+import { logger } from '../../../shared/infrastructure/logger'
+import { WatchlistItemResponse } from '../../watchlist'
 
 export const MAX_WATCHLIST_ITEMS = 50
 
 export function formatWatchlistItem(entry: {
-  symbol: string;
-  targetEntryPrice: number | null;
-  stopLoss: number | null;
-  notes: string | null;
-  aiSuggestedEntry: number | null;
-  aiTakeProfit: number | null;
-  aiStopLoss: number | null;
-  aiConfidence: 'LOW' | 'MEDIUM' | 'HIGH' | null;
-  aiSuggestionBasis: string | null;
-  aiComputedAt: Date | null;
-  createdAt: Date;
-  alerts?: any[];
+  symbol: string
+  targetEntryPrice: number | null
+  stopLoss: number | null
+  notes: string | null
+  aiSuggestedEntry: number | null
+  aiTakeProfit: number | null
+  aiStopLoss: number | null
+  aiConfidence: 'LOW' | 'MEDIUM' | 'HIGH' | null
+  aiSuggestionBasis: string | null
+  aiComputedAt: Date | null
+  createdAt: Date
+  alerts?: WatchlistItemResponse['alerts']
 }): WatchlistItemResponse {
   const hasAiData =
     entry.aiSuggestedEntry !== null &&
@@ -22,7 +23,7 @@ export function formatWatchlistItem(entry: {
     entry.aiStopLoss !== null &&
     entry.aiConfidence !== null &&
     entry.aiSuggestionBasis !== null && // basis is mandatory per spec
-    entry.aiComputedAt !== null;
+    entry.aiComputedAt !== null
 
   return {
     symbol: entry.symbol,
@@ -48,15 +49,13 @@ export function formatWatchlistItem(entry: {
     addedAt: entry.createdAt,
     logo: null,
     alerts: entry.alerts,
-  };
+  }
 }
 
-import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client';
-import type { PriceCacheEntry } from '../types';
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
+import type { PriceCacheEntry } from '../types'
 
-const REST_CACHE_TTL_MS = 60_000; // 60 seconds per spec
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const REST_CACHE_TTL_MS = 60_000 // 60 seconds per spec
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +67,7 @@ const REST_CACHE_TTL_MS = 60_000; // 60 seconds per spec
  *
  * Replace with Redis when scaling horizontally (spec §7).
  */
-export const priceCache = new Map<string, PriceCacheEntry>();
+export const priceCache = new Map<string, PriceCacheEntry>()
 
 // ─── Write (called by WebSocket tick handler) ─────────────────────────────────
 
@@ -80,17 +79,17 @@ export const priceCache = new Map<string, PriceCacheEntry>();
  */
 export const updatePriceCache = (
   symbol: string,
-  price:  number,
+  price: number,
   volume: number,
 ): void => {
-  const existing = priceCache.get(symbol);
+  const existing = priceCache.get(symbol)
   priceCache.set(symbol, {
     price,
     changePercent: existing?.changePercent ?? 0,
     volume,
     timestamp: Date.now(),
-  });
-};
+  })
+}
 
 // ─── REST Fallback ────────────────────────────────────────────────────────────
 
@@ -99,39 +98,41 @@ export const updatePriceCache = (
  * This is the only path that populates changePercent.
  * Called when a symbol is not yet in the cache or when the entry is stale.
  */
-export const fetchAndCacheQuote = async (symbol: string): Promise<PriceCacheEntry> => {
+export const fetchAndCacheQuote = async (
+  symbol: string,
+): Promise<PriceCacheEntry> => {
   const { data } = await finnhubClient.get<{
-    c: number;  // current price
-    dp: number; // percent change
-    v: number;  // volume (not always present)
+    c: number // current price
+    dp: number // percent change
+    v: number // volume (not always present)
   }>(`/quote`, {
     params: { symbol },
-  });
+  })
 
   const entry: PriceCacheEntry = {
-    price:         data.c,
+    price: data.c,
     changePercent: data.dp,
-    volume:        data.v ?? 0,
-    timestamp:     Date.now(),
-  };
+    volume: data.v ?? 0,
+    timestamp: Date.now(),
+  }
 
-  priceCache.set(symbol, entry);
-  return entry;
-};
+  priceCache.set(symbol, entry)
+  return entry
+}
 
 export const getCurrentPrice = async (
   symbol: string,
 ): Promise<PriceCacheEntry | null> => {
-  const cached = priceCache.get(symbol);
+  const cached = priceCache.get(symbol)
 
   if (cached && Date.now() - cached.timestamp < REST_CACHE_TTL_MS) {
-    return cached;
+    return cached
   }
 
   try {
-    return await fetchAndCacheQuote(symbol);
+    return await fetchAndCacheQuote(symbol)
   } catch (err) {
-    console.error(`[PriceCache] REST fallback failed for ${symbol}:`, err);
-    return cached ?? null; // return stale rather than nothing
+    logger.error(`[PriceCache] REST fallback failed for ${symbol}`, err)
+    return cached ?? null // return stale rather than nothing
   }
-};
+}

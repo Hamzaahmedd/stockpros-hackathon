@@ -7,6 +7,7 @@ This service is a modular monolith: one deployable process composed from indepen
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for module boundaries and dependency rules.
 
 ## Table of Contents
+
 - [Project Overview](#project-overview)
 - [Technologies Used](#technologies-used)
 - [Prerequisites](#prerequisites)
@@ -20,20 +21,21 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for module boundaries and dependency ru
 ---
 
 ## Project Overview
+
 Backend API for the Stock Prediction Platform, built with Node.js (Express). Handles authentication, data aggregation, API integration, and serves ML forecasts to the frontend.
 
 ## Technologies Used
 
-* Express.js
-* Prisma ORM
-* TypeScript
-* PostgreSQL
-* JWT Authentication
+- Express.js
+- Prisma ORM
+- TypeScript
+- PostgreSQL
+- JWT Authentication
 
 ## Prerequisites
 
-* Node.js (v16+ recommended)
-* PostgreSQL database
+- Node.js (v16+ recommended)
+- PostgreSQL database
 
 ## Installation
 
@@ -100,24 +102,24 @@ npm start
 
 ## Redis Installation & Setup on Windows (MSI Installer Method)
 
-You can find the Redis documentation here:  
+You can find the Redis documentation here:
 
 [![Redis Docs](https://img.shields.io/badge/Stock%20app%20Redis%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1IZPj7N5SekGWNFgJS-Vvx-aaZ41pE-WQCbRhi02nZuE/edit?usp=sharing)
 
 ## API Documentation
 
-You can find the API documentation here:  
+You can find the API documentation here:
 
 [![API Docs](https://img.shields.io/badge/Stock%20app%20API%20Docs-Click%20Here-blue?style=for-the-badge)](https://documenter.getpostman.com/view/48086882/2sB3WjxiMH)
 
 ## Database and ERD Documentation
 
-You can find the database and ERD documentation here:  
+You can find the database and ERD documentation here:
 
 [![DB Docs](https://img.shields.io/badge/Stock%20app%20DB%20Docs-Click%20Here-blue?style=for-the-badge)](https://dbdocs.io/hamzahmed303/Stock-App)
 
 ## Tests Documentation
 
-You can find the Tests documentation here:  
+You can find the Tests documentation here:
 
 [![Tests Docs](https://img.shields.io/badge/Stock%20app%20Tests%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1HkD4J1kKJ4aJm2rR-TUTt2EUw1uAufLYQUw_usj92Vs/edit?usp=sharing)

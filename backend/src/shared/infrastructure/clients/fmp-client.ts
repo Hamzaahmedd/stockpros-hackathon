@@ -1,10 +1,12 @@
-import config from '../config/env';
-import axios from 'axios';
+import config from '@/config'
+import axios from 'axios'
 
-const FMP_API_KEY = config.fmp.apiKey;
+const FMP_API_KEY = config.fmp.apiKey
 
 if (!FMP_API_KEY) {
-  throw new Error('CRITICAL: FMP API key is not configured in environment variables.');
+  throw new Error(
+    'CRITICAL: FMP API key is not configured in environment variables.',
+  )
 }
 
 const fmpClient = axios.create({
@@ -15,4 +17,4 @@ const fmpClient = axios.create({
   timeout: 10000,
 })
 
-export default fmpClient;
+export default fmpClient

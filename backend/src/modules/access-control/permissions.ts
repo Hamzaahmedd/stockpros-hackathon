@@ -1,8 +1,8 @@
 export enum Action {
-  CREATE = "create",
-  READ = "read",
-  UPDATE = "update",
-  DELETE = "delete",
+  CREATE = 'create',
+  READ = 'read',
+  UPDATE = 'update',
+  DELETE = 'delete',
 }
 
 export enum Resource {
@@ -15,4 +15,4 @@ export const permissionHierarchy: Record<Action, Action[]> = {
   [Action.READ]: [Action.READ],
   [Action.UPDATE]: [Action.READ, Action.UPDATE],
   [Action.DELETE]: [Action.READ, Action.DELETE],
-};
+}

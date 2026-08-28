@@ -44,8 +44,29 @@ export interface PaginatedNews {
 }
 
 export interface NewsSummaryResponse {
-  portfolioNews: { id: string; headline: string; symbol: string | null; sentiment: NewsSentiment | null; publishedAt: Date; isRead: boolean }[]
-  watchlistNews: { id: string; headline: string; symbol: string | null; sentiment: NewsSentiment | null; publishedAt: Date; isRead: boolean }[]
-  marketHeadlines: { id: string; headline: string; symbol: string | null; sentiment: NewsSentiment | null; publishedAt: Date; isRead: boolean }[]
+  portfolioNews: {
+    id: string
+    headline: string
+    symbol: string | null
+    sentiment: NewsSentiment | null
+    publishedAt: Date
+    isRead: boolean
+  }[]
+  watchlistNews: {
+    id: string
+    headline: string
+    symbol: string | null
+    sentiment: NewsSentiment | null
+    publishedAt: Date
+    isRead: boolean
+  }[]
+  marketHeadlines: {
+    id: string
+    headline: string
+    symbol: string | null
+    sentiment: NewsSentiment | null
+    publishedAt: Date
+    isRead: boolean
+  }[]
   unreadCount: number
 }

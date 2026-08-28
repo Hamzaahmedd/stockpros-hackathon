@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Query
 from fastapi_cache.decorator import cache
 
-from app.schemas.prediction import ForecastResponse
+from app.modules.forecast.schemas import ForecastResponse
 from app.modules.forecast.service import create_forecast
 
 router = APIRouter(prefix="/api/v1", tags=["forecast"])

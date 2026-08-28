@@ -1,4 +1,8 @@
-export const buildAlertEmail = (title: string, body: string, symbol: string): string => `
+export const buildAlertEmail = (
+  title: string,
+  body: string,
+  symbol: string,
+): string => `
 <!DOCTYPE html>
 <html>
   <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
@@ -17,4 +21,4 @@ export const buildAlertEmail = (title: string, body: string, symbol: string): st
     </p>
   </body>
 </html>
-`;
+`

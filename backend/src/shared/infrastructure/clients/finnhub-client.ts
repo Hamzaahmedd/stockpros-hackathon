@@ -1,10 +1,10 @@
-import config from '../config/env';
-import axios from 'axios';
+import config from '@/config'
+import axios from 'axios'
 
-const FINNHUB_API_KEY = config.finnhub.apiKey;
+const FINNHUB_API_KEY = config.finnhub.apiKey
 
 if (!FINNHUB_API_KEY) {
-  throw new Error('Finnhub API key is not configured in env.');
+  throw new Error('Finnhub API key is not configured in env.')
 }
 
 const finnhubClient = axios.create({
@@ -15,4 +15,4 @@ const finnhubClient = axios.create({
   timeout: 10000, // 10 seconds
 })
 
-export default finnhubClient;
+export default finnhubClient

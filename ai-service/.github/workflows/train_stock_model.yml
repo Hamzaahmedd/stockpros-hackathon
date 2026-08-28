@@ -44,4 +44,4 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           APP_ENV: prod
         run: |
-          python train_script.py --symbol "$SYMBOL"
+          python tools/train_script.py --symbol "$SYMBOL"

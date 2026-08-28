@@ -1,7 +1,7 @@
 import {
-    SUMMARY_MAX_BULLET_LEN,
-    SUMMARY_MAX_BULLETS,
-    SUMMARY_MIN_BULLET_LEN,
+  SUMMARY_MAX_BULLET_LEN,
+  SUMMARY_MAX_BULLETS,
+  SUMMARY_MIN_BULLET_LEN,
 } from '../constants'
 
 const cleanBullet = (raw: string): string => {
@@ -27,7 +27,9 @@ const cleanBullet = (raw: string): string => {
   return s
 }
 
-export const parseSummaryBullets = (rawSummary: string | null | undefined): string[] => {
+export const parseSummaryBullets = (
+  rawSummary: string | null | undefined,
+): string[] => {
   if (!rawSummary?.trim()) return []
 
   const cleaned = rawSummary.trim()
@@ -40,7 +42,7 @@ export const parseSummaryBullets = (rawSummary: string | null | undefined): stri
   for (const split of strategies) {
     const candidates = split()
       .map(cleanBullet)
-      .filter(s => s.length >= SUMMARY_MIN_BULLET_LEN)
+      .filter((s) => s.length >= SUMMARY_MIN_BULLET_LEN)
 
     if (candidates.length >= 2) return candidates.slice(0, SUMMARY_MAX_BULLETS)
   }

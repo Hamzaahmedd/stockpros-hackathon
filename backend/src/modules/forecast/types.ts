@@ -1,32 +1,39 @@
 export interface Prediction {
-  date: string;
-  bull: number;
-  base: number;
-  bear: number;
+  date: string
+  bull: number
+  base: number
+  bear: number
+}
+
+/** Raw prediction row returned by the ML service before enhancement. */
+export interface MlRawPrediction {
+  date: string
+  price?: number
+  predicted_close?: number
 }
 
 export interface HistoricalPoint {
-  date: string;
-  close: number;
+  date: string
+  close: number
 }
 
 export interface ForecastResponse {
-  success: boolean;
-  message: string;
+  success: boolean
+  message: string
   data: {
-    symbol: string;
-    period: string;
-    predictions: Prediction[];
-    historicalData: HistoricalPoint[];
-    units: string;
+    symbol: string
+    period: string
+    predictions: Prediction[]
+    historicalData: HistoricalPoint[]
+    units: string
     targetRange?: {
-      bull: number;
-      base: number;
-      bear: number;
-      atr: number;
-      confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-    };
-    status?: string;
-    estimated_ready_at?: number;
-  };
+      bull: number
+      base: number
+      bear: number
+      atr: number
+      confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+    }
+    status?: string
+    estimated_ready_at?: number
+  }
 }

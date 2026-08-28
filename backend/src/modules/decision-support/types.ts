@@ -22,7 +22,8 @@ export type PortfolioSummary = {
   totalUnrealizedPnLPercent: number
 }
 
-export type DecisionType = 'ADD' | 'HOLD' | 'TRIM' | 'EXIT' | 'BUY' | 'HOLD' | 'SELL'
+export type DecisionType =
+  'ADD' | 'HOLD' | 'TRIM' | 'EXIT' | 'BUY' | 'HOLD' | 'SELL'
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 export type VolatilityLevel = 'NORMAL' | 'ELEVATED'
@@ -47,35 +48,35 @@ export interface BatchDecisionResult {
 }
 
 export type PositionStrategy = {
-  add: boolean;
-  hold: boolean;
-  trim: boolean;
-  exit: boolean;
-};
+  add: boolean
+  hold: boolean
+  trim: boolean
+  exit: boolean
+}
 
 export type ActionGuidance = {
-  positionStrategy: PositionStrategy;
-  holdDuration: string;
-  takeProfitZone: string;
-  stopLossZone: string;
-  watchFor: string[];
-};
+  positionStrategy: PositionStrategy
+  holdDuration: string
+  takeProfitZone: string
+  stopLossZone: string
+  watchFor: string[]
+}
 
 export type DecisionResult = {
-  symbol: string;
-  sector: string;
-  marketDecision: string;
-  portfolioDecision: string;
-  confidence: number;
-  riskLevel: string;
+  symbol: string
+  sector: string
+  marketDecision: string
+  portfolioDecision: string
+  confidence: number
+  riskLevel: string
   reasoning: {
-    summary: string;
-    details: string[];
-  };
+    summary: string
+    details: string[]
+  }
   exposure: {
-    positionPercent: number;
-    sectorPercent: number;
-    isOverExposed: boolean;
-  };
-  actionGuidance: ActionGuidance;
-};
+    positionPercent: number
+    sectorPercent: number
+    isOverExposed: boolean
+  }
+  actionGuidance: ActionGuidance
+}

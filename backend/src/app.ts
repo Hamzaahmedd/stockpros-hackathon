@@ -22,7 +22,9 @@ export const createApp = () => {
   })
 
   app.get('/', (_req, res) => res.send('Stock App server is running'))
-  app.use((req) => { throw new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`) })
+  app.use((req) => {
+    throw new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`)
+  })
   app.use(errorHandler)
   return app
 }

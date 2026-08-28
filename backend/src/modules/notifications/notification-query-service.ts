@@ -1,7 +1,11 @@
-import { prisma }   from '../../shared/infrastructure/database';
-import { AppError } from '../../shared/errors';
-import type { GetNotificationsQuery } from './validation';
-import type { NotificationItem, PaginatedNotifications, NotificationSummary } from './types';
+import { prisma } from '../../shared/infrastructure/database'
+import { AppError } from '../../shared/errors'
+import type { GetNotificationsQuery } from './validation'
+import type {
+  NotificationItem,
+  PaginatedNotifications,
+  NotificationSummary,
+} from './types'
 
 // ─── Get Notifications (cursor-based) ────────────────────────────────────────
 
@@ -18,21 +22,21 @@ import type { NotificationItem, PaginatedNotifications, NotificationSummary } fr
  */
 export const getNotifications = async (
   userId: string,
-  query:  GetNotificationsQuery,
+  query: GetNotificationsQuery,
 ): Promise<PaginatedNotifications> => {
-  const { cursor, limit } = query;
+  const { cursor, limit } = query
 
   // Resolve the cursor row so we have its createdAt for the range filter
-  let cursorCreatedAt: Date | undefined;
+  let cursorCreatedAt: Date | undefined
   if (cursor) {
     const cursorRow = await prisma.notification.findFirst({
-      where:  { id: cursor, userId },
+      where: { id: cursor, userId },
       select: { createdAt: true },
-    });
+    })
     if (!cursorRow) {
-      throw new AppError('Invalid or expired cursor', 400);
+      throw new AppError('Invalid or expired cursor', 400)
     }
-    cursorCreatedAt = cursorRow.createdAt;
+    cursorCreatedAt = cursorRow.createdAt
   }
 
   // Fetch limit + 1 so we can detect whether a next page exists
@@ -49,20 +53,20 @@ export const getNotifications = async (
       }),
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    take:    limit + 1,
-  });
+    take: limit + 1,
+  })
 
-  const hasNextPage = rows.length > limit;
-  const data        = hasNextPage ? rows.slice(0, limit) : rows;
-  const nextCursor  = hasNextPage ? data[data.length - 1].id : null;
+  const hasNextPage = rows.length > limit
+  const data = hasNextPage ? rows.slice(0, limit) : rows
+  const nextCursor = hasNextPage ? data[data.length - 1].id : null
 
   // Unread count — inexpensive indexed query
   const total = await prisma.notification.count({
     where: { userId, read: false },
-  });
+  })
 
-  return { data, nextCursor, hasMore: hasNextPage, total };
-};
+  return { data, nextCursor, hasMore: hasNextPage, total }
+}
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
@@ -76,48 +80,50 @@ export const getNotificationSummary = async (
   const [unreadCount, preview] = await Promise.all([
     prisma.notification.count({ where: { userId, read: false } }),
     prisma.notification.findMany({
-      where:   { userId },
+      where: { userId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take:    5,
+      take: 5,
     }),
-  ]);
+  ])
 
-  return { unreadCount, preview };
-};
+  return { unreadCount, preview }
+}
 
 // ─── Mark Single as Read ──────────────────────────────────────────────────────
 
 export const markAsRead = async (
-  userId:         string,
+  userId: string,
   notificationId: string,
 ): Promise<NotificationItem> => {
   // Ownership check — user may only update their own notifications
   const notification = await prisma.notification.findFirst({
     where: { id: notificationId, userId },
-  });
+  })
   if (!notification) {
-    throw new AppError('Notification not found', 404);
+    throw new AppError('Notification not found', 404)
   }
 
   // No-op if already read — avoids unnecessary DB write
-  if (notification.read) return notification;
+  if (notification.read) return notification
 
   return prisma.notification.update({
     where: { id: notificationId },
-    data:  { read: true },
-  });
-};
+    data: { read: true },
+  })
+}
 
 // ─── Mark All as Read ─────────────────────────────────────────────────────────
 
-export const markAllAsRead = async (userId: string): Promise<{ updated: number }> => {
+export const markAllAsRead = async (
+  userId: string,
+): Promise<{ updated: number }> => {
   const result = await prisma.notification.updateMany({
     where: { userId, read: false },
-    data:  { read: true },
-  });
+    data: { read: true },
+  })
 
-  return { updated: result.count };
-};
+  return { updated: result.count }
+}
 
 // ─── Mark Multiple as Read ────────────────────────────────────────────────────
 
@@ -132,23 +138,23 @@ export const markMultipleAsRead = async (
       read: false,
     },
     data: { read: true },
-  });
+  })
 
-  return { updated: result.count };
-};
+  return { updated: result.count }
+}
 
 // ─── Delete Single ────────────────────────────────────────────────────────────
 
 export const deleteNotification = async (
-  userId:         string,
+  userId: string,
   notificationId: string,
 ): Promise<void> => {
   const notification = await prisma.notification.findFirst({
     where: { id: notificationId, userId },
-  });
+  })
   if (!notification) {
-    throw new AppError('Notification not found', 404);
+    throw new AppError('Notification not found', 404)
   }
 
-  await prisma.notification.delete({ where: { id: notificationId } });
-};
+  await prisma.notification.delete({ where: { id: notificationId } })
+}

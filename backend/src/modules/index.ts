@@ -12,9 +12,16 @@ import { watchlistModule } from './watchlist'
 
 /** The only place where business modules are assembled into the application. */
 export const modules: readonly AppModule[] = [
-  authModule, forecastModule, marketModule, decisionSupportModule,
-  accessControlModule, watchlistModule, notificationsModule, newsModule,
-  dashboardModule, searchModule,
+  authModule,
+  forecastModule,
+  marketModule,
+  decisionSupportModule,
+  accessControlModule,
+  watchlistModule,
+  notificationsModule,
+  newsModule,
+  dashboardModule,
+  searchModule,
 ]
 
 export type { AppModule } from './module-interface'

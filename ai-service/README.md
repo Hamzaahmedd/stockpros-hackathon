@@ -63,3 +63,15 @@ ALPHA_URL=the_alpha_api_url
 ```bash
  uvicorn app.main:app --host localhost --port 8000 --reload
  ```
+
+### Training Models
+
+Standalone maintenance scripts live in the `tools/` directory.
+
+```bash
+# Train a GRU model, convert to ONNX and upload to Supabase
+python tools/train_script.py --symbol AAPL
+
+# Manually convert an existing Keras model to ONNX
+python tools/convert.py <input_model_path> <output_model_path>
+```
