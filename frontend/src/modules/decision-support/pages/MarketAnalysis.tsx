@@ -1,19 +1,19 @@
-import React, { useState, useMemo } from "react";
+import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { SmartSearch } from "@/shared/components/SmartSearch";
-import api from "@/shared/api/axios";
-import { 
-  FiTrendingUp, 
-  FiTrendingDown, 
-  FiActivity, 
-  FiUsers, 
-  FiInfo, 
-  FiZap,
-  FiTarget,
-  FiClock
-} from 'react-icons/fi';
-import { useTheme } from "@/shared/hooks/useTheme";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useTheme } from "@/shared/hooks/useTheme";
+import React, { useState } from "react";
+import {
+  FiActivity,
+  FiClock,
+  FiInfo,
+  FiTarget,
+  FiTrendingDown,
+  FiTrendingUp,
+  FiUsers,
+  FiZap
+} from 'react-icons/fi';
 
 const MarketAnalysis: React.FC = () => {
   const { theme } = useTheme();
@@ -23,6 +23,16 @@ const MarketAnalysis: React.FC = () => {
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null);
 
   const fetchDecision = async (symbol: string, silent = false) => {
+    const trimmed = symbol?.trim();
+    if (!trimmed) {
+      // Empty/missing symbol — clear any prior state instead of hitting a 404 URL.
+      setData(null);
+      setCurrentSymbol(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       if (!silent) {
         setLoading(true);
@@ -31,11 +41,11 @@ const MarketAnalysis: React.FC = () => {
       }
 
       const res = await api.get(
-        `/api/v1/decision-support/market/decision/${symbol}`
+        `/api/v1/decision-support/market/decision/${trimmed}`
       );
 
       setData(res.data.data);
-      setCurrentSymbol(symbol);
+      setCurrentSymbol(trimmed);
     } catch (err) {
       if (!silent) setError("No data found for this symbol");
     } finally {
