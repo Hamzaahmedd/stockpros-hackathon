@@ -3,7 +3,7 @@ import WebSocket from "ws";
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client';
 import config from "../../../shared/infrastructure/config/env";
 import { logger } from '../../../shared/infrastructure/logger';
-import { FinnhubTradeMsg } from './finnhub-types';
+import { FinnhubQuote, FinnhubTradeMsg } from './finnhub-types';
 
 export class FinnhubService extends EventEmitter {
   private ws?: WebSocket;
@@ -13,7 +13,7 @@ export class FinnhubService extends EventEmitter {
   private closed = false;
   private lastCloseWas429 = false;
   // IMPROVEMENT 1: Memory cache to prevent "Rate Limit" bans on dashboard refresh
-  private quoteCache = new Map<string, { data: any; ts: number }>();
+  private quoteCache = new Map<string, { data: FinnhubQuote; ts: number }>();
 
   constructor(private apiKey: string) {
     super();
@@ -24,7 +24,7 @@ export class FinnhubService extends EventEmitter {
     const url = `wss://ws.finnhub.io?token=${encodeURIComponent(this.apiKey)}`;
     this.ws = new WebSocket(url, { handshakeTimeout: 10000 })
 
-    this.ws.on('unexpected-response', (req, res) => {
+    this.ws.on('unexpected-response', (_req, res) => {
       logger.error(`[ERROR] Finnhub WS Unexpected Response: ${res.statusCode}`);
       if (res.statusCode === 429) {
         this.lastCloseWas429 = true;
@@ -75,7 +75,7 @@ export class FinnhubService extends EventEmitter {
       this.emit('close', { code, reason: reason?.toString() });
     });
 
-    this.ws.on('error', (err: any) => {
+    this.ws.on('error', (err: Error) => {
       // Prevents ECONNRESET from crashing the Node process
       logger.error(`Finnhub WS internal error: ${err.message}`);
       if (err.message && err.message.includes('429')) {
@@ -95,7 +95,7 @@ export class FinnhubService extends EventEmitter {
     }
   }
 
-  async getQuote(symbol: string) {
+  async getQuote(symbol: string): Promise<FinnhubQuote> {
     const s = symbol.toUpperCase();
     const cached = this.quoteCache.get(s);
 
@@ -105,15 +105,15 @@ export class FinnhubService extends EventEmitter {
     }
 
     try {
-      const res = await finnhubClient.get(`/quote`, {
+      const res = await finnhubClient.get<FinnhubQuote>(`/quote`, {
         params: { symbol: s },
       });
       this.quoteCache.set(s, { data: res.data, ts: Date.now() });
       return res.data;
-    } catch (err: any) {
+    } catch (err) {
       // Fallback: If API fails but we have old data, show that instead of an error
       if (cached) return cached.data;
-      throw new Error(err?.message || 'Failed to fetch quote');
+      throw new Error(err instanceof Error ? err.message : 'Failed to fetch quote');
     }
   }
 
@@ -143,7 +143,9 @@ export class FinnhubService extends EventEmitter {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.ws.ping();
         }
-      } catch {}
+      } catch {
+        // Heartbeat failure is non-fatal — reconnect logic handles dead sockets
+      }
     }, 20000);
   }
 
@@ -188,7 +190,9 @@ export class FinnhubService extends EventEmitter {
     if (this.ws) {
       try {
         this.ws.close();
-      } catch {}
+      } catch {
+        // Socket already closed or broken — nothing to clean up
+      }
     }
   }
 }

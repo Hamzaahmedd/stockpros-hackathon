@@ -19,7 +19,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/shared/components/ui/table";
-import { useTheme } from "@/shared/hooks/useTheme";
 import type { StockData } from "../types";
 
 /* ---------------- helpers ---------------- */
@@ -36,7 +35,6 @@ const fmtTime = (unixSeconds: number) =>
 /* ---------------- component ---------------- */
 
 const Markets = () => {
-  const { theme } = useTheme();
   useLocation();
 
   const [stocks, setStocks] = useState<StockData[]>([]);

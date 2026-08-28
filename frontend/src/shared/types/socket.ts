@@ -1,1 +1,1 @@
-export type SocketListener = (payload: any) => void;
+export type SocketListener = (payload: unknown) => void;

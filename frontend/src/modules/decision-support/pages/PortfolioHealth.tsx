@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -135,8 +136,8 @@ const PortfolioHealth: React.FC = () => {
         setExpandedSymbol(null);
         await fetchOverview(res.data.data.portfolioId);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Upload failed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Upload failed"));
     } finally {
       setUploading(false);
     }
@@ -257,7 +258,7 @@ const PortfolioHealth: React.FC = () => {
                   <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        {["Asset", "Holdings", "Performance", "AI Decision", "Confidence", "Risk", "Analysis"].map((h, i) => (
+                        {["Asset", "Holdings", "Performance", "AI Decision", "Confidence", "Risk", "Analysis"].map((_, i) => (
                           <th key={i} className="px-6 py-4">
                             <Skeleton className="h-3.5 w-20 rounded" />
                           </th>

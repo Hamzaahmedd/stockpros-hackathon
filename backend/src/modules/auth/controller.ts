@@ -71,8 +71,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
 export const requestMagicLink = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = validateOrThrow(emailValidator, req.body);
-    const clientOrigin = req.get('origin') || (req.get('referer') ? new URL(req.get('referer')!).origin : undefined);
-    await generateMagicLink(email, clientOrigin);
+    await generateMagicLink(email);
 
     return res.status(200).json({
       success: true,

@@ -1,5 +1,5 @@
 // src/pages/News.tsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FiSearch, FiCalendar, FiX } from "react-icons/fi";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { NewsArticleItem } from "@/modules/news/components/NewsArticleItem";
@@ -12,7 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 const CATEGORIES: { label: string; value: NewsCategory }[] = [
-  { label: 'General', value: 'GENERAL' }, 
+  { label: 'General', value: 'GENERAL' },
   { label: 'Earnings', value: 'EARNINGS' },
   { label: 'Analyst', value: 'ANALYST' },
   { label: 'Filing', value: 'FILING' },
@@ -30,7 +30,7 @@ const TABS = [
 
 export default function News() {
   const { theme } = useTheme();
-  
+
   const [activeTab, setActiveTab] = useState<typeof TABS[number]['value']>('all');
   const [activeCategory, setActiveCategory] = useState<NewsCategory | 'ALL'>('ALL');
   const [activeSymbol, setActiveSymbol] = useState("");
@@ -39,7 +39,7 @@ export default function News() {
   const [loading, setLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const [dateRange, setDateRange] = useState({
      startDate: '2026-01-01',
      endDate: '2026-12-31'
@@ -89,7 +89,7 @@ export default function News() {
             return [...prev, ...newArticles];
         });
       }
-      
+
       setNextCursor(response.nextCursor);
       setHasMore(response.hasMore);
     } catch (err) {
@@ -142,7 +142,7 @@ export default function News() {
       <Sidebar />
       <main className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -150,14 +150,14 @@ export default function News() {
               </h1>
               <p className="text-muted-foreground text-sm mt-1">Real-time intelligence from leading financial sources</p>
             </div>
-            
+
              <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                 <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                     <FiSearch className="group-focus-within:text-primary transition-colors" />
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search headlines..."
@@ -172,8 +172,8 @@ export default function News() {
                     </button>
                   )}
                 </div>
-               
-               <SmartSearch 
+
+               <SmartSearch
                   onSubmit={(sym) => setActiveSymbol(sym)}
                   initialValue={activeSymbol}
                   placeholder="Filter by symbol..."
@@ -190,8 +190,8 @@ export default function News() {
                    key={tab.value}
                    onClick={() => setActiveTab(tab.value)}
                    className={`px-5 py-2 rounded-md text-xs font-bold transition-all duration-200 ${
-                     activeTab === tab.value 
-                       ? "bg-primary text-primary-foreground shadow-sm" 
+                     activeTab === tab.value
+                       ? "bg-primary text-primary-foreground shadow-sm"
                        : "text-muted-foreground hover:text-foreground"
                    }`}
                 >
@@ -204,14 +204,14 @@ export default function News() {
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-secondary/30">
               <FiCalendar className="text-primary text-lg" />
               <div className="flex items-center gap-2">
-                <input 
+                <input
                    type="date"
                    value={dateRange.startDate}
                    onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
                    className="bg-transparent border-none outline-none text-xs font-bold text-muted-foreground w-28 cursor-pointer"
                 />
                 <span className="text-muted-foreground/30 font-bold px-1">-</span>
-                <input 
+                <input
                    type="date"
                    value={dateRange.endDate}
                    onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
@@ -272,7 +272,7 @@ export default function News() {
                 theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-gray-100 border-gray-300'
               }`}>
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">No articles found matching your criteria</p>
-                <Button 
+                <Button
                   variant="link"
                   onClick={() => { setActiveTab('all'); setActiveCategory('ALL'); setSearchQuery(""); }}
                   className="mt-4 text-cyan-600 dark:text-cyan-400 text-xs font-black underline underline-offset-4 decoration-cyan-500/30"
@@ -283,9 +283,9 @@ export default function News() {
             ) : (
               <div className="space-y-6">
                 {articles.map((article) => (
-                  <NewsArticleItem 
-                    key={article.id} 
-                    article={article} 
+                  <NewsArticleItem
+                    key={article.id}
+                    article={article}
                     onUpdate={handleUpdateArticle}
                   />
                 ))}

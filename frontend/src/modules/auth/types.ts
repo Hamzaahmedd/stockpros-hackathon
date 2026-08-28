@@ -1,10 +1,20 @@
+/** A role attached to a user, tolerant of the shapes the backend may return. */
+export type UserRoleEntry = {
+  id?: string;
+  name?: string;
+  roleId?: string;
+  role?: { id?: string; name?: string };
+};
+
+export type RoleEntry = string | { id?: string; name?: string };
+
 export type User = {
   id?: string;
   userId: string;
   email: string;
   displayName?: string;
-  roles?: any[];
-  userRoles?: any[];
+  roles?: RoleEntry[];
+  userRoles?: UserRoleEntry[];
 } | null;
 
 export type ScreenPermissions = {

@@ -1,6 +1,8 @@
 import { useAuth } from "@/modules/auth/hooks/useAuth";
+import type { UserRoleEntry } from "@/modules/auth/types";
 import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { useEffect, useState } from "react";
 import { FiCheck, FiShield, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
@@ -8,7 +10,7 @@ import type { Role, AccessControlUser as User } from "../types";
 
 const Users = () => {
   const { can, user, refreshMe } = useAuth();
-  const userRoleList = user?.userRoles?.map((ur: any) => ur.role?.name?.toUpperCase()) || [];
+  const userRoleList = user?.userRoles?.map(ur => ur.role?.name?.toUpperCase()) || [];
   const isAdmin = userRoleList.includes("ADMIN") || user?.email === "hamzahmed30333@gmail.com";
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,13 +76,17 @@ const Users = () => {
   const openEditModal = (user: User) => {
     setSelectedUser(user);
     // Pre-fill checkboxes based on user's current roles by matching IDs or names
-    const currentUserRoleIds = user.userRoles?.map((ur: any) => ur.role?.id || ur.roleId || ur.id).filter(Boolean) || [];
-    const currentUserRoleNames = user.userRoles?.map((ur: any) => ur.role?.name || ur.name).filter(Boolean) || [];
-    
+    const currentUserRoleIds = (user.userRoles ?? [])
+      .map(ur => ur.role?.id || ur.roleId || ur.id)
+      .filter((id): id is string => id !== undefined);
+    const currentUserRoleNames = (user.userRoles ?? [])
+      .map(ur => ur.role?.name || ur.name)
+      .filter((name): name is string => name !== undefined);
+
     const matchedRoleIds = allRoles
       .filter((r) => currentUserRoleIds.includes(r.id) || currentUserRoleNames.includes(r.name))
       .map((r) => r.id);
-      
+
     setSelectedRoleIds(matchedRoleIds.length > 0 ? matchedRoleIds : currentUserRoleIds);
   };
 
@@ -97,7 +103,7 @@ const Users = () => {
 
 
 
-  const updateLocalUserState = (userId: string, newRoles: any[]) => {
+  const updateLocalUserState = (userId: string, newRoles: Role[]) => {
     setUsers(prevUsers =>
       prevUsers.map(u =>
         u.id === userId
@@ -116,7 +122,7 @@ const Users = () => {
         roleIds: selectedRoleIds
       });
 
-      const { roles, userName, assignedBy } = response.data.data || response.data;
+      const { roles, assignedBy } = response.data.data || response.data;
 
       // Update state instantly
       updateLocalUserState(selectedUser.id, roles);
@@ -128,20 +134,20 @@ const Users = () => {
       console.log(`Assigned by: ${assignedBy}`);
 
       closeEditModal();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error saving roles:", err);
-      toast.error(err?.response?.data?.message || "Failed to save roles.");
+      toast.error(getApiErrorMessage(err, "Failed to save roles."));
     } finally {
       setSaving(false);
     }
   };
 
-  const getRoleBadges = (roles: any) => {
+  const getRoleBadges = (roles: UserRoleEntry[] | undefined) => {
     if (!roles || roles.length === 0) return <span className="text-muted-foreground italic text-xs">No roles</span>;
     return (
       <div className="flex gap-2 flex-wrap">
-        {roles.map((r: any, idx: number) => {
-          const roleName = r?.role?.name || r?.name || (typeof r === "string" ? r : "UNKNOWN");
+        {roles.map((r, idx) => {
+          const roleName = r?.role?.name || r?.name || "UNKNOWN";
           return (
             <span
               key={idx}

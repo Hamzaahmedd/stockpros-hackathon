@@ -29,7 +29,7 @@ class SocketManager {
   disconnect() {
     this.manualDisconnect = true;
     if (this.socket) {
-      try { this.socket.disconnect(); } catch {}
+      try { this.socket.disconnect(); } catch { /* socket may already be closed */ }
       this.socket = undefined;
     }
     this.connected = false;
@@ -49,7 +49,7 @@ class SocketManager {
       this.flushPendingSubscriptions();
     });
 
-    this.socket.on("disconnect", (reason: any) => {
+    this.socket.on("disconnect", (reason) => {
       this.connected = false;
       this.emitLocal("disconnect", reason);
       if (!this.manualDisconnect) this.retryConnect();
@@ -59,17 +59,17 @@ class SocketManager {
       this.emitLocal("trade", trade);
     });
 
-    this.socket.on("subscribed", (payload: any) => this.emitLocal("subscribed", payload));
-    this.socket.on("unsubscribed", (payload: any) => this.emitLocal("unsubscribed", payload));
-    this.socket.on("finnhub_error", (payload: any) => this.emitLocal("finnhub_error", payload));
+    this.socket.on("subscribed", (payload: { symbol: string }) => this.emitLocal("subscribed", payload));
+    this.socket.on("unsubscribed", (payload: { symbol: string }) => this.emitLocal("unsubscribed", payload));
+    this.socket.on("finnhub_error", (payload: unknown) => this.emitLocal("finnhub_error", payload));
 
-    this.socket.on("connect_error", (err: any) => {
+    this.socket.on("connect_error", (err: Error) => {
       this.connected = false;
       this.emitLocal("connect_error", err);
       this.retryConnect();
     });
 
-    this.socket.on("error", (err: any) => {
+    this.socket.on("error", (err: Error) => {
       this.emitLocal("error", err);
     });
   }
@@ -82,18 +82,18 @@ class SocketManager {
       if (!this.socket || !this.socket.connected) {
         try {
           this.socket?.removeAllListeners();
-        } catch {}
+        } catch { /* socket may already be torn down */ }
         this.socket = undefined;
         this.createSocket();
       }
     }, delay);
   }
 
-  private emitLocal(event: string, payload?: any) {
+  private emitLocal(event: string, payload?: unknown) {
     const set = this.listeners.get(event);
     if (!set) return;
     for (const fn of Array.from(set)) {
-      try { fn(payload); } catch {}
+      try { fn(payload); } catch { /* a failing listener must not break the dispatch loop */ }
     }
   }
 
@@ -164,7 +164,7 @@ class SocketManager {
     return this.socket?.id;
   }
 
-  emit(event: string, payload: any) {
+  emit(event: string, payload: unknown) {
     if (!this.socket || !this.connected) return;
     this.socket.emit(event, payload);
   }

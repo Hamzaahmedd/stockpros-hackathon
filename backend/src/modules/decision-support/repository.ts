@@ -19,9 +19,9 @@ export const persistDecisionRun = async (
       portfolioDecision: r.portfolioDecision,
       confidence:        r.confidence,
       riskLevel:         r.riskLevel,
-      reasoning:         r.reasoning     as any,
-      exposure:          r.exposure      as any,
-      actionGuidance:    r.actionGuidance as any,
+      reasoning:         r.reasoning,
+      exposure:          r.exposure,
+      actionGuidance:    r.actionGuidance,
     })),
   })
 }

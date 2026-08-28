@@ -1,6 +1,7 @@
 import api from "@/shared/api/axios";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/utils/token";
 import type { AuthContextValue, ScreenPermissions, User } from "../types";
 
@@ -28,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAccessToken(res.data.accessToken);
           token = res.data.accessToken;
         }
-      } catch (err) {
+      } catch {
         // Refresh failed, user probably not logged in or cookie expired
       }
     }
@@ -63,8 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post("/api/v1/auth/magic-link", { email });
       return true;
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to send magic link");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to send magic link"));
       return false;
     }
   };
@@ -93,7 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await api.post("/api/v1/auth/logout");
-    } catch { }
+    } catch {
+      // Logout is best-effort — local state is cleared regardless of the API outcome
+    }
     clearAccessToken();
     setUser(null);
     setScreenPermissions({});

@@ -1,11 +1,10 @@
 // src/services/newsService.ts
 import api from '@/shared/api/axios';
-import { 
-  NewsArticle, 
-  NewsSummary, 
-  PaginatedNewsResponse, 
-  NewsFeedParams, 
-  NewsSearchParams 
+import {
+  NewsSummary,
+  PaginatedNewsResponse,
+  NewsFeedParams,
+  NewsSearchParams
 } from './types';
 
 export const newsService = {
@@ -13,14 +12,14 @@ export const newsService = {
     const isSaved = params.filter === 'saved';
     const endpoint = isSaved ? '/api/v1/news/saved' : '/api/v1/news/feed';
     const res = await api.get(endpoint, { params });
-    
+
     const body = res.data;
     if (!body?.success) return { data: [], nextCursor: null, hasMore: false };
 
-    // The backend is inconsistent: 
+    // The backend is inconsistent:
     // /news/feed returns { data: NewsArticle[], nextCursor, hasMore }
     // /news/saved returns { data: { data: NewsArticle[], nextCursor, hasMore } }
-    
+
     if (isSaved) {
         return body.data || { data: [], nextCursor: null, hasMore: false };
     }
@@ -34,8 +33,8 @@ export const newsService = {
   },
 
   getSymbolNews: async (symbol: string, limit: number = 20, cursor?: string): Promise<PaginatedNewsResponse> => {
-    const res = await api.get(`/api/v1/news/symbol/${symbol}`, { 
-        params: { limit, cursor } 
+    const res = await api.get(`/api/v1/news/symbol/${symbol}`, {
+        params: { limit, cursor }
     });
     // { success: true, data: { data: [...], ... } }
     return res.data?.data || { data: [], nextCursor: null, hasMore: false };

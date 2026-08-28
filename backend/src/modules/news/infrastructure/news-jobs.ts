@@ -20,7 +20,7 @@ export const runSymbolNewsFetchJob = async (): Promise<void> => {
   const allSymbols = [
     ...new Set([
       ...watchlistRows.map((r: { symbol: string }) => r.symbol),
-      ...portfolios.flatMap((p: any) => p.positions.map((pos: { symbol: string }) => pos.symbol)),
+      ...portfolios.flatMap((p) => p.positions.map((pos: { symbol: string }) => pos.symbol)),
     ]),
   ]
 

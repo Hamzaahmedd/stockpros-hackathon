@@ -2,7 +2,7 @@
 import fmpClient from '../../shared/infrastructure/clients/fmp-client';
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client';
 import config from "../../shared/infrastructure/config/env";
-import { RankedStockRow, StockQuote } from "./types";
+import { FinnhubCompanyProfile, FmpMostActiveStock, RankedStockRow, StockQuote } from "./types";
 import { getCache, setCache } from "../../shared/infrastructure/cache";
 
 const FINNHUB_QUOTE_TTL = config.finnhub.quoteTTL;
@@ -16,8 +16,11 @@ export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
   }
 
   // Fetch Most Actives from FMP (Stable Endpoint)
-  const fmpRes = await fmpClient.get<any[]>('/most-actives');
-  const topSymbols = fmpRes.data.slice(0, 10).map(stock => stock.symbol || stock.ticker);
+  const fmpRes = await fmpClient.get<FmpMostActiveStock[]>('/most-actives');
+  const topSymbols = fmpRes.data
+    .slice(0, 10)
+    .map(stock => stock.symbol || stock.ticker)
+    .filter((symbol): symbol is string => symbol !== undefined);
 
   // Fetch Details from Finnhub (Quote + Profile2)
   const results = await Promise.all(
@@ -25,7 +28,7 @@ export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
       try {
         const [quoteRes, profileRes] = await Promise.all([
           finnhubClient.get<StockQuote>(`/quote`, { params: { symbol } }),
-          finnhubClient.get<any>(`/stock/profile2`, { params: { symbol } })
+          finnhubClient.get<FinnhubCompanyProfile>(`/stock/profile2`, { params: { symbol } })
         ]);
 
         const quote = quoteRes.data;
@@ -103,7 +106,7 @@ export async function getCompanySectors(
           return;
         }
 
-        const response = await finnhubClient.get<any>(`/stock/profile2`, {
+        const response = await finnhubClient.get<FinnhubCompanyProfile>(`/stock/profile2`, {
           params: {
             symbol,
           },

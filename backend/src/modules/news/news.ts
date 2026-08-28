@@ -62,7 +62,7 @@ export const rankArticles = (
     return { ...article, _rank: 4 }
   })
 
-  return withRank.sort((a, b) => (a as any)._rank - (b as any)._rank)
+  return withRank.sort((a, b) => a._rank - b._rank)
 }
 
 export const resolveCursor = async (cursor: string): Promise<Date> => {

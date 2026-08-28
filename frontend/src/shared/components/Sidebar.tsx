@@ -1,6 +1,5 @@
 import { LogoutModal, useAuth } from "@/modules/auth";
 import { UnifiedNotifications } from "@/modules/notifications";
-import { useTheme } from "@/shared/hooks/useTheme";
 import { preloader } from "@/shared/utils/preloader";
 import React, { useEffect, useState } from "react";
 import {
@@ -68,15 +67,13 @@ export const Sidebar: React.FC = () => {
   const [isAccessControlOpen, setIsAccessControlOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user, can, logout } = useAuth();
-  const { theme } = useTheme();
 
   // The backend might return user roles nested deeply depending on the Prisma include
   const userRoleList =
-    user?.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase())
-    || user?.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase())
+    user?.userRoles?.map((ur) => (ur?.role?.name || ur?.name || "").toUpperCase())
+    || user?.roles?.map((r) => (typeof r === "string" ? r : r?.name || "").toUpperCase())
     || [];
 
-  const userEmail = user?.email?.trim().toLowerCase() || "";
   const isAdmin = userRoleList.includes("ADMIN");
 
   const isPortfolioManager =
@@ -89,14 +86,13 @@ export const Sidebar: React.FC = () => {
     userRoleList.includes("ANALYST_ROLE") ||
     userRoleList.includes("ANALYST ROLE");
 
-  // If user is NOT an admin, they see standard menus. 
+  // If user is NOT an admin, they see standard menus.
   // If they ARE an admin, they only see standard menus if they also have a Portfolio Manager or Analyst role.
   const showStandardMenus = !isAdmin || isPortfolioManager || isAnalyst;
 
   // --- NEW PERMISSION GUARD LOGIC ---
   const canSeeAccessControl = isAdmin || (can('ROLE', 'canRead') && !isAnalyst);
   const canSeeUsers = isAdmin || can('USER', 'canRead');
-  const canSeeMarketAnalysis = can('MARKET_DATA', 'canRead');
 
   // Auto-open menus when inside their routes
   useEffect(() => {
@@ -131,7 +127,7 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       {/* Mobile Toggle Button */}
-      <Button 
+      <Button
         variant="outline"
         size="icon"
         onClick={() => setIsOpenMobile(!isOpenMobile)}
@@ -142,7 +138,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Backdrop for mobile */}
       {isOpenMobile && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden"
           onClick={() => setIsOpenMobile(false)}
         />

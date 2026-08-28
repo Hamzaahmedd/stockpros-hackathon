@@ -37,7 +37,7 @@ export async function getUserScreenPermissions(req: AuthenticatedRequest, res: R
       message,
       data: allPermissions,
     });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -61,7 +61,7 @@ export const getAllUsers = async (req: AuthenticatedRequest, res: Response, next
   }
 };
 
-export const getAllPermissions = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getAllPermissions = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const assignedRole = await fetchAllPermissions();
 
@@ -74,7 +74,7 @@ export const getAllPermissions = async (req: AuthenticatedRequest, res: Response
   }
 };
 
-export const getAllRoles = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getAllRoles = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const result = await fetchAllRoles();
 
@@ -87,7 +87,7 @@ export const getAllRoles = async (req: AuthenticatedRequest, res: Response, next
   }
 };
 
-export const getAllResources = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getAllResources = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const result = await fetchAllResources();
 

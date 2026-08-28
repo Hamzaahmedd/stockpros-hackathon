@@ -3,17 +3,16 @@ import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
-import { useTheme } from "@/shared/hooks/useTheme";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
 import { useEffect, useState } from "react";
 import { FiPlus, FiShield, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
-import type { Resource, Role, RolePermission } from "../types";
+import type { Resource, Role, RolePermission, Permission } from "../types";
 
 const Roles = () => {
-    const { theme } = useTheme();
     const { can, user } = useAuth();
-    const userRoleList = user?.userRoles?.map((ur: any) => ur.role?.name?.toUpperCase()) || [];
+    const userRoleList = user?.userRoles?.map(ur => ur.role?.name?.toUpperCase()) || [];
     const isAdmin = userRoleList.includes("ADMIN") || user?.email === "hamzahmed30333@gmail.com";
     const [roles, setRoles] = useState<Role[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
@@ -30,7 +29,7 @@ const Roles = () => {
 
     // Edit Permissions state
     const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({}); // resourceName -> array of actions
-    const [allSystemPermissions, setAllSystemPermissions] = useState<any[]>([]);
+    const [allSystemPermissions, setAllSystemPermissions] = useState<Permission[]>([]);
     const [savingPermissions, setSavingPermissions] = useState(false);
 
     const fetchData = async () => {
@@ -57,11 +56,11 @@ const Roles = () => {
             if (permsRes.data?.success || permsRes.data?.data) {
                 const fetchedPerms = permsRes.data.data || permsRes.data;
                 const filteredPerms = Array.isArray(fetchedPerms)
-                    ? fetchedPerms.filter((p: any) => ['create', 'read'].includes(p.action.toLowerCase()))
+                    ? fetchedPerms.filter(p => ['create', 'read'].includes(p.action.toLowerCase()))
                     : [];
                 setAllSystemPermissions(filteredPerms);
             } else if (Array.isArray(permsRes.data)) {
-                setAllSystemPermissions(permsRes.data.filter((p: any) => ['create', 'read'].includes(p.action.toLowerCase())));
+                setAllSystemPermissions(permsRes.data.filter(p => ['create', 'read'].includes(p.action.toLowerCase())));
             }
         } catch (err) {
             console.error("Error fetching data:", err);
@@ -92,9 +91,9 @@ const Roles = () => {
             setNewRoleName("");
             setNewRoleDesc("");
             toast.success(`Role "${newRole.name}" created successfully!`);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Failed to add role", error);
-            toast.error(error?.response?.data?.message || "Failed to create role.");
+            toast.error(getApiErrorMessage(error, "Failed to create role."));
         } finally {
             setAddingRole(false);
         }
@@ -112,7 +111,7 @@ const Roles = () => {
 
             // Filter to only include create and read
             if (Array.isArray(allPerms)) {
-                allPerms = allPerms.filter((p: any) =>
+                allPerms = allPerms.filter(p =>
                     ['create', 'read'].includes(p.action.toLowerCase())
                 );
             }
@@ -122,9 +121,9 @@ const Roles = () => {
 
             // Parse assignments into the local state
             const currentRolePerms: Record<string, string[]> = {};
-            
+
             if (role.rolePermissions && Array.isArray(role.rolePermissions)) {
-                role.rolePermissions.forEach((rp: any) => {
+                role.rolePermissions.forEach(rp => {
                     if (rp.permission?.resource?.name && rp.permission?.action) {
                         const resName = rp.permission.resource.name;
                         if (!currentRolePerms[resName]) currentRolePerms[resName] = [];
@@ -134,7 +133,7 @@ const Roles = () => {
                     }
                 });
             } else if (Array.isArray(allPerms)) { // Fallback, just in case
-                allPerms.forEach((p: any) => {
+                allPerms.forEach(p => {
                     // Check if this permission is assigned to the current role
                     // Note: p.roleId would be present if the API joined with role_permissions
                     if (p.roleId === role.id && p.resource?.name && p.action) {
@@ -222,9 +221,9 @@ const Roles = () => {
             fetchData();
             closePermissionsModal();
             toast.success("Permissions updated successfully!");
-        } catch (err: any) {
+        } catch (err) {
             console.error("Error saving permissions:", err);
-            toast.error(err?.response?.data?.message || "Failed to assign permissions.");
+            toast.error(getApiErrorMessage(err, "Failed to assign permissions."));
         } finally {
             setSavingPermissions(false);
         }

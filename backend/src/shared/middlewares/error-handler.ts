@@ -13,17 +13,19 @@ import { sendError } from "../utils";
 
 export const errorHandler = (
   err: unknown,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   // Handle Axios / ML backend errors
   if (axios.isAxiosError(err)) {
     const axiosErr = err as AxiosError;
-    const data = axiosErr.response?.data;
-    const mlMessage =
-      (data && typeof data === "object" && "message" in data ? (data as any).message : data) ||
-      axiosErr.message;
+    const data: unknown = axiosErr.response?.data;
+    const dataMessage =
+      typeof data === "object" && data !== null && "message" in data && typeof data.message === "string"
+        ? data.message
+        : undefined;
+    const mlMessage = dataMessage ?? (typeof data === "string" ? data : undefined) ?? axiosErr.message;
     const status = axiosErr.response?.status || 500;
     return sendError(res, {
       message: mlMessage,
@@ -35,23 +37,31 @@ export const errorHandler = (
   let error: AppError;
 
   // --- Helpers ---
-  const getErrorCode = (e: any): string | undefined =>
-    e?.code || e?.cause?.code || e?.meta?.code;
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 
-  const getErrorMessage = (e: any): string => {
-    const raw = e?.message || "Unknown error";
+  const getErrorCode = (e: unknown): string | undefined => {
+    const rec = asRecord(e);
+    if (!rec) return undefined;
+    const code = rec.code ?? asRecord(rec.cause)?.code ?? asRecord(rec.meta)?.code;
+    return typeof code === "string" ? code : undefined;
+  };
+
+  const getErrorMessage = (e: unknown): string => {
+    const rec = asRecord(e);
+    const raw = typeof rec?.message === "string" && rec.message ? rec.message : "Unknown error";
     const match = raw.match(/PostgresError.*message: \"([^\"]+)\"/);
     if (match) return match[1];
     return raw.split("\n").slice(-1)[0];
   };
-  
-  // Handle known error types 
+
+  // Handle known error types
   if (err instanceof AppError) {
     error = err;
   } else if (err instanceof ZodError) {
     error = new ValidationError("Validation failed", err.issues);
   } else {
-    const code = getErrorCode(err as any);
+    const code = getErrorCode(err);
     const msg = getErrorMessage(err);
 
     switch (code) {

@@ -1,10 +1,10 @@
 // src/shared/utils/preloader.ts
 import api from '@/shared/api/axios';
 
-interface CacheEntry<T = any> {
-  data: T;
+interface CacheEntry {
+  data?: unknown;
   timestamp: number;
-  promise?: Promise<T>;
+  promise?: Promise<unknown>;
 }
 
 class PreloaderService {
@@ -13,9 +13,11 @@ class PreloaderService {
   private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly defaultDebounceMs = 75; // 75ms intent delay to avoid accidental cursor pass-bys
 
-  private getCacheKey(url: string, params?: Record<string, any>): string {
+  private getCacheKey(url: string, params?: Record<string, unknown>): string {
     if (!params || Object.keys(params).length === 0) return url;
-    const query = new URLSearchParams(params).toString();
+    const query = new URLSearchParams(
+      Object.entries(params).map(([key, value]) => [key, String(value)])
+    ).toString();
     return `${url}?${query}`;
   }
 
@@ -23,17 +25,17 @@ class PreloaderService {
    * Proactively prefetch data for an API endpoint without blocking.
    * If already cached and fresh or currently in-flight, reuse existing.
    */
-  public preload<T = any>(url: string, params?: Record<string, any>, ttl = this.defaultTTL): Promise<T> {
+  public preload<T = unknown>(url: string, params?: Record<string, unknown>, ttl = this.defaultTTL): Promise<T> {
     const key = this.getCacheKey(url, params);
     const existing = this.cache.get(key);
     const now = Date.now();
 
     if (existing) {
       if (existing.promise) {
-        return existing.promise;
+        return existing.promise as Promise<T>;
       }
       if (now - existing.timestamp < ttl) {
-        return Promise.resolve(existing.data);
+        return Promise.resolve(existing.data as T);
       }
     }
 
@@ -42,14 +44,14 @@ class PreloaderService {
       .then((res) => {
         const data = res.data;
         this.cache.set(key, { data, timestamp: Date.now() });
-        return data;
+        return data as T;
       })
       .catch((err) => {
         this.cache.delete(key);
         throw err;
       });
 
-    this.cache.set(key, { data: null as any, timestamp: now, promise });
+    this.cache.set(key, { data: null, timestamp: now, promise });
     return promise;
   }
 
@@ -57,9 +59,9 @@ class PreloaderService {
    * Preload with intent debouncing (default 75ms).
    * Useful for mouse hover events so accidental cursor pass-bys don't fire requests.
    */
-  public preloadDebounced<T = any>(
+  public preloadDebounced<T = unknown>(
     url: string,
-    params?: Record<string, any>,
+    params?: Record<string, unknown>,
     delayMs = this.defaultDebounceMs,
     ttl = this.defaultTTL
   ): void {
@@ -88,7 +90,7 @@ class PreloaderService {
   /**
    * Get cached data if fresh, or fetch and cache.
    */
-  public async get<T = any>(url: string, params?: Record<string, any>, ttl = this.defaultTTL): Promise<T> {
+  public async get<T = unknown>(url: string, params?: Record<string, unknown>, ttl = this.defaultTTL): Promise<T> {
     const key = this.getCacheKey(url, params);
     this.cancelDebounce(key);
     const existing = this.cache.get(key);
@@ -96,10 +98,10 @@ class PreloaderService {
 
     if (existing) {
       if (existing.promise) {
-        return existing.promise;
+        return existing.promise as Promise<T>;
       }
       if (now - existing.timestamp < ttl && existing.data) {
-        return existing.data;
+        return existing.data as T;
       }
     }
 

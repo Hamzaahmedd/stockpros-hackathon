@@ -1,10 +1,10 @@
 import { Response } from 'express';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ApiErrorResponse {
@@ -15,11 +15,11 @@ export interface ApiErrorResponse {
   errorCode?: string;
 }
 
-export interface SendSuccessOptions<T = any> {
+export interface SendSuccessOptions<T = unknown> {
   data?: T;
   message?: string;
   statusCode?: number;
-  extra?: Record<string, any>;
+  extra?: Record<string, unknown>;
 }
 
 export interface SendErrorOptions {
@@ -32,7 +32,7 @@ export interface SendErrorOptions {
 /**
  * Sends a standardized success response envelope.
  */
-export const sendSuccess = <T = any>(
+export const sendSuccess = <T = unknown>(
   res: Response,
   options: SendSuccessOptions<T> = {}
 ): Response => {

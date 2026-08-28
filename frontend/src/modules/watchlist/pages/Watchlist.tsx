@@ -9,6 +9,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton as ShadcnSkeleton } from "@/shared/components/ui/skeleton";
 import { useSocket } from "@/shared/hooks/useSocket";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { preloader } from "@/shared/utils/preloader";
 import React, { useEffect, useState } from "react";
 import {
@@ -33,7 +34,7 @@ import type { Alert, WatchlistItem } from "../types";
 // --- Components ---
 
 const Badge = ({ children, color = "cyan" }: { children: React.ReactNode, color?: string }) => {
-  const colors: any = {
+  const colors: Record<string, string> = {
     cyan: "bg-primary/10 text-primary border-primary/20",
     red: "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10",
     green: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10",
@@ -59,7 +60,7 @@ const formatNumber = (val: number | null, prefix = "", suffix = "") => {
 const Watchlist: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const isAnalyst = user?.userRoles?.some((ur: any) => ur.role?.name === "ANALYST");
+  const isAnalyst = user?.userRoles?.some((ur) => ur.role?.name === "ANALYST");
   const { connected, subscribe, unsubscribe, getTradeMap } = useSocket(true);
   const tradeMap = getTradeMap();
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -67,23 +68,23 @@ const Watchlist: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [expandedBasis, setExpandedBasis] = useState<string | null>(null);
-  
+
   // Alert management state
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [currentAlerts, setCurrentAlerts] = useState<Alert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [newAlertType, setNewAlertType] = useState("PRICE_ABOVE");
-  
+
   // Confirmation states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
-  
+
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [symbolToRemove, setSymbolToRemove] = useState<string | null>(null);
 
   const [showAlertDeleteModal, setShowAlertDeleteModal] = useState(false);
   const [alertToDelete, setAlertToDelete] = useState<{ symbol: string, id: string } | null>(null);
-  
+
   // Edit entry state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null);
@@ -114,8 +115,8 @@ const Watchlist: React.FC = () => {
       if (res?.success && Array.isArray(res.data)) {
         setWatchlist(res.data);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to fetch watchlist");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to fetch watchlist"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +142,7 @@ const Watchlist: React.FC = () => {
       preloader.invalidate('/api/v1/watchlist');
       toast.success(`${symbol} removed`);
       unsubscribe(symbol);
-    } catch (err: any) {
+    } catch {
       // Rollback on error
       setWatchlist(previousWatchlist);
       toast.error("Failed to remove item");
@@ -152,12 +153,12 @@ const Watchlist: React.FC = () => {
     setConfirmTarget(symbol);
     setShowConfirmModal(true);
   };
- 
+
   const executeConversion = async () => {
     if (!confirmTarget) return;
     const symbol = confirmTarget;
     const previousWatchlist = [...watchlist];
- 
+
     // Optimistic removal
     setWatchlist(prev => prev.filter(item => item.symbol !== symbol));
     setConfirmTarget(null);
@@ -169,23 +170,23 @@ const Watchlist: React.FC = () => {
       unsubscribe(symbol);
       // Refetch entire watchlist for metrics updates
       fetchWatchlist();
-    } catch (err: any) {
+    } catch (err) {
       setWatchlist(previousWatchlist);
-      toast.error(err.response?.data?.message || "Conversion failed");
+      toast.error(getApiErrorMessage(err, "Conversion failed"));
     }
   };
- 
+
   const handleUpdateEntry = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingItem) return;
-    
+
     const formData = new FormData(e.currentTarget);
     const data = {
       targetEntryPrice: parseFloat(formData.get("targetEntryPrice") as string),
       stopLoss: parseFloat(formData.get("stopLoss") as string),
       notes: formData.get("notes") as string,
     };
- 
+
     if (data.stopLoss >= data.targetEntryPrice) {
       toast.error("Stop-loss must be lower than target entry price");
       return;
@@ -197,8 +198,8 @@ const Watchlist: React.FC = () => {
       toast.success(`Updated ${editingItem.symbol}`);
       setShowEditModal(false);
       fetchWatchlist();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Update failed");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Update failed"));
     }
   };
 
@@ -221,7 +222,7 @@ const Watchlist: React.FC = () => {
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
       <Sidebar />
-      
+
       <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -231,7 +232,7 @@ const Watchlist: React.FC = () => {
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">Monitor high-conviction setups and AI insights.</p>
           </div>
-          <Button 
+          <Button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2"
           >
@@ -314,16 +315,16 @@ const Watchlist: React.FC = () => {
             </div>
           ) : (
             watchlist.map((item) => (
-              <div 
-                key={item.symbol} 
+              <div
+                key={item.symbol}
                 className={`group border transition-all duration-300 rounded-lg p-4 md:p-6 bg-card ${
-                  item.stopLossBreached 
-                    ? "border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]" 
+                  item.stopLossBreached
+                    ? "border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]"
                     : "border-border hover:border-border/80 hover:shadow-lg hover:shadow-primary/5"
                 }`}
               >
                 <div className="flex flex-col lg:grid lg:grid-cols-[1.2fr_1fr_4.5fr_1fr] gap-4 md:gap-6">
-                  
+
                   {/* Symbol & Market Data */}
                   <div className="flex items-start gap-4">
                     <Avatar className="w-12 h-12 border border-border">
@@ -378,13 +379,13 @@ const Watchlist: React.FC = () => {
                     )}
                   </div>                    {/* Strategy Column: User Plan & AI Analysis */}
                     <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 border-t lg:border-t-0 lg:border-l-2 pt-6 lg:pt-0 lg:pl-6 border-border`}>
-                      
+
                       {/* USER STRATEGY - Stable 2-column grid */}
                       <div className="space-y-3 min-w-0">
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-widest font-black whitespace-nowrap">
                           <span className="text-cyan-500">+</span> MY STRATEGY
                         </div>
-                        
+
                         <div className="flex items-center gap-4">
                           <div className="flex-1">
                             <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mb-1 opacity-80 whitespace-nowrap">Targets</p>
@@ -399,9 +400,9 @@ const Watchlist: React.FC = () => {
                               ))}
                             </div>
                           </div>
-                          
+
                           <div className={`w-1.5 h-8 shrink-0 rounded-full ${theme === 'dark' ? 'bg-white/40' : 'bg-gray-500'}`} />
-                          
+
                           <div className="flex-1">
                             <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold mb-1 opacity-80 whitespace-nowrap">Stop Loss</p>
                             <div className="flex flex-col gap-1">
@@ -428,7 +429,7 @@ const Watchlist: React.FC = () => {
                       {/* AI STRATEGY - Stable 2-column grid */}
                       <div className={`space-y-3 min-w-0 border-t md:border-t-0 md:border-l-2 pt-6 md:pt-0 md:pl-6 border-border`}>
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-widest font-bold whitespace-nowrap">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/80"></span> 
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/80"></span>
                           AI Suggested
                         </div>
 
@@ -439,9 +440,9 @@ const Watchlist: React.FC = () => {
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold mb-1 opacity-80 whitespace-nowrap">Entry</p>
                               <p className={`text-sm font-black leading-snug ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}>{formatNumber(item.aiSuggested?.entry ?? null, "$")}</p>
                             </div>
-                            
+
                             <div className={`w-1.5 h-8 shrink-0 rounded-full ${theme === 'dark' ? 'bg-white/40' : 'bg-gray-500'}`} />
-                            
+
                             <div className="flex-1">
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold mb-1 opacity-80 whitespace-nowrap">Exit (TP)</p>
                               <p className={`text-sm font-black leading-snug ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatNumber(item.aiSuggested?.takeProfit ?? null, "$")}</p>
@@ -457,7 +458,7 @@ const Watchlist: React.FC = () => {
                             <div className="pt-2">
                               {item.aiSuggested && (
                                 <span className={`px-1.5 py-0.5 rounded bg-white/5 text-[8px] font-black border ${
-                                  item.aiSuggested.confidence === 'HIGH' ? 'text-emerald-400 border-emerald-400/20' : 
+                                  item.aiSuggested.confidence === 'HIGH' ? 'text-emerald-400 border-emerald-400/20' :
                                   item.aiSuggested.confidence === 'MEDIUM' ? 'text-amber-400 border border-amber-400/20' : 'text-red-400 border border-red-400/20'
                                 }`}>
                                   {item.aiSuggested.confidence}
@@ -469,8 +470,8 @@ const Watchlist: React.FC = () => {
                           {/* Action Row: Basis Button */}
                           {item.aiSuggested ? (
                             <div className="pt-1">
-                              <button 
-                                onClick={() => setExpandedBasis(expandedBasis === item.symbol ? null : item.symbol)} 
+                              <button
+                                onClick={() => setExpandedBasis(expandedBasis === item.symbol ? null : item.symbol)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all group shadow-sm active:scale-95"
                               >
                                 <FiInfo size={14} className="text-cyan-500 group-hover:scale-110 transition-transform shrink-0" />
@@ -491,14 +492,14 @@ const Watchlist: React.FC = () => {
                   <div className="flex flex-row lg:flex-col justify-between items-center lg:items-stretch py-2 border-t lg:border-t-0 lg:border-l-2 pt-4 lg:pt-0 lg:pl-10 gap-4 border-border">
                     <div className="flex flex-col gap-2">
                       {!isAnalyst && (
-                        <button 
+                        <button
                           onClick={() => handleConvertToPosition(item.symbol)}
                           className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition lg:whitespace-nowrap"
                         >
                           <FiDollarSign /> Buy Now
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => openAlerts(item.symbol)}
                         onMouseEnter={() => preloader.preload(`/api/v1/watchlist/${item.symbol}/alerts`)}
                         onFocus={() => preloader.preload(`/api/v1/watchlist/${item.symbol}/alerts`)}
@@ -508,7 +509,7 @@ const Watchlist: React.FC = () => {
                       </button>
                     </div>
                     <div className="flex items-center justify-center gap-3">
-                      <button 
+                      <button
                         onClick={() => {
                           setEditingItem(item);
                           setShowEditModal(true);
@@ -517,7 +518,7 @@ const Watchlist: React.FC = () => {
                       >
                         <FiEdit2 size={14} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleRemove(item.symbol)}
                         className="p-2 rounded-lg transition bg-destructive/10 text-destructive hover:bg-destructive/20"
                       >
@@ -600,12 +601,11 @@ const Watchlist: React.FC = () => {
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              const rawData = Object.fromEntries(formData) as any;
               const data = {
-                ...rawData,
                 symbol: newTickerSymbol,
-                targetEntryPrice: parseFloat(rawData.targetEntryPrice),
-                stopLoss: parseFloat(rawData.stopLoss),
+                targetEntryPrice: parseFloat(formData.get("targetEntryPrice") as string),
+                stopLoss: parseFloat(formData.get("stopLoss") as string),
+                notes: formData.get("notes") as string,
               };
 
               if (!data.symbol) {
@@ -624,13 +624,13 @@ const Watchlist: React.FC = () => {
                 setShowAddModal(false);
                 setNewTickerSymbol("");
                 fetchWatchlist();
-              } catch (err: any) {
-                toast.error(err.response?.data?.message || "Failed to add symbol");
+              } catch (err) {
+                toast.error(getApiErrorMessage(err, "Failed to add symbol"));
               }
             }} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">Ticker Symbol</label>
-                <SmartSearch 
+                <SmartSearch
                   onSubmit={(sym) => setNewTickerSymbol(sym)}
                   placeholder="Search symbol (e.g. NVDA)"
                 />
@@ -667,14 +667,14 @@ const Watchlist: React.FC = () => {
                 <FiBell className="text-primary" />
                 Alerts for {selectedItem.symbol}
               </h2>
-              <button 
+              <button
                 onClick={() => setShowAlertModal(false)}
                 className="p-2 hover:bg-secondary rounded-lg text-muted-foreground"
               >
                 ✕
               </button>
             </div>
-            
+
             <div className="space-y-4 max-h-[400px] overflow-y-auto mb-6 pr-2 custom-scrollbar">
               {loadingAlerts ? (
                 <div className="space-y-3">
@@ -701,7 +701,7 @@ const Watchlist: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <button 
+                      <button
                         onClick={async () => {
                           if (!selectedItem) return;
                           const nextState = !alert.isActive;
@@ -711,17 +711,17 @@ const Watchlist: React.FC = () => {
                             await api.patch(`/api/v1/watchlist/${selectedItem.symbol}/alerts/${alert.id}`, { isActive: nextState });
                             preloader.invalidate(`/api/v1/watchlist/${selectedItem.symbol}/alerts`);
                             fetchWatchlist();
-                          } catch (err) { 
+                          } catch {
                             // Rollback
                             setCurrentAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, isActive: !nextState } : a));
-                            toast.error("Update failed"); 
+                            toast.error("Update failed");
                           }
                         }}
                         className={`w-10 h-5 rounded-full transition-colors relative ${alert.isActive ? 'bg-cyan-500' : 'bg-gray-700'}`}
                       >
                         <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${alert.isActive ? 'left-6' : 'left-1'}`} />
                       </button>
-                      <button 
+                      <button
                         onClick={async () => {
                           setAlertToDelete({ symbol: selectedItem.symbol, id: alert.id });
                           setShowAlertDeleteModal(true);
@@ -741,7 +741,7 @@ const Watchlist: React.FC = () => {
                 <FiInfo className="shrink-0" />
                 <span>Note: Alerts have a 1-hour cooldown after triggering to prevent spam.</span>
               </div>
-              
+
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Create New Alert</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
@@ -757,11 +757,11 @@ const Watchlist: React.FC = () => {
                   toast.success("Alert set");
                   openAlerts(selectedItem.symbol);
                   fetchWatchlist();
-                } catch (err) { toast.error("Failed to set alert"); }
+                } catch { toast.error("Failed to set alert"); }
               }} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                      <select 
-                    name="type" 
+                      <select
+                    name="type"
                     value={newAlertType}
                     onChange={(e) => setNewAlertType(e.target.value)}
                     className={`border rounded-xl px-4 h-12 outline-none text-sm focus:border-cyan-500/50 appearance-none cursor-pointer font-medium ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
@@ -773,15 +773,15 @@ const Watchlist: React.FC = () => {
                      <option value="ENTRY_ZONE" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Entry Zone Hit</option>
                      <option value="SL_BREACHED" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Stop Loss Hit</option>
                   </select>
-                  
+
                   {["PRICE_ABOVE", "PRICE_BELOW", "PCT_CHANGE_UP", "PCT_CHANGE_DOWN"].includes(newAlertType) ? (
-                    <input 
-                      name="threshold" 
-                      type="number" 
-                      step="0.01" 
-                      required 
-                      placeholder={newAlertType.includes('PCT') ? "e.g. 5 (%)" : "Target Price"} 
-                      className="bg-white/5 border border-white/10 rounded-xl px-4 h-12 outline-none text-sm focus:border-cyan-500/50" 
+                    <input
+                      name="threshold"
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder={newAlertType.includes('PCT') ? "e.g. 5 (%)" : "Target Price"}
+                      className="bg-white/5 border border-white/10 rounded-xl px-4 h-12 outline-none text-sm focus:border-cyan-500/50"
                     />
                   ) : (
                     <div className="bg-white/5 border border-white/5 rounded-xl px-4 h-12 flex items-center text-xs text-gray-500 italic">
@@ -789,7 +789,7 @@ const Watchlist: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <button type="submit" className="w-full h-12 rounded-xl bg-cyan-500 text-black font-bold flex items-center justify-center gap-2 hover:bg-cyan-400 transition shadow-lg shadow-cyan-500/20">
                   <FiPlus /> Set Alert
                 </button>
@@ -838,9 +838,9 @@ const Watchlist: React.FC = () => {
             preloader.invalidate(`/api/v1/watchlist/${target.symbol}/alerts`);
             fetchWatchlist();
             toast.success("Alert deleted");
-          } catch (err) { 
+          } catch {
             setCurrentAlerts(previousAlerts);
-            toast.error("Delete failed"); 
+            toast.error("Delete failed");
           }
         }}
         onCancel={() => setShowAlertDeleteModal(false)}

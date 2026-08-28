@@ -8,12 +8,12 @@ import { deleteCache, getCache, setCache } from "../../shared/infrastructure/cac
 import { ScreenPermissions } from "./types";
 
 // ── Role Management ──
-export async function grantRole(params: GrantRoleParams): Promise<any> {
+export async function grantRole(params: GrantRoleParams) {
   const { userId, roleIds, callerId } = params
 
   await deleteCache(`user:${userId}:screens:effective:all`);
 
-  return prisma.$transaction(async (tx: any) => {
+  return prisma.$transaction(async (tx) => {
     const [targetUser, rolesToAssign] = await Promise.all([
       tx.user.findUnique({ where: { id: userId }, select: { id: true, displayName: true } }),
       tx.role.findMany({ where: { id: { in: roleIds } } }),
@@ -29,8 +29,8 @@ export async function grantRole(params: GrantRoleParams): Promise<any> {
       include: { role: true }
     });
 
-    const wasAdmin = currentUserRoles.some((ur: any) => ur.role.name === RoleName.ADMIN);
-    const willBeAdmin = rolesToAssign.some((r: any) => r.name === RoleName.ADMIN);
+    const wasAdmin = currentUserRoles.some((ur) => ur.role.name === RoleName.ADMIN);
+    const willBeAdmin = rolesToAssign.some((r) => r.name === RoleName.ADMIN);
 
     if (wasAdmin && !willBeAdmin) {
       throw new ForbiddenError('You cannot strip the admin role from another admin.');
@@ -60,7 +60,7 @@ export async function grantRole(params: GrantRoleParams): Promise<any> {
     return {
       userId: targetUser.id,
       userName: targetUser.displayName,
-      roles: finalAssignments.map((a: any) => a.role)
+      roles: finalAssignments.map((a) => a.role)
     };
   });
 }
@@ -70,7 +70,7 @@ export async function unassignRole(params: RevokeRoleParams) {
 
   await deleteCache(`user:${userId}:screens:effective:all`);
 
-  return prisma.$transaction(async (tx: any) => {
+  return prisma.$transaction(async (tx) => {
     const [role, revoker, targetUser] = await Promise.all([
       tx.role.findUnique({ where: { id: roleId } }),
       tx.user.findUnique({ where: { id: revokedByUserId } }),
@@ -224,7 +224,7 @@ export async function revokePermissions(params: AssignPermissionsParams) {
   const resources = await prisma.resource.findMany({
     where: { name: { in: resourceNames } },
   });
-  const resourceMap = Object.fromEntries(resources.map((r: any) => [r.name, r]));
+  const resourceMap = Object.fromEntries(resources.map((r) => [r.name, r]));
 
   for (const p of permissions) {
     if (!resourceMap[p.resourceName]) {
@@ -260,7 +260,7 @@ export async function revokePermissions(params: AssignPermissionsParams) {
     return;
   }
 
-  await prisma.$transaction(async (tx: any) => {
+  await prisma.$transaction(async (tx) => {
     for (const link of rolePermissionWhereList) {
       await tx.rolePermission.deleteMany({
         where: {
@@ -408,7 +408,7 @@ export async function getUserPermissions(
     select: { roleId: true },
   });
 
-  const roleIds = userRoles.map((r: any) => r.roleId);
+  const roleIds = userRoles.map((r) => r.roleId);
   if (!roleIds.length) return [];
 
   const rolePermissions = await prisma.rolePermission.findMany({
@@ -417,7 +417,7 @@ export async function getUserPermissions(
   });
 
   let allowedActions: Action[] = [];
-  rolePermissions.forEach((rp: any) => {
+  rolePermissions.forEach((rp) => {
     if (rp.permission.resource.name === resourceName) {
       allowedActions.push(rp.permission.action as Action);
     }
@@ -428,7 +428,7 @@ export async function getUserPermissions(
     include: { permission: { include: { resource: true } } },
   });
 
-  userPermissions.forEach((up: any) => {
+  userPermissions.forEach((up) => {
     if (up.permission.resource.name === resourceName) {
       allowedActions.push(up.permission.action as Action);
     }
@@ -442,12 +442,7 @@ export async function getUserPermissions(
 }
 
 // ── Data Fetching ──
-export async function fetchAllUsers(query: { cursor?: string; limit?: number } = {}): Promise<{
-  data: any[];
-  nextCursor: string | null;
-  hasMore: boolean;
-  total: number;
-}> {
+export async function fetchAllUsers(query: { cursor?: string; limit?: number } = {}) {
   const { cursor, limit = 20 } = query;
 
   let cursorCreatedAt: Date | undefined;
@@ -501,7 +496,7 @@ export async function fetchAllUsers(query: { cursor?: string; limit?: number } =
   };
 }
 
-export async function fetchAllRoles(): Promise<any[]> {
+export async function fetchAllRoles() {
   const roles = await prisma.role.findMany({
     orderBy: {
       name: 'asc',
@@ -542,7 +537,7 @@ export async function fetchAllRoles(): Promise<any[]> {
   return formattedRoles
 }
 
-export async function fetchAllPermissions(): Promise<any[]> {
+export async function fetchAllPermissions() {
   const permissions = await prisma.permission.findMany({
     orderBy: {
       action: 'asc',
@@ -564,7 +559,7 @@ export async function fetchAllPermissions(): Promise<any[]> {
   return permissions
 }
 
-export async function fetchAllResources(): Promise<any[]> {
+export async function fetchAllResources() {
   const resources = await prisma.resource.findMany({
     orderBy: {
       name: 'asc',

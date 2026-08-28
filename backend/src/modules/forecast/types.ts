@@ -7,26 +7,24 @@ export interface Prediction {
 
 export interface HistoricalPoint {
   date: string;
-  close: number;
+  price: number;
 }
 
-export interface ForecastResponse {
-  success: boolean;
-  message: string;
-  data: {
-    symbol: string;
-    period: string;
-    predictions: Prediction[];
-    historicalData: HistoricalPoint[];
-    units: string;
-    targetRange?: {
-      bull: number;
-      base: number;
-      bear: number;
-      atr: number;
-      confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-    };
-    status?: string;
-    estimated_ready_at?: number;
+export interface ForecastData {
+  symbol: string;
+  period: string;
+  currentPrice?: number;
+  predictions: Prediction[];
+  historicalData?: HistoricalPoint[];
+  units?: string;
+  status?: string;
+  message?: string;
+  estimated_ready_at?: number;
+  targetRange?: {
+    bull: number;
+    base: number;
+    bear: number;
+    atr: number;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   };
 }

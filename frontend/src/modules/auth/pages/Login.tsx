@@ -5,13 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AuthLayout } from "../components/AuthLayout";
-import { Mail, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Mail, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "@/shared/api/axios";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { GOOGLE_CLIENT_ID } from "@/shared/config";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { setAccessToken } from "@/shared/utils/token";
 import { googleLogin } from "../services";
 
@@ -53,7 +54,7 @@ export const Login: React.FC = () => {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, handleSubmit, formState, getValues } = useForm<Form>({
+  const { register, handleSubmit, formState } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
       email: "",
@@ -64,8 +65,8 @@ export const Login: React.FC = () => {
   useEffect(() => {
     if (user) {
       const roles =
-        user.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
-        user.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
+        user.userRoles?.map(ur => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
+        user.roles?.map(r => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
         [];
 
       const isAdmin = roles.includes("ADMIN");
@@ -101,8 +102,8 @@ export const Login: React.FC = () => {
       setSubmittedEmail(email);
       setResendCooldown(30); // 30s cooldown before resending
       toast.success("Magic link sent! Please check your inbox.");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to send magic link. Please try again.");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to send magic link. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -134,8 +135,8 @@ export const Login: React.FC = () => {
         await refreshMe();
         toast.success("Signed in with Google successfully");
         // The "already logged in" redirect effect above takes over once `user` is set
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+      } catch (err) {
+        toast.error(getApiErrorMessage(err, "Google sign-in failed. Please try again."));
       } finally {
         setIsGoogleLoading(false);
       }

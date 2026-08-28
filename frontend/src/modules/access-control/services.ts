@@ -1,5 +1,5 @@
 import api from '@/shared/api/axios';
-import type { Permission, Resource } from './types';
+import type { AccessControlUser, Permission, Resource, Role } from './types';
 
 export type { Permission, Resource } from './types';
 
@@ -14,12 +14,12 @@ export const rbacService = {
         return response.data.data || response.data;
     },
 
-    getRoles: async () => {
+    getRoles: async (): Promise<Role[]> => {
         const response = await api.get('/api/v1/rbac/roles');
         return response.data.data || response.data;
     },
 
-    getUsers: async () => {
+    getUsers: async (): Promise<AccessControlUser[]> => {
         const response = await api.get('/api/v1/rbac/users');
         return response.data.data || response.data;
     }

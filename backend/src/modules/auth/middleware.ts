@@ -7,7 +7,7 @@ import config from "../../shared/infrastructure/config/env";
 
 const ACCESS_TOKEN_SECRET = config.auth.accessTokenSecret;
 
-  export const authTokenMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  export const authTokenMiddleware = async (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
     try {
       // Get token from Authorization header (Bearer <token>)
       const authHeader = req.headers.authorization;
@@ -34,10 +34,10 @@ const ACCESS_TOKEN_SECRET = config.auth.accessTokenSecret;
       // Attach user info to request
       req.user = { userId: payload.sub, jti: payload.jti };
       next();
-    } catch (error: any) {
-      if (error.name === 'TokenExpiredError') {
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
         throw new UnauthorizedError("Authentication required (Token Expired)");
-    }
+      }
       next(error);
     }
   };

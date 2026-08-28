@@ -1,6 +1,5 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { FiAlertTriangle } from 'react-icons/fi';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -13,25 +12,17 @@ interface ConfirmationModalProps {
   variant?: 'danger' | 'success' | 'info';
 }
 
-export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ 
-  isOpen, 
-  onConfirm, 
-  onCancel, 
-  title, 
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+  isOpen,
+  onConfirm,
+  onCancel,
+  title,
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'info'
 }) => {
   if (!isOpen) return null;
-
-  const getVariantColor = () => {
-    switch (variant) {
-      case 'danger': return 'bg-[#ef4444] hover:bg-[#dc2626] shadow-red-500/20';
-      case 'success': return 'bg-[#10b981] hover:bg-[#059669] shadow-emerald-500/20';
-      default: return 'bg-[#06b6d4] hover:bg-[#0891b2] shadow-cyan-500/20';
-    }
-  };
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 text-white">
@@ -43,7 +34,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
       {/* Modal Content */}
       <div className="relative w-full max-w-[360px] overflow-hidden bg-[#111318] rounded-[28px] shadow-2xl border border-white/5 p-8 animate-in fade-in zoom-in-95 duration-200">
-        
+
         <div className="flex flex-col items-center text-center">
           <h3 className="text-[22px] font-bold text-white mb-3 leading-tight tracking-tight">
             {title}

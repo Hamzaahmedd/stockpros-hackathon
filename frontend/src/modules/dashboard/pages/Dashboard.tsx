@@ -6,7 +6,6 @@ import { Button } from "@/shared/components/ui/button";
 import { CardContent, CardHeader, CardTitle, Card as ShadcnCard } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useSocket } from "@/shared/hooks/useSocket";
-import { useTheme } from "@/shared/hooks/useTheme";
 import healthService from "@/shared/services/healthService";
 import { ResponsiveHeatMap } from "@nivo/heatmap";
 import React, { useEffect, useState } from "react";
@@ -19,14 +18,15 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
-import { DashboardData } from "../types";
+import type { TooltipProps } from "recharts";
+import { DashboardData, TrendingStock } from "../types";
 
 // --- SUB-COMPONENTS ---
 
-const CircularProgress: React.FC<{ value: number; size?: number; strokeWidth?: number; color?: string; band?: string }> = ({ 
-  value, 
-  size = 120, 
-  strokeWidth = 10, 
+const CircularProgress: React.FC<{ value: number; size?: number; strokeWidth?: number; color?: string; band?: string }> = ({
+  value,
+  size = 120,
+  strokeWidth = 10,
   color = "#22c55e",
   band = "Fair"
 }) => {
@@ -48,9 +48,9 @@ const CircularProgress: React.FC<{ value: number; size?: number; strokeWidth?: n
   );
 };
 
-function CustomCard({ title, actions, children, className = "" }: { 
-  title?: string; 
-  actions?: React.ReactNode; 
+function CustomCard({ title, actions, children, className = "" }: {
+  title?: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -69,10 +69,9 @@ function CustomCard({ title, actions, children, className = "" }: {
   );
 }
 
-const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
-  const { theme } = useTheme();
+const TrendingStockCard: React.FC<{ stock: TrendingStock }> = ({ stock }) => {
   const isPositive = stock.changePercent >= 0;
-  
+
   const chartData = stock.sparkline?.map((price: number, idx: number) => ({
     name: idx,
     value: price,
@@ -111,8 +110,8 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
                 <stop offset="95%" stopColor={isPositive ? '#22c55e' : '#ef4444'} stopOpacity={0.05}/>
               </linearGradient>
             </defs>
-            <Tooltip 
-              content={({ active, payload }: any) => {
+            <Tooltip
+              content={({ active, payload }: TooltipProps<number, string>) => {
                 if (active && payload && payload.length) {
                   return (
                     <div className="bg-popover text-popover-foreground border px-3 py-2 rounded-lg shadow-lg text-sm">
@@ -125,11 +124,11 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
               }}
             />
             <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
-            <Area 
-               type="monotone" 
-               dataKey="value" 
-               stroke={isPositive ? '#22c55e' : '#ef4444'} 
-               fill={`url(#grad-${stock.symbol})`} 
+            <Area
+               type="monotone"
+               dataKey="value"
+               stroke={isPositive ? '#22c55e' : '#ef4444'}
+               fill={`url(#grad-${stock.symbol})`}
                strokeWidth={2}
                isAnimationActive={true}
             />
@@ -147,17 +146,16 @@ export const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [heatmapTimeframe, setHeatmapTimeframe] = useState<'1d' | '5d' | '1m'>('1d');
     const [showHealthBreakdown, setShowHealthBreakdown] = useState(false);
-    const { getTradeMap } = useSocket(true);
-    const tradeMap = getTradeMap();
-    const { theme } = useTheme();
+    // Connect the shared market socket for this screen (trade data is consumed elsewhere)
+    useSocket(true);
 
-    const roles1 = user?.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) || [];
-    const roles2 = user?.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) || [];
+    const roles1 = user?.userRoles?.map(ur => (ur?.role?.name || ur?.name || "").toUpperCase()) || [];
+    const roles2 = user?.roles?.map(r => (typeof r === "string" ? r : r?.name || "").toUpperCase()) || [];
     const userRoleList = [...roles1, ...roles2];
-    
+
     const isAdmin = userRoleList.includes("ADMIN");
     const isPortfolioManager = userRoleList.includes("PORTFOLIO_MANAGER") || userRoleList.includes("PORTFOLIO MANAGER") || userRoleList.includes("PORTFOLIO");
     const isAnalyst = userRoleList.includes("ANALYST") || userRoleList.includes("ANALYST_ROLE") || userRoleList.includes("ANALYST ROLE");
@@ -173,9 +171,9 @@ export const Dashboard: React.FC = () => {
     useEffect(() => {
         healthService.checkHealth();
       }, []);
-    
+
     useEffect(() => {
-        if (isAdminOnly) return; 
+        if (isAdminOnly) return;
         const getDashboard = async () => {
             try {
                 setIsLoading(true);
@@ -402,7 +400,7 @@ export const Dashboard: React.FC = () => {
                                                 {hidePortfolio ? "Review top-performing sectors, global heatmap activity, and priority market triggers below." : briefing.decisionSupport.headline}
                                             </p>
                                         </div>
-                                        
+
                                         {!hidePortfolio && (
                                             <div className="grid grid-cols-2 gap-3 shrink-0">
                                                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
@@ -438,14 +436,14 @@ export const Dashboard: React.FC = () => {
                             </ShadcnCard>
 
                             {/* SECTOR HEATMAP */}
-                            <CustomCard 
-                                title="Global Sector Heatmap/Matrix" 
+                            <CustomCard
+                                title="Global Sector Heatmap/Matrix"
                                 actions={
                                     <div className="flex bg-muted p-1 rounded-md">
-                                        {['1d', '5d', '1m'].map((tf) => (
+                                        {(['1d', '5d', '1m'] as const).map((tf) => (
                                             <button
                                                 key={tf}
-                                                onClick={() => setHeatmapTimeframe(tf as any)}
+                                                onClick={() => setHeatmapTimeframe(tf)}
                                                 className={`px-3 py-1 rounded-sm text-xs transition-all ${
                                                     heatmapTimeframe === tf ? 'bg-background shadow-sm' : 'text-muted-foreground'
                                                 }`}
@@ -527,8 +525,8 @@ export const Dashboard: React.FC = () => {
                             <CustomCard title="Priority Triggers" className="h-fit">
                                 <div className="grid md:grid-cols-2 gap-4">
                                     {(smartTriggers?.items || []).slice(0, 4).map((trigger, idx) => (
-                                        <div 
-                                            key={idx} 
+                                        <div
+                                            key={idx}
                                             onClick={() => navigate('/market')}
                                             className={`p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${trigger.urgency === 'HIGH' ? 'border-destructive/30 bg-destructive/5' : 'bg-card'}`}
                                         >
@@ -562,8 +560,8 @@ export const Dashboard: React.FC = () => {
                                 <ShadcnCard className="relative overflow-hidden">
                                     <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5 space-y-0">
                                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portfolio Health</CardTitle>
-                                        <Button 
-                                           variant="ghost" 
+                                        <Button
+                                           variant="ghost"
                                            size="icon"
                                            onClick={() => setShowHealthBreakdown(!showHealthBreakdown)}
                                            className={`h-8 w-8 ${showHealthBreakdown ? 'text-primary' : 'text-muted-foreground'}`}
@@ -580,7 +578,7 @@ export const Dashboard: React.FC = () => {
                                             <div className="text-xs font-bold uppercase tracking-wider text-primary">Health Breakdown</div>
                                                     <button onClick={() => setShowHealthBreakdown(false)} className="text-muted-foreground hover:text-foreground">&times;</button>
                                                 </div>
-                                                
+
                                                 <div className="space-y-4">
                                                     {[
                                                         { label: "Diversification", value: portfolio.healthScore.breakdown.diversification },
@@ -595,11 +593,11 @@ export const Dashboard: React.FC = () => {
                                                                 <span className={item.value > 70 ? 'text-green-600' : item.value > 40 ? 'text-yellow-600' : 'text-red-600'}>{item.value}%</span>
                                                             </div>
                                                             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                                                <div 
+                                                                <div
                                                                     className={`h-full transition-all duration-1000 ease-out rounded-full ${
                                                                         item.value > 70 ? 'bg-green-500' : item.value > 40 ? 'bg-yellow-500' : 'bg-red-500'
                                                                     }`}
-                                                                    style={{ width: `${item.value}%` }} 
+                                                                    style={{ width: `${item.value}%` }}
                                                                 />
                                                             </div>
                                                         </div>
@@ -610,8 +608,8 @@ export const Dashboard: React.FC = () => {
                                     )}
 
                                     <div className="flex flex-col items-center">
-                                        <CircularProgress 
-                                            value={portfolio.healthScore.score} 
+                                        <CircularProgress
+                                            value={portfolio.healthScore.score}
                                             band={portfolio.healthScore.band}
                                             color={portfolio.healthScore.score > 70 ? '#16a34a' : portfolio.healthScore.score > 40 ? '#eab308' : '#dc2626'}
                                         />
@@ -663,8 +661,8 @@ export const Dashboard: React.FC = () => {
                             )}
 
                             {/* IMPACT NEWS */}
-                            <CustomCard 
-                                title="Impact News" 
+                            <CustomCard
+                                title="Impact News"
                                 actions={
                                     <Button variant="link" className="p-0 h-auto text-xs text-primary" onClick={() => navigate('/news')}>
                                         View all {impactNews.totalCount} <FiArrowRight className="ml-1 h-3 w-3" />

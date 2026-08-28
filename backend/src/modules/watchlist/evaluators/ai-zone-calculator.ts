@@ -1,5 +1,5 @@
 import type { AiConfidence } from '@prisma/client';
-import type { AiZones, Candle, TechnicalBaselines } from '../types';
+import type { Candle, TechnicalBaselines } from '../types';
 import twelveDataClient from '../../../shared/infrastructure/clients/twelve-data-client';
 import { prisma } from '../../../shared/infrastructure/database';
 

@@ -3,6 +3,12 @@ import { afterAll, beforeAll, describe, it, jest } from '@jest/globals'
 
 jest.setTimeout(180000); // allow 3 minutes for continuous real-time streaming
 
+/** Shape emitted by the backend Socket.IO server (Finnhub trade + snapshot variants). */
+interface TradePayload {
+  s?: unknown;
+  [key: string]: unknown;
+}
+
 describe("Socket.IO Finnhub real-time streaming (continuous test)", () => {
   let socket: Socket;
   const symbols = ["AAPL", "MSFT", "NVDA", "AMZN", "TSLA", "GOOG", "META"];
@@ -31,9 +37,9 @@ describe("Socket.IO Finnhub real-time streaming (continuous test)", () => {
   it("streams trades continuously for 3 minutes", (done) => {
     symbols.forEach((s) => (receivedCounts[s] = 0));
 
-    socket.on("trade", (trade: any) => {
-      const symbol = trade.s?.toUpperCase?.();
-      if (!symbols.includes(symbol)) return;
+    socket.on("trade", (trade: TradePayload) => {
+      const symbol = typeof trade.s === "string" ? trade.s.toUpperCase() : undefined;
+      if (!symbol || !symbols.includes(symbol)) return;
 
       receivedCounts[symbol] += 1;
       console.log(`[${symbol}] Trade #${receivedCounts[symbol]}:`, trade);

@@ -86,10 +86,10 @@ const fetchPolygonNews = async (
   if (!Array.isArray(data.results)) return []
 
   return data.results
-    .filter((a: any) => a.article_url && a.title)
-    .map((a: any) => {
+    .filter((a) => a.article_url && a.title)
+    .map((a) => {
       const primaryInsight = symbol
-        ? a.insights?.find((i: any) => i.ticker === symbol.toUpperCase())
+        ? a.insights?.find((i) => i.ticker === symbol.toUpperCase())
         : a.insights?.[0]
 
       const { sentiment, sentimentScore } = mapPolygonSentiment(primaryInsight?.sentiment)

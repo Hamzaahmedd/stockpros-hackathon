@@ -1,23 +1,24 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { SmartSearch } from "@/shared/components/SmartSearch";
 import api from "@/shared/api/axios";
-import { 
-  FiTrendingUp, 
-  FiTrendingDown, 
-  FiActivity, 
-  FiUsers, 
-  FiInfo, 
+import {
+  FiTrendingUp,
+  FiTrendingDown,
+  FiActivity,
+  FiUsers,
+  FiInfo,
   FiZap,
   FiTarget,
   FiClock
 } from 'react-icons/fi';
 import { useTheme } from "@/shared/hooks/useTheme";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import type { MarketDecisionData } from "../types";
 
 const MarketAnalysis: React.FC = () => {
   const { theme } = useTheme();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MarketDecisionData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null);
@@ -58,7 +59,7 @@ const MarketAnalysis: React.FC = () => {
 
     React.useEffect(() => {
       if (!container.current) return;
-      
+
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
       script.type = "text/javascript";
@@ -75,7 +76,7 @@ const MarketAnalysis: React.FC = () => {
         "allow_symbol_change": true,
         "container_id": "tradingview_analysis"
       });
-      
+
       container.current.innerHTML = "";
       container.current.appendChild(script);
     }, [symbol, theme]);
@@ -93,7 +94,7 @@ const MarketAnalysis: React.FC = () => {
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1400px] mx-auto space-y-8">
-          
+
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
@@ -216,7 +217,7 @@ const MarketAnalysis: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {error && (
             <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 flex items-center gap-3">
               <FiInfo className="text-xl" />
@@ -227,18 +228,18 @@ const MarketAnalysis: React.FC = () => {
           {/* DATA */}
           {data && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6">
-              
+
               {/* Main Header & Chart Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 {/* Price Card & Chart */}
                 <div className="lg:col-span-2 rounded-lg border border-border overflow-hidden bg-card shadow-lg transition-all duration-300">
                   <div className="p-8 flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          data.marketContext.marketStatus === 'OPEN' 
-                          ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                          data.marketContext.marketStatus === 'OPEN'
+                          ? 'bg-green-500/10 text-green-500 border border-green-500/20'
                           : 'bg-muted text-muted-foreground border border-border'
                         }`}>
                           {data.marketContext.marketStatus}
@@ -248,7 +249,7 @@ const MarketAnalysis: React.FC = () => {
                       <h2 className="text-5xl font-bold tracking-tight mb-1 italic">{data.symbol}</h2>
                       <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest leading-none">{data.symbol} Stock Analysis</p>
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Current Price</div>
                       <div className="text-4xl font-bold tracking-tight text-foreground">{data.priceState.current.toLocaleString()}</div>
@@ -263,7 +264,7 @@ const MarketAnalysis: React.FC = () => {
                   <div className="h-[450px] w-full px-2 pb-2">
                     <TradingViewWidget symbol={data.symbol} theme={theme} />
                   </div>
-                  
+
                   <div className="px-8 py-4 border-t border-border flex items-center justify-between bg-muted/20">
                     <div className="flex items-center gap-6">
                        <div className="flex flex-col">
@@ -296,8 +297,8 @@ const MarketAnalysis: React.FC = () => {
                         <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-2">Recommendation</span>
                         <h3 className="text-4xl font-bold tracking-tight mb-4 uppercase italic decoration-primary/30 underline-offset-8">{data.decision.recommendation}</h3>
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                           <div 
-                             className="h-full bg-primary transition-all duration-1000" 
+                           <div
+                             className="h-full bg-primary transition-all duration-1000"
                              style={{ width: `${data.decision.confidence * 100}%` }}
                            />
                         </div>
@@ -334,7 +335,7 @@ const MarketAnalysis: React.FC = () => {
 
               {/* Analytics Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
+
                 {/* Analyst Consensus */}
                 <div className="p-8 rounded-lg border border-border bg-card transition-all duration-300 group hover:border-border/80">
                   <div className="flex items-center gap-3 mb-6">
@@ -358,7 +359,7 @@ const MarketAnalysis: React.FC = () => {
                     <FiActivity className="text-lg text-primary" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sentiment Engine</span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-y-6">
                     <div>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Score</p>

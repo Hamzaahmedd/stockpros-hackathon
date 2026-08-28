@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { rbacService } from '../services';
-import type { Resource, Permission } from '../types';
+import type { AccessControlUser, Permission, Resource, Role } from '../types';
+import { getApiErrorMessage } from '@/shared/utils/apiError';
 import { toast } from 'react-toastify';
 
 export const useRBAC = () => {
     const [resources, setResources] = useState<Resource[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [roles, setRoles] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [users, setUsers] = useState<AccessControlUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -25,8 +26,8 @@ export const useRBAC = () => {
             setPermissions(permData);
             setRoles(roleData);
             setUsers(userData);
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || 'Failed to fetch RBAC data';
+        } catch (err) {
+            const msg = getApiErrorMessage(err, 'Failed to fetch RBAC data');
             setError(msg);
             toast.error(msg);
         } finally {

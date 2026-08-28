@@ -5,21 +5,20 @@ import { Link } from 'react-router-dom';
 import { formatTimeAgo, newsService } from '@/modules/news';
 import { notificationService } from '../services';
 import type { NewsSummary, NewsSummaryItem } from '@/modules/news';
-import { useTheme } from '@/shared/hooks/useTheme';
+import type { Notification, NotificationSummary } from '../types';
 import { useAuth } from '@/modules/auth';
 import { useSocket } from '@/shared/hooks/useSocket';
 import { socketManager } from '@/shared/utils/socketManager';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export const UnifiedNotifications: React.FC = () => {
-    const { theme } = useTheme();
     const { user } = useAuth();
     const { connected } = useSocket();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'news' | 'alerts'>('news');
     const [newsSummary, setNewsSummary] = useState<NewsSummary | null>(null);
-    const [notifSummary, setNotifSummary] = useState<any>(null);
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifSummary, setNotifSummary] = useState<NotificationSummary | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -35,7 +34,7 @@ export const UnifiedNotifications: React.FC = () => {
             ]);
             setNewsSummary(news);
             setNotifSummary(notifs);
-            
+
             if (activeTab === 'alerts') {
                 const result = await notificationService.getNotifications();
                 setNotifications(result.data);
@@ -73,8 +72,9 @@ export const UnifiedNotifications: React.FC = () => {
     useEffect(() => {
         if (connected && user?.id) {
             socketManager.emit('join', user.id);
-            
-            const onNotification = (newNotif: any) => {
+
+            const onNotification = (payload: unknown) => {
+                const newNotif = payload as Notification;
                 console.log("Real-time notification received:", newNotif);
                 // Prepend to current list
                 setNotifications(prev => [newNotif, ...prev]);
@@ -110,7 +110,7 @@ export const UnifiedNotifications: React.FC = () => {
         };
 
         return (
-            <div 
+            <div
               ref={setRef}
               data-id={item.id}
               data-type="news"
@@ -122,7 +122,7 @@ export const UnifiedNotifications: React.FC = () => {
               className={`group p-4 flex gap-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-all relative overflow-hidden ${!item.isRead ? 'bg-cyan-500/[0.02] dark:bg-cyan-500/[0.02]' : ''}`}
             >
                 {!item.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />}
-                
+
                 <div className="absolute right-0 bottom-0 top-0 w-40 opacity-0 group-hover:opacity-10 pointer-events-none transition-opacity">
                    <svg viewBox="0 0 100 40" className="w-full h-full">
                       <path d="M0 35 Q 25 35, 35 25 T 60 20 T 90 10 T 100 5" fill="none" stroke="#22c55e" strokeWidth="2" />
@@ -135,8 +135,8 @@ export const UnifiedNotifications: React.FC = () => {
                             {item.symbol}
                         </span>
                         <span className={`px-1.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tight ${
-                            item.sentiment === 'BULLISH' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 
-                            item.sentiment === 'BEARISH' ? 'text-red-600 dark:text-red-400 bg-red-500/10' : 
+                            item.sentiment === 'BULLISH' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' :
+                            item.sentiment === 'BEARISH' ? 'text-red-600 dark:text-red-400 bg-red-500/10' :
                             'text-gray-500 dark:text-gray-400 bg-gray-500/10'
                         }`}>
                             {item.sentiment}
@@ -185,14 +185,14 @@ export const UnifiedNotifications: React.FC = () => {
                 try {
                     await newsService.markMultipleRead(idsArray);
                     setPendingNewsIds(new Set());
-                    
+
                     // Update summary for numbers
                     const news = await newsService.getSummary();
                     setNewsSummary(news);
                 } catch (err) {
                     console.error("Batch news mark read failed", err);
                 }
-            }, 2000); 
+            }, 2000);
             return () => clearTimeout(timer);
         }
     }, [pendingNewsIds]);
@@ -220,8 +220,8 @@ export const UnifiedNotifications: React.FC = () => {
                         } else {
                             setPendingReadIds(prev => new Set(prev).add(id));
                             // Optimistic update
-                            setNotifications((prev: any[]) => prev.map(n => n.id === id ? { ...n, read: true } : n));
-                            setNotifSummary((prev: any) => prev ? { ...prev, unreadCount: Math.max(0, prev.unreadCount - 1) } : prev);
+                            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+                            setNotifSummary(prev => prev ? { ...prev, unreadCount: Math.max(0, prev.unreadCount - 1) } : prev);
                         }
                         observer.current?.unobserve(entry.target);
                     }
@@ -234,7 +234,7 @@ export const UnifiedNotifications: React.FC = () => {
         };
     }, []);
 
-    const NotificationItem = ({ notif }: { notif: any }) => {
+    const NotificationItem = ({ notif }: { notif: Notification }) => {
         const setRef = (el: HTMLDivElement | null) => {
             if (el && !notif.read) {
                 itemRefs.current.set(notif.id, el);
@@ -245,7 +245,7 @@ export const UnifiedNotifications: React.FC = () => {
         };
 
         return (
-            <div 
+            <div
               ref={setRef}
               data-id={notif.id}
               data-type="alert"
@@ -277,7 +277,7 @@ export const UnifiedNotifications: React.FC = () => {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => {
                     notificationService.getSummary().catch(() => {});
@@ -289,8 +289,8 @@ export const UnifiedNotifications: React.FC = () => {
                     newsService.getSummary().catch(() => {});
                 }}
                 className={`relative p-2.5 rounded-xl transition-all group border border-transparent ${
-                    isOpen 
-                    ? "text-cyan-500 bg-cyan-500/5 border-cyan-500/20 shadow-sm" 
+                    isOpen
+                    ? "text-cyan-500 bg-cyan-500/5 border-cyan-500/20 shadow-sm"
                     : "text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/5 hover:border-black/5 dark:hover:border-white/5"
                 }`}
                 title="Alerts & Notifications"
@@ -305,14 +305,14 @@ export const UnifiedNotifications: React.FC = () => {
 
             {isOpen && (
                 <div className={`absolute left-0 mt-4 w-[500px] bg-white dark:bg-[#0A0D14] border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
-                    
+
                     {/* Tabs Switcher */}
                     <div className="flex border-b border-gray-100 dark:border-white/5 p-1.5 bg-gray-50 dark:bg-white/[0.01]">
-                        <button 
+                        <button
                             onClick={() => setActiveTab('news')}
                             className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all gap-3 flex items-center justify-center ${
-                                activeTab === 'news' 
-                                ? 'bg-white dark:bg-[#1a1c24] text-cyan-600 dark:text-cyan-400 shadow-md dark:shadow-none border border-gray-200 dark:border-white/5' 
+                                activeTab === 'news'
+                                ? 'bg-white dark:bg-[#1a1c24] text-cyan-600 dark:text-cyan-400 shadow-md dark:shadow-none border border-gray-200 dark:border-white/5'
                                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                             }`}
                         >
@@ -321,11 +321,11 @@ export const UnifiedNotifications: React.FC = () => {
                                 <span className="px-2 py-0.5 bg-cyan-500 text-white text-[9px] rounded-full font-black">{newsSummary.unreadCount}</span>
                             )}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('alerts')}
                             className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all gap-3 flex items-center justify-center ${
-                                activeTab === 'alerts' 
-                                ? 'bg-white dark:bg-[#1a1c24] text-cyan-600 dark:text-cyan-400 shadow-md dark:shadow-none border border-gray-200 dark:border-white/5' 
+                                activeTab === 'alerts'
+                                ? 'bg-white dark:bg-[#1a1c24] text-cyan-600 dark:text-cyan-400 shadow-md dark:shadow-none border border-gray-200 dark:border-white/5'
                                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                             }`}
                         >
@@ -345,7 +345,7 @@ export const UnifiedNotifications: React.FC = () => {
                         </div>
                         {activeTab === 'news' ? (
                             <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                     onClick={async () => {
                                         await newsService.markAllRead();
                                         fetchData();
@@ -354,8 +354,8 @@ export const UnifiedNotifications: React.FC = () => {
                                 >
                                     <FiCheck size={14} /> MARK ALL READ
                                 </button>
-                                <Link 
-                                    to="/news" 
+                                <Link
+                                    to="/news"
                                     onClick={() => setIsOpen(false)}
                                     className="px-5 py-2 rounded-xl border-2 border-cyan-500/30 text-[10px] font-black text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 transition-all uppercase tracking-[0.2em]"
                                 >
@@ -363,7 +363,7 @@ export const UnifiedNotifications: React.FC = () => {
                                 </Link>
                             </div>
                         ) : (
-                            <button 
+                            <button
                                 onClick={async () => {
                                     await notificationService.markAllRead();
                                     fetchData();
@@ -451,7 +451,7 @@ export const UnifiedNotifications: React.FC = () => {
                             <FiCheckCircle size={14} className="text-cyan-500" />
                             Active Monitoring
                         </div>
-                        <Link 
+                        <Link
                             to={activeTab === 'news' ? '/news' : '/dashboard'}
                             onClick={() => setIsOpen(false)}
                             className="text-[11px] font-black text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors uppercase tracking-[0.25em] flex items-center gap-1 group"
@@ -463,9 +463,9 @@ export const UnifiedNotifications: React.FC = () => {
                     <style>{`
                         .custom-scrollbar-unified::-webkit-scrollbar { width: 4px; }
                         .custom-scrollbar-unified::-webkit-scrollbar-track { background: transparent; }
-                        .custom-scrollbar-unified::-webkit-scrollbar-thumb { 
-                            background: rgba(0, 0, 0, 0.08); 
-                            border-radius: 20px; 
+                        .custom-scrollbar-unified::-webkit-scrollbar-thumb {
+                            background: rgba(0, 0, 0, 0.08);
+                            border-radius: 20px;
                         }
                         .dark .custom-scrollbar-unified::-webkit-scrollbar-thumb {
                             background: rgba(255, 255, 255, 0.05);

@@ -30,7 +30,6 @@ export type VolatilityLevel = 'NORMAL' | 'ELEVATED'
 export interface PortfolioPosition {
   symbol: string
   quantity: number
-  avgEntryPrice: number
   currentPrice: number
   sector: string
 }

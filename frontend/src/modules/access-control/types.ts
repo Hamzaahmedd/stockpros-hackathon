@@ -1,3 +1,7 @@
+import type { UserRoleEntry } from '../auth/types';
+
+export type { UserRoleEntry };
+
 export interface Resource {
   id: string;
   name: string;
@@ -6,11 +10,24 @@ export interface Resource {
 }
 
 export interface Permission {
-  id: string;
+  id?: string;
   action: string;
-  resourceId: string;
-  resource: {
-    name: string;
+  resourceId?: string;
+  roleId?: string;
+  resource?: {
+    name?: string;
+  };
+}
+
+/** A permission assignment attached to a role, tolerant of joined API shapes. */
+export interface RolePermissionEntry {
+  roleId?: string;
+  permission?: {
+    id?: string;
+    action?: string;
+    resource?: {
+      name?: string;
+    };
   };
 }
 
@@ -19,7 +36,7 @@ export interface Role {
   name: string;
   description?: string;
   createdAt?: string;
-  rolePermissions?: any[];
+  rolePermissions?: RolePermissionEntry[];
 }
 
 export interface RolePermission {
@@ -32,5 +49,5 @@ export interface AccessControlUser {
   displayName: string;
   email: string;
   status: string;
-  userRoles: { role: { name: string } }[];
+  userRoles: UserRoleEntry[];
 }

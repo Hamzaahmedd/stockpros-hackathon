@@ -1,5 +1,5 @@
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client';
-import { SymbolSearchResult } from "./types";
+import { FinnhubSearchResponse, SymbolSearchResult } from "./types";
 import { getCache, setCache } from "../../shared/infrastructure/cache";
 
 export async function searchSymbols(
@@ -17,7 +17,7 @@ export async function searchSymbols(
       return cachedResults;
     }
 
-    const { data } = await finnhubClient.get(`/search`, {
+    const { data } = await finnhubClient.get<FinnhubSearchResponse>(`/search`, {
       params: {
         q: query,
         exchange: exchange,
@@ -26,7 +26,7 @@ export async function searchSymbols(
 
     if (!data || !data.result) return [];
 
-    const results: SymbolSearchResult[] = data.result.map((item: any) => ({
+    const results: SymbolSearchResult[] = data.result.map((item) => ({
       symbol: item.symbol,
       description: item.description,
       type: item.type,

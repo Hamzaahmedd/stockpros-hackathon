@@ -5,6 +5,7 @@ from typing import Any, List, Tuple, cast
 APP_ENV = os.getenv('APP_ENV', 'local')
 
 # Global type placeholders initialized before conditional imports
+tf: Any = None
 _Sequential: Any = None
 load_model: Any = None
 gru_layer: Any = None
@@ -28,6 +29,8 @@ import gc
 import tempfile
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 import requests
 import numpy as np
 import pandas as pd
@@ -44,12 +47,12 @@ def trigger_background_training(symbol: str) -> bool:
     github_token = settings.GITHUB_TOKEN
 
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/dispatches"
-    
+
     headers = {
         "Authorization": f"token {github_token}",
         "Accept": "application/vnd.github.v3+json"
     }
-    
+
     payload: dict[str, Any] = {
         "event_type": "train_model",
         "client_payload": {"symbol": symbol}
@@ -83,23 +86,23 @@ async def sync_model_from_supabase(symbol: str) -> bool:
     """Downloads the ONNX model from Supabase to local Render disk if it exists."""
     remote_path = f"{symbol.upper()}.onnx"
     local_path = get_model_path(symbol, "onnx")
-    
+
     try:
         os.makedirs(settings.MODEL_DIR, exist_ok=True)
-        
+
         # Download from Supabase
         res = supabase.storage.from_(BUCKET_NAME).download(remote_path)
-        
+
         # Safety Fix: Ensure we got bytes, not an error dictionary
         if isinstance(res, bytes):
             with open(local_path, "wb") as f:
                 f.write(res)
         else:
             raise ValueError(f"Supabase returned non-byte response: {res}")
-            
+
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
-            
+
         logger.info(f"Successfully synced {symbol} ONNX model from Supabase.")
         return True
     except Exception as e:
@@ -112,7 +115,7 @@ async def sync_model_from_supabase(symbol: str) -> bool:
 def convert_to_onnx(model: Any, output_path: str) -> None:
     """Internal helper to convert a Keras model to ONNX."""
     logger.info(f"Converting model to ONNX: {output_path}")
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         logger.info("Exporting to temporary SavedModel for conversion...")
         try:
@@ -120,9 +123,8 @@ def convert_to_onnx(model: Any, output_path: str) -> None:
             model.export(temp_dir)
         except AttributeError:
             # Fallback for Keras 2 / tf.keras
-            import tensorflow as tf_local
-            tf_local.saved_model.save(model, temp_dir)  # type: ignore[reportUnknownMemberType]
-            
+            tf.saved_model.save(model, temp_dir)  # type: ignore[reportUnknownMemberType]
+
         logger.info("Running tf2onnx converter...")
         result = subprocess.run([
             sys.executable, "-m", "tf2onnx.convert",
@@ -130,11 +132,11 @@ def convert_to_onnx(model: Any, output_path: str) -> None:
             "--output", output_path,
             "--opset", "13"
         ], capture_output=True, text=True)
-        
+
         if result.returncode != 0:
             logger.error(f"tf2onnx conversion stdout: {result.stdout}\nstderr: {result.stderr}")
             raise RuntimeError(f"tf2onnx conversion failed: {result.stderr}")
-            
+
         logger.info(f"Successfully saved ONNX to {output_path}")
 
 def train_and_upload(df: pd.DataFrame, symbol: str) -> None:
@@ -145,18 +147,18 @@ def train_and_upload(df: pd.DataFrame, symbol: str) -> None:
             return
 
         logger.info(f"Starting background training for {symbol}...")
-        
+
         # 1. Train and save as .keras
         model, _ = train_and_save_model(df, symbol)
         onnx_path = get_model_path(symbol, "onnx")
-        
+
         # Invalidate memory cache immediately so next local inference uses the new model
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
-        
+
         # 2. Convert to ONNX immediately after training
         convert_to_onnx(model, onnx_path)
-        
+
         # 3. Upload ONLY the .onnx file to Supabase
         with open(onnx_path, "rb") as f:
             supabase.storage.from_(BUCKET_NAME).upload(
@@ -165,14 +167,14 @@ def train_and_upload(df: pd.DataFrame, symbol: str) -> None:
                 file_options={"cache-control": "3600", "upsert": "true"}
             )
         logger.info(f"Background training, conversion, and ONNX upload complete for {symbol}.")
-        
+
         # Optional: Clean up memory
         del model
         gc.collect()
-        
+
     except Exception as e:
         logger.error(f"Background training/conversion failed for {symbol}: {e}")
-        
+
 def _prepare_multivariate(
     df: pd.DataFrame,
     lookback: int,
@@ -195,7 +197,7 @@ def _prepare_multivariate(
 def _build_gru_model_multivariate(lookback: int, n_features: int, steps_ahead: int = 5) -> Any:
     if APP_ENV == "prod":
         raise RuntimeError("Cannot build/train models in production environment.")
-        
+
     model = _Sequential()
     model.add(input_layer(shape=(lookback, n_features)))
     model.add(gru_layer(128, return_sequences=True))
@@ -229,7 +231,7 @@ def train_and_save_model(df: pd.DataFrame, symbol: str) -> Tuple[Any, MinMaxScal
         verbose=1,
         callbacks=[early_stop]
     )
-    
+
     model_path = get_model_path(symbol)
     model.save(model_path)
     return model, scaler
@@ -238,7 +240,6 @@ def is_model_stale(filepath: str, max_days: int = 7) -> bool:
     """Check local file age. Used in local env only."""
     if not os.path.exists(filepath):
         return True
-    import time
     file_time = os.path.getmtime(filepath)
     return (time.time() - file_time) > (max_days * 86400)
 
@@ -255,7 +256,6 @@ def is_model_stale_in_supabase(symbol: str, max_days: int = 7) -> bool:
                 updated_at = f.get("updated_at") or f.get("created_at")
                 if not updated_at:
                     return True
-                from datetime import datetime, timezone
                 dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
                 age_seconds = (datetime.now(timezone.utc) - dt).total_seconds()
                 return age_seconds > (max_days * 86400)
@@ -268,7 +268,7 @@ MODEL_CACHE: dict[str, Any] = {}
 
 def load_model_if_exists(df_for_scaler: pd.DataFrame, symbol: str) -> Tuple[Any, MinMaxScaler]:
     model_path = get_model_path(symbol)
-    
+
     # Return from cache if already loaded
     if symbol in MODEL_CACHE:
         _, _, scaler = _prepare_multivariate(df_for_scaler, settings.LOOKBACK, 5)
@@ -277,19 +277,19 @@ def load_model_if_exists(df_for_scaler: pd.DataFrame, symbol: str) -> Tuple[Any,
     if os.path.exists(model_path):
         logger.info(f"Loading existing model from {model_path} into cache...")
         _, _, scaler = _prepare_multivariate(df_for_scaler, settings.LOOKBACK, 5)
-        
+
         if APP_ENV == 'prod':
             model = ort.InferenceSession(model_path)
         else:
             model = load_model(model_path)
-            
+
         MODEL_CACHE[symbol] = model
         return model, scaler
     else:
         logger.warning(f"Model file {model_path} not found — training a new one")
         if APP_ENV == 'prod':
             raise FileNotFoundError(f"Model file {model_path} not found in PROD. Ensure it is uploaded.")
-            
+
         model, scaler = train_and_save_model(df_for_scaler, symbol)
         MODEL_CACHE[symbol] = model
         return model, scaler
@@ -316,17 +316,17 @@ def predict_multi_step(
         pred_scaled = model.run(None, {input_name: current_input})[0]
     else:
         pred_scaled = model.predict(current_input, verbose=0)
-        
+
     preds_scaled = pred_scaled[0, :steps]
 
     preds_arr = np.array(preds_scaled).reshape(-1, 1)
     close_min = cast(NDArray[np.float32], cast(Any, scaler).min_)[0]
     close_scale = cast(NDArray[np.float32], cast(Any, scaler).scale_)[0]
     preds_unscaled = preds_arr / close_scale - close_min / close_scale
-    
+
     # Garbage collect to prevent memory leaks on Render's 512MB RAM tier
     gc.collect()
-    
+
     return cast(NDArray[np.float32], preds_unscaled.reshape(-1))
 
 def get_trading_dates(start_date: pd.Timestamp, num_days: int) -> List[pd.Timestamp]:

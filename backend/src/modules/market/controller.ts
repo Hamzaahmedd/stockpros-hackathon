@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '../auth';
 import { getRankedTopStocks } from './service';
 import { sendSuccess } from '../../shared/utils';
 
-export const getTopStocks = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getTopStocks = async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const stocks = await getRankedTopStocks();
 

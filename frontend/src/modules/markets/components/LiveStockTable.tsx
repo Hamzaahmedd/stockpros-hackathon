@@ -1,7 +1,6 @@
 import { SmartSearch } from "@/shared/components/SmartSearch";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useSocket } from "@/shared/hooks/useSocket";
-import { useTheme } from "@/shared/hooks/useTheme";
 import React, { useMemo, useState } from "react";
 import { FiAlertCircle, FiPlus } from "react-icons/fi";
 import type { Trade } from "../types";
@@ -19,7 +18,6 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     lastUpdate,
     status,
   } = useSocket(true);
-  const { theme } = useTheme();
 
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [input, setInput] = useState("");
@@ -62,7 +60,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     if (!symbols.includes(sym)) {
       setSymbols((prev) => [...prev, sym]);
     }
-    
+
     // Always call subscribe to allow retrying/refreshing a connection
     subscribe(sym);
     setInput("");
@@ -71,10 +69,6 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
   const handleRemove = (sym: string) => {
     unsubscribe(sym);
     setSymbols((prev) => prev.filter((x) => x !== sym));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleAdd();
   };
 
   return (
@@ -102,7 +96,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
         <div className="p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <SmartSearch 
+              <SmartSearch
                 onSubmit={(sym) => {
                   setInput(sym);
                   const newSymbols = sym.includes(',') ? sym.split(',').map(s => s.trim().toUpperCase()) : [sym.toUpperCase()];

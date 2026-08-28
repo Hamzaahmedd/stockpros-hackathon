@@ -1,7 +1,6 @@
-import React from 'react';
 import { Sidebar } from '@/shared/components/Sidebar';
 import { useRBAC } from '../hooks/useRBAC';
-import { FiLayout, FiActivity, FiSearch, FiRefreshCcw, FiShield, FiUsers, FiAward } from 'react-icons/fi';
+import { FiLayout, FiActivity, FiRefreshCcw, FiShield, FiUsers, FiAward } from 'react-icons/fi';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 

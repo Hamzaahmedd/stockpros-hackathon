@@ -36,3 +36,14 @@ export interface PriceCacheEntry {
   volume: number;
   timestamp: number;
 }
+
+export interface FinnhubCompanyProfile {
+  logo?: string;
+  name?: string;
+  finnhubIndustry?: string;
+}
+
+export interface FmpMostActiveStock {
+  symbol?: string;
+  ticker?: string;
+}

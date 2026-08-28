@@ -3,3 +3,7 @@ export interface SymbolSearchResult {
   description: string
   type: string
 }
+
+export interface FinnhubSearchResponse {
+  result?: SymbolSearchResult[]
+}

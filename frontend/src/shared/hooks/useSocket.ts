@@ -14,42 +14,49 @@ export const useSocket = (autoConnect = true) => {
 
   useEffect(() => {
     console.log('🎯 useSocket useEffect running. AutoConnect:', autoConnect);
-    
-    const onConnect = (socketId: string) => { 
+
+    const onConnect = (socketId: unknown) => {
       console.log('✅ useSocket: Connected with ID:', socketId);
-      setConnected(true); 
-      setError(null); 
+      setConnected(true);
+      setError(null);
     };
-    
-    const onDisconnect = (reason: any) => { 
+
+    const onDisconnect = (reason: unknown) => {
       console.log('❌ useSocket: Disconnected. Reason:', reason);
-      setConnected(false); 
+      setConnected(false);
     };
-    
-    const onTrade = (trade: Trade) => {
+
+    const onTrade = (payload: unknown) => {
+      const trade = payload as Trade;
       console.log('📥 useSocket: Processing trade for', trade.s, {
         price: trade.p,
         snapshot: trade.snapshot,
         timestamp: trade.t ? new Date(trade.t).toLocaleTimeString() : 'no time'
       });
-      
+
       tradesRef.current.set(trade.s.toUpperCase(), trade);
       setTradeCount(prev => prev + 1);
       setLastUpdate(new Date());
     };
-    
-    const onFinnhubErr = (payload: any) => {
-      const errorMsg = typeof payload === "string" ? payload : payload?.message ?? JSON.stringify(payload);
+
+    const onFinnhubErr = (payload: unknown) => {
+      const asRecord = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : undefined;
+      const errorMsg =
+        typeof payload === "string"
+          ? payload
+          : typeof asRecord?.message === "string"
+            ? asRecord.message
+            : JSON.stringify(payload);
       console.error('🔥 useSocket: Finnhub error:', errorMsg);
       setError(errorMsg);
     };
 
-    const onSubscribed = (payload: any) => {
-      console.log('✅ useSocket: Subscribed to', payload.symbol);
+    const onSubscribed = (payload: unknown) => {
+      console.log('✅ useSocket: Subscribed to', (payload as { symbol?: string })?.symbol);
     };
 
-    const onUnsubscribed = (payload: any) => {
-      console.log('❌ useSocket: Unsubscribed from', payload.symbol);
+    const onUnsubscribed = (payload: unknown) => {
+      console.log('❌ useSocket: Unsubscribed from', (payload as { symbol?: string })?.symbol);
     };
 
     // Register all listeners
@@ -60,12 +67,14 @@ export const useSocket = (autoConnect = true) => {
     socketManager.on("subscribed", onSubscribed);
     socketManager.on("unsubscribed", onUnsubscribed);
     socketManager.on("connect_error", (e) => {
-      console.error('🔥 useSocket: Connect error:', e?.message ?? "connect_error");
-      setError(e?.message ?? "Connection error");
+      const message = e instanceof Error ? e.message : undefined;
+      console.error('🔥 useSocket: Connect error:', message ?? "connect_error");
+      setError(message ?? "Connection error");
     });
     socketManager.on("error", (e) => {
-      console.error('🔥 useSocket: Socket error:', e?.message ?? String(e));
-      setError(e?.message ?? "Socket error");
+      const message = e instanceof Error ? e.message : undefined;
+      console.error('🔥 useSocket: Socket error:', message ?? String(e));
+      setError(message ?? "Socket error");
     });
 
     if (autoConnect) {
@@ -120,7 +129,7 @@ export const useSocket = (autoConnect = true) => {
   const tradeStats = useMemo(() => {
     const stats = new Map<string, number>();
     const trades = tradesRef.current;
-    trades.forEach((trade, symbol) => {
+    trades.forEach((_trade, symbol) => {
       const count = stats.get(symbol) || 0;
       stats.set(symbol, count + 1);
     });

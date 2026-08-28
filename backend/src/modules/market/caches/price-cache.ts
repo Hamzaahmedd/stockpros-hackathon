@@ -14,7 +14,7 @@ export function formatWatchlistItem(entry: {
   aiSuggestionBasis: string | null;
   aiComputedAt: Date | null;
   createdAt: Date;
-  alerts?: any[];
+  alerts?: WatchlistItemResponse['alerts'];
 }): WatchlistItemResponse {
   const hasAiData =
     entry.aiSuggestedEntry !== null &&

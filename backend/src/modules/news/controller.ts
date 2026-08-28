@@ -21,7 +21,7 @@ export const getNewsFeed = async (
     const result = await NewsService.getNewsFeed(userId, query);
     sendSuccess(res, {
       message: 'News feed retrieved successfully',
-      extra: result,
+      extra: { ...result },
     });
   } catch (err) {
     next(err);

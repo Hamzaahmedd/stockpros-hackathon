@@ -25,15 +25,17 @@ export async function connectRedis(): Promise<void> {
 
     await redisClient.connect();
 
-  } catch (err: any) {
+  } catch (err) {
     console.error(
       "Redis initialization failed (app will continue without cache):",
-      err?.message || err
+      err instanceof Error ? err.message : err
     );
     if (redisClient) {
       try {
         await redisClient.disconnect();
-      } catch { }
+      } catch {
+        // Ignore disconnect errors after a failed initialization
+      }
     }
     redisClient = null;
   }
@@ -52,7 +54,13 @@ export async function closeRedis(): Promise<void> {
   }
 }
 
-export function getRedisClient(): any {
+export interface RedisConnectionOptions {
+  host?: string;
+  port?: number;
+  password?: string;
+}
+
+export function getRedisClient(): RedisConnectionOptions | undefined {
   // 1. Priority: Return existing client options if available
   if (redisClient) {
     return {
@@ -72,10 +80,9 @@ export function getRedisClient(): any {
         host: parsed.hostname,
         port: parseInt(parsed.port || '6379', 10),
         password: decodeURIComponent(parsed.password) || undefined,
-        // family: 0, // Add this if you are deploying to Railway/Render
       }
-    } catch (err: any) {
-      console.error('[Redis] Invalid REDIS_URL format:', err.message)
+    } catch (err) {
+      console.error('[Redis] Invalid REDIS_URL format:', err instanceof Error ? err.message : err)
       return undefined
     }
   }

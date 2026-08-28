@@ -1,4 +1,5 @@
 import { computeAndStoreAiZones } from '../evaluators/ai-zone-calculator';
+import { AlertType } from '@prisma/client';
 import { prisma } from '../../../shared/infrastructure/database';
 import { dispatchNotification } from '../../notifications';
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client';
@@ -29,10 +30,10 @@ const getWatchedSymbolsWithUsers = async (): Promise<
  */
 const hasActiveAlert = async (
   watchlistId: string,
-  type:        string,
+  type:        AlertType,
 ): Promise<boolean> => {
   const alert = await prisma.watchlistAlert.findFirst({
-    where: { watchlistId, type: type as any, isActive: true },
+    where: { watchlistId, type, isActive: true },
   });
   return alert !== null;
 };
@@ -45,12 +46,12 @@ const fireEventAlert = async (
   watchlistId:  string,
   userId:       string,
   symbol:       string,
-  alertType:    string,
+  alertType:    AlertType,
   currentPrice: number,
 ): Promise<void> => {
   // Find the active alert rule for this type
   const alert = await prisma.watchlistAlert.findFirst({
-    where: { watchlistId, type: alertType as any, isActive: true },
+    where: { watchlistId, type: alertType, isActive: true },
   });
   if (!alert) return;
 
@@ -64,7 +65,7 @@ const fireEventAlert = async (
 
   // Write log first, then dispatch
   await prisma.alertLog.create({ data: { alertId: alert.id } });
-  await dispatchNotification(userId, symbol, alertType as any, currentPrice).catch(
+  await dispatchNotification(userId, symbol, alertType, currentPrice).catch(
     (err) => console.error(`[CronJob] Notification failed for ${symbol} ${alertType}:`, err),
   );
 };
@@ -199,8 +200,6 @@ export const runAnalystRatingJob = async (): Promise<void> => {
           });
 
           if (!data || data.length === 0) return;
-
-          const latest = data[0]; // most recent period first
 
           // Delta check: has any user's ANALYST_RATING_CHANGE alert for this
           // symbol fired in the last 24 hours? If yes, skip (already notified).

@@ -46,8 +46,8 @@ const getLogoBase64 = (): Promise<string | undefined> => {
           logoResolved = true;
           return cachedLogo;
         }
-      } catch (err: any) {
-        console.warn('[Email] Supabase logo fetch failed, falling back to local file:', err.message);
+      } catch (err) {
+        console.warn('[Email] Supabase logo fetch failed, falling back to local file:', err instanceof Error ? err.message : err);
       }
     }
     cachedLogo = readLocalLogo();
@@ -86,8 +86,8 @@ export const transporter = {
         });
         console.log(`[Email] Live email sent to ${opts.to} via Gmail SMTP (ID: ${info.messageId})`);
         return;
-      } catch (err: any) {
-        console.warn('[Email] Gmail SMTP delivery failed:', err.message);
+      } catch (err) {
+        console.warn('[Email] Gmail SMTP delivery failed:', err instanceof Error ? err.message : err);
       }
     }
 
@@ -106,8 +106,8 @@ export const transporter = {
           return;
         }
         console.warn('[Resend] Delivery notice for', opts.to, ':', error.message);
-      } catch (err: any) {
-        console.warn('[Resend] Error sending email:', err.message);
+      } catch (err) {
+        console.warn('[Resend] Error sending email:', err instanceof Error ? err.message : err);
       }
     }
 

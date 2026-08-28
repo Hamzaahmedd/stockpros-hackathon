@@ -102,8 +102,7 @@ export async function logoutUser(refreshToken?: string) {
   }
 }
 
-export async function fetchMe(userId: string): Promise<any> {
-
+export async function fetchMe(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -175,11 +174,13 @@ export function getLocalIpAddress(): string | null {
         }
       }
     }
-  } catch {}
+  } catch {
+    // Best-effort detection — fall back to null when interfaces can't be read
+  }
   return null;
 }
 
-export function resolveFrontendUrl(clientOrigin?: string): string {
+export function resolveFrontendUrl(): string {
   if (config.server.frontendUrl) {
     return config.server.frontendUrl;
   }
@@ -191,7 +192,7 @@ export function resolveFrontendUrl(clientOrigin?: string): string {
   return 'http://localhost:5173';
 }
 
-export async function generateMagicLink(rawEmail: string, clientOrigin?: string): Promise<void> {
+export async function generateMagicLink(rawEmail: string): Promise<void> {
   const email = rawEmail.toLowerCase().trim();
 
   // 1. Generate a cryptographically secure random raw token (64 hex characters)
@@ -219,7 +220,7 @@ export async function generateMagicLink(rawEmail: string, clientOrigin?: string)
   });
 
   // 5. Build accessible login link (supports mobile devices and all browsers)
-  const frontendUrl = resolveFrontendUrl(clientOrigin);
+  const frontendUrl = resolveFrontendUrl();
   const loginLink = `${frontendUrl}/auth/verify?token=${rawToken}`;
 
   // Production: offload delivery to BullMQ so the login request returns
@@ -346,7 +347,7 @@ export async function verifyMagicLink(
       user: null,
       accessToken: null,
       refreshToken: null,
-    } as any;
+    };
   }
 
   if (user.userRoles.length === 0) {
@@ -518,9 +519,12 @@ export async function completeOnboardingFlow(params: {
   // Preferred path: a short-lived onboarding token issued during magic-link/Google login.
   if (params.onboardingToken && typeof params.onboardingToken === 'string') {
     try {
-      const payload = jwt.verify(params.onboardingToken, ACCESS_TOKEN_SECRET) as any;
-      if (payload.type === 'onboarding' && payload.sub) {
-        email = payload.sub as string;
+      const payload = jwt.verify(params.onboardingToken, ACCESS_TOKEN_SECRET) as {
+        type?: unknown;
+        sub?: unknown;
+      };
+      if (payload.type === 'onboarding' && typeof payload.sub === 'string') {
+        email = payload.sub;
       }
     } catch {
       throw new UnauthorizedError('Invalid or expired onboarding token');
@@ -533,8 +537,10 @@ export async function completeOnboardingFlow(params: {
     const bearerToken = params.authHeader?.startsWith('Bearer ') ? params.authHeader.substring(7) : null;
     if (bearerToken) {
       try {
-        const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as any;
-        if (decoded?.sub) {
+        const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as {
+          sub?: unknown;
+        };
+        if (typeof decoded.sub === 'string') {
           const updated = await prisma.user.update({
             where: { id: decoded.sub },
             data: { displayName: resolvedName },

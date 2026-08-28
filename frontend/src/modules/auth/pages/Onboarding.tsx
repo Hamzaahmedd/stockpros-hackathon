@@ -1,4 +1,5 @@
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -55,9 +56,9 @@ export const Onboarding: React.FC = () => {
 
       await refreshMe();
       navigate("/dashboard", { replace: true });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Onboarding error:", err);
-      setError(err.response?.data?.message || "Failed to complete onboarding. Please try again.");
+      setError(getApiErrorMessage(err, "Failed to complete onboarding. Please try again."));
     } finally {
       setLoading(false);
     }

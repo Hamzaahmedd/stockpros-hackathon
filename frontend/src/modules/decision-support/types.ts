@@ -44,3 +44,46 @@ export interface PortfolioData {
   summary: PortfolioSummary;
   positions: PositionBase[];
 }
+
+/** Response shape of GET /api/v1/decision-support/market/decision/:symbol */
+export interface MarketDecisionData {
+  symbol: string;
+  timestamp: string;
+  marketContext: {
+    marketStatus: string;
+    lastClosePrice: number;
+  };
+  analystConsensus: {
+    rating: string;
+    confidencePercent: number;
+    sourceCount: number;
+  };
+  priceState: {
+    current: number;
+    trend: string;
+    rsi: number;
+    isOverbought: boolean;
+  };
+  sentimentState: {
+    score: number;
+    trend: string;
+    change48hPercent: number;
+    newsVolume: number;
+  };
+  decision: {
+    recommendation: string;
+    timeHorizon: string;
+    confidence: number;
+  };
+  reasoning: {
+    summary?: string;
+    details?: string[];
+  };
+  riskFlags?: string[];
+  actionGuidance: {
+    buyWindow: string | null;
+    holdWindow: string | null;
+    sellWindow: string | null;
+    watchFor: string;
+  };
+}

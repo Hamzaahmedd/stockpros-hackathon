@@ -12,3 +12,7 @@ export type PaginatedNotificationsResult = {
   hasMore: boolean;
   total: number;
 };
+
+export interface NotificationSummary {
+  unreadCount: number;
+}

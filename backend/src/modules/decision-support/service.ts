@@ -63,10 +63,49 @@ export const enrichPortfolio = async (
 }
 
 // ── Market Decision Functions ──
-export const getUnifiedMarketDecision = async (symbol: string) => {
+interface AnalystConsensus {
+  rating: string
+  confidencePercent: number
+  sourceCount: number
+}
+
+interface SentimentSummary {
+  score: number
+  trend: 'UP' | 'DOWN' | 'FLAT'
+  change48hPercent: number
+  newsVolume: number
+}
+
+interface MarketDecision {
+  recommendation: string
+  timeHorizon: string
+  confidence: number
+  riskFlags: string[]
+}
+
+interface DecisionActionGuidance {
+  buyWindow: string | null
+  holdWindow: string | null
+  sellWindow: string | null
+  watchFor: string
+}
+
+interface UnifiedMarketDecision {
+  symbol: string
+  marketStatus: string
+  quote: StockQuote
+  rsi: number
+  trend: 'UP' | 'DOWN' | 'FLAT'
+  analyst: AnalystConsensus
+  sentiment: SentimentSummary
+  decision: MarketDecision
+  actionGuidance: DecisionActionGuidance
+}
+
+export const getUnifiedMarketDecision = async (symbol: string): Promise<UnifiedMarketDecision> => {
   const CACHE_KEY = `market_decision_v1:${symbol}`;
 
-  const cached = await getCache<any>(CACHE_KEY);
+  const cached = await getCache<UnifiedMarketDecision>(CACHE_KEY);
   if (cached) return cached;
 
   const [quote, closes, ratings, news, marketStatus] = await Promise.all([
@@ -115,7 +154,6 @@ export const getMarketDecisionResponse = async (symbol: string) => {
   const reasoning = generateReasoning({
     rsi: marketData.rsi,
     sentimentTrend: marketData.sentiment.trend,
-    sentimentChange48h: marketData.sentiment.change48hPercent,
     analystRating: marketData.analyst.rating,
   })
 
@@ -198,14 +236,58 @@ export const getHistoricalCloses = async (symbol: string): Promise<number[]> => 
   }
 };
 
-export const getAnalystRatings = async (symbol: string) => {
-  const { data } = await finnhubClient.get('/stock/recommendation', {
+interface FinnhubRecommendation {
+  period: string
+  strongBuy: number
+  buy: number
+  hold: number
+  sell: number
+  strongSell: number
+}
+
+export const getAnalystRatings = async (symbol: string): Promise<FinnhubRecommendation[]> => {
+  const { data } = await finnhubClient.get<FinnhubRecommendation[]>('/stock/recommendation', {
     params: { symbol: symbol },
   })
   return data
 }
 
-export const getNews = async (symbol: string) => {
+interface PolygonInsight {
+  ticker: string
+  sentiment?: string
+}
+
+interface PolygonNewsArticle {
+  title: string
+  article_url: string
+  published_utc: string
+  description?: string
+  image_url?: string
+  publisher?: { name?: string }
+  keywords?: string[]
+  insights?: PolygonInsight[]
+}
+
+interface TickerSentimentEntry {
+  ticker: string
+  ticker_sentiment_score: string
+  relevance_score: string
+}
+
+interface NewsSentimentArticle {
+  title: string
+  url: string
+  time_published: string
+  summary: string
+  banner_image: string | undefined
+  source: string
+  overall_sentiment_label: string
+  overall_sentiment_score: number
+  ticker_sentiment: TickerSentimentEntry[]
+  isEarningsContext: boolean
+}
+
+export const getNews = async (symbol: string): Promise<NewsSentimentArticle[]> => {
   const currentMonth = getPakistanMonth();
   const earningsMonths = [0, 3, 6, 9];
   const isEarningsSeason = earningsMonths.includes(currentMonth);
@@ -218,12 +300,12 @@ export const getNews = async (symbol: string) => {
       sort: 'published_utc',
     };
 
-    const { data } = await polygonClient.get('/v2/reference/news', { params });
+    const { data } = await polygonClient.get<{ results?: PolygonNewsArticle[] }>('/v2/reference/news', { params });
 
     if (!data.results) return [];
 
-    return data.results.map((article: any) => {
-      const insight = article.insights?.find((i: any) => i.ticker === symbol.toUpperCase());
+    return data.results.map((article) => {
+      const insight = article.insights?.find((i) => i.ticker === symbol.toUpperCase());
       const { sentiment, sentimentScore } = mapPolygonSentiment(insight?.sentiment);
 
       return {
@@ -257,7 +339,7 @@ export const computeRSI = (closes: number[]) => {
   return values[values.length - 1] ?? 50
 }
 
-export const computeTrend = (closes: number[]) => {
+export const computeTrend = (closes: number[]): 'UP' | 'DOWN' | 'FLAT' => {
   const short = average(closes.slice(-5))
   const long = average(closes.slice(-20))
   if (short > long) return 'UP'
@@ -267,7 +349,7 @@ export const computeTrend = (closes: number[]) => {
 
 const average = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
 
-export const parseAnalystConsensus = (data: any[]) => {
+export const parseAnalystConsensus = (data: FinnhubRecommendation[]): AnalystConsensus => {
   if (!data || data.length === 0) {
     return { rating: 'HOLD', confidencePercent: 0, sourceCount: 0 }
   }
@@ -291,7 +373,7 @@ export const parseAnalystConsensus = (data: any[]) => {
   }
 }
 
-export const computeSentiment = (feed: any[], targetTicker: string) => {
+export const computeSentiment = (feed: NewsSentimentArticle[], targetTicker: string): SentimentSummary => {
   const volume = feed.length
 
   if (!volume) {
@@ -300,7 +382,7 @@ export const computeSentiment = (feed: any[], targetTicker: string) => {
 
   const tickerScores = feed.map((article) => {
     const tickerData = article.ticker_sentiment?.find(
-      (t: any) => t.ticker === targetTicker,
+      (t) => t.ticker === targetTicker,
     )
 
     if (tickerData) {
@@ -359,6 +441,16 @@ const computeDataConfidence = (newsVolume: number, analystCount: number) => {
   return score
 }
 
+interface DecisionInput {
+  rsi: number
+  sentimentTrend: string
+  analystRating: string
+  sentimentScore: number
+  newsVolume: number
+  analystConfidencePercent: number
+  analystSourceCount: number
+}
+
 export const computeDecision = ({
   rsi,
   sentimentTrend,
@@ -367,7 +459,7 @@ export const computeDecision = ({
   newsVolume,
   analystConfidencePercent,
   analystSourceCount,
-}: any) => {
+}: DecisionInput): MarketDecision => {
   const riskFlags: string[] = []
 
   if (rsi >= 70) riskFlags.push('OVERBOUGHT_CONDITION')
@@ -423,12 +515,17 @@ export const computeDecision = ({
   }
 }
 
+interface ReasoningInput {
+  rsi: number
+  sentimentTrend: string
+  analystRating: string
+}
+
 export const generateReasoning = ({
   rsi,
   sentimentTrend,
-  sentimentChange48h,
   analystRating,
-}: any) => {
+}: ReasoningInput) => {
   const details: string[] = []
 
   if (analystRating === 'STRONG_BUY' || analystRating === 'BUY') {
@@ -733,9 +830,9 @@ export const generateBatchDecision = async (portfolioId: string): Promise<Decisi
   const realMarketDecisions = await Promise.all(marketDataPromises);
   return snapshot.positions.map((position, index) => {
     const exposure = calculateExposure(
-      position as any,
+      position,
       snapshot.summary.totalMarketValue,
-      snapshot.positions as any
+      snapshot.positions
     )
 
     const risk = assessRisk(exposure);

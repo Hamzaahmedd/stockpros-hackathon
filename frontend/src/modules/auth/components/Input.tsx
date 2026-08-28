@@ -1,6 +1,6 @@
 // components/Input.tsx
 import React from "react";
-import { RegisterOptions, UseFormRegisterReturn } from "react-hook-form";
+import { UseFormRegisterReturn } from "react-hook-form";
 import { Input as ShadcnInput } from "@/shared/components/ui/input";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -9,12 +9,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   registration?: Partial<UseFormRegisterReturn>;
 }
 
-export const Input: React.FC<InputProps> = ({ 
-  label, 
-  error, 
-  registration, 
-  className = "", 
-  ...inputProps 
+export const Input: React.FC<InputProps> = ({
+  label,
+  error,
+  registration,
+  className = "",
+  ...inputProps
 }) => {
   return (
     <div className="space-y-1 w-full">

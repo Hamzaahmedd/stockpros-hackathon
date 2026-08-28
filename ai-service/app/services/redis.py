@@ -1,6 +1,7 @@
 # app/services/redis.py
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import importlib
 import os
 import threading
 from typing import Any, cast
@@ -21,7 +22,6 @@ def load_ml_libraries() -> None:
     """Starts the 'heavy' imports in a background thread."""
     try:
         print("Pre-loading heavy ML libraries in background...")
-        import importlib
 
         importlib.import_module("app.services.data_service")
         importlib.import_module("app.services.model_service")

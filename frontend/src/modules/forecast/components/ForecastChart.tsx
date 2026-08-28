@@ -3,7 +3,6 @@ import React from 'react';
 import {
   ComposedChart,
   Line,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,7 +12,7 @@ import {
   TooltipProps
 } from 'recharts';
 import { ForecastData } from '../types';
-import { TrendingUp, Calendar, DollarSign, Eye, LineChart as LineChartIcon } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, LineChart as LineChartIcon } from 'lucide-react';
 
 interface ForecastChartProps {
   data: ForecastData | null;
@@ -22,8 +21,12 @@ interface ForecastChartProps {
 
 interface ChartDataPoint {
   date: string;
-  price: number;
+  historicalPrice: number | null;
+  forecastPrice: number | null;
+  bull: number | null;
+  bear: number | null;
   type: 'historical' | 'forecast';
+  isCurrentPrice?: boolean;
 }
 
 const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
@@ -52,7 +55,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
           {isTraining ? 'AI Model Training in Progress' : 'No forecast data available'}
         </p>
         <p className="text-xs text-gray-500 mt-2 max-w-xs text-center px-4">
-          {isTraining 
+          {isTraining
             ? (data.message || 'The AI is learning historical patterns for this symbol. This usually takes about 2 minutes.')
             : 'Select a stock symbol to view predictions'
           }
@@ -68,10 +71,10 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
     );
   }
 
-  let chartData: any[] = [];
+  let chartData: ChartDataPoint[] = [];
 
   if (data.historicalData && data.historicalData.length > 0) {
-    data.historicalData.forEach((h: any) => {
+    data.historicalData.forEach(h => {
       chartData.push({
         date: h.date,
         historicalPrice: h.price,
@@ -128,9 +131,9 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
       const dataPoint = payload[0].payload;
       const isForecast = dataPoint.type === 'forecast';
       const displayValue = dataPoint.forecastPrice !== null && dataPoint.historicalPrice === null
-        ? dataPoint.forecastPrice 
+        ? dataPoint.forecastPrice
         : (dataPoint.historicalPrice || dataPoint.forecastPrice);
-      
+
       const date = new Date(label);
       const fullDate = date.toLocaleDateString('en-US', {
         weekday: 'long',
@@ -145,7 +148,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
             <Calendar size={14} className="text-[#22d3ee]" />
             <p className="text-sm font-medium text-white">{fullDate}</p>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -157,7 +160,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
                 ${displayValue?.toFixed(2)}
               </span>
             </div>
-            
+
             {isForecast && dataPoint.bull !== null && dataPoint.bear !== null && (
               <div className="pt-2 mt-2 border-t border-white/5 space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -226,7 +229,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
 
       {/* Main Chart Area */}
       <div className="flex-1 w-full relative">
-        
+
         {/* Fixed Y-Axis Overlay */}
         <div className="absolute top-0 left-0 bottom-0 w-[60px] z-10 pointer-events-none bg-white dark:bg-[#0f1115] border-r border-gray-200 dark:border-white/5 pb-[14px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -234,7 +237,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
               data={chartData.slice(0,1)}
               margin={{ top: 10, right: 0, left: 0, bottom: 10 }}
             >
-              <YAxis 
+              <YAxis
                 {...yAxisProps}
                 label={{ value: 'Price (USD)', angle: -90, position: 'insideLeft', fill: '#9CA3AF', fontSize: 11, fontWeight: 500, offset: 10 }}
               />
@@ -244,8 +247,8 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
         </div>
 
         {/* Scrollable Chart */}
-        <div 
-          className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar pl-[60px]" 
+        <div
+          className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar pl-[60px]"
           ref={scrollContainerRef}
         >
           <div style={{ width: `${Math.max(100, chartData.length * 40)}px`, minWidth: '100%', height: '100%' }}>
@@ -264,14 +267,14 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
                   </filter>
                 </defs>
 
-          <CartesianGrid 
-            strokeDasharray="3 3" 
-            stroke="#2D3748" 
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#2D3748"
             opacity={0.3}
             horizontal={true}
             vertical={false}
           />
-          
+
           <Line
             type="monotone"
             dataKey="bull"
@@ -283,7 +286,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
             name="Bull Target"
             connectNulls={true}
           />
-          
+
           <Line
             type="monotone"
             dataKey="bear"
@@ -295,7 +298,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
             name="Bear Target"
             connectNulls={true}
           />
-          
+
           {/* X-Axis with date labels */}
           <XAxis
             dataKey="date"
@@ -316,24 +319,24 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
               fontWeight: 500
             }}
           />
-          
+
           {/* Y-Axis with price labels (hidden, used for scale alignment) */}
           <YAxis
             {...yAxisProps}
             hide={true}
           />
-          
-          <Tooltip 
+
+          <Tooltip
             content={<CustomTooltip />}
-            cursor={{ 
+            cursor={{
               stroke: '#4B5563',
               strokeWidth: 1,
               strokeDasharray: '3 3'
             }}
           />
-          
-          <Legend 
-            wrapperStyle={{ 
+
+          <Legend
+            wrapperStyle={{
               paddingTop: '10px',
               fontSize: '11px',
               color: '#9CA3AF'
@@ -342,20 +345,20 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
               <span className="text-xs text-gray-400">{value}</span>
             )}
           />
-          
+
           {/* Historical Data Line */}
           <Line
             type="monotone"
             dataKey="historicalPrice"
             stroke="#64748b"
             strokeWidth={2}
-            dot={{ 
+            dot={{
               r: 3,
               fill: '#64748b',
               stroke: '#475569',
               strokeWidth: 1
             }}
-            activeDot={{ 
+            activeDot={{
               r: 6,
               fill: '#64748b',
               stroke: '#475569',
@@ -364,7 +367,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
             name="Historical Price"
             connectNulls={true}
           />
-          
+
           {/* Forecast Data Line */}
           <Line
             type="monotone"
@@ -372,7 +375,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
             stroke="#22d3ee"
             strokeWidth={3}
             dot={false}
-            activeDot={{ 
+            activeDot={{
               r: 6,
               fill: '#22d3ee',
               stroke: '#ffffff',

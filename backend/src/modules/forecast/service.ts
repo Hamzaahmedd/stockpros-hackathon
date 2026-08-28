@@ -1,19 +1,36 @@
 // Consolidated forecast service
-import { ForecastResponse } from './types'
+import { ForecastData, Prediction } from './types'
 import mlClient from '../../shared/infrastructure/clients/ml-client'
 import { getTechnicalBaselines } from '../watchlist'
 
 const ATR_MULT = 1.5
 
+interface MlPredictionPoint {
+  date: string
+  price?: number
+  predicted_close?: number
+}
+
+interface MlForecastPayload {
+  symbol: string
+  period: string
+  currentPrice?: number
+  predictions?: MlPredictionPoint[]
+  historicalData?: Array<{ date: string; price: number }>
+  status?: string
+  message?: string
+  estimated_ready_at?: number
+}
+
 export async function getForecast(
   symbol: string,
   period: string,
-): Promise<ForecastResponse> {
+): Promise<ForecastData> {
   const params: Record<string, string> = { symbol, period }
 
   try {
     const [mlResponse, technicals] = await Promise.all([
-      mlClient.get(`/api/v1/forecast`, { params }),
+      mlClient.get<MlForecastPayload>(`/api/v1/forecast`, { params }),
       getTechnicalBaselines(symbol).catch((err) => {
         console.warn(
           `[Forecast] Technical baselines failed for ${symbol}:`,
@@ -23,16 +40,16 @@ export async function getForecast(
       }),
     ])
 
-    let targetRange: ForecastResponse['data']['targetRange'] = undefined
-    let rawPredictions = mlResponse.data?.predictions || []
-    let enhancedPredictions = []
+    let targetRange: ForecastData['targetRange'] = undefined
+    const rawPredictions = mlResponse.data?.predictions || []
+    let enhancedPredictions: Prediction[] = []
 
     if (rawPredictions.length > 0 && technicals) {
       const { atr, ema, swingLow, resistance } = technicals
 
       // Extract all base prices for the period to find Highs and Lows
       const basePrices = rawPredictions.map(
-        (p: any) => p.price ?? p.predicted_close,
+        (p) => p.price ?? p.predicted_close ?? 0,
       )
       const periodHigh = Math.max(...basePrices)
       const periodLow = Math.min(...basePrices)
@@ -69,11 +86,9 @@ export async function getForecast(
         confidence,
       }
 
-      const currentPrice = technicals.currentPrice
       // CHART LOGIC (Mapping to clean keys only)
-      enhancedPredictions = rawPredictions.map((p: any, index: number) => {
-        const rawBase = p.price ?? p.predicted_close
-        const isToday = index === 0
+      enhancedPredictions = rawPredictions.map((p) => {
+        const rawBase = p.price ?? p.predicted_close ?? 0
 
         let pointBull = rawBase + ATR_MULT * atr
         let pointBear = rawBase - ATR_MULT * atr
@@ -97,7 +112,7 @@ export async function getForecast(
     }
 
     // Return the combined payload
-    const combinedData: ForecastResponse = {
+    const combinedData: ForecastData = {
       ...mlResponse.data,
       predictions: enhancedPredictions,
       targetRange,

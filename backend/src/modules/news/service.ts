@@ -2,7 +2,7 @@
 import { NEWS_CACHE_TTL_SECONDS, SUMMARY_MAX_ITEMS } from './constants'
 import { AppError } from '../../shared/errors'
 import { resolveCursor, rankArticles, enrichArticles } from './news'
-import type { NewsCategory, NewsSentiment } from '@prisma/client'
+import type { NewsSentiment } from '@prisma/client'
 import type { NewsArticleResponse, PaginatedNews, NewsSummaryResponse } from './types'
 import { prisma } from '../../shared/infrastructure/database'
 import { getCache, setCache } from '../../shared/infrastructure/cache'

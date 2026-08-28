@@ -1,4 +1,5 @@
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { getApiErrorMessage } from "@/shared/utils/apiError";
 import { setAccessToken } from "@/shared/utils/token";
 import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import api from "../../../shared/api/axios";
 import { AuthLayout } from "../components/AuthLayout";
 import { Button } from "../components/Button";
 import { useAuth } from "../hooks/useAuth";
+import type { RoleEntry, UserRoleEntry } from "../types";
 
 const verifiedTokens = new Set<string>();
 
@@ -33,7 +35,16 @@ export const VerifyMagicLink = () => {
     const verify = async () => {
       try {
         const response = await api.post("/api/v1/auth/verify-magic-link", { token });
-        const { requiresOnboarding, onboardingToken, accessToken, user } = response.data;
+        const { requiresOnboarding, onboardingToken, accessToken, user } = response.data as {
+          requiresOnboarding?: boolean;
+          onboardingToken?: string;
+          accessToken?: string;
+          user?: {
+            displayName?: string | null;
+            userRoles?: UserRoleEntry[];
+            roles?: RoleEntry[];
+          };
+        };
 
         // New user — backend verified the email but needs profile setup first
         if (requiresOnboarding && onboardingToken) {
@@ -61,8 +72,8 @@ export const VerifyMagicLink = () => {
           }
 
           const roles =
-            user.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
-            user.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
+            user.userRoles?.map(ur => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
+            user.roles?.map(r => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
             [];
 
           const isAdmin = roles.includes("ADMIN");
@@ -80,10 +91,12 @@ export const VerifyMagicLink = () => {
             navigate("/dashboard", { replace: true });
           }
         }, 800);
-      } catch (err: any) {
+      } catch (err) {
         setError(
-          err.response?.data?.message ||
+          getApiErrorMessage(
+            err,
             "Authentication failed. The login link may be invalid, already used, or expired."
+          )
         );
       }
     };

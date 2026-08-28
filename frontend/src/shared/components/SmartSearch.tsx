@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "@/shared/api/axios";
-import { FiSearch, FiLoader, FiArrowRight, FiX } from "react-icons/fi";
+import { FiSearch, FiArrowRight, FiX } from "react-icons/fi";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
@@ -17,9 +17,9 @@ interface SmartSearchProps {
   initialValue?: string;
 }
 
-export const SmartSearch: React.FC<SmartSearchProps> = ({ 
-  onSubmit, 
-  placeholder = "Type stock symbol (e.g. AAPL)", 
+export const SmartSearch: React.FC<SmartSearchProps> = ({
+  onSubmit,
+  placeholder = "Type stock symbol (e.g. AAPL)",
   className = "",
   initialValue = ""
 }) => {
@@ -142,8 +142,8 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
                 key={item.symbol}
                 onClick={() => handleSelect(item.symbol)}
                 className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors border-b last:border-b-0 ${
-                  theme === 'dark' 
-                    ? 'border-white/5 hover:bg-white/5' 
+                  theme === 'dark'
+                    ? 'border-white/5 hover:bg-white/5'
                     : 'border-gray-100 hover:bg-gray-50'
                 }`}
               >

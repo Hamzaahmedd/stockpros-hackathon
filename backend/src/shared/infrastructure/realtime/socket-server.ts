@@ -83,8 +83,9 @@ export class SocketServer {
         snapshot: true,
       })
       logger.info(`Snapshot sent for ${symbol} to socket ${socket.id}`)
-    } catch (err: any) {
-      logger.error(`Error fetching snapshot for ${symbol}: ${err.message}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      logger.error(`Error fetching snapshot for ${symbol}: ${message}`)
     }
 
     socket.emit('subscribed', { symbol })

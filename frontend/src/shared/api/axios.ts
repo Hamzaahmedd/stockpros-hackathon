@@ -25,7 +25,7 @@ api.interceptors.request.use((config) => {
 let isRefreshing = false;
 let queue: Array<{ resolve: Function; reject: Function }> = [];
 
-const processQueue = (err: any) => {
+const processQueue = (err: unknown) => {
   queue.forEach((p) => (err ? p.reject(err) : p.resolve(null)));
   queue = [];
 };

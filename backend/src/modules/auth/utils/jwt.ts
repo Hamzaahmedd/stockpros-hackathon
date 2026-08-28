@@ -11,8 +11,8 @@ export const verifyAccessToken = (accessToken: string, accessTokenSecret: string
 export const verifyRefreshToken = (refreshToken: string, refreshTokenSecret: string): { sub: string; jti: string } => {
   try {
     return jwt.verify(refreshToken, refreshTokenSecret) as { sub: string; jti: string };
-  } catch (err: any) {
-    if (err.name === "TokenExpiredError") {
+  } catch (err) {
+    if (err instanceof Error && err.name === "TokenExpiredError") {
       throw new Error("FORCE_LOGOUT");
     }
     throw new Error("Invalid refresh token");

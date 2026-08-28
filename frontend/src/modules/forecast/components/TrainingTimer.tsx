@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/shared/hooks/useTheme';
-import { Clock, Loader2 } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 interface TrainingTimerProps {
@@ -47,8 +47,8 @@ const TrainingTimer: React.FC<TrainingTimerProps> = ({ estimatedReadyAt, onCompl
 
   return (
     <div className={`p-8 rounded-2xl border text-center transition-all ${
-      theme === 'dark' 
-        ? 'bg-[#0f1115] border-white/10 shadow-2xl shadow-cyan-500/10' 
+      theme === 'dark'
+        ? 'bg-[#0f1115] border-white/10 shadow-2xl shadow-cyan-500/10'
         : 'bg-white border-gray-200 shadow-lg'
     }`}>
       <div className="flex justify-center mb-6">
@@ -73,7 +73,7 @@ const TrainingTimer: React.FC<TrainingTimerProps> = ({ estimatedReadyAt, onCompl
           <span className="text-sm font-bold text-cyan-500">{Math.round(progress)}%</span>
         </div>
         <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-1000 ease-linear"
             style={{ width: `${progress}%` }}
           ></div>

@@ -150,11 +150,6 @@ const computeHealthScore = async (
     ? Math.max(0, 100 - (maxSectorPct - 30) * 2)
     : 100
 
-  // Risk/reward — % of positions with positive P&L
-  const positivePnLCount = positions.filter(p => {
-    const priceData = null // will be enriched below
-    return true
-  }).length
   // Use decision run results for riskReward if available
   let riskRewardScore = 70
   let volatilityScore = 70
@@ -536,7 +531,7 @@ const SECTOR_ETF_MAP: Record<string, string> = {
 
 export const buildSectorHeatmap = async (userId: string) => {
   // 1. Check for global sector performance cache
-  const cached = await getCache<{ cachedAt: string; rawPerformance: any }>(DASHBOARD_SECTOR_CACHE_KEY);
+  const cached = await getCache<{ cachedAt: string; rawPerformance: Record<string, Record<string, string>> }>(DASHBOARD_SECTOR_CACHE_KEY);
 
   let rawPerformance: Record<string, Record<string, string>> = { '1d': {}, '5d': {}, '1m': {} };
   let cachedAt: string;
