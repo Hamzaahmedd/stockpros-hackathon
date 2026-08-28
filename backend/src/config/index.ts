@@ -1,35 +1,30 @@
 // Environment configuration loader: resolves NODE_ENV, merges the matching
-// EnvConfig with secrets read from the environment, validates, and exports AppConfig.
+// environment config with secrets read from the environment, validates,
+// and exports the unified runtime config.
 import { developmentConfig } from './development'
 import { productionConfig } from './production'
 import { testConfig } from './test'
-import type { AppConfig, EnvConfig, NodeEnv, Secrets } from './types'
 
-const resolveEnv = (): NodeEnv => {
-  const raw = (process.env.NODE_ENV || 'development').trim().toLowerCase()
-  if (raw === 'prod' || raw === 'production') return 'production'
-  if (raw === 'test') return 'test'
-  if (raw === 'dev' || raw === 'development') return 'development'
-  throw new Error(
-    `Invalid NODE_ENV "${process.env.NODE_ENV}". Expected one of: development, test, production.`,
-  )
-}
+/** Non-sensitive, environment-specific settings defined per config file. */
+export type EnvConfig = typeof developmentConfig | typeof productionConfig | typeof testConfig
 
-const loadEnvConfig = (env: NodeEnv): EnvConfig => {
-  switch (env) {
-    case 'production':
-      return productionConfig
-    case 'test':
-      return testConfig
-    case 'development':
-      return developmentConfig
-  }
-}
-
-const readSecrets = (): Secrets => ({
+/** Sensitive values sourced exclusively from the process environment. */
+export const readSecrets = (): {
+  databaseUrl: string
+  redisUrl: string
+  accessTokenSecret: string
+  refreshTokenSecret: string
+  googleClientId: string
+  smtpUser: string
+  smtpPass: string
+  resendApiKey: string
+  finnhubApiKey: string
+  fmpApiKey: string
+  polygonApiKey: string
+  twelveDataApiKey: string
+} => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
-  redisCaCert: process.env.REDIS_CA_CERT || '',
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET || '',
   refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET || '',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -42,7 +37,95 @@ const readSecrets = (): Secrets => ({
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
 })
 
-const buildConfig = (env: EnvConfig, secrets: Secrets): AppConfig => ({
+export type Secrets = ReturnType<typeof readSecrets>
+
+const resolveEnv = (): 'development' | 'test' | 'production' => {
+  const raw = (process.env.NODE_ENV || 'development').trim().toLowerCase()
+  if (raw === 'prod' || raw === 'production') return 'production'
+  if (raw === 'test') return 'test'
+  if (raw === 'dev' || raw === 'development') return 'development'
+  throw new Error(
+    `Invalid NODE_ENV "${process.env.NODE_ENV}". Expected one of: development, test, production.`,
+  )
+}
+
+const loadEnvConfig = (env: 'development' | 'test' | 'production'): EnvConfig => {
+  switch (env) {
+    case 'production':
+      return productionConfig
+    case 'test':
+      return testConfig
+    case 'development':
+      return developmentConfig
+  }
+}
+
+/** Unified runtime configuration consumed across the app. */
+export const buildConfig = (
+  env: EnvConfig,
+  secrets: Secrets,
+): {
+  server: {
+    port: number
+    nodeEnv: 'development' | 'test' | 'production'
+    logLevel: 'debug' | 'info' | 'warn' | 'error'
+    trustProxy: boolean
+    frontendUrl: string
+  }
+  database: {
+    url: string
+  }
+  auth: {
+    accessTokenSecret: string
+    accessTokenExpiry: string
+    refreshTokenSecret: string
+    refreshTokenExpiry: string
+    magicLinkExpiryMinutes: number
+    googleClientId: string
+  }
+  redis: {
+    url: string
+    tlsRejectUnauthorized: boolean
+  }
+  cache: {
+    quoteTtlSeconds: number
+    responseTtlSeconds: number
+  }
+  ml: {
+    internalUrl: string
+  }
+  finnhub: {
+    apiKey: string
+    quoteTTL: number
+  }
+  smtp: {
+    host: string
+    port: number
+    user: string
+    pass: string
+  }
+  email: {
+    resendApiKey: string
+    useSmtp: boolean
+    useResend: boolean
+    resendFrom: string
+    logoUrl: string
+  }
+  fmp: {
+    apiKey: string
+  }
+  polygon: {
+    apiKey: string
+  }
+  twelveData: {
+    apiKey: string
+  }
+  features: {
+    enableNewsCron: boolean
+    enableWatchlistCron: boolean
+    enableAiRecomputeCron: boolean
+  }
+} => ({
   server: {
     // PORT may be injected at runtime by the PaaS.
     port: Number(process.env.PORT) || env.server.port,
@@ -59,13 +142,11 @@ const buildConfig = (env: EnvConfig, secrets: Secrets): AppConfig => ({
     accessTokenExpiry: env.auth.accessTokenExpiry,
     refreshTokenSecret: secrets.refreshTokenSecret,
     refreshTokenExpiry: env.auth.refreshTokenExpiry,
-    saltRounds: env.auth.saltRounds,
     magicLinkExpiryMinutes: env.auth.magicLinkExpiryMinutes,
     googleClientId: secrets.googleClientId,
   },
   redis: {
     url: secrets.redisUrl,
-    caCert: secrets.redisCaCert,
     tlsRejectUnauthorized: env.redis.tlsRejectUnauthorized,
   },
   cache: {
@@ -83,13 +164,13 @@ const buildConfig = (env: EnvConfig, secrets: Secrets): AppConfig => ({
     host: env.smtp.host,
     port: env.smtp.port,
     user: secrets.smtpUser,
-    pass: secrets.smtpPass,
-    otpTTL: env.smtp.otpTTL,
+    pass: secrets.smtpPass
   },
   email: {
     resendApiKey: secrets.resendApiKey,
+    useSmtp: env.email.useSmtp,
+    useResend: env.email.useResend,
     resendFrom: env.email.resendFrom,
-    fromAddress: env.email.fromAddress || secrets.smtpUser,
     logoUrl: env.email.logoUrl,
   },
   fmp: {
@@ -104,25 +185,19 @@ const buildConfig = (env: EnvConfig, secrets: Secrets): AppConfig => ({
   features: env.features,
 })
 
+export type AppConfig = ReturnType<typeof buildConfig>
+
 // Secrets required to boot: [env label, Secrets key].
-const REQUIRED_SECRETS: ReadonlyArray<
-  readonly [label: string, key: keyof Secrets]
-> = [
+const REQUIRED_SECRETS: ReadonlyArray<readonly [label: string, key: keyof Secrets]> = [
   ['DATABASE_URL', 'databaseUrl'],
   ['ACCESS_TOKEN_SECRET', 'accessTokenSecret'],
   ['REFRESH_TOKEN_SECRET', 'refreshTokenSecret'],
 ]
 
-const validateConfig = (
-  config: AppConfig,
-  secrets: Secrets,
-  env: NodeEnv,
-): void => {
+const validateConfig = (config: AppConfig, secrets: Secrets, env: 'development' | 'test' | 'production'): void => {
   if (env === 'test') return
 
-  const missing = REQUIRED_SECRETS.filter(([, key]) => !secrets[key]).map(
-    ([label]) => label,
-  )
+  const missing = REQUIRED_SECRETS.filter(([, key]) => !secrets[key]).map(([label]) => label)
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment secret(s): ${missing.join(', ')}. ` +
@@ -131,9 +206,7 @@ const validateConfig = (
   }
 
   if (!config.database.url) {
-    throw new Error(
-      'Invalid configuration: database.url resolved to an empty value.',
-    )
+    throw new Error('Invalid configuration: database.url resolved to an empty value.')
   }
   if (!Number.isFinite(config.server.port) || config.server.port <= 0) {
     throw new Error(

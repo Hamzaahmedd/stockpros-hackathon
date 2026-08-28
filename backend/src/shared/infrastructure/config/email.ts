@@ -12,6 +12,9 @@ const RESEND_API_KEY = config.email.resendApiKey
 const RESEND_FROM = config.email.resendFrom
 const isDev = config.server.nodeEnv !== 'production'
 
+const useSmtp = config.email.useSmtp
+const useResend = config.email.useResend
+
 const logoPublicUrl = config.email.logoUrl
 
 const localLogoPath = path.resolve(
@@ -66,12 +69,13 @@ const getLogoBase64 = (): Promise<string | undefined> => {
   return inflightLogo
 }
 
-// Initialise Resend if API key provided
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
+// Initialise Resend only when enabled for this environment and an API key is provided.
+const resend =
+  useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
-// Gmail SMTP transporter – created only when credentials are present
+// Gmail SMTP transporter – created only when SMTP is enabled and credentials are present.
 const smtpTransporter =
-  SMTP_USER && SMTP_PASS
+  useSmtp && SMTP_USER && SMTP_PASS
     ? nodemailer.createTransport({
         service: 'gmail',
         auth: { user: SMTP_USER, pass: SMTP_PASS },
@@ -89,7 +93,7 @@ export const transporter = {
     // Resolve the brand logo (remote URL → local fallback) once per send.
     const logoBase64 = await getLogoBase64()
 
-    // Primary delivery via Gmail SMTP (if configured)
+    // SMTP delivery (enabled per environment)
     if (smtpTransporter) {
       try {
         const info = await smtpTransporter.sendMail({
@@ -112,10 +116,13 @@ export const transporter = {
         return
       } catch (err: unknown) {
         logger.warn(`[Email] Gmail SMTP delivery failed: ${errorMessage(err)}`)
+        if (!resend && !isDev) {
+          throw new Error('Email delivery failed: SMTP failed and no fallback transport is enabled')
+        }
       }
     }
 
-    // Secondary delivery via Resend (if configured)
+    // Resend delivery (enabled per environment)
     if (resend) {
       try {
         const { data, error } = await resend.emails.send({

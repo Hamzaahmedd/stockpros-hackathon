@@ -1,19 +1,16 @@
 // Non-sensitive settings for production.
-// ml.internalUrl and email.resendFrom must be set to real values before deploy.
-import type { EnvConfig } from './types'
 
-export const productionConfig: EnvConfig = {
-  env: 'production',
+export const productionConfig = {
+  env: 'production' as const,
   server: {
     port: 8081,
-    logLevel: 'info',
+    logLevel: 'info' as const,
     trustProxy: true,
     frontendUrl: 'https://stockpros-platform.vercel.app',
   },
   auth: {
-    accessTokenExpiry: '1h',
+    accessTokenExpiry: '15m',
     refreshTokenExpiry: '30d',
-    saltRounds: 12,
     magicLinkExpiryMinutes: 10,
   },
   redis: {
@@ -24,7 +21,7 @@ export const productionConfig: EnvConfig = {
     responseTtlSeconds: 3600,
   },
   ml: {
-    internalUrl: 'http://ml-service.internal:8000',
+    internalUrl: 'https://ai-service-oylj.onrender.com',
   },
   finnhub: {
     quoteTTL: 30,
@@ -32,11 +29,11 @@ export const productionConfig: EnvConfig = {
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
-    otpTTL: 30,
   },
   email: {
-    resendFrom: 'StockPros <no-reply@stockpros.app>',
-    fromAddress: '',
+    useSmtp: false,
+    useResend: true,
+    resendFrom: 'StockPros <onboarding@resend.dev>',
     logoUrl:
       'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png',
   },

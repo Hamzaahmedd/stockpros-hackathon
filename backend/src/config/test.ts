@@ -1,18 +1,16 @@
 // Non-sensitive settings for the automated test suite.
-import type { EnvConfig } from './types'
 
-export const testConfig: EnvConfig = {
-  env: 'test',
+export const testConfig = {
+  env: 'test' as const,
   server: {
     port: 0,
-    logLevel: 'error',
+    logLevel: 'error' as const,
     trustProxy: false,
     frontendUrl: 'http://localhost:5173',
   },
   auth: {
     accessTokenExpiry: '1h',
     refreshTokenExpiry: '1h',
-    saltRounds: 4,
     magicLinkExpiryMinutes: 10,
   },
   redis: {
@@ -31,11 +29,11 @@ export const testConfig: EnvConfig = {
   smtp: {
     host: 'localhost',
     port: 1025,
-    otpTTL: 30,
   },
   email: {
+    useSmtp: true,
+    useResend: true,
     resendFrom: 'StockPros Test <test@example.com>',
-    fromAddress: 'test@example.com',
     logoUrl: '',
   },
   features: {

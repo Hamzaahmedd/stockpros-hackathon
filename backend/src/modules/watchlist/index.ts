@@ -1,5 +1,5 @@
-import router from './routes'
 import { defineModule } from '../module-interface'
+import router from './routes'
 
 export const watchlistModule = defineModule({
   name: 'watchlist',
@@ -7,5 +7,5 @@ export const watchlistModule = defineModule({
   router,
 })
 export { getTechnicalBaselines } from './evaluators/ai-zone-calculator'
-export { evaluateAlertForDevelopment } from './evaluators/alert-evaluator'
 export type { WatchlistItemResponse } from './types'
+

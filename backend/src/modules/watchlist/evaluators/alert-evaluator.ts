@@ -179,21 +179,3 @@ export const evaluateAlertsForTick = async (
     logger.error(`[AlertEvaluator] Uncaught error for ${symbol}`, err)
   }
 }
-
-/** Development hook kept behind the module boundary for the existing dev endpoint. */
-export const evaluateAlertForDevelopment = async (
-  symbol: string,
-  price: number,
-  skipCooldown = false,
-) => {
-  const normalizedSymbol = symbol.toUpperCase()
-  if (skipCooldown) {
-    const alerts = await prisma.watchlistAlert.findMany({
-      where: { watchlist: { symbol: normalizedSymbol } },
-    })
-    await prisma.alertLog.deleteMany({
-      where: { alertId: { in: alerts.map((alert) => alert.id) } },
-    })
-  }
-  await evaluateAlertsForTick(normalizedSymbol, price)
-}

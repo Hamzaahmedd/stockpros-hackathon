@@ -36,24 +36,6 @@ export const loginLimiter = rateLimit({
   validate: false,
 })
 
-export const OTPLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5, // Allow up to 5 OTP requests per email/IP
-  keyGenerator: (req: Request): string => {
-    const email = req.body?.email
-      ? String(req.body.email).toLowerCase().trim()
-      : req.ip || 'unknown'
-    return `otp:${email}`
-  },
-  message: {
-    success: false,
-    message: 'Too many requests. Please try again in 15 minutes.',
-  },
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  validate: false,
-})
-
 export const securityMiddleware = (app: Application): void => {
   // Global Rate Limiting
   app.use(

@@ -1,4 +1,3 @@
-import config from '@/config'
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import { transporter } from '../../../shared/infrastructure/config/email'
@@ -52,7 +51,6 @@ export const startEmailWorker = (): void => {
       const { to, title, body, symbol } = job.data
 
       await transporter.sendMail({
-        from: config.email.fromAddress,
         to,
         subject: title,
         text: body,

@@ -1,18 +1,16 @@
 // Non-sensitive settings for local development.
-import type { EnvConfig } from './types'
 
-export const developmentConfig: EnvConfig = {
-  env: 'development',
+export const developmentConfig = {
+  env: 'development' as const,
   server: {
     port: 3000,
-    logLevel: 'debug',
+    logLevel: 'debug' as const,
     trustProxy: true,
     frontendUrl: 'http://localhost:5173',
   },
   auth: {
     accessTokenExpiry: '7d',
     refreshTokenExpiry: '7d',
-    saltRounds: 10,
     magicLinkExpiryMinutes: 10,
   },
   redis: {
@@ -31,11 +29,11 @@ export const developmentConfig: EnvConfig = {
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
-    otpTTL: 30,
   },
   email: {
+    useSmtp: true,
+    useResend: false,
     resendFrom: 'StockPros <onboarding@resend.dev>',
-    fromAddress: '',
     logoUrl:
       'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png',
   },

@@ -26,7 +26,6 @@ Machine Learning models and pipelines for stock prediction. Includes data prepro
 
 ## Prerequisites
 - Python 3.11
-- AlphaVantage API Key
   
 ## Installation
 
@@ -52,8 +51,12 @@ pip install -r requirements.txt
    Create a `.env` file with the following variables:
 
 ```
-ALPHAVANTAGE_API_KEY=your_api_key
-ALPHA_URL=the_alpha_api_url
+REDIS_URL=your_app_env
+SUPABASE_URL=your_app_env
+SUPABASE_KEY=your_app_env
+TIINGO_API_KEY=your_app_env
+APP_ENV=your_app_env
+GITHUB_TOKEN=your_app_env
 ```
 
 ## Running the Application
