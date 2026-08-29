@@ -2,7 +2,7 @@
 import os
 from typing import Any, List, Tuple, cast
 
-APP_ENV = os.getenv('APP_ENV', 'local')
+APP_ENV = os.getenv('APP_ENV', 'development')
 
 # Global type placeholders initialized before conditional imports
 _Sequential: Any = None
@@ -15,12 +15,12 @@ early_stopping: Any = None
 ort: Any = None
 
 # CRITICAL FIX: TensorFlow must be imported BEFORE numpy/pandas/requests on Windows
-if APP_ENV == 'local':
+if APP_ENV == 'development':
     import tensorflow as tf  # type: ignore
     from tensorflow.keras.models import Sequential as _Sequential, load_model  # type: ignore
     from tensorflow.keras.layers import GRU as gru_layer, Dense as dense_layer, Dropout as dropout_layer, Input as input_layer  # type: ignore
     from tensorflow.keras.callbacks import EarlyStopping as early_stopping  # type: ignore
-elif APP_ENV == 'prod':
+elif APP_ENV == 'production':
     import onnxruntime as ort  # type: ignore[reportMissingTypeStubs]
 
 # Remaining standard library & third-party imports
@@ -70,11 +70,11 @@ FEATURE_COLS: List[str] = ["close", "volume", "sma_50", "rsi", "macd", "signal"]
 
 def get_model_path(symbol: str, extension: str | None = None) -> str:
     if extension is None:
-        extension = "onnx" if APP_ENV == "prod" else "keras"
+        extension = "onnx" if APP_ENV == "production" else "keras"
     return os.path.join(settings.MODEL_DIR, f"{symbol.upper()}.{extension}")
 
 async def sync_model_from_supabase(symbol: str) -> bool:
-    """Downloads the ONNX model from Supabase to local Render disk if it exists."""
+    """Downloads the ONNX model from Supabase to development Render disk if it exists."""
     remote_path = f"{symbol.upper()}.onnx"
     local_path = get_model_path(symbol, "onnx")
     
@@ -131,8 +131,8 @@ def convert_to_onnx(model: Any, output_path: str) -> None:
 def train_and_upload(df: pd.DataFrame, symbol: str) -> None:
     """Trains locally as .keras, converts to .onnx, and uploads ONLY the .onnx to Supabase."""
     try:
-        if APP_ENV == 'prod':
-            logger.warning("Training should not run in prod.")
+        if APP_ENV == 'production':
+            logger.warning("Training should not run in production.")
             return
 
         logger.info(f"Starting background training for {symbol}...")
@@ -141,7 +141,7 @@ def train_and_upload(df: pd.DataFrame, symbol: str) -> None:
         model, _ = train_and_save_model(df, symbol)
         onnx_path = get_model_path(symbol, "onnx")
         
-        # Invalidate memory cache immediately so next local inference uses the new model
+        # Invalidate memory cache immediately so next development inference uses the new model
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
         
@@ -184,7 +184,7 @@ def _prepare_multivariate(
     return np.array(X), np.array(y), scaler
 
 def _build_gru_model_multivariate(lookback: int, n_features: int, steps_ahead: int = 5) -> Any:
-    if APP_ENV == "prod":
+    if APP_ENV == "production":
         raise RuntimeError("Cannot build/train models in production environment.")
         
     model = _Sequential()
@@ -226,7 +226,7 @@ def train_and_save_model(df: pd.DataFrame, symbol: str) -> Tuple[Any, MinMaxScal
     return model, scaler
 
 def is_model_stale(filepath: str, max_days: int = 7) -> bool:
-    """Check local file age. Used in local env only."""
+    """Check development file age. Used in development env only."""
     if not os.path.exists(filepath):
         return True
     import time
@@ -234,8 +234,8 @@ def is_model_stale(filepath: str, max_days: int = 7) -> bool:
     return (time.time() - file_time) > (max_days * 86400)
 
 def is_model_stale_in_supabase(symbol: str, max_days: int = 7) -> bool:
-    """In prod, check the ONNX file's upload timestamp in Supabase.
-    Render's ephemeral disk timestamps are always 'new' so local mtime is useless.
+    """In production, check the ONNX file's upload timestamp in Supabase.
+    Render's ephemeral disk timestamps are always 'new' so development mtime is useless.
     Returns True if the file is missing or older than max_days.
     """
     try:
@@ -269,7 +269,7 @@ def load_model_if_exists(df_for_scaler: pd.DataFrame, symbol: str) -> Tuple[Any,
         logger.info(f"Loading existing model from {model_path} into cache...")
         _, _, scaler = _prepare_multivariate(df_for_scaler, settings.LOOKBACK, 5)
         
-        if APP_ENV == 'prod':
+        if APP_ENV == 'production':
             model = ort.InferenceSession(model_path)
         else:
             model = load_model(model_path)
@@ -278,8 +278,8 @@ def load_model_if_exists(df_for_scaler: pd.DataFrame, symbol: str) -> Tuple[Any,
         return model, scaler
     else:
         logger.warning(f"Model file {model_path} not found — training a new one")
-        if APP_ENV == 'prod':
-            raise FileNotFoundError(f"Model file {model_path} not found in PROD. Ensure it is uploaded.")
+        if APP_ENV == 'production':
+            raise FileNotFoundError(f"Model file {model_path} not found in production. Ensure it is uploaded.")
             
         model, scaler = train_and_save_model(df_for_scaler, symbol)
         MODEL_CACHE[symbol] = model
@@ -301,7 +301,7 @@ def predict_multi_step(
     last_scaled = cast(NDArray[np.float32], scaler_api.transform(last_seq)).astype(np.float32)
     current_input = last_scaled[np.newaxis, :, :]
 
-    if APP_ENV == 'prod':
+    if APP_ENV == 'production':
         current_input = current_input.astype(np.float32)
         input_name = model.get_inputs()[0].name
         pred_scaled = model.run(None, {input_name: current_input})[0]

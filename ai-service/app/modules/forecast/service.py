@@ -38,7 +38,7 @@ async def create_forecast(
         model_exists = os.path.exists(local_model_path)
         is_stale = (
             is_model_stale_in_supabase(symbol_up)
-            if APP_ENV == "prod"
+            if APP_ENV == "production"
             else model_exists and is_model_stale(local_model_path)
         )
 
@@ -137,7 +137,7 @@ async def _schedule_training(
         )
 
         if success:
-            if APP_ENV == "prod":
+            if APP_ENV == "production":
                 background_tasks.add_task(trigger_background_training, symbol)
             else:
                 background_tasks.add_task(train_and_upload, df, symbol)
