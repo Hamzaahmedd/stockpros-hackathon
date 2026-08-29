@@ -5,9 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     MODEL_DIR: str = "app/models/saved"
-    MODEL_FILE: str = "app/models/saved/gru_stock_model.keras"
     LOOKBACK: int = 60
-    EPOCHS: int = 15
     BATCH_SIZE: int = 32
 
     REDIS_URL: str = ""
