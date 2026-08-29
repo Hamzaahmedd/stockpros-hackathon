@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = ""
     TIINGO_API_KEY: str = ""
     APP_ENV: str = "development"
+    DOCS_ENABLED: bool = True
+    CACHE_ENABLED: bool = True
+    TTL_MULTIPLIER: float = 1.0
     GITHUB_TOKEN: str = ""
 
     model_config = SettingsConfigDict(

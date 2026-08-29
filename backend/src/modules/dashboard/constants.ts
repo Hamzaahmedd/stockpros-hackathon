@@ -1,5 +1,7 @@
+import { CACHE_TTL } from '../../shared/constants'
+
 export const DASHBOARD_SECTOR_CACHE_KEY = 'dashboard:sector-heatmap'
-export const DASHBOARD_SECTOR_CACHE_TTL = 60 * 60 // 60 minutes
+export const DASHBOARD_SECTOR_CACHE_TTL = CACHE_TTL.DASHBOARD.SECTOR_SUMMARY
 export const DASHBOARD_IMPACT_NEWS_HOURS = 48
 export const DASHBOARD_SMART_TRIGGER_LIMIT = 10
 export const DASHBOARD_IMPACT_NEWS_LIMIT = 5

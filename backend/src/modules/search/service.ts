@@ -1,4 +1,5 @@
 import { getCache, setCache } from '../../shared/infrastructure/cache'
+import { CACHE_TTL } from '../../shared/constants'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { FinnhubSearchItem, SymbolSearchResult } from './types'
@@ -33,7 +34,7 @@ export async function searchSymbols(
       type: item.type,
     }))
 
-    await setCache(cacheKey, results, 86400) // 24 hours
+    await setCache(cacheKey, results, CACHE_TTL.SEARCH.SYMBOL_LOOKUP) // 24 hours
 
     return results
   } catch (error) {

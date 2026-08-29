@@ -17,8 +17,8 @@ export const testConfig = {
     tlsRejectUnauthorized: false,
   },
   cache: {
-    quoteTtlSeconds: 1,
-    responseTtlSeconds: 1,
+    enabled: false,
+    ttlMultiplier: 0,
   },
   ml: {
     internalUrl: 'http://localhost:8000',
@@ -40,5 +40,6 @@ export const testConfig = {
     enableNewsCron: false,
     enableWatchlistCron: false,
     enableAiRecomputeCron: false,
+    enableSwaggerDocs: false,
   },
 }
