@@ -10,8 +10,7 @@
     "test": "jest",
     "test:finnhub": "jest src/modules/market/infrastructure/finnhub-stream.test.ts",
     "architecture:check": "node scripts/check-module-boundaries.cjs",
-    "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate",
-    "rbac:seed": "npx ts-node scripts/rbac-seed.ts"
+    "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {
     "@": "dist"
@@ -22,9 +21,7 @@
   "description": "Stock prediction, decision making and analytics platform.",
   "dependencies": {
     "@prisma/client": "^6.17.1",
-    "@sendgrid/mail": "^8.1.6",
     "axios": "^1.13.1",
-    "bcryptjs": "^3.0.3",
     "bullmq": "^5.71.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -45,8 +42,6 @@
     "prisma": "^6.17.1",
     "resend": "^6.11.0",
     "socket.io": "^4.8.1",
-    "swagger-jsdoc": "^6.3.0",
-    "swagger-ui-express": "^5.0.1",
     "technicalindicators": "^3.1.0",
     "ts-node": "^10.9.2",
     "uuidv7": "^1.0.2",
@@ -56,7 +51,6 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -67,8 +61,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^25.3.3",
     "@types/nodemailer": "^7.0.11",
-    "@types/swagger-jsdoc": "^6.0.4",
-    "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",

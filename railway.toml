@@ -1,8 +1,0 @@
-[build]
-builder = "nixpacks"
-
-[variables]
-NIXPACKS_PYTHON_VERSION = "3.11"
-
-# Sets a 15-minute timeout for pip installs to prevent large files (like TensorFlow) from failing.
-PIP_DEFAULT_TIMEOUT = "900"

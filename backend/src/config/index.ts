@@ -88,18 +88,15 @@ export const buildConfig = (
     tlsRejectUnauthorized: boolean
   }
   cache: {
-    /**
-     * Global operational knob: scales every domain TTL declared in
-     * shared/constants/cache-constants.ts. 1 = use TTLs as declared,
-     * 0 = disable expiring cache writes (used by the test environment).
-     */
-    ttlMultiplier: number
+    quoteTtlSeconds: number
+    responseTtlSeconds: number
   }
   ml: {
     internalUrl: string
   }
   finnhub: {
     apiKey: string
+    quoteTTL: number
   }
   smtp: {
     host: string
@@ -127,7 +124,6 @@ export const buildConfig = (
     enableNewsCron: boolean
     enableWatchlistCron: boolean
     enableAiRecomputeCron: boolean
-    enableSwaggerDocs: boolean
   }
 } => ({
   server: {
@@ -154,13 +150,15 @@ export const buildConfig = (
     tlsRejectUnauthorized: env.redis.tlsRejectUnauthorized,
   },
   cache: {
-    ttlMultiplier: env.cache.ttlMultiplier,
+    quoteTtlSeconds: env.cache.quoteTtlSeconds,
+    responseTtlSeconds: env.cache.responseTtlSeconds,
   },
   ml: {
     internalUrl: env.ml.internalUrl,
   },
   finnhub: {
     apiKey: secrets.finnhubApiKey,
+    quoteTTL: env.finnhub.quoteTTL,
   },
   smtp: {
     host: env.smtp.host,

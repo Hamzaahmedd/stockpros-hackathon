@@ -3,10 +3,10 @@ import polygonClient from '../../../shared/infrastructure/clients/polygon-client
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { parseSummaryBullets } from '../utils/summary-parser'
 import { getCache, setCache } from '../../../shared/infrastructure/cache'
-import { CACHE_TTL } from '../../../shared/constants/cache-constants'
 import {
   POLYGON_ARTICLE_LIMIT,
   POLYGON_RATE_LIMIT_DELAY,
+  SECTOR_CACHE_TTL_SECONDS,
 } from '../constants'
 import type { NewsCategory, NewsSentiment } from '@prisma/client'
 import type { NormalisedArticle } from '../types'
@@ -61,7 +61,7 @@ const getSectorForSymbol = async (symbol: string): Promise<string | null> => {
       { params: { symbol } },
     )
     const sector = data.finnhubIndustry ?? null
-    if (sector) await setCache(cacheKey, sector, CACHE_TTL.NEWS.SYMBOL_SECTOR)
+    if (sector) await setCache(cacheKey, sector, SECTOR_CACHE_TTL_SECONDS)
     return sector
   } catch {
     return null

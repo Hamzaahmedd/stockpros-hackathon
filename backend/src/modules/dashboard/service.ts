@@ -1,11 +1,11 @@
 import { NotFoundError } from '../../shared/errors'
-import { CACHE_TTL } from '../../shared/constants/cache-constants'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
   DASHBOARD_IMPACT_NEWS_HOURS,
   DASHBOARD_IMPACT_NEWS_LIMIT,
   DASHBOARD_SECTOR_CACHE_KEY,
+  DASHBOARD_SECTOR_CACHE_TTL,
   DASHBOARD_SMART_TRIGGER_LIMIT,
   HEALTH_SCORE_WEIGHTS,
   OVEREXPOSURE_THRESHOLD,
@@ -745,7 +745,7 @@ export const buildSectorHeatmap = async (userId: string) => {
     await setCache(
       DASHBOARD_SECTOR_CACHE_KEY,
       { rawPerformance, cachedAt },
-      CACHE_TTL.DASHBOARD.SECTOR_HEATMAP,
+      DASHBOARD_SECTOR_CACHE_TTL,
     )
   }
 

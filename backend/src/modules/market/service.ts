@@ -1,4 +1,4 @@
-import { CACHE_TTL } from '../../shared/constants/cache-constants'
+import config from '@/config'
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
@@ -10,6 +10,7 @@ import {
     StockQuote,
 } from './types'
 
+const FINNHUB_QUOTE_TTL = config.finnhub.quoteTTL
 const CACHE_KEY = 'market:top-us-stocks'
 
 export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
@@ -65,7 +66,7 @@ export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
 
   // Store in Redis
   if (filteredResults.length > 0) {
-    await setCache(CACHE_KEY, filteredResults, CACHE_TTL.MARKET.TOP_STOCKS_QUOTE)
+    await setCache(CACHE_KEY, filteredResults, FINNHUB_QUOTE_TTL)
   }
 
   return filteredResults
@@ -123,7 +124,7 @@ export async function getCompanySectors(
         const sector = response.data?.finnhubIndustry ?? 'Unknown'
         sectorMap[symbol] = sector
 
-        await setCache(`sector:${symbol}`, sector, CACHE_TTL.MARKET.SYMBOL_SECTOR)
+        await setCache(`sector:${symbol}`, sector, 86400)
       } catch (error) {
         logger.error(`Failed to fetch sector for ${symbol}`, error)
         sectorMap[symbol] = 'Unknown'

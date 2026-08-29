@@ -17,12 +17,14 @@ export const testConfig = {
     tlsRejectUnauthorized: false,
   },
   cache: {
-    // 0 disables expiring cache writes entirely so unit/integration
-    // tests never stall on or depend upon delayed cache expiration.
-    ttlMultiplier: 0,
+    quoteTtlSeconds: 1,
+    responseTtlSeconds: 1,
   },
   ml: {
     internalUrl: 'http://localhost:8000',
+  },
+  finnhub: {
+    quoteTTL: 1,
   },
   smtp: {
     host: 'localhost',
@@ -38,6 +40,5 @@ export const testConfig = {
     enableNewsCron: false,
     enableWatchlistCron: false,
     enableAiRecomputeCron: false,
-    enableSwaggerDocs: false,
   },
 }

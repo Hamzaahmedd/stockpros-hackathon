@@ -1,6 +1,6 @@
 import config from '@/config'
-import type { Server as HttpServer } from 'http'
 import { Server as IOServer, Socket } from 'socket.io'
+import { httpServer } from '../../..'
 import { updatePriceCache } from '../../../modules/market/caches/price-cache'
 import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
 import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
@@ -11,10 +11,7 @@ export class SocketServer {
   private static instance: SocketServer
   public io: IOServer
 
-  // The HTTP server is injected by the composition root (src/index.ts)
-  // instead of imported from it, which would create a circular dependency
-  // (index.ts → SocketServer → index.ts).
-  constructor(httpServer: HttpServer) {
+  constructor() {
     this.io = new IOServer(httpServer, {
       cors: {
         origin: config.server.frontendUrl,
