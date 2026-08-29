@@ -82,8 +82,16 @@ export function getRedisClient(): RedisConnectionOptions | undefined {
   return undefined
 }
 
+/**
+ * Resolves a domain TTL against the global environment TTL multiplier.
+ */
+export function resolveTtl(baseTtlSeconds: number): number {
+  const multiplier = config.cache?.ttlMultiplier ?? 1.0
+  return Math.max(0, Math.round(baseTtlSeconds * multiplier))
+}
+
 export async function getCache<T = unknown>(key: string): Promise<T | null> {
-  if (!redisClient) return null
+  if (!redisClient || !config.cache.enabled) return null
   try {
     const data = await redisClient.get(key)
     if (!data) return null
@@ -103,10 +111,18 @@ export async function setCache(
   value: unknown,
   ttlSeconds?: number,
 ): Promise<void> {
-  if (!redisClient) return
+  if (!redisClient || !config.cache.enabled) return
   try {
+    const effectiveTtl =
+      ttlSeconds !== undefined ? resolveTtl(ttlSeconds) : undefined
+
+    // If TTL resolves to 0 or negative (e.g. in test env with ttlMultiplier = 0), skip writing
+    if (effectiveTtl !== undefined && effectiveTtl <= 0) {
+      return
+    }
+
     const serialized = typeof value === 'string' ? value : JSON.stringify(value)
-    if (ttlSeconds) await redisClient.set(key, serialized, 'EX', ttlSeconds)
+    if (effectiveTtl) await redisClient.set(key, serialized, 'EX', effectiveTtl)
     else await redisClient.set(key, serialized)
   } catch (err) {
     logger.warn(`Redis setCache error [${key}]: ${String(err)}`)

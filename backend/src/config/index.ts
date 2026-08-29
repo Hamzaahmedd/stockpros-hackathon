@@ -88,8 +88,8 @@ export const buildConfig = (
     tlsRejectUnauthorized: boolean
   }
   cache: {
-    quoteTtlSeconds: number
-    responseTtlSeconds: number
+    enabled: boolean
+    ttlMultiplier: number
   }
   ml: {
     internalUrl: string
@@ -124,6 +124,7 @@ export const buildConfig = (
     enableNewsCron: boolean
     enableWatchlistCron: boolean
     enableAiRecomputeCron: boolean
+    enableSwaggerDocs: boolean
   }
 } => ({
   server: {
@@ -150,8 +151,8 @@ export const buildConfig = (
     tlsRejectUnauthorized: env.redis.tlsRejectUnauthorized,
   },
   cache: {
-    quoteTtlSeconds: env.cache.quoteTtlSeconds,
-    responseTtlSeconds: env.cache.responseTtlSeconds,
+    enabled: env.cache.enabled,
+    ttlMultiplier: env.cache.ttlMultiplier,
   },
   ml: {
     internalUrl: env.ml.internalUrl,

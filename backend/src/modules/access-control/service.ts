@@ -18,6 +18,7 @@ import {
   getCache,
   setCache,
 } from '../../shared/infrastructure/cache'
+import { CACHE_TTL } from '../../shared/constants'
 import { ScreenPermissions } from './types'
 
 // ── Role Management ──
@@ -359,7 +360,7 @@ export async function fetchAllScreenPermissions(
   })
 
   if (!userRole) {
-    await setCache(cacheKey, {}, 60)
+    await setCache(cacheKey, {}, CACHE_TTL.AUTH.SCREEN_ACTIONS)
     return {}
   }
 
@@ -414,7 +415,7 @@ export async function fetchAllScreenPermissions(
     result[resource.name] = combined
   }
 
-  await setCache(cacheKey, result, 60)
+  await setCache(cacheKey, result, CACHE_TTL.AUTH.SCREEN_ACTIONS)
   return result
 }
 
@@ -470,7 +471,7 @@ export async function getUserPermissions(
 
   allowedActions = Array.from(new Set(allowedActions))
 
-  await setCache(cacheKey, allowedActions, 60)
+  await setCache(cacheKey, allowedActions, CACHE_TTL.AUTH.USER_PERMISSIONS)
 
   return allowedActions
 }

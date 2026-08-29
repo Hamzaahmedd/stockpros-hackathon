@@ -1,4 +1,6 @@
-export const NEWS_CACHE_TTL_SECONDS = 300
+import { CACHE_TTL } from '../../shared/constants'
+
+export const NEWS_CACHE_TTL_SECONDS = CACHE_TTL.NEWS.FEED_SUMMARY
 export const NEWS_RETENTION_DAYS = 30
 export const SUMMARY_MAX_ITEMS = 5
 export const SUMMARY_MAX_BULLETS = 3
@@ -7,4 +9,4 @@ export const SUMMARY_MAX_BULLET_LEN = 180
 export const SYMBOL_FETCH_DAYS_BACK = 1
 export const POLYGON_ARTICLE_LIMIT = 20
 export const POLYGON_RATE_LIMIT_DELAY = 12_000
-export const SECTOR_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7 //
+export const SECTOR_CACHE_TTL_SECONDS = CACHE_TTL.NEWS.SECTOR_METADATA

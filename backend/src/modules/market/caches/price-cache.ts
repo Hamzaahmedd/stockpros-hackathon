@@ -54,8 +54,9 @@ export function formatWatchlistItem(entry: {
 
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import type { PriceCacheEntry } from '../types'
+import { CACHE_TTL } from '../../../shared/constants'
 
-const REST_CACHE_TTL_MS = 60_000 // 60 seconds per spec
+const REST_CACHE_TTL_MS = CACHE_TTL.MARKET.REST_PRICE_MS // 60 seconds per spec
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 

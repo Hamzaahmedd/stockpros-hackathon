@@ -1,8 +1,9 @@
 import finnhubClient from '@/shared/infrastructure/clients/finnhub-client'
 import { logger } from '../../../shared/infrastructure/logger'
 import { LogoCacheEntry } from '../types'
+import { CACHE_TTL } from '../../../shared/constants'
 
-const LOGO_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const LOGO_CACHE_TTL_MS = CACHE_TTL.MARKET.LOGO_URL_MS // 24 hours
 
 export const logoCache = new Map<string, LogoCacheEntry>()
 

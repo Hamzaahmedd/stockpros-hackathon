@@ -17,8 +17,8 @@ export const productionConfig = {
     tlsRejectUnauthorized: true,
   },
   cache: {
-    quoteTtlSeconds: 30,
-    responseTtlSeconds: 3600,
+    enabled: true,
+    ttlMultiplier: 1.0,
   },
   ml: {
     internalUrl: 'https://ai-service-oylj.onrender.com',
@@ -41,5 +41,6 @@ export const productionConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
+    enableSwaggerDocs: process.env.ENABLE_SWAGGER_DOCS !== 'false',
   },
 }
