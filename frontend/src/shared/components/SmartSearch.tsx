@@ -143,6 +143,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
           <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
             {results.map((item) => (
               <button
+                type="button"
                 key={item.symbol}
                 onClick={() => handleSelect(item.symbol)}
                 className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors border-b last:border-b-0 ${

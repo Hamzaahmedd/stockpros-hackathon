@@ -95,7 +95,7 @@ export const runEarningsAlertJob = async (): Promise<void> => {
   logger.info('[CronJob] Running earnings alert job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
     const now = new Date()
     const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
     const from = now.toISOString().split('T')[0]
@@ -109,7 +109,7 @@ export const runEarningsAlertJob = async (): Promise<void> => {
 
     const upcomingSymbols = new Set(
       (data.earningsCalendar ?? [])
-        .filter((e) => symbols.includes(e.symbol))
+        .filter((e) => symbols.has(e.symbol))
         .map((e) => e.symbol),
     )
 
@@ -141,12 +141,12 @@ export const runDividendAlertJob = async (): Promise<void> => {
   logger.info('[CronJob] Running dividend alert job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
     const now = new Date()
     const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
 
     await Promise.all(
-      symbols.map(async (symbol) => {
+      [...symbols].map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<
             Array<{ symbol: string; exDate: string }>
@@ -154,12 +154,12 @@ export const runDividendAlertJob = async (): Promise<void> => {
             params: { symbol },
           })
 
-          const upcoming = (data ?? []).find((d) => {
+          const hasUpcoming = (data ?? []).some((d) => {
             const exDate = new Date(d.exDate)
             return exDate >= now && exDate <= in3Days
           })
 
-          if (!upcoming) return
+          if (!hasUpcoming) return
 
           const symbolEntries = entries.filter((e) => e.symbol === symbol)
           for (const entry of symbolEntries) {
@@ -201,10 +201,10 @@ export const runAnalystRatingJob = async (): Promise<void> => {
   logger.info('[CronJob] Running analyst rating job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
 
     await Promise.all(
-      symbols.map(async (symbol) => {
+      [...symbols].map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<
             Array<{
@@ -218,8 +218,6 @@ export const runAnalystRatingJob = async (): Promise<void> => {
           })
 
           if (!data || data.length === 0) return
-
-          const latest = data[0] // most recent period first
 
           // Delta check: has any user's ANALYST_RATING_CHANGE alert for this
           // symbol fired in the last 24 hours? If yes, skip (already notified).
@@ -286,14 +284,14 @@ export const runNewsAlertJob = async (): Promise<void> => {
   logger.info('[CronJob] Running news alert job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
     const now = new Date()
     const from = new Date(now.getTime() - 30 * 60 * 1000) // last 30 min
     const fromStr = from.toISOString().split('T')[0]
     const toStr = now.toISOString().split('T')[0]
 
     await Promise.all(
-      symbols.map(async (symbol) => {
+      [...symbols].map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<
             Array<{ id: number; datetime: number; headline: string }>
@@ -342,10 +340,10 @@ export const runSecFilingJob = async (): Promise<void> => {
   logger.info('[CronJob] Running SEC filing job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
 
     await Promise.all(
-      symbols.map(async (symbol) => {
+      [...symbols].map(async (symbol) => {
         try {
           const { data } = await finnhubClient.get<{
             data: Array<{ filedDate: string; form: string }>
@@ -407,10 +405,10 @@ export const runAiZoneRecomputeJob = async (): Promise<void> => {
       },
     })
 
-    const symbols = [...new Set(entries.map((e) => e.symbol))]
+    const symbols = new Set(entries.map((e) => e.symbol))
 
     await Promise.all(
-      symbols.map(async (symbol) => {
+      [...symbols].map(async (symbol) => {
         // Recompute for the first user watching this symbol —
         // result is stored on the watchlist row per userId+symbol
         const symbolEntries = entries.filter((e) => e.symbol === symbol)

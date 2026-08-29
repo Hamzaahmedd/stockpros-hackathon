@@ -3,7 +3,7 @@ import { Sidebar } from "@/shared/components/Sidebar";
 import { SmartSearch } from "@/shared/components/SmartSearch";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FiActivity,
   FiClock,
@@ -15,6 +15,45 @@ import {
   FiZap
 } from 'react-icons/fi';
 
+interface TradingViewWidgetProps {
+  symbol: string;
+  theme: string;
+}
+
+const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, theme }) => {
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!container.current) return;
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: `NASDAQ:${symbol}`,
+      interval: "D",
+      timezone: "Asia/Karachi",
+      theme,
+      style: "1",
+      locale: "en",
+      enable_publishing: false,
+      allow_symbol_change: true,
+      container_id: "tradingview_analysis",
+    });
+
+    container.current.innerHTML = "";
+    container.current.appendChild(script);
+  }, [symbol, theme]);
+
+  return (
+    <div className="tradingview-widget-container" ref={container} style={{ height: "100%", width: "100%" }}>
+      <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }}></div>
+    </div>
+  );
+};
+
 const MarketAnalysis: React.FC = () => {
   const { theme } = useTheme();
   const [data, setData] = useState<any>(null);
@@ -25,7 +64,6 @@ const MarketAnalysis: React.FC = () => {
   const fetchDecision = async (symbol: string, silent = false) => {
     const trimmed = symbol?.trim();
     if (!trimmed) {
-      // Empty/missing symbol — clear any prior state instead of hitting a 404 URL.
       setData(null);
       setCurrentSymbol(null);
       setError(null);
@@ -47,7 +85,10 @@ const MarketAnalysis: React.FC = () => {
       setData(res.data.data);
       setCurrentSymbol(trimmed);
     } catch (err) {
-      if (!silent) setError("No data found for this symbol");
+      if (!silent) {
+        console.warn(`[MarketAnalysis] fetchDecision failed for ${trimmed}:`, err);
+        setError("No data found for this symbol");
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -61,41 +102,6 @@ const MarketAnalysis: React.FC = () => {
     }, 10000); // 10s refresh
     return () => clearInterval(interval);
   }, [currentSymbol]);
-
-  // TradingView Widget Script Loader
-  const TradingViewWidget: React.FC<{ symbol: string; theme: string }> = ({ symbol, theme }) => {
-    const container = React.useRef<HTMLDivElement>(null);
-
-    React.useEffect(() => {
-      if (!container.current) return;
-      
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-      script.type = "text/javascript";
-      script.async = true;
-      script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": `NASDAQ:${symbol}`,
-        "interval": "D",
-        "timezone": "Asia/Karachi",
-        "theme": theme,
-        "style": "1",
-        "locale": "en",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_analysis"
-      });
-      
-      container.current.innerHTML = "";
-      container.current.appendChild(script);
-    }, [symbol, theme]);
-
-    return (
-      <div className="tradingview-widget-container" ref={container} style={{ height: "100%", width: "100%" }}>
-        <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }}></div>
-      </div>
-    );
-  };
 
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground font-sans overflow-hidden">
@@ -399,10 +405,10 @@ const MarketAnalysis: React.FC = () => {
                   </div>
                   <ul className="space-y-4">
                     {data.reasoning.details && data.reasoning.details.length > 0 ? (
-                      data.reasoning.details.map((r: string, i: number) => (
-                        <li key={i} className="flex items-start gap-4">
+                      data.reasoning.details.map((detail: string) => (
+                        <li key={detail} className="flex items-start gap-4">
                           <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                          <span className="text-xs font-medium leading-relaxed tracking-wide text-muted-foreground">{r}</span>
+                          <span className="text-xs font-medium leading-relaxed tracking-wide text-muted-foreground">{detail}</span>
                         </li>
                       ))
                     ) : (

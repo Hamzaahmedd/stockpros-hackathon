@@ -28,6 +28,17 @@ const isInCooldown = async (alertId: string): Promise<boolean> => {
 // ─── Pure Rule Evaluator ─────────────────────────────────────────────────────
 
 /**
+ * Compare a value against a nullable numeric threshold.
+ * Returns false when the threshold is null/undefined; otherwise evaluates `cmp`.
+ * Keeps the rule switch free of per-case null-guard nesting.
+ */
+const compareGte = (value: number, threshold: number | null | undefined): boolean =>
+  threshold !== null && threshold !== undefined && value >= threshold
+
+const compareLte = (value: number, threshold: number | null | undefined): boolean =>
+  threshold !== null && threshold !== undefined && value <= threshold
+
+/**
  * Evaluate a single alert rule against the current tick.
  * Pure function — no DB reads, no side effects, returns boolean only.
  *
@@ -40,36 +51,23 @@ const evaluateRule = (
   changePercent: number,
   levels: WatchlistPriceLevels,
 ): boolean => {
-  const { type, threshold } = alert
-
-  switch (type) {
+  switch (alert.type) {
     case 'PRICE_ABOVE':
-      return threshold !== null && threshold !== undefined
-        ? currentPrice >= threshold
-        : false
-
+      return compareGte(currentPrice, alert.threshold)
     case 'PRICE_BELOW':
-      return threshold !== null && threshold !== undefined
-        ? currentPrice <= threshold
-        : false
-
+      return compareLte(currentPrice, alert.threshold)
     case 'PCT_CHANGE_UP':
-      return threshold !== null && threshold !== undefined
-        ? changePercent >= threshold
-        : false
-
+      return compareGte(changePercent, alert.threshold)
     case 'PCT_CHANGE_DOWN':
-      return threshold !== null && threshold !== undefined
-        ? changePercent <= -threshold
+      return alert.threshold !== null && alert.threshold !== undefined
+        ? changePercent <= -alert.threshold
         : false
-
     case 'ENTRY_ZONE':
       return levels.targetEntryPrice !== null
         ? currentPrice <= levels.targetEntryPrice * 1.02
         : false
-
     case 'STOP_LOSS_BREACHED':
-      return levels.stopLoss !== null ? currentPrice <= levels.stopLoss : false
+      return compareLte(currentPrice, levels.stopLoss)
 
     // Evaluated by cron/AI jobs in M8 — never by the tick handler
     case 'EARNINGS_APPROACHING':

@@ -349,7 +349,7 @@ export const updateAlert = async (
     where: { id: alertId, userId },
     include: { watchlist: true },
   })
-  if (!alert || alert.watchlist.symbol !== normalizedSymbol) {
+  if (alert?.watchlist.symbol !== normalizedSymbol) {
     throw new AppError('Alert not found', 404)
   }
 
@@ -405,7 +405,7 @@ export const deleteAlert = async (
     where: { id: alertId, userId },
     include: { watchlist: true },
   })
-  if (!alert || alert.watchlist.symbol !== normalizedSymbol) {
+  if (alert?.watchlist.symbol !== normalizedSymbol) {
     throw new AppError('Alert not found', 404)
   }
 
