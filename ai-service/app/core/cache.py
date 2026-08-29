@@ -44,9 +44,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             )
         client = cast(Any, redis).from_url(settings.REDIS_URL, **kwargs)
         redis_client = cast("redis.Redis | None", client)
-        FastAPICache.init(
-            RedisBackend(cast(redis.Redis, redis_client)), prefix="stockpros-cache"
-        )
+        if settings.CACHE_TTL_MULTIPLIER > 0:
+            FastAPICache.init(
+                RedisBackend(cast(redis.Redis, redis_client)),
+                prefix="stockpros-cache",
+            )
+        else:
+            # Test environments set the multiplier to 0: keep the Redis
+            # client alive for health probes, but never cache responses.
+            logger.info(
+                "CACHE_TTL_MULTIPLIER <= 0 — response caching is disabled."
+            )
     else:
         logger.warning("REDIS_URL is not configured — response caching is disabled.")
 

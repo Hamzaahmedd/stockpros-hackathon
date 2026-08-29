@@ -17,14 +17,12 @@ export const productionConfig = {
     tlsRejectUnauthorized: true,
   },
   cache: {
-    quoteTtlSeconds: 30,
-    responseTtlSeconds: 3600,
+    // Global scale applied to every domain TTL in
+    // shared/constants/cache-constants.ts (0 disables expiring writes).
+    ttlMultiplier: 1,
   },
   ml: {
     internalUrl: 'https://ai-service-oylj.onrender.com',
-  },
-  finnhub: {
-    quoteTTL: 30,
   },
   smtp: {
     host: 'smtp.gmail.com',
@@ -41,5 +39,6 @@ export const productionConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
+    enableSwaggerDocs: false,
   },
 }

@@ -13,6 +13,7 @@ import {
 import { RoleName } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
 import { Action, Resource, permissionHierarchy } from './permissions'
+import { CACHE_TTL } from '../../shared/constants/cache-constants'
 import {
   deleteCache,
   getCache,
@@ -359,7 +360,7 @@ export async function fetchAllScreenPermissions(
   })
 
   if (!userRole) {
-    await setCache(cacheKey, {}, 60)
+    await setCache(cacheKey, {}, CACHE_TTL.ACCESS_CONTROL.PERMISSION_SNAPSHOT)
     return {}
   }
 
@@ -414,7 +415,7 @@ export async function fetchAllScreenPermissions(
     result[resource.name] = combined
   }
 
-  await setCache(cacheKey, result, 60)
+  await setCache(cacheKey, result, CACHE_TTL.ACCESS_CONTROL.PERMISSION_SNAPSHOT)
   return result
 }
 
@@ -470,7 +471,11 @@ export async function getUserPermissions(
 
   allowedActions = Array.from(new Set(allowedActions))
 
-  await setCache(cacheKey, allowedActions, 60)
+  await setCache(
+    cacheKey,
+    allowedActions,
+    CACHE_TTL.ACCESS_CONTROL.PERMISSION_SNAPSHOT,
+  )
 
   return allowedActions
 }

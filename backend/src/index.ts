@@ -34,7 +34,7 @@ import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 export const httpServer = http.createServer(createApp())
 
 // Infrastructure adapters are started once, at the edge of the monolith.
-new SocketServer()
+new SocketServer(httpServer)
 
 const shutdown = async () => {
   logger.info('Shutdown requested, closing connections...')

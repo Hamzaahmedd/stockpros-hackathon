@@ -17,14 +17,12 @@ export const developmentConfig = {
     tlsRejectUnauthorized: false,
   },
   cache: {
-    quoteTtlSeconds: 30,
-    responseTtlSeconds: 60,
+    // Global scale applied to every domain TTL in
+    // shared/constants/cache-constants.ts (0 disables expiring writes).
+    ttlMultiplier: 1,
   },
   ml: {
     internalUrl: 'http://localhost:8000',
-  },
-  finnhub: {
-    quoteTTL: 30,
   },
   smtp: {
     host: 'smtp.gmail.com',
@@ -41,5 +39,6 @@ export const developmentConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
+    enableSwaggerDocs: true,
   },
 }

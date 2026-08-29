@@ -1,4 +1,5 @@
-import { NEWS_CACHE_TTL_SECONDS, SUMMARY_MAX_ITEMS } from './constants'
+import { SUMMARY_MAX_ITEMS } from './constants'
+import { CACHE_TTL } from '../../shared/constants/cache-constants'
 import { AppError } from '../../shared/errors'
 import { resolveCursor, rankArticles, enrichArticles } from './news'
 import type { NewsCategory, NewsSentiment } from '@prisma/client'
@@ -133,7 +134,7 @@ export const getNewsFeed = async (
     await setCache(
       feedCacheKey({ category, cursor, limit }),
       result,
-      NEWS_CACHE_TTL_SECONDS,
+      CACHE_TTL.NEWS.FEED_PAGE,
     )
   }
 
@@ -169,7 +170,7 @@ export const getNewsBySymbol = async (
   const enriched = await enrichArticles(userId, pageRows)
   const result = { data: enriched, nextCursor, hasMore }
 
-  await setCache(key, result, NEWS_CACHE_TTL_SECONDS)
+  await setCache(key, result, CACHE_TTL.NEWS.FEED_PAGE)
   return result
 }
 

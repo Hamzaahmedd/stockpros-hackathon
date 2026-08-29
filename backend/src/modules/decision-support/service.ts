@@ -2,6 +2,7 @@ import { parse } from 'csv-parse/sync'
 import { RSI } from 'technicalindicators'
 import * as xlsx from 'xlsx'
 import { validateOrThrow, ValidationError } from '../../shared/errors'
+import { CACHE_TTL } from '../../shared/constants/cache-constants'
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import polygonClient from '../../shared/infrastructure/clients/polygon-client'
@@ -122,7 +123,7 @@ export const getUnifiedMarketDecision = async (symbol: string) => {
     actionGuidance,
   }
 
-  await setCache(CACHE_KEY, finalData, 3600)
+  await setCache(CACHE_KEY, finalData, CACHE_TTL.DECISION_SUPPORT.MARKET_DECISION)
   return finalData
 }
 
@@ -178,7 +179,6 @@ export const getMarketStatus = async () => {
 }
 
 const HISTORICAL_PREFIX = 'hist_closes_'
-const HISTORICAL_TTL = 3600
 
 export const getHistoricalCloses = async (
   symbol: string,
@@ -208,7 +208,11 @@ export const getHistoricalCloses = async (
       .filter((quote) => quote.close !== null && quote.close !== undefined)
       .map((quote) => quote.close as number)
 
-    await setCache(CACHE_KEY, closes, HISTORICAL_TTL)
+    await setCache(
+      CACHE_KEY,
+      closes,
+      CACHE_TTL.DECISION_SUPPORT.HISTORICAL_CLOSES,
+    )
     return closes
   } catch (error) {
     logger.error(`Internal Yahoo Finance Error for ${symbol}`, error)

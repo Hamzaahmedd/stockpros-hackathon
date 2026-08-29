@@ -55,6 +55,22 @@ export async function closeRedis(): Promise<void> {
   }
 }
 
+/**
+ * Lightweight liveness probe used by the public health endpoint.
+ *
+ * Returns `null` when Redis is not configured or not connected (the
+ * probe is skipped — the app intentionally runs without cache), and
+ * `true`/`false` for reachable/unreachable otherwise.
+ */
+export async function pingRedis(): Promise<boolean | null> {
+  if (!redisClient) return null
+  try {
+    return (await redisClient.ping()) === 'PONG'
+  } catch {
+    return false
+  }
+}
+
 export function getRedisClient(): RedisConnectionOptions | undefined {
   if (redisClient) {
     return {
@@ -106,8 +122,17 @@ export async function setCache(
   if (!redisClient) return
   try {
     const serialized = typeof value === 'string' ? value : JSON.stringify(value)
-    if (ttlSeconds) await redisClient.set(key, serialized, 'EX', ttlSeconds)
-    else await redisClient.set(key, serialized)
+    if (ttlSeconds) {
+      // Domain TTLs (shared/constants/cache-constants.ts) are scaled by the
+      // environment-wide multiplier here, in one place. The test config sets
+      // it to 0, which skips expiring writes entirely so suites never wait
+      // on delayed cache expiration.
+      const effectiveTtl = Math.floor(ttlSeconds * config.cache.ttlMultiplier)
+      if (effectiveTtl <= 0) return
+      await redisClient.set(key, serialized, 'EX', effectiveTtl)
+    } else {
+      await redisClient.set(key, serialized)
+    }
   } catch (err) {
     logger.warn(`Redis setCache error [${key}]: ${String(err)}`)
   }
