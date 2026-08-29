@@ -53,18 +53,27 @@ process.on('SIGINT', shutdown)
 
 const startServer = async () => {
   try {
+    // 1. Bind port immediately
     httpServer.listen(config.server.port, '0.0.0.0', () => {
       logger.info(
         `Server listening on port ${config.server.port} in ${config.server.nodeEnv} mode`,
       )
     })
 
-    await connectRedis()
+    // 2. Initialize background infrastructure non-blockingly
     connectPrismaWithRetry()
-    await startCronScheduler()
-    await startNewsCronJobs()
-    startEmailWorker()
-    startAuthEmailWorker()
+
+    connectRedis()
+      .then(async () => {
+        logger.info('Redis connected successfully')
+        await startCronScheduler()
+        await startNewsCronJobs()
+        startEmailWorker()
+        startAuthEmailWorker()
+      })
+      .catch((err) => {
+        logger.error('Failed to initialize background workers/Redis:', err)
+      })
   } catch (error) {
     logger.error('Failed to start server:', error)
     process.exit(1)
