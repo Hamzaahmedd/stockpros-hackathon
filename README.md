@@ -8,11 +8,6 @@
   AI-powered stock forecasting, portfolio analytics, and decision-support platform.
 </p>
 
-<p align="center">
-  <a href="https://documenter.getpostman.com/view/48086882/2sB3WjxiMH"><img src="https://img.shields.io/badge/API_Docs-Postman-FF6C37?style=flat-square&logo=postman" alt="API Docs" /></a>
-  <a href="https://dbdocs.io/hamzahmed303/Stock-App"><img src="https://img.shields.io/badge/DB_Schema-dbdocs-4B32C3?style=flat-square" alt="DB Docs" /></a>
-</p>
-
 ---
 
 ## Architecture
