@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-AppEnv = Literal["local", "prod"]
+AppEnv = Literal["development", "production"]
 ModelExtension = Literal["keras", "onnx"]
 PredictionStatus = Literal["success", "training"]
 
