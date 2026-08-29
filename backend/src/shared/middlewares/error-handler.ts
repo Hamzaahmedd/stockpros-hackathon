@@ -19,121 +19,104 @@ interface LooseError {
   meta?: { code?: string }
 }
 
+const getErrorCode = (e: unknown): string | undefined => {
+  const x = e as LooseError
+  return x?.code || x?.cause?.code || x?.meta?.code
+}
+
+const extractPostgresMessage = (raw: string): string | undefined => {
+  const match = /PostgresError.*message: "([^"]+)"/.exec(raw)
+  return match?.[1]
+}
+
+const getErrorMessage = (e: unknown): string => {
+  const raw = (e as LooseError)?.message || 'Unknown error'
+  const lines = raw.split('\n')
+  return extractPostgresMessage(raw) || lines.pop() || raw
+}
+
+const extractAxiosBodyMessage = (data: unknown): string | undefined => {
+  if (typeof data === 'string') return data
+  if (typeof data === 'object' && data !== null && 'message' in data) {
+    return String((data as { message?: unknown }).message)
+  }
+  return undefined
+}
+
+const handleAxiosError = (err: AxiosError, res: Response): void => {
+  const bodyMessage = extractAxiosBodyMessage(err.response?.data)
+  const mlMessage = bodyMessage || err.message || 'ML service request failed'
+  const status = err.response?.status || 500
+  sendError(res, {
+    message: mlMessage,
+    statusCode: status,
+    errorCode: 'ML_SERVICE_ERROR',
+  })
+}
+
+const mapKnownCodeToError = (code: string | undefined, fallbackMsg: string): AppError => {
+  switch (code) {
+    case 'ECONNRESET':
+    case 'ECONNABORTED':
+    case 'ESOCKETTIMEDOUT':
+    case 'ETIMEDOUT':
+      return new InternalServerError('Connection failed or timed out.')
+    case 'P2000':
+      return new ValidationError('Value too long for field')
+    case 'P2002':
+      return new ConflictError('Duplicate entry')
+    case 'P2003':
+      return new ConflictError('Foreign key constraint failed')
+    case 'P2004':
+      return new ValidationError('Constraint failed')
+    case 'P2025':
+      return new NotFoundError('Record not found')
+    case 'P2021':
+    case 'P2022':
+      return new InternalServerError('Database schema mismatch')
+    case 'P2033':
+      return new ValidationError('Invalid data format')
+    case '23505':
+      return new ConflictError('Duplicate entry')
+    case '23503':
+      return new ConflictError('Foreign key violation')
+    case '23502':
+      return new ValidationError('Missing required field')
+    case '22P02':
+      return new ValidationError('Invalid data type')
+    case '23514':
+      return new ValidationError('Check constraint violation')
+    case 'P0001':
+      return new ValidationError('Business rule violation')
+    default:
+      return new InternalServerError(fallbackMsg || 'Unexpected database error')
+  }
+}
+
+const resolveAppError = (err: unknown): AppError => {
+  if (err instanceof AppError) return err
+  if (err instanceof ZodError) return new ValidationError('Validation failed', err.issues)
+  return mapKnownCodeToError(getErrorCode(err), getErrorMessage(err))
+}
+
 export const errorHandler = (
   err: unknown,
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  // Handle Axios / ML backend errors
   if (axios.isAxiosError(err)) {
-    const axiosErr = err as AxiosError
-    const data: unknown = axiosErr.response?.data
-    const bodyMessage =
-      typeof data === 'object' && data !== null && 'message' in data
-        ? String((data as { message?: unknown }).message)
-        : typeof data === 'string'
-          ? data
-          : undefined
-    const mlMessage =
-      bodyMessage || axiosErr.message || 'ML service request failed'
-    const status = axiosErr.response?.status || 500
-    return sendError(res, {
-      message: mlMessage,
-      statusCode: status,
-      errorCode: 'ML_SERVICE_ERROR',
-    })
+    handleAxiosError(err, res)
+    return
   }
 
-  let error: AppError
+  const error = resolveAppError(err)
 
-  // --- Helpers ---
-  const getErrorCode = (e: unknown): string | undefined => {
-    const x = e as LooseError
-    return x?.code || x?.cause?.code || x?.meta?.code
-  }
-
-  const getErrorMessage = (e: unknown): string => {
-    const raw = (e as LooseError)?.message || 'Unknown error'
-    const match = raw.match(/PostgresError.*message: \"([^\"]+)\"/)
-    if (match) return match[1]
-    return raw.split('\n').slice(-1)[0]
-  }
-
-  // Handle known error types
-  if (err instanceof AppError) {
-    error = err
-  } else if (err instanceof ZodError) {
-    error = new ValidationError('Validation failed', err.issues)
-  } else {
-    const code = getErrorCode(err)
-    const msg = getErrorMessage(err)
-
-    switch (code) {
-      // Critical infrastructure error
-      case 'ECONNRESET':
-      case 'ECONNABORTED':
-      case 'ESOCKETTIMEDOUT':
-      case 'ETIMEDOUT':
-        error = new InternalServerError('Connection failed or timed out.')
-        break
-
-      // Prisma Errors
-      case 'P2000':
-        error = new ValidationError('Value too long for field')
-        break
-      case 'P2002':
-        error = new ConflictError('Duplicate entry')
-        break
-      case 'P2003':
-        error = new ConflictError('Foreign key constraint failed')
-        break
-      case 'P2004':
-        error = new ValidationError('Constraint failed')
-        break
-      case 'P2025':
-        error = new NotFoundError('Record not found')
-        break
-      case 'P2021':
-      case 'P2022':
-        error = new InternalServerError('Database schema mismatch')
-        break
-      case 'P2033':
-        error = new ValidationError('Invalid data format')
-        break
-
-      // Postgres Errors
-      case '23505':
-        error = new ConflictError('Duplicate entry')
-        break
-      case '23503':
-        error = new ConflictError('Foreign key violation')
-        break
-      case '23502':
-        error = new ValidationError('Missing required field')
-        break
-      case '22P02':
-        error = new ValidationError('Invalid data type')
-        break
-      case '23514':
-        error = new ValidationError('Check constraint violation')
-        break
-      case 'P0001':
-        error = new ValidationError('Business rule violation')
-        break
-
-      default:
-        error = new InternalServerError(msg || 'Unexpected database error')
-        break
-    }
-  }
-
-  // Log full details for non-operational errors
   if (!error.isOperational && config.server.nodeEnv !== 'production') {
     logger.error('Unexpected error', err)
   }
 
-  return sendError(res, {
+  sendError(res, {
     message: error.message,
     statusCode: error.statusCode,
     details: error instanceof ValidationError ? error.details : undefined,

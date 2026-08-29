@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
 import api from "@/shared/api/axios";
-import { FiSearch, FiLoader, FiArrowRight, FiX } from "react-icons/fi";
-import { useTheme } from "@/shared/hooks/useTheme";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useTheme } from "@/shared/hooks/useTheme";
+import React, { useEffect, useRef, useState } from "react";
+import { FiArrowRight, FiSearch, FiX } from "react-icons/fi";
 
 interface SymbolResult {
   symbol: string;
@@ -65,6 +65,8 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
     }
   };
 
+  const prevValueRef = useRef<string>(value);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (value.trim()) {
@@ -72,11 +74,13 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
       } else {
         setResults([]);
         setShowDropdown(false);
-        // If the value is empty, trigger a clear filter
-        if (value === "") {
+        // Notify parent of a user-initiated clear only — skip the initial empty mount
+        // so we don't fire a spurious onSubmit("") that causes the parent to 404.
+        if (prevValueRef.current && value === "") {
           onSubmit("");
         }
       }
+      prevValueRef.current = value;
     }, 500);
     return () => clearTimeout(timer);
   }, [value]);
@@ -139,6 +143,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
           <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
             {results.map((item) => (
               <button
+                type="button"
                 key={item.symbol}
                 onClick={() => handleSelect(item.symbol)}
                 className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors border-b last:border-b-0 ${

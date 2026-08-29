@@ -1,8 +1,8 @@
 import config from '@/config'
 import axios from 'axios'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
 import nodemailer from 'nodemailer'
-import path from 'path'
 import { Resend } from 'resend'
 import { logger } from '../logger'
 
@@ -36,7 +36,8 @@ let logoResolved = false
 let cachedLogo: string | undefined
 let inflightLogo: Promise<string | undefined> | null = null
 
-const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+const errorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err)
 
 const getLogoBase64 = (): Promise<string | undefined> => {
   if (logoResolved) return Promise.resolve(cachedLogo)
@@ -73,51 +74,95 @@ const getLogoBase64 = (): Promise<string | undefined> => {
 const resend =
   useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
-// Gmail SMTP transporter – created only when SMTP is enabled and credentials are present.
+// Gmail SMTP transporter — created only when SMTP is enabled and credentials are present.
+// `service: 'gmail'` uses STARTTLS on port 587 automatically; Sonar's S5332 is a false positive here
+// because nodemailer upgrades the connection via STARTTLS before any credentials are sent.
+const smtpTransportOptions = {
+  service: 'gmail', // NOSONAR typescript:S5332 -- STARTTLS is negotiated automatically
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
+}
+
 const smtpTransporter =
   useSmtp && SMTP_USER && SMTP_PASS
-    ? nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: SMTP_USER, pass: SMTP_PASS },
-      })
+    ? nodemailer.createTransport(smtpTransportOptions)
     : null
 
+interface MailOptions {
+  from?: string
+  to: string
+  subject: string
+  text?: string
+  html?: string
+}
+
+const buildLogoAttachment = (logoBase64: string | undefined) =>
+  logoBase64
+    ? [
+        {
+          filename: 'logo.png',
+          content: Buffer.from(logoBase64, 'base64'),
+          cid: 'logo',
+        },
+      ]
+    : undefined
+
+const deliverViaSmtp = async (
+  opts: MailOptions,
+  logoBase64: string | undefined,
+): Promise<void> => {
+  if (!smtpTransporter) return
+  const info = await smtpTransporter.sendMail({
+    from: opts.from || `"StockPros" <${SMTP_USER}>`,
+    to: opts.to,
+    subject: opts.subject,
+    text: opts.text || '',
+    html: opts.html || opts.text || '',
+    attachments: buildLogoAttachment(logoBase64),
+  })
+  logger.info(
+    `[Email] Live email sent to ${opts.to} via Gmail SMTP (ID: ${info.messageId})`,
+  )
+}
+
+const deliverViaResend = async (opts: MailOptions): Promise<boolean> => {
+  if (!resend) return false
+  const { data, error } = await resend.emails.send({
+    from: opts.from || RESEND_FROM,
+    to: opts.to,
+    subject: opts.subject,
+    text: opts.text || '',
+    html: opts.html || opts.text || '',
+  })
+  if (!error) {
+    logger.info(
+      `[Email] Live email sent to ${opts.to} via Resend (ID: ${data?.id})`,
+    )
+    return true
+  }
+  logger.warn(`[Resend] Delivery notice for ${opts.to}: ${error.message}`)
+  return false
+}
+
+const logDevFallback = (opts: MailOptions): void => {
+  logger.info(`[Email][DEV] To: ${opts.to} | Subject: ${opts.subject}`)
+  if (opts.text) logger.info(`[Email][DEV] Text: ${opts.text}`)
+}
+
 export const transporter = {
-  sendMail: async (opts: {
-    from?: string
-    to: string
-    subject: string
-    text?: string
-    html?: string
-  }) => {
-    // Resolve the brand logo (remote URL → local fallback) once per send.
+  sendMail: async (opts: MailOptions) => {
     const logoBase64 = await getLogoBase64()
 
     // SMTP delivery (enabled per environment)
     if (smtpTransporter) {
       try {
-        const info = await smtpTransporter.sendMail({
-          from: opts.from || `"StockPros" <${SMTP_USER}>`,
-          to: opts.to,
-          subject: opts.subject,
-          text: opts.text || '',
-          html: opts.html || opts.text || '',
-          attachments: logoBase64
-            ? [
-                {
-                  filename: 'logo.png',
-                  content: Buffer.from(logoBase64, 'base64'),
-                  cid: 'logo',
-                },
-              ]
-            : undefined,
-        })
-        logger.info(`[Email] Live email sent to ${opts.to} via Gmail SMTP (ID: ${info.messageId})`)
+        await deliverViaSmtp(opts, logoBase64)
         return
       } catch (err: unknown) {
         logger.warn(`[Email] Gmail SMTP delivery failed: ${errorMessage(err)}`)
         if (!resend && !isDev) {
-          throw new Error('Email delivery failed: SMTP failed and no fallback transport is enabled')
+          throw new Error(
+            'Email delivery failed: SMTP failed and no fallback transport is enabled',
+          )
         }
       }
     }
@@ -125,18 +170,7 @@ export const transporter = {
     // Resend delivery (enabled per environment)
     if (resend) {
       try {
-        const { data, error } = await resend.emails.send({
-          from: opts.from || RESEND_FROM,
-          to: opts.to,
-          subject: opts.subject,
-          text: opts.text || '',
-          html: opts.html || opts.text || '',
-        })
-        if (!error) {
-          logger.info(`[Email] Live email sent to ${opts.to} via Resend (ID: ${data?.id})`)
-          return
-        }
-        logger.warn(`[Resend] Delivery notice for ${opts.to}: ${error.message}`)
+        if (await deliverViaResend(opts)) return
       } catch (err: unknown) {
         logger.warn(`[Resend] Error sending email: ${errorMessage(err)}`)
       }
@@ -144,8 +178,7 @@ export const transporter = {
 
     // Fallback: dev console output or production error
     if (isDev) {
-      logger.info(`[Email][DEV] To: ${opts.to} | Subject: ${opts.subject}`)
-      if (opts.text) logger.info(`[Email][DEV] Text: ${opts.text}`)
+      logDevFallback(opts)
       return
     }
     throw new Error('Email delivery failed: no transport succeeded')
