@@ -17,6 +17,10 @@ import {
   positionSizeValidator,
 } from './validation'
 import { getUserId, sendSuccess } from '../../shared/utils'
+import {
+  generatePortfolioReportPdfBuffer,
+  generateTradePlanPdfBuffer,
+} from './pdf-generator'
 
 export const getMarketBasedTradeDecision = async (
   req: AuthenticatedRequest,
@@ -63,10 +67,7 @@ export const calculatePositionSizeHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const { capital, symbol } = validateOrThrow(
-      positionSizeValidator,
-      req.body,
-    )
+    const { capital, symbol } = validateOrThrow(positionSizeValidator, req.body)
 
     const marketData = await getMarketDecisionResponse(symbol)
     const currentPrice = marketData.priceState.current
@@ -185,3 +186,52 @@ export const getPortfolioBasedTradeDecision = async (
   }
 }
 
+export const exportTradePlanPdf = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const plan = req.body
+    if (!plan || !plan.symbol) {
+      throw new Error('Trade plan data with symbol is required for PDF export.')
+    }
+
+    const pdfBuffer = await generateTradePlanPdfBuffer(plan)
+    const fileName = `stockpros_trade_plan_${String(plan.symbol).toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+    res.setHeader('Content-Length', pdfBuffer.length)
+    return res.end(pdfBuffer)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const exportPortfolioPdf = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { portfolioData, detailedPositions, riskMetrics } = req.body
+    if (!portfolioData) {
+      throw new Error('Portfolio data is required for PDF export.')
+    }
+
+    const pdfBuffer = await generatePortfolioReportPdfBuffer({
+      portfolioData,
+      detailedPositions,
+      riskMetrics,
+    })
+    const fileName = `stockpros_portfolio_health_${new Date().toISOString().split('T')[0]}.pdf`
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+    res.setHeader('Content-Length', pdfBuffer.length)
+    return res.end(pdfBuffer)
+  } catch (error) {
+    next(error)
+  }
+}
