@@ -13,6 +13,7 @@ import {
     FiFileText,
     FiHome,
     FiLogOut,
+    FiRadio,
     FiSettings,
     FiShield,
     FiTarget,
@@ -227,6 +228,19 @@ export const Sidebar: React.FC = () => {
 
             {!isCollapsed && isDecisionOpen && (
               <div className="ml-8 mt-1 space-y-1">
+                <Link
+                  to="/decision-support/radar"
+                  onMouseEnter={() => preloader.preloadRoute("/decision-support/radar")}
+                  onFocus={() => preloader.preloadRoute("/decision-support/radar")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition ${pathname === "/decision-support/radar"
+                    ? "bg-secondary/50 text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                >
+                  <FiRadio className="text-xs" />
+                  AI Radar
+                </Link>
+
                 <Link
                   to="/decision-support/market-analysis"
                   onMouseEnter={() => preloader.preloadRoute("/decision-support/market-analysis")}

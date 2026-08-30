@@ -1,19 +1,33 @@
 import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { SmartSearch } from "@/shared/components/SmartSearch";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
 import React, { useEffect, useRef, useState } from "react";
 import {
   FiActivity,
+  FiAward,
+  FiChevronDown,
+  FiChevronUp,
   FiClock,
+  FiDollarSign,
+  FiDownload,
   FiInfo,
+  FiPercent,
+  FiShield,
+  FiSliders,
   FiTarget,
   FiTrendingDown,
   FiTrendingUp,
   FiUsers,
   FiZap
 } from 'react-icons/fi';
+import { useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import type { PositionSizeResult } from "../types";
+import { downloadTradePlanPdf } from "../utils/downloadTradePlanPdf";
 
 interface TradingViewWidgetProps {
   symbol: string;
@@ -56,10 +70,56 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, theme }) 
 
 const MarketAnalysis: React.FC = () => {
   const { theme } = useTheme();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null);
+
+  // Sizing Panel State
+  const [isSizerOpen, setIsSizerOpen] = useState(true);
+  const [capitalInput, setCapitalInput] = useState<number>(10000);
+  const [sizingResult, setSizingResult] = useState<PositionSizeResult | null>(null);
+  const [sizingLoading, setSizingLoading] = useState(false);
+
+  const calculateSizing = async (symbol: string, capital: number, priceTargets?: any, currentPrice?: number) => {
+    try {
+      setSizingLoading(true);
+      const res = await api.post("/api/v1/decision-support/market/position-size", {
+        symbol,
+        capital,
+      });
+      if (res.data.success && res.data.data) {
+        setSizingResult(res.data.data);
+      }
+    } catch {
+      // Local fallback calculation
+      if (priceTargets && currentPrice) {
+        const shares = Math.floor(capital / currentPrice);
+        const riskPerShare = Math.max(0, currentPrice - priceTargets.stopLoss);
+        const totalRisk = Number((shares * riskPerShare).toFixed(2));
+        const potentialGain = Number((shares * Math.max(0, priceTargets.bullTarget - currentPrice)).toFixed(2));
+        const riskRewardRatio = totalRisk > 0 ? Number((potentialGain / totalRisk).toFixed(2)) : 0;
+        const percentOfCapital = Number(((shares * currentPrice) / capital * 100).toFixed(2));
+
+        setSizingResult({
+          symbol,
+          capital,
+          currentPrice,
+          stopLoss: priceTargets.stopLoss,
+          bullTarget: priceTargets.bullTarget,
+          shares,
+          riskPerShare,
+          totalRisk,
+          potentialGain,
+          riskRewardRatio,
+          percentOfCapital,
+        });
+      }
+    } finally {
+      setSizingLoading(false);
+    }
+  };
 
   const fetchDecision = async (symbol: string, silent = false) => {
     const trimmed = symbol?.trim();
@@ -82,8 +142,14 @@ const MarketAnalysis: React.FC = () => {
         `/api/v1/decision-support/market/decision/${trimmed}`
       );
 
-      setData(res.data.data);
+      const decisionData = res.data.data;
+      setData(decisionData);
       setCurrentSymbol(trimmed);
+
+      // Auto-calculate position size
+      if (decisionData?.priceTargets && decisionData?.priceState?.current) {
+        calculateSizing(trimmed, capitalInput, decisionData.priceTargets, decisionData.priceState.current);
+      }
     } catch (err) {
       if (!silent) {
         console.warn(`[MarketAnalysis] fetchDecision failed for ${trimmed}:`, err);
@@ -93,6 +159,14 @@ const MarketAnalysis: React.FC = () => {
       if (!silent) setLoading(false);
     }
   };
+
+  // Check URL query param on mount
+  useEffect(() => {
+    const sym = searchParams.get('symbol');
+    if (sym) {
+      fetchDecision(sym);
+    }
+  }, [searchParams]);
 
   // Real-time polling
   React.useEffect(() => {
@@ -291,6 +365,15 @@ const MarketAnalysis: React.FC = () => {
                           <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">RSI (14)</span>
                           <span className={`text-xs font-bold ${data.priceState.isOverbought ? 'text-destructive' : 'text-primary'}`}>{data.priceState.rsi}</span>
                        </div>
+                       {data.atr && (
+                         <>
+                           <div className="w-px h-6 bg-border" />
+                           <div className="flex flex-col">
+                             <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">ATR (14)</span>
+                             <span className="text-xs font-bold text-primary">±${data.atr.toFixed(2)}</span>
+                           </div>
+                         </>
+                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground font-medium italic opacity-60">
                        Updated: {new Date(data.timestamp).toLocaleTimeString()}
@@ -308,7 +391,7 @@ const MarketAnalysis: React.FC = () => {
                         <span className="text-[10px] font-bold uppercase tracking-widest text-primary">AI Signal Pulse</span>
                       </div>
 
-                      <div className="mb-10">
+                      <div className="mb-8">
                         <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-2">Recommendation</span>
                         <h3 className="text-4xl font-bold tracking-tight mb-4 uppercase italic decoration-primary/30 underline-offset-8">{data.decision.recommendation}</h3>
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -322,6 +405,38 @@ const MarketAnalysis: React.FC = () => {
                            <span className="text-sm font-bold text-primary">{(data.decision.confidence * 100).toFixed(0)}%</span>
                         </div>
                       </div>
+
+                      {/* Price Targets Section */}
+                      {data.priceTargets && (
+                        <div className="mb-8 p-4 rounded-xl bg-muted/20 border border-border/60 space-y-3">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary block">
+                            Standard Price Targets
+                          </span>
+                          
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">Entry Range</span>
+                              <span className="font-bold font-mono">
+                                ${data.priceTargets.entryLow.toFixed(2)} – ${data.priceTargets.entryHigh.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-[10px] font-bold text-emerald-500 uppercase">Bull Target (+2 ATR)</span>
+                              <span className="font-bold font-mono text-emerald-500">
+                                ${data.priceTargets.bullTarget.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-[10px] font-bold text-rose-500 uppercase">Stop-Loss (-1.5 ATR)</span>
+                              <span className="font-bold font-mono text-rose-500">
+                                ${data.priceTargets.stopLoss.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-4">
                         <div className="flex items-center gap-4">
@@ -347,6 +462,122 @@ const MarketAnalysis: React.FC = () => {
                     </div>
                 </div>
               </div>
+
+              {/* Collapsible Size My Position Panel */}
+              {data.priceTargets && (
+                <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden transition-all duration-300">
+                  <button
+                    onClick={() => setIsSizerOpen(!isSizerOpen)}
+                    className="w-full px-8 py-5 flex items-center justify-between bg-muted/20 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <FiSliders className="text-base" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-black text-base tracking-tight">Size My Position &amp; Trade Plan</h3>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          Interactive capital allocation and standardized ATR-based trade parameters
+                        </p>
+                      </div>
+                    </div>
+                    {isSizerOpen ? <FiChevronUp className="text-lg text-muted-foreground" /> : <FiChevronDown className="text-lg text-muted-foreground" />}
+                  </button>
+
+                  {isSizerOpen && (
+                    <div className="p-8 border-t border-border space-y-6 animate-in fade-in duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                        <div className="md:col-span-6 space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex justify-between">
+                            <span>Allocation Budget ($ USD)</span>
+                            <span className="text-primary font-mono">${capitalInput.toLocaleString()}</span>
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+                              <FiDollarSign />
+                            </div>
+                            <Input
+                              type="number"
+                              value={capitalInput}
+                              onChange={(e) => {
+                                const val = Math.max(1, Number(e.target.value) || 0);
+                                setCapitalInput(val);
+                                calculateSizing(data.symbol, val, data.priceTargets, data.priceState.current);
+                              }}
+                              min={100}
+                              max={10000000}
+                              step={500}
+                              className="pl-9 text-sm font-bold bg-background border-border"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-6 flex justify-end">
+                          <Button
+                            onClick={() => {
+                              if (sizingResult && data.priceTargets) {
+                                downloadTradePlanPdf({
+                                  symbol: data.symbol,
+                                  currentPrice: data.priceState.current,
+                                  atr: data.atr,
+                                  recommendation: data.decision.recommendation,
+                                  confidence: data.decision.confidence,
+                                  timeHorizon: data.decision.timeHorizon,
+                                  entryRange: { low: data.priceTargets.entryLow, high: data.priceTargets.entryHigh },
+                                  bullTarget: data.priceTargets.bullTarget,
+                                  stopLoss: data.priceTargets.stopLoss,
+                                  riskFlags: data.riskFlags,
+                                  sizing: sizingResult,
+                                });
+                                toast.success(`Trade Plan PDF generated for ${data.symbol}`);
+                              }
+                            }}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs flex items-center gap-2 px-5 py-2.5 shadow-sm"
+                          >
+                            <FiDownload size={14} /> Download Trade Plan (PDF)
+                          </Button>
+                        </div>
+                      </div>
+
+                      {sizingResult && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                          <div className="p-4 rounded-xl border border-border bg-background space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              <FiAward className="text-primary" /> Units
+                            </span>
+                            <div className="text-2xl font-black text-primary">{sizingResult.shares} shares</div>
+                            <span className="text-[10px] text-muted-foreground font-medium">Allocated</span>
+                          </div>
+
+                          <div className="p-4 rounded-xl border border-border bg-background space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              <FiShield className="text-rose-500" /> Max Risk
+                            </span>
+                            <div className="text-2xl font-black text-rose-500">${sizingResult.totalRisk.toLocaleString()}</div>
+                            <span className="text-[10px] text-rose-400 font-medium">-${sizingResult.riskPerShare.toFixed(2)}/sh</span>
+                          </div>
+
+                          <div className="p-4 rounded-xl border border-border bg-background space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              <FiTarget className="text-emerald-500" /> Potential Gain
+                            </span>
+                            <div className="text-2xl font-black text-emerald-500">+${sizingResult.potentialGain.toLocaleString()}</div>
+                            <span className="text-[10px] text-emerald-400 font-medium">to Target</span>
+                          </div>
+
+                          <div className="p-4 rounded-xl border border-border bg-background space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              <FiActivity className="text-primary" /> R : R Ratio
+                            </span>
+                            <div className="text-2xl font-black text-foreground">{sizingResult.riskRewardRatio.toFixed(2)} : 1</div>
+                            <span className="text-[10px] text-muted-foreground font-medium">{sizingResult.percentOfCapital.toFixed(1)}% capital</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Analytics Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -3,7 +3,7 @@
 // returned by the backend /api/v1/decision-support endpoints.
 import jsPDF from 'jspdf';
 import autoTable, { type UserOptions } from 'jspdf-autotable';
-import type { DetailedDecision, PortfolioData } from '../types';
+import type { DetailedDecision, PortfolioData, PortfolioRiskMetrics } from '../types';
 import {
     PORTFOLIO_DISCLAIMER,
     buildReportRows,
@@ -85,7 +85,13 @@ const drawHeader = (doc: jsPDF, portfolioData: PortfolioData): number => {
   return 126;
 };
 
-const drawSummary = (doc: jsPDF, portfolioData: PortfolioData, riskLabel: string, startY: number): number => {
+const drawSummary = (
+  doc: jsPDF,
+  portfolioData: PortfolioData,
+  riskLabel: string,
+  riskMetrics: PortfolioRiskMetrics | null | undefined,
+  startY: number,
+): number => {
   let cursorY = drawSectionTitle(doc, 'Portfolio Summary', startY);
 
   const { summary } = portfolioData;
@@ -94,6 +100,8 @@ const drawSummary = (doc: jsPDF, portfolioData: PortfolioData, riskLabel: string
     { label: 'Unrealized P&L', value: formatSignedCurrency(summary.totalUnrealizedPnL) },
     { label: 'Overall ROI', value: `${summary.totalUnrealizedPnLPercent.toFixed(2)}%` },
     { label: 'Active Positions', value: String(summary.totalPositions) },
+    { label: 'Portfolio Beta', value: riskMetrics ? `${riskMetrics.weightedBeta.toFixed(2)}` : '1.00' },
+    { label: 'Portfolio Sharpe', value: riskMetrics ? `${riskMetrics.portfolioSharpe.toFixed(2)}` : '—' },
     { label: 'Risk Profile', value: riskLabel },
   ];
 
@@ -148,7 +156,7 @@ const drawHoldingsTable = (doc: jsPDF, rows: PortfolioReportRow[], startY: numbe
   autoTable(doc, {
     ...tableStyles,
     startY: cursorY,
-    head: [['Symbol', 'Sector', 'Qty', 'Entry', 'Current', 'Market Value', 'Unrealized P&L', 'ROI %']],
+    head: [['Symbol', 'Sector', 'Qty', 'Entry', 'Current', 'Market Value', 'Unrealized P&L', 'ROI %', 'Beta', 'Sharpe']],
     body: rows.map((row) => [
       row.symbol,
       row.sector,
@@ -158,6 +166,8 @@ const drawHoldingsTable = (doc: jsPDF, rows: PortfolioReportRow[], startY: numbe
       formatCurrency(row.marketValue),
       signedMoney(row.unrealizedPnL),
       `${row.roiPercent.toFixed(2)}%`,
+      row.beta != null ? row.beta.toFixed(2) : '1.00',
+      row.sharpe != null ? row.sharpe.toFixed(2) : '—',
     ]),
     columnStyles: {
       2: { halign: 'right' },
@@ -166,6 +176,8 @@ const drawHoldingsTable = (doc: jsPDF, rows: PortfolioReportRow[], startY: numbe
       5: { halign: 'right' },
       6: { halign: 'right' },
       7: { halign: 'right' },
+      8: { halign: 'center' },
+      9: { halign: 'center' },
     },
     didParseCell: (data) => {
       if (data.section !== 'body' || (data.column.index !== 6 && data.column.index !== 7)) return;
@@ -205,13 +217,14 @@ const drawDecisionsTable = (doc: jsPDF, rows: PortfolioReportRow[], startY: numb
     },
     didParseCell: (data) => {
       if (data.section !== 'body') return;
-      const colorKey = [1, 2, 4].includes(data.column.index) ? String(data.cell.raw) : null;
+      const rawText = typeof data.cell.raw === 'string' ? data.cell.raw : '';
+      const colorKey = [1, 2, 4].includes(data.column.index) ? rawText : null;
       const color = colorKey ? DECISION_COLORS[colorKey] : undefined;
       if (color) {
         data.cell.styles.textColor = color;
         data.cell.styles.fontStyle = 'bold';
       }
-      if (data.column.index === 7 && data.cell.raw === 'YES') {
+      if (data.column.index === 7 && rawText === 'YES') {
         data.cell.styles.textColor = NEGATIVE_RED;
         data.cell.styles.fontStyle = 'bold';
       }
@@ -309,13 +322,14 @@ const drawPageFooters = (doc: jsPDF): void => {
 export const downloadPortfolioReportPdf = (
   portfolioData: PortfolioData,
   detailedPositions: DetailedDecision[],
+  riskMetrics?: PortfolioRiskMetrics | null,
 ): void => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const rows = buildReportRows(portfolioData, detailedPositions);
+  const rows = buildReportRows(portfolioData, detailedPositions, riskMetrics);
   const riskLabel = computeRiskProfileLabel(detailedPositions);
 
   let cursorY = drawHeader(doc, portfolioData);
-  cursorY = drawSummary(doc, portfolioData, riskLabel, cursorY);
+  cursorY = drawSummary(doc, portfolioData, riskLabel, riskMetrics, cursorY);
   cursorY = drawHoldingsTable(doc, rows, cursorY);
   cursorY = drawDecisionsTable(doc, rows, cursorY);
   cursorY = drawGuidanceTable(doc, rows, cursorY);

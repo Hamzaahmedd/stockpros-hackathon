@@ -31,6 +31,9 @@ export const CACHE_TTL = {
   DECISION_SUPPORT: {
     TRADE_DECISION: 60 * 60, // 1 hour (3,600 seconds)
     HISTORICAL_CLOSES: 60 * 60, // 1 hour (3,600 seconds)
+    RADAR: 4 * 60 * 60, // 4 hours (14,400 seconds)
+    ATR: 60 * 60, // 1 hour (3,600 seconds)
+    PORTFOLIO_BETAS: 4 * 60 * 60, // 4 hours (14,400 seconds)
   },
 
   /** Consolidated User Dashboard Metrics & Aggregations */
