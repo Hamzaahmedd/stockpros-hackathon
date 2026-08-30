@@ -1,7 +1,6 @@
 import config from '@/config'
 import cookieParser from 'cookie-parser'
 import express from 'express'
-import { RegisterRoutes } from './generated/routes'
 import { modules } from './modules'
 import { NotFoundError } from './shared/errors'
 import { setupSwaggerDocs } from './shared/infrastructure/docs'
@@ -23,10 +22,6 @@ export const createApp = () => {
     setupSwaggerDocs(app)
   }
 
-  // Register auto-generated tsoa routes
-  RegisterRoutes(app)
-
-  // Register remaining legacy express routers (if any)
   for (const module of modules) app.use(module.route, module.router)
 
   app.get('/', (_req, res) => res.send('StockPros server is running'))
