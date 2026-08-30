@@ -23,7 +23,12 @@ export type PortfolioSummary = {
 }
 
 export type DecisionType =
-  'ADD' | 'HOLD' | 'TRIM' | 'EXIT' | 'BUY' | 'HOLD' | 'SELL'
+  | 'ADD'
+  | 'HOLD'
+  | 'TRIM'
+  | 'EXIT'
+  | 'BUY'
+  | 'SELL'
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 export type VolatilityLevel = 'NORMAL' | 'ELEVATED'

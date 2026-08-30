@@ -1,4 +1,5 @@
 # app/services/model_service.py
+import asyncio
 import os
 from typing import Any, List, Tuple, cast
 
@@ -73,6 +74,14 @@ def get_model_path(symbol: str, extension: str | None = None) -> str:
         extension = "onnx" if APP_ENV == "production" else "keras"
     return os.path.join(settings.MODEL_DIR, f"{symbol.upper()}.{extension}")
 
+def _download_and_save_model(remote_path: str, local_path: str) -> None:
+    res = supabase.storage.from_(BUCKET_NAME).download(remote_path)
+    if isinstance(res, bytes):
+        with open(local_path, "wb") as f:
+            f.write(res)
+    else:
+        raise ValueError(f"Supabase returned non-byte response: {res}")
+
 async def sync_model_from_supabase(symbol: str) -> bool:
     """Downloads the ONNX model from Supabase to development Render disk if it exists."""
     remote_path = f"{symbol.upper()}.onnx"
@@ -80,14 +89,7 @@ async def sync_model_from_supabase(symbol: str) -> bool:
     
     try:
         os.makedirs(settings.MODEL_DIR, exist_ok=True)
-
-        res = supabase.storage.from_(BUCKET_NAME).download(remote_path)
-
-        if isinstance(res, bytes):
-            with open(local_path, "wb") as f:
-                f.write(res)
-        else:
-            raise ValueError(f"Supabase returned non-byte response: {res}")
+        await asyncio.to_thread(_download_and_save_model, remote_path, local_path)
 
         if symbol in MODEL_CACHE:
             del MODEL_CACHE[symbol]
@@ -325,7 +327,7 @@ def get_trading_dates(start_date: pd.Timestamp, num_days: int) -> List[pd.Timest
     current = start_date
     while len(dates) < num_days:
         current += pd.Timedelta(days=1)
-        if current.weekday() < 5:  # Monday=0, Friday=4
+        if current.weekday() < 5:  # Filter out weekends (keep Monday through Friday)
             dates.append(current)
     return dates
 

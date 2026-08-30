@@ -38,8 +38,10 @@ export const readSecrets = (): {
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
+export type Environment = 'development' | 'test' | 'production'
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
-const resolveEnv = (): 'development' | 'test' | 'production' => {
+const resolveEnv = (): Environment => {
   const raw = (process.env.NODE_ENV || 'development').trim().toLowerCase()
   if (raw === 'prod' || raw === 'production') return 'production'
   if (raw === 'test') return 'test'
@@ -49,7 +51,7 @@ const resolveEnv = (): 'development' | 'test' | 'production' => {
   )
 }
 
-const loadEnvConfig = (env: 'development' | 'test' | 'production'): EnvConfig => {
+const loadEnvConfig = (env: Environment): EnvConfig => {
   switch (env) {
     case 'production':
       return productionConfig
@@ -67,8 +69,8 @@ export const buildConfig = (
 ): {
   server: {
     port: number
-    nodeEnv: 'development' | 'test' | 'production'
-    logLevel: 'debug' | 'info' | 'warn' | 'error'
+    nodeEnv: Environment
+    logLevel: LogLevel
     trustProxy: boolean
     frontendUrl: string
   }
