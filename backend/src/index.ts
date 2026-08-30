@@ -4,7 +4,7 @@ dotenv.config({ quiet: true })
 if (!__filename.endsWith('.ts')) require('module-alias/register')
 
 import config from '@/config'
-import http from 'http'
+import http from 'node:http'
 import { createApp } from './app'
 import { finnhubService } from './modules/market/infrastructure/finnhub-stream'
 import {

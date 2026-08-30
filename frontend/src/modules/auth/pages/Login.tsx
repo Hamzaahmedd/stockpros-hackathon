@@ -5,9 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AuthLayout } from "../components/AuthLayout";
-import { Mail, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Mail, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "@/shared/api/axios";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -36,7 +36,7 @@ const schema = z.object({
   email: z
     .string()
     .min(1, "Email is required")
-    .email("Please enter a valid email address")
+    .email({ message: "Please enter a valid email address" })
     .trim()
     .toLowerCase(),
 });
@@ -53,7 +53,7 @@ export const Login: React.FC = () => {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, handleSubmit, formState, getValues } = useForm<Form>({
+  const { register, handleSubmit, formState } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
       email: "",

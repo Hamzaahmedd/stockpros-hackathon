@@ -62,7 +62,7 @@ AI-powered stock forecasting, portfolio analytics, and decision-support platform
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Standard JSON Web Token (JWT) provided in Authorization header: \`Bearer <token>\`',
+        description: 'Standard JSON Web Token (JWT) provided in Authorization header: Bearer <token>',
       },
       cookieAuth: {
         type: 'apiKey',

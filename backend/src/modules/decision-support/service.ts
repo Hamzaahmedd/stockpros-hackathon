@@ -214,7 +214,7 @@ export const getHistoricalCloses = async (
       interval: '1d',
     })
 
-    if (!result || !result.quotes || result.quotes.length === 0) {
+    if (!result?.quotes?.length) {
       throw new Error('No data returned')
     }
 
@@ -294,7 +294,7 @@ export const getNews = async (symbol: string) => {
 
 export const computeRSI = (closes: number[]) => {
   const values = RSI.calculate({ values: closes, period: 14 })
-  return values[values.length - 1] ?? 50
+  return values.at(-1) ?? 50
 }
 
 export const computeTrend = (closes: number[]) => {
@@ -318,7 +318,7 @@ export const parseAnalystConsensus = (data: any[]) => {
   const confidencePercent =
     totalAnalysts > 0 ? Math.round((bullishCount / totalAnalysts) * 100) : 0
 
-  let rating = 'HOLD'
+  let rating: string
   if (confidencePercent >= 80) rating = 'STRONG_BUY'
   else if (confidencePercent >= 60) rating = 'BUY'
   else if (confidencePercent >= 40) rating = 'HOLD'
@@ -346,8 +346,8 @@ export const computeSentiment = (feed: any[], targetTicker: string) => {
 
     if (tickerData) {
       return (
-        parseFloat(tickerData.ticker_sentiment_score || '0') *
-        parseFloat(tickerData.relevance_score || '0')
+        Number.parseFloat(tickerData.ticker_sentiment_score || '0') *
+        Number.parseFloat(tickerData.relevance_score || '0')
       )
     }
 
@@ -407,15 +407,11 @@ const computeDataConfidence = (newsVolume: number, analystCount: number) => {
   return score
 }
 
-export const computeDecision = ({
-  rsi,
-  sentimentTrend,
-  analystRating,
-  sentimentScore,
-  newsVolume,
-  analystConfidencePercent,
-  analystSourceCount,
-}: any) => {
+const determineRiskFlags = (
+  rsi: number,
+  analystRating: string,
+  sentimentTrend: string,
+): string[] => {
   const riskFlags: string[] = []
 
   if (rsi >= 70) riskFlags.push('OVERBOUGHT_CONDITION')
@@ -432,17 +428,50 @@ export const computeDecision = ({
       riskFlags.push('STABLE_UPTREND')
     else riskFlags.push('NEUTRAL_MARKET_CONDITIONS')
   }
+  return riskFlags
+}
 
-  let recommendation = 'HOLD / CAUTION'
+const determineRecommendation = (
+  rsi: number,
+  sentimentTrend: string,
+  analystRating: string,
+): string => {
   if (
     rsi < 65 &&
     sentimentTrend === 'UP' &&
     (analystRating === 'BUY' || analystRating === 'STRONG_BUY')
   ) {
-    recommendation = 'BUY'
-  } else if (rsi >= 75 || (rsi > 60 && sentimentTrend === 'DOWN')) {
-    recommendation = 'SELL'
+    return 'BUY'
   }
+  if (rsi >= 75 || (rsi > 60 && sentimentTrend === 'DOWN')) {
+    return 'SELL'
+  }
+  return 'HOLD / CAUTION'
+}
+
+const determineTimeHorizon = (analystConfidencePercent: number): string => {
+  if (analystConfidencePercent >= 70) {
+    return 'MEDIUM_TERM (1-4 weeks)'
+  }
+  return 'SHORT_TERM (1-5 days)'
+}
+
+export const computeDecision = ({
+  rsi,
+  sentimentScore,
+  sentimentTrend,
+  analystRating,
+  newsVolume,
+  analystConfidencePercent,
+  analystSourceCount,
+}: any) => {
+  const riskFlags = determineRiskFlags(rsi, analystRating, sentimentTrend)
+  const recommendation = determineRecommendation(
+    rsi,
+    sentimentTrend,
+    analystRating,
+  )
+  const timeHorizon = determineTimeHorizon(analystConfidencePercent)
 
   const technicalConfidence = computeTechnicalConfidence(rsi)
   const sentimentConfidence = computeSentimentConfidence(
@@ -460,14 +489,6 @@ export const computeDecision = ({
     sentimentConfidence * 0.35 +
     analystConfidence * 0.2 +
     dataConfidence * 0.1
-
-  let timeHorizon = 'SHORT_TERM (1-5 days)'
-  if (rsi >= 65 || rsi <= 35 || sentimentTrend !== 'FLAT') {
-    timeHorizon = 'SHORT_TERM (1-5 days)'
-  }
-  if (analystConfidencePercent >= 70) {
-    timeHorizon = 'MEDIUM_TERM (1-4 weeks)'
-  }
 
   return {
     recommendation,
@@ -769,19 +790,20 @@ export const calculateFinalConfidence = (opts: {
   return Number(Math.max(0.3, Math.min(0.98, score)).toFixed(2))
 }
 
+const getHoldDuration = (isHighRisk: boolean, confidence: number): string => {
+  if (isHighRisk) {
+    return confidence < 0.6 ? '1–3 days' : '2–10 days'
+  }
+  return confidence >= 0.8 ? '5–20 days' : '3–14 days'
+}
+
 const getActionGuidance = (
   currentPrice: number,
   riskLevel: string,
   confidence: number,
 ): ActionGuidance => {
   const isHighRisk = riskLevel === 'HIGH'
-  const holdDuration = isHighRisk
-    ? confidence < 0.6
-      ? '1–3 days'
-      : '2–10 days'
-    : confidence >= 0.8
-      ? '5–20 days'
-      : '3–14 days'
+  const holdDuration = getHoldDuration(isHighRisk, confidence)
   return {
     positionStrategy: {
       add: !isHighRisk,
@@ -794,6 +816,69 @@ const getActionGuidance = (
     stopLossZone: (currentPrice * 0.95).toFixed(2),
     watchFor: ['Volume spikes', 'RSI divergence', 'Sector momentum'],
   }
+}
+
+const determinePortfolioDecision = (
+  pnlPct: number,
+  marketDecision: string,
+  exposure: ReturnType<typeof calculateExposure>,
+): string => {
+  if (pnlPct < -20 || (marketDecision === 'SELL' && exposure.isOverExposed)) {
+    return 'EXIT'
+  }
+  if (
+    pnlPct < -5 ||
+    (exposure.isOverExposed && exposure.positionPercentOfPortfolio > 25)
+  ) {
+    return 'TRIM'
+  }
+  if (exposure.isOverExposed || marketDecision === 'SELL') {
+    return 'HOLD'
+  }
+  if (marketDecision === 'BUY' && exposure.positionPercentOfPortfolio < 20) {
+    return 'ADD'
+  }
+  return 'HOLD'
+}
+
+const generateDecisionDetails = (
+  exposure: ReturnType<typeof calculateExposure>,
+  pnlPct: number,
+): string[] => {
+  const details: string[] = []
+  if (exposure.positionPercentOfPortfolio > 30)
+    details.push('Heavily concentrated position')
+  else if (exposure.positionPercentOfPortfolio > 15)
+    details.push('Concentrated position size')
+  if (exposure.sectorExposurePercent > 60)
+    details.push('Critical sector over-exposure')
+  else if (exposure.sectorExposurePercent > 40)
+    details.push('High sector concentration')
+  if (pnlPct < -20) details.push('Significant unrealized loss')
+  else if (pnlPct < 0) details.push('Position currently underperforming')
+  if (pnlPct > 25) details.push('Strong gains — consider profit-taking')
+  if (exposure.positionPercentOfPortfolio < 5)
+    details.push('Small position — low portfolio impact')
+  return details
+}
+
+const generateReasoningSummary = (
+  portfolioDecision: string,
+  isOverExposed: boolean,
+): string => {
+  if (portfolioDecision === 'EXIT') {
+    return 'Critical risk detected — position should be closed to protect portfolio health.'
+  }
+  if (portfolioDecision === 'TRIM') {
+    return 'Risk metrics indicate reducing this position size to improve portfolio balance.'
+  }
+  if (portfolioDecision === 'ADD') {
+    return 'Technicals and portfolio allocation support increasing exposure to this position.'
+  }
+  if (isOverExposed) {
+    return 'Market is favorable, but internal portfolio risk requires holding without adding.'
+  }
+  return 'Technicals and portfolio health are aligned — maintain current position.'
 }
 
 export const generateBatchDecision = async (
@@ -816,58 +901,16 @@ export const generateBatchDecision = async (
     const pnlPct = position.unrealizedPnLPercent
     const actualMarketData = realMarketDecisions[index]
     const marketDecision = actualMarketData.decision.recommendation
-
-    let portfolioDecision: string
-    if (pnlPct < -20 || (marketDecision === 'SELL' && exposure.isOverExposed)) {
-      portfolioDecision = 'EXIT'
-    } else if (
-      pnlPct < -5 ||
-      (exposure.isOverExposed && exposure.positionPercentOfPortfolio > 25)
-    ) {
-      portfolioDecision = 'TRIM'
-    } else if (exposure.isOverExposed || marketDecision === 'SELL') {
-      portfolioDecision = 'HOLD'
-    } else if (
-      marketDecision === 'BUY' &&
-      exposure.positionPercentOfPortfolio < 20
-    ) {
-      portfolioDecision = 'ADD'
-    } else {
-      portfolioDecision = 'HOLD'
-    }
-
-    const details: string[] = []
-    if (exposure.positionPercentOfPortfolio > 30)
-      details.push('Heavily concentrated position')
-    else if (exposure.positionPercentOfPortfolio > 15)
-      details.push('Concentrated position size')
-    if (exposure.sectorExposurePercent > 60)
-      details.push('Critical sector over-exposure')
-    else if (exposure.sectorExposurePercent > 40)
-      details.push('High sector concentration')
-    if (pnlPct < -20) details.push('Significant unrealized loss')
-    else if (pnlPct < 0) details.push('Position currently underperforming')
-    if (pnlPct > 25) details.push('Strong gains — consider profit-taking')
-    if (exposure.positionPercentOfPortfolio < 5)
-      details.push('Small position — low portfolio impact')
-
-    let reasoningSummary: string
-    if (portfolioDecision === 'EXIT') {
-      reasoningSummary =
-        'Critical risk detected — position should be closed to protect portfolio health.'
-    } else if (portfolioDecision === 'TRIM') {
-      reasoningSummary =
-        'Risk metrics indicate reducing this position size to improve portfolio balance.'
-    } else if (portfolioDecision === 'ADD') {
-      reasoningSummary =
-        'Technicals and portfolio allocation support increasing exposure to this position.'
-    } else if (exposure.isOverExposed) {
-      reasoningSummary =
-        'Market is favorable, but internal portfolio risk requires holding without adding.'
-    } else {
-      reasoningSummary =
-        'Technicals and portfolio health are aligned — maintain current position.'
-    }
+    const portfolioDecision = determinePortfolioDecision(
+      pnlPct,
+      marketDecision,
+      exposure,
+    )
+    const details = generateDecisionDetails(exposure, pnlPct)
+    const reasoningSummary = generateReasoningSummary(
+      portfolioDecision,
+      exposure.isOverExposed,
+    )
 
     const confidence = calculateFinalConfidence({
       positionPercent: exposure.positionPercentOfPortfolio,
@@ -977,6 +1020,28 @@ export const computePriceTargets = (
   }
 }
 
+const estimateAtrFromCloses = async (
+  symbol: string,
+): Promise<number | null> => {
+  try {
+    const closes = await getHistoricalCloses(symbol)
+    if (closes && closes.length >= 14) {
+      const recent = closes.slice(-14)
+      const diffs = []
+      for (let i = 1; i < recent.length; i++) {
+        diffs.push(Math.abs(recent[i] - recent[i - 1]))
+      }
+      const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length
+      return Number(
+        (avgDiff || ((closes.at(-1) ?? 0) * 0.02)).toFixed(2),
+      )
+    }
+  } catch (historyErr) {
+    logger.error(`[getATR] Fallback closes failed for ${symbol}`, historyErr)
+  }
+  return null
+}
+
 export const getATR = async (symbol: string): Promise<number> => {
   const CACHE_KEY = `atr_v1:${symbol.toUpperCase()}`
   const cached = await getCache<number>(CACHE_KEY)
@@ -991,9 +1056,9 @@ export const getATR = async (symbol: string): Promise<number> => {
       },
     })
 
-    if (data && data.values && data.values.length > 0) {
-      const val = parseFloat(data.values[0].atr)
-      if (!isNaN(val) && val > 0) {
+    if (data?.values?.length) {
+      const val = Number.parseFloat(data.values[0].atr)
+      if (!Number.isNaN(val) && val > 0) {
         const roundedAtr = Number(val.toFixed(2))
         await setCache(CACHE_KEY, roundedAtr, CACHE_TTL.DECISION_SUPPORT.ATR)
         return roundedAtr
@@ -1001,22 +1066,14 @@ export const getATR = async (symbol: string): Promise<number> => {
     }
     throw new Error(`Twelve data ATR empty for ${symbol}`)
   } catch (err) {
-    logger.error(`[getATR] Twelve Data ATR failed for ${symbol}, estimating from closes`, err)
-    try {
-      const closes = await getHistoricalCloses(symbol)
-      if (closes && closes.length >= 14) {
-        const recent = closes.slice(-14)
-        const diffs = []
-        for (let i = 1; i < recent.length; i++) {
-          diffs.push(Math.abs(recent[i] - recent[i - 1]))
-        }
-        const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length
-        const roundedAtr = Number((avgDiff || (closes[closes.length - 1] * 0.02)).toFixed(2))
-        await setCache(CACHE_KEY, roundedAtr, CACHE_TTL.DECISION_SUPPORT.ATR)
-        return roundedAtr
-      }
-    } catch (historyErr) {
-      logger.error(`[getATR] Fallback closes failed for ${symbol}`, historyErr)
+    logger.error(
+      `[getATR] Twelve Data ATR failed for ${symbol}, estimating from closes`,
+      err,
+    )
+    const fallbackAtr = await estimateAtrFromCloses(symbol)
+    if (fallbackAtr !== null) {
+      await setCache(CACHE_KEY, fallbackAtr, CACHE_TTL.DECISION_SUPPORT.ATR)
+      return fallbackAtr
     }
     return 2.5
   }
@@ -1117,8 +1174,12 @@ export const getOpportunityRadar = async (
         const currentPrice = marketData.quote?.c || marketData.quote?.pc || 0
         const targets = computePriceTargets(currentPrice, atr)
         const confidence = marketData.decision.confidence
-        const confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW' =
-          confidence >= 0.7 ? 'HIGH' : confidence >= 0.4 ? 'MEDIUM' : 'LOW'
+        let confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW'
+        if (confidence >= 0.7) {
+          confidenceLabel = 'HIGH'
+        } else if (confidence >= 0.4) {
+          confidenceLabel = 'MEDIUM'
+        }
 
         return {
           symbol,
@@ -1152,7 +1213,7 @@ export const getOpportunityRadar = async (
 
 export const computeAnnualizedReturn = (closes: number[]): number => {
   if (!closes || closes.length < 2 || closes[0] === 0) return 0
-  const last = closes[closes.length - 1]
+  const last = closes.at(-1) ?? closes[0]
   const first = closes[0]
   return Number(((last / first - 1) * (252 / closes.length)).toFixed(4))
 }
@@ -1191,7 +1252,7 @@ export const fetchPortfolioBetas = async (
   const unique = [...new Set(symbols.map((s) => s.toUpperCase()))]
   if (unique.length === 0) return {}
 
-  const sortedKey = [...unique].sort().join(',')
+  const sortedKey = [...unique].sort((a, b) => a.localeCompare(b)).join(',')
   const CACHE_KEY = `portfolio_betas:${sortedKey}`
   const cached = await getCache<Record<string, number>>(CACHE_KEY)
   if (cached) return cached
@@ -1211,13 +1272,14 @@ export const fetchPortfolioBetas = async (
       })
     }
   } catch (err) {
-    logger.error('[fetchPortfolioBetas] FMP beta fetch failed, using fallback beta 1.0', err)
+    logger.error(
+      '[fetchPortfolioBetas] FMP beta fetch failed, using fallback beta 1.0',
+      err,
+    )
   }
 
   unique.forEach((sym) => {
-    if (result[sym] === undefined) {
-      result[sym] = 1.0
-    }
+    result[sym] ??= 1.0
   })
 
   await setCache(CACHE_KEY, result, CACHE_TTL.DECISION_SUPPORT.PORTFOLIO_BETAS)

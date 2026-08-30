@@ -225,7 +225,7 @@ export const downloadTradePlanPdf = async (plan: TradePlanData | (RadarCard & { 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...NEGATIVE_RED);
-      doc.text(`• ${flag.replace(/_/g, ' ')}`, PAGE_MARGIN + 10, cursorY);
+      doc.text(`• ${flag.replaceAll('_', ' ')}`, PAGE_MARGIN + 10, cursorY);
       cursorY += 14;
     });
 

@@ -1,9 +1,7 @@
 // pages/Forecast.tsx
-import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { Sidebar } from '@/shared/components/Sidebar';
 import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton';
 import { SmartSearch } from '@/shared/components/SmartSearch';
-import { useTheme } from '@/shared/hooks/useTheme';
 import healthService from '@/shared/services/healthService';
 import {
   AlertCircle,
@@ -48,7 +46,6 @@ function Card({ title, actions, children, className = "" }: {
 }
 
 const Forecast: React.FC = () => {
-  const { theme } = useTheme();
   const [symbol, setSymbol] = useState<string>('AAPL');
   const [period, setPeriod] = useState<string>('1w');
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
@@ -56,7 +53,6 @@ const Forecast: React.FC = () => {
   const [exporting, setExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const { user } = useAuth();
 
   const periodOptions: PeriodOption[] = [
     { value: '1d', label: '1 Day', icon: <Calendar size={16} /> },

@@ -15,7 +15,6 @@ import {
   FiDollarSign,
   FiDownload,
   FiInfo,
-  FiPercent,
   FiShield,
   FiSliders,
   FiTarget,
@@ -80,11 +79,9 @@ const MarketAnalysis: React.FC = () => {
   const [isSizerOpen, setIsSizerOpen] = useState(true);
   const [capitalInput, setCapitalInput] = useState<number>(10000);
   const [sizingResult, setSizingResult] = useState<PositionSizeResult | null>(null);
-  const [sizingLoading, setSizingLoading] = useState(false);
 
   const calculateSizing = async (symbol: string, capital: number, priceTargets?: any, currentPrice?: number) => {
     try {
-      setSizingLoading(true);
       const res = await api.post("/api/v1/decision-support/market/position-size", {
         symbol,
         capital,
@@ -116,8 +113,6 @@ const MarketAnalysis: React.FC = () => {
           percentOfCapital,
         });
       }
-    } finally {
-      setSizingLoading(false);
     }
   };
 
@@ -467,6 +462,7 @@ const MarketAnalysis: React.FC = () => {
               {data.priceTargets && (
                 <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden transition-all duration-300">
                   <button
+                    type="button"
                     onClick={() => setIsSizerOpen(!isSizerOpen)}
                     className="w-full px-8 py-5 flex items-center justify-between bg-muted/20 hover:bg-muted/30 transition-colors"
                   >

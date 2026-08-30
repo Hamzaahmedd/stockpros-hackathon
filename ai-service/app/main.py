@@ -52,7 +52,6 @@ app.include_router(forecast_router)
 
 @app.get(
     "/",
-    response_model=MessageResponse,
     tags=["system"],
     summary="Service Status",
     description="Returns confirmation that the StockPros AI ML Service is operational.",
