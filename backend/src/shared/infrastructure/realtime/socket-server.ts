@@ -1,6 +1,6 @@
 import config from '@/config'
+import * as http from 'http'
 import { Server as IOServer, Socket } from 'socket.io'
-import { httpServer } from '../../..'
 import { updatePriceCache } from '../../../modules/market/caches/price-cache'
 import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
 import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
@@ -11,8 +11,8 @@ export class SocketServer {
   private static instance: SocketServer
   public io: IOServer
 
-  constructor() {
-    this.io = new IOServer(httpServer, {
+  constructor(server: http.Server) {
+    this.io = new IOServer(server, {
       cors: {
         origin: config.server.frontendUrl,
         methods: ['GET', 'POST'],

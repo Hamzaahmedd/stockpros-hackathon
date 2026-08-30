@@ -44,6 +44,9 @@ export const authTokenMiddleware = async (
     if (error.name === 'TokenExpiredError') {
       throw new UnauthorizedError('Authentication required (Token Expired)')
     }
+    if (error.name === 'JsonWebTokenError' || error.name === 'NotBeforeError') {
+      throw new UnauthorizedError('Invalid access token')
+    }
     next(error)
   }
 }
