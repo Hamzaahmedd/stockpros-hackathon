@@ -41,3 +41,17 @@ export const portfolioDecisionRequestValidator = z.object({
   decisionMode: z.enum(['OVERVIEW', 'DETAILED']),
   symbol: z.string().optional(),
 })
+
+export const positionSizeValidator = z.object({
+  capital: z.number().positive().max(10_000_000),
+  symbol: z.string().min(1).max(10),
+})
+
+export const portfolioRiskMetricsValidator = z.object({
+  portfolioId: z.string().min(1),
+})
+
+export const opportunityRadarQueryValidator = z.object({
+  timeline: z.enum(['1D', '1W']).optional(),
+})
+

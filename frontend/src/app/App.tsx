@@ -7,7 +7,7 @@ import {
   VerifyMagicLink,
 } from "@/modules/auth";
 import { Dashboard } from "@/modules/dashboard";
-import { MarketAnalysis, PortfolioHealth } from "@/modules/decision-support";
+import { MarketAnalysis, OpportunityRadar, PortfolioHealth } from "@/modules/decision-support";
 import { Forecast } from "@/modules/forecast";
 import { Markets } from "@/modules/markets";
 import { News } from "@/modules/news";
@@ -73,6 +73,14 @@ export default function App() {
           </ProtectedRoute>
         } />
 
+        <Route
+          path="/decision-support/radar"
+          element={
+            <ProtectedRoute>
+              <OpportunityRadar />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/decision-support/market-analysis"
           element={<MarketAnalysis />}

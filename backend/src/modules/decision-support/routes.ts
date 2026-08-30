@@ -1,9 +1,8 @@
 import { Router } from 'express'
 import * as DecisionController from './controller'
 import { authTokenMiddleware as authenticate } from '../auth'
-import { rbacMiddleware } from '../access-control'
+import { Action, rbacMiddleware, Resource } from '../access-control'
 import { upload } from '../../shared/middlewares'
-import { Resource, Action } from '../access-control'
 
 const router = Router()
 
@@ -13,6 +12,16 @@ router.use(authenticate)
 router.get(
   '/market/decision/:symbol',
   DecisionController.getMarketBasedTradeDecision,
+)
+
+router.get(
+  '/market/radar',
+  DecisionController.getOpportunityRadarHandler,
+)
+
+router.post(
+  '/market/position-size',
+  DecisionController.calculatePositionSizeHandler,
 )
 
 // ─── Portfolio Analysis ──────────────────────────────────────────────────────
@@ -27,6 +36,12 @@ router.post(
   '/portfolio/decision',
   rbacMiddleware(Resource.PORTFOLIO, Action.CREATE),
   DecisionController.getPortfolioBasedTradeDecision,
+)
+
+router.post(
+  '/portfolio/risk-metrics',
+  rbacMiddleware(Resource.PORTFOLIO, Action.READ),
+  DecisionController.getPortfolioRiskMetricsHandler,
 )
 
 router.get(

@@ -6,6 +6,7 @@ import type {
     DetailedDecision,
     OverviewDecision,
     PortfolioData,
+    PortfolioRiskMetrics,
 } from '../types';
 
 export interface PortfolioReportRow {
@@ -21,6 +22,9 @@ export interface PortfolioReportRow {
   portfolioDecision: string;
   confidence: number | null;
   riskLevel: string;
+  beta: number | null;
+  sharpe: number | null;
+  volatilityAnnualized: number | null;
   reasoningSummary: string;
   riskFlags: string[];
   positionExposurePercent: number | null;
@@ -60,9 +64,12 @@ export const computeRiskProfileLabel = (decisions: OverviewDecision[]): string =
 export const buildReportRows = (
   portfolioData: PortfolioData,
   detailedPositions: DetailedDecision[],
+  riskMetrics?: PortfolioRiskMetrics | null,
 ): PortfolioReportRow[] =>
   (portfolioData.positions ?? []).map((position) => {
     const detail = detailedPositions.find((dd) => dd.symbol === position.symbol);
+    const riskSym = riskMetrics?.perSymbol?.find((ps) => ps.symbol === position.symbol);
+
     return {
       symbol: position.symbol,
       sector: detail?.sector || position.sector || '—',
@@ -76,6 +83,9 @@ export const buildReportRows = (
       portfolioDecision: detail?.portfolioDecision ?? '—',
       confidence: detail?.confidence ?? null,
       riskLevel: detail?.riskLevel ?? '—',
+      beta: riskSym?.beta ?? detail?.beta ?? null,
+      sharpe: riskSym?.sharpe ?? detail?.sharpe ?? null,
+      volatilityAnnualized: riskSym?.volatilityAnnualized ?? detail?.volatilityAnnualized ?? null,
       reasoningSummary: detail?.reasoning?.summary ?? '',
       riskFlags: detail?.reasoning?.details ?? [],
       positionExposurePercent: detail?.exposure?.positionPercent ?? null,

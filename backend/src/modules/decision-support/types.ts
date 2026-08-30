@@ -80,3 +80,46 @@ export type DecisionResult = {
   }
   actionGuidance: ActionGuidance
 }
+
+export type PriceTargets = {
+  entryLow: number
+  entryHigh: number
+  bullTarget: number
+  stopLoss: number
+}
+
+export type RadarCard = {
+  symbol: string
+  sector: string
+  currentPrice: number
+  atr: number
+  entryRange: { low: number; high: number }
+  bullTarget: number
+  stopLoss: number
+  confidence: number // 0–1 from computeDecision()
+  confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW'
+  recommendation: string // 'BUY' | 'SELL' | 'HOLD / CAUTION'
+  timeHorizon: string
+  riskFlags: string[]
+}
+
+export type PositionSizeResult = {
+  shares: number
+  riskPerShare: number
+  totalRisk: number
+  potentialGain: number
+  riskRewardRatio: number
+  percentOfCapital: number
+}
+
+export type PortfolioRiskMetrics = {
+  weightedBeta: number
+  portfolioSharpe: number
+  perSymbol: {
+    symbol: string
+    beta: number
+    sharpe: number
+    volatilityAnnualized: number
+  }[]
+  sectorConcentration: { sector: string; weight: number }[]
+}

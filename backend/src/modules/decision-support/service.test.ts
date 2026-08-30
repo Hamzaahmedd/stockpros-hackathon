@@ -11,9 +11,14 @@ import {
   assessRisk,
   calculateExposure,
   calculateFinalConfidence,
+  calculatePositionSize,
   computeActionGuidance,
+  computeAnnualizedReturn,
+  computeAnnualizedVolatility,
   computeDecision,
+  computePriceTargets,
   computeSentiment,
+  computeSharpeRatio,
   computeTrend,
   generateReasoning,
   parseAnalystConsensus,
@@ -532,3 +537,120 @@ describe('calculateFinalConfidence', () => {
     expect(worst).toBeGreaterThanOrEqual(0.3)
   })
 })
+
+// ──────────────────────────────────────────────────────────────────────────────
+// computePriceTargets
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('computePriceTargets', () => {
+  it('computes standardized targets from current price and ATR', () => {
+    // Current price: 100, ATR: 4
+    // entryLow: max(0.01, 100 - 0.5 * 4) = 98
+    // entryHigh: 100 + 0.25 * 4 = 101
+    // bullTarget: 100 + 2 * 4 = 108
+    // stopLoss: max(0.01, 100 - 1.5 * 4) = 94
+    const targets = computePriceTargets(100, 4)
+    expect(targets).toEqual({
+      entryLow: 98,
+      entryHigh: 101,
+      bullTarget: 108,
+      stopLoss: 94,
+    })
+  })
+
+  it('handles small stock prices without negative stop loss', () => {
+    const targets = computePriceTargets(1, 2)
+    expect(targets.stopLoss).toBeGreaterThanOrEqual(0.01)
+    expect(targets.entryLow).toBeGreaterThanOrEqual(0.01)
+    expect(targets.bullTarget).toBe(5)
+  })
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
+// calculatePositionSize
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('calculatePositionSize', () => {
+  it('computes shares, risk, and potential gain accurately', () => {
+    // Capital $10,000, Price $100, Stop Loss $94, Bull Target $108
+    // Shares = floor(10000 / 100) = 100
+    // riskPerShare = 100 - 94 = 6
+    // totalRisk = 100 * 6 = 600
+    // potentialGain = 100 * (108 - 100) = 800
+    // riskRewardRatio = 800 / 600 = 1.33
+    // percentOfCapital = (100 * 100) / 10000 * 100 = 100%
+    const result = calculatePositionSize({
+      capital: 10000,
+      currentPrice: 100,
+      stopLoss: 94,
+      bullTarget: 108,
+    })
+
+    expect(result.shares).toBe(100)
+    expect(result.riskPerShare).toBe(6)
+    expect(result.totalRisk).toBe(600)
+    expect(result.potentialGain).toBe(800)
+    expect(result.riskRewardRatio).toBe(1.33)
+    expect(result.percentOfCapital).toBe(100)
+  })
+
+  it('returns zeros for non-positive capital or price', () => {
+    const zeroCapital = calculatePositionSize({
+      capital: 0,
+      currentPrice: 100,
+      stopLoss: 90,
+      bullTarget: 120,
+    })
+    expect(zeroCapital.shares).toBe(0)
+    expect(zeroCapital.totalRisk).toBe(0)
+  })
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sharpe Ratio and Risk Math (Persona B)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Sharpe Ratio and Volatility Math', () => {
+  const flatCloses = Array(180).fill(100)
+  const risingCloses = Array.from({ length: 180 }, (_, i) => 100 + i * 0.5)
+
+  describe('computeAnnualizedReturn', () => {
+    it('returns 0 for flat prices or insufficient data', () => {
+      expect(computeAnnualizedReturn(flatCloses)).toBe(0)
+      expect(computeAnnualizedReturn([100])).toBe(0)
+      expect(computeAnnualizedReturn([])).toBe(0)
+    })
+
+    it('computes annualized return from first and last close', () => {
+      // first: 100, last: 189.5, length: 180
+      // (189.5 / 100 - 1) * (252 / 180) = 0.895 * 1.4 = 1.253
+      const annReturn = computeAnnualizedReturn(risingCloses)
+      expect(annReturn).toBeGreaterThan(1.0)
+    })
+  })
+
+  describe('computeAnnualizedVolatility', () => {
+    it('returns 0 for flat prices or insufficient data', () => {
+      expect(computeAnnualizedVolatility(flatCloses)).toBe(0)
+      expect(computeAnnualizedVolatility([100])).toBe(0)
+    })
+
+    it('computes positive volatility for moving prices', () => {
+      const vol = computeAnnualizedVolatility(risingCloses)
+      expect(vol).toBeGreaterThan(0)
+    })
+  })
+
+  describe('computeSharpeRatio', () => {
+    it('returns 0 for flat prices (no volatility)', () => {
+      expect(computeSharpeRatio(flatCloses)).toBe(0)
+    })
+
+    it('clamps Sharpe ratio between -3 and 3', () => {
+      const sharpe = computeSharpeRatio(risingCloses)
+      expect(sharpe).toBeGreaterThanOrEqual(-3)
+      expect(sharpe).toBeLessThanOrEqual(3)
+    })
+  })
+})
+
