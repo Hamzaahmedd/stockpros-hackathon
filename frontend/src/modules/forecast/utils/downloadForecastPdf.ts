@@ -19,6 +19,20 @@ const TEXT_MUTED: [number, number, number] = [107, 114, 128];
 const BORDER_LIGHT: [number, number, number] = [229, 231, 235];
 const ROW_ZEBRA: [number, number, number] = [248, 250, 252];
 
+const STOCKPROS_LOGO_URL =
+  'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png';
+
+const loadLogo = (url: string = STOCKPROS_LOGO_URL): Promise<HTMLImageElement | null> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+};
+
 const PAGE_MARGIN = 48;
 const CONTENT_WIDTH = 595.28 - PAGE_MARGIN * 2; // A4 width minus margins
 
@@ -33,20 +47,30 @@ const drawSectionTitle = (doc: jsPDF, title: string, y: number): number => {
   return y + 20;
 };
 
-const drawHeader = (doc: jsPDF, data: ForecastData): number => {
+const drawHeader = (doc: jsPDF, data: ForecastData, logoImg?: HTMLImageElement | null): number => {
   doc.setFillColor(...INK_DARK);
   doc.rect(0, 0, 595.28, 96, 'F');
   doc.setFillColor(...BRAND_BLUE);
   doc.rect(0, 96, 595.28, 4, 'F');
 
+  let textX = PAGE_MARGIN;
+  if (logoImg) {
+    try {
+      doc.addImage(logoImg, 'PNG', PAGE_MARGIN, 22, 52, 52);
+      textX = PAGE_MARGIN + 62;
+    } catch {
+      textX = PAGE_MARGIN;
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('StockPros AI', PAGE_MARGIN, 40);
+  doc.text('StockPros AI', textX, 45);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);
-  doc.text('Price Forecast Report', PAGE_MARGIN, 58);
+  doc.text('Price Forecast Report', textX, 64);
 
   doc.setFontSize(9);
   doc.text(
@@ -159,10 +183,11 @@ const drawPageFooters = (doc: jsPDF): void => {
   }
 };
 
-export const downloadForecastPdf = (data: ForecastData): void => {
+export const downloadForecastPdf = async (data: ForecastData): Promise<void> => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const logoImg = await loadLogo();
 
-  let cursorY = drawHeader(doc, data);
+  let cursorY = drawHeader(doc, data, logoImg);
   cursorY = drawSummary(doc, data, cursorY);
   cursorY = drawPriceTable(doc, data, cursorY);
 

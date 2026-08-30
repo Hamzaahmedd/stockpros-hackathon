@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 
 dotenv.config({ quiet: true })
-if (process.env.NODE_ENV !== 'development') require('module-alias/register')
+if (!__filename.endsWith('.ts')) require('module-alias/register')
 
 import config from '@/config'
 import http from 'http'
