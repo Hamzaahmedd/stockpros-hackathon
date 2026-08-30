@@ -26,6 +26,20 @@ const POSITIVE_GREEN: [number, number, number] = [5, 150, 105];
 const NEGATIVE_RED: [number, number, number] = [220, 38, 38];
 const WARNING_ORANGE: [number, number, number] = [234, 88, 12];
 
+const STOCKPROS_LOGO_URL =
+  'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png';
+
+const loadLogo = (url: string = STOCKPROS_LOGO_URL): Promise<HTMLImageElement | null> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+};
+
 const PAGE_MARGIN = 48;
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 842;
@@ -56,20 +70,30 @@ const drawSectionTitle = (doc: jsPDF, title: string, y: number): number => {
   return y + 20;
 };
 
-const drawHeader = (doc: jsPDF, portfolioData: PortfolioData): number => {
+const drawHeader = (doc: jsPDF, portfolioData: PortfolioData, logoImg?: HTMLImageElement | null): number => {
   doc.setFillColor(...INK_DARK);
   doc.rect(0, 0, PAGE_WIDTH, 96, 'F');
   doc.setFillColor(...BRAND_BLUE);
   doc.rect(0, 96, PAGE_WIDTH, 4, 'F');
 
+  let textX = PAGE_MARGIN;
+  if (logoImg) {
+    try {
+      doc.addImage(logoImg, 'PNG', PAGE_MARGIN, 22, 52, 52);
+      textX = PAGE_MARGIN + 62;
+    } catch {
+      textX = PAGE_MARGIN;
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('StockPros AI', PAGE_MARGIN, 40);
+  doc.text('StockPros AI', textX, 45);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);
-  doc.text('Portfolio Health Report', PAGE_MARGIN, 58);
+  doc.text('Portfolio Health Report', textX, 64);
 
   doc.setFontSize(9);
   doc.text(
@@ -319,16 +343,17 @@ const drawPageFooters = (doc: jsPDF): void => {
   }
 };
 
-export const downloadPortfolioReportPdf = (
+export const downloadPortfolioReportPdf = async (
   portfolioData: PortfolioData,
   detailedPositions: DetailedDecision[],
   riskMetrics?: PortfolioRiskMetrics | null,
-): void => {
+): Promise<void> => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const logoImg = await loadLogo();
   const rows = buildReportRows(portfolioData, detailedPositions, riskMetrics);
   const riskLabel = computeRiskProfileLabel(detailedPositions);
 
-  let cursorY = drawHeader(doc, portfolioData);
+  let cursorY = drawHeader(doc, portfolioData, logoImg);
   cursorY = drawSummary(doc, portfolioData, riskLabel, riskMetrics, cursorY);
   cursorY = drawHoldingsTable(doc, rows, cursorY);
   cursorY = drawDecisionsTable(doc, rows, cursorY);

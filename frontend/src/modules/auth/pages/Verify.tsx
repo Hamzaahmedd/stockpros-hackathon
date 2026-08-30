@@ -144,9 +144,6 @@ export const VerifyMagicLink = () => {
         <div className="relative">
           <Skeleton className="w-14 h-14 rounded-full" />
         </div>
-        <p className="text-xs text-cyan-400 font-mono tracking-wider uppercase animate-pulse">
-          Validating SHA-256 Signature...
-        </p>
       </div>
     </AuthLayout>
   );
