@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "es2021",
+    "lib": ["es2021"],
     "module": "commonjs",
     "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",

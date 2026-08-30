@@ -1,0 +1,4215 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"PortfolioFit": {
+				"properties": {
+					"currentSectorExposure": {
+						"type": "string"
+					},
+					"projectedSectorExposure": {
+						"type": "string"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"overexposureWarning": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"currentSectorExposure",
+					"projectedSectorExposure",
+					"sector",
+					"overexposureWarning",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WatchlistItemResponse": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"currentPrice": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"changePercent": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"priceSinceAdded": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"notes": {
+						"type": "string",
+						"nullable": true
+					},
+					"entryZone": {
+						"type": "boolean",
+						"nullable": true
+					},
+					"stopLossBreached": {
+						"type": "boolean",
+						"nullable": true
+					},
+					"aiSuggested": {
+						"properties": {
+							"computedAt": {
+								"type": "string"
+							},
+							"basis": {
+								"type": "string"
+							},
+							"confidence": {
+								"type": "string",
+								"enum": [
+									"LOW",
+									"MEDIUM",
+									"HIGH"
+								]
+							},
+							"stopLoss": {
+								"type": "number",
+								"format": "double"
+							},
+							"takeProfit": {
+								"type": "number",
+								"format": "double"
+							},
+							"entry": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"computedAt",
+							"basis",
+							"confidence",
+							"stopLoss",
+							"takeProfit",
+							"entry"
+						],
+						"type": "object",
+						"nullable": true
+					},
+					"portfolioFit": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PortfolioFit"
+							}
+						],
+						"nullable": true
+					},
+					"addedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"logo": {
+						"type": "string",
+						"nullable": true
+					},
+					"alerts": {
+						"items": {
+							"properties": {
+								"isActive": {
+									"type": "boolean"
+								},
+								"threshold": {
+									"type": "number",
+									"format": "double",
+									"nullable": true
+								},
+								"type": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"isActive",
+								"threshold",
+								"type",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"symbol",
+					"currentPrice",
+					"changePercent",
+					"priceSinceAdded",
+					"targetEntryPrice",
+					"stopLoss",
+					"notes",
+					"entryZone",
+					"stopLossBreached",
+					"aiSuggested",
+					"portfolioFit",
+					"addedAt",
+					"logo"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WatchlistDataResponse_WatchlistItemResponse-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WatchlistItemResponse"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WatchlistDataResponse_WatchlistItemResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/WatchlistItemResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AddToWatchlistBody": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UpdateWatchlistBody": {
+				"properties": {
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WatchlistDataResponse_void_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WatchlistDataResponse_any_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ConvertToPositionBody": {
+				"properties": {
+					"entryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"_36_Enums.AlertType": {
+				"type": "string",
+				"enum": [
+					"PRICE_ABOVE",
+					"PRICE_BELOW",
+					"PCT_CHANGE_UP",
+					"PCT_CHANGE_DOWN",
+					"ENTRY_ZONE",
+					"STOP_LOSS_BREACHED",
+					"EARNINGS_APPROACHING",
+					"DIVIDEND_APPROACHING",
+					"ANALYST_RATING_CHANGE",
+					"NEWS_PUBLISHED",
+					"SEC_FILING",
+					"AI_SIGNAL_CHANGED"
+				]
+			},
+			"AlertType": {
+				"$ref": "#/components/schemas/_36_Enums.AlertType"
+			},
+			"CreateAlertBody": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/AlertType"
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UpdateAlertBody": {
+				"properties": {
+					"threshold": {
+						"type": "number",
+						"format": "double"
+					},
+					"isActive": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SymbolSearchResult": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol",
+					"description",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SymbolLookupResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/SymbolSearchResult"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationItem": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"body": {
+						"type": "string"
+					},
+					"read": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"title",
+					"body",
+					"read",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetNotificationsEnvelopeResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/NotificationItem"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data",
+					"nextCursor",
+					"hasMore",
+					"total"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationSummary": {
+				"properties": {
+					"unreadCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"preview": {
+						"items": {
+							"$ref": "#/components/schemas/NotificationItem"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"unreadCount",
+					"preview"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationDataResponse_NotificationSummary_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/NotificationSummary"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationsBatchUpdateResult": {
+				"properties": {
+					"updated": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"updated"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationDataResponse_NotificationsBatchUpdateResult_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/NotificationsBatchUpdateResult"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MarkMultipleNotificationsReadBody": {
+				"properties": {
+					"notificationIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"notificationIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationDataResponse_NotificationItem_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/NotificationItem"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SimpleNotificationMessageResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"_36_Enums.NewsCategory": {
+				"type": "string",
+				"enum": [
+					"EARNINGS",
+					"ANALYST",
+					"FILING",
+					"MERGER",
+					"MACRO",
+					"SECTOR",
+					"GENERAL"
+				]
+			},
+			"NewsCategory": {
+				"$ref": "#/components/schemas/_36_Enums.NewsCategory"
+			},
+			"_36_Enums.NewsSentiment": {
+				"type": "string",
+				"enum": [
+					"BULLISH",
+					"BEARISH",
+					"NEUTRAL"
+				]
+			},
+			"NewsSentiment": {
+				"$ref": "#/components/schemas/_36_Enums.NewsSentiment"
+			},
+			"NewsArticleResponse": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"headline": {
+						"type": "string"
+					},
+					"summaryBullets": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"source": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"publishedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"category": {
+						"$ref": "#/components/schemas/NewsCategory"
+					},
+					"sentiment": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/NewsSentiment"
+							}
+						],
+						"nullable": true
+					},
+					"sentimentScore": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"relatedSymbols": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"sector": {
+						"type": "string",
+						"nullable": true
+					},
+					"userContext": {
+						"properties": {
+							"inWatchlist": {
+								"type": "boolean"
+							},
+							"inPortfolio": {
+								"type": "boolean"
+							}
+						},
+						"required": [
+							"inWatchlist",
+							"inPortfolio"
+						],
+						"type": "object"
+					},
+					"isRead": {
+						"type": "boolean"
+					},
+					"isSaved": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id",
+					"headline",
+					"summaryBullets",
+					"source",
+					"url",
+					"imageUrl",
+					"publishedAt",
+					"category",
+					"sentiment",
+					"sentimentScore",
+					"relatedSymbols",
+					"userContext",
+					"isRead",
+					"isSaved"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsFeedEnvelopeResponse": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/NewsArticleResponse"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"data",
+					"nextCursor",
+					"hasMore",
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PaginatedNews": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/NewsArticleResponse"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"data",
+					"nextCursor",
+					"hasMore"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsDataResponse_PaginatedNews_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/PaginatedNews"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsSummaryResponse": {
+				"properties": {
+					"portfolioNews": {
+						"items": {
+							"properties": {
+								"isRead": {
+									"type": "boolean"
+								},
+								"publishedAt": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"sentiment": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/NewsSentiment"
+										}
+									],
+									"nullable": true
+								},
+								"symbol": {
+									"type": "string",
+									"nullable": true
+								},
+								"headline": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"isRead",
+								"publishedAt",
+								"sentiment",
+								"symbol",
+								"headline",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"watchlistNews": {
+						"items": {
+							"properties": {
+								"isRead": {
+									"type": "boolean"
+								},
+								"publishedAt": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"sentiment": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/NewsSentiment"
+										}
+									],
+									"nullable": true
+								},
+								"symbol": {
+									"type": "string",
+									"nullable": true
+								},
+								"headline": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"isRead",
+								"publishedAt",
+								"sentiment",
+								"symbol",
+								"headline",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"marketHeadlines": {
+						"items": {
+							"properties": {
+								"isRead": {
+									"type": "boolean"
+								},
+								"publishedAt": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"sentiment": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/NewsSentiment"
+										}
+									],
+									"nullable": true
+								},
+								"symbol": {
+									"type": "string",
+									"nullable": true
+								},
+								"headline": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"isRead",
+								"publishedAt",
+								"sentiment",
+								"symbol",
+								"headline",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"unreadCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"portfolioNews",
+					"watchlistNews",
+					"marketHeadlines",
+					"unreadCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsDataResponse_NewsSummaryResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/NewsSummaryResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MarkReadResult": {
+				"properties": {
+					"updated": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"properties": {
+								"isRead": {
+									"type": "boolean"
+								},
+								"id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"isRead",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"updated"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsDataResponse_MarkReadResult_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/MarkReadResult"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MarkMultipleReadBody": {
+				"properties": {
+					"articleIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"articleIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ArticleActionState": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"isRead": {
+						"type": "boolean"
+					},
+					"isSaved": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NewsDataResponse_ArticleActionState_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/ArticleActionState"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SimpleNewsMessageResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RankedStockRow": {
+				"properties": {
+					"rank": {
+						"type": "number",
+						"format": "double"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"companyName": {
+						"type": "string"
+					},
+					"logoUrl": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"change": {
+						"type": "number",
+						"format": "double"
+					},
+					"changePercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"previousClose": {
+						"type": "number",
+						"format": "double"
+					},
+					"high": {
+						"type": "number",
+						"format": "double"
+					},
+					"low": {
+						"type": "number",
+						"format": "double"
+					},
+					"open": {
+						"type": "number",
+						"format": "double"
+					},
+					"timestamp": {
+						"type": "number",
+						"format": "double"
+					},
+					"sparkline": {
+						"items": {
+							"type": "number",
+							"format": "double"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"rank",
+					"symbol",
+					"companyName",
+					"logoUrl",
+					"price",
+					"change",
+					"changePercent",
+					"previousClose",
+					"high",
+					"low",
+					"open",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetTopStocksResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/RankedStockRow"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Prediction": {
+				"properties": {
+					"date": {
+						"type": "string"
+					},
+					"bull": {
+						"type": "number",
+						"format": "double"
+					},
+					"base": {
+						"type": "number",
+						"format": "double"
+					},
+					"bear": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"date",
+					"bull",
+					"base",
+					"bear"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HistoricalPoint": {
+				"properties": {
+					"date": {
+						"type": "string"
+					},
+					"close": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"date",
+					"close"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ForecastResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"estimated_ready_at": {
+								"type": "number",
+								"format": "double"
+							},
+							"status": {
+								"type": "string"
+							},
+							"targetRange": {
+								"properties": {
+									"confidence": {
+										"type": "string",
+										"enum": [
+											"HIGH",
+											"MEDIUM",
+											"LOW"
+										]
+									},
+									"atr": {
+										"type": "number",
+										"format": "double"
+									},
+									"bear": {
+										"type": "number",
+										"format": "double"
+									},
+									"base": {
+										"type": "number",
+										"format": "double"
+									},
+									"bull": {
+										"type": "number",
+										"format": "double"
+									}
+								},
+								"required": [
+									"confidence",
+									"atr",
+									"bear",
+									"base",
+									"bull"
+								],
+								"type": "object"
+							},
+							"units": {
+								"type": "string"
+							},
+							"historicalData": {
+								"items": {
+									"$ref": "#/components/schemas/HistoricalPoint"
+								},
+								"type": "array"
+							},
+							"predictions": {
+								"items": {
+									"$ref": "#/components/schemas/Prediction"
+								},
+								"type": "array"
+							},
+							"period": {
+								"type": "string"
+							},
+							"symbol": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"units",
+							"historicalData",
+							"predictions",
+							"period",
+							"symbol"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DecisionResponse_any_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PortfolioDecisionRequestBody": {
+				"properties": {
+					"portfolioId": {
+						"type": "string"
+					},
+					"decisionMode": {
+						"type": "string",
+						"enum": [
+							"OVERVIEW",
+							"DETAILED"
+						]
+					},
+					"symbol": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"portfolioId",
+					"decisionMode"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DashboardBriefing": {
+				"properties": {
+					"greeting": {
+						"type": "string"
+					},
+					"generatedAt": {
+						"type": "string"
+					},
+					"decisionSupport": {
+						"properties": {
+							"headline": {
+								"type": "string",
+								"nullable": true
+							},
+							"summary": {
+								"properties": {
+									"lastRunAt": {
+										"type": "string",
+										"format": "date-time"
+									},
+									"positionsAtRisk": {
+										"type": "number",
+										"format": "double"
+									},
+									"trimSignals": {
+										"type": "number",
+										"format": "double"
+									},
+									"holdSignals": {
+										"type": "number",
+										"format": "double"
+									},
+									"buySignals": {
+										"type": "number",
+										"format": "double"
+									}
+								},
+								"required": [
+									"lastRunAt",
+									"positionsAtRisk",
+									"trimSignals",
+									"holdSignals",
+									"buySignals"
+								],
+								"type": "object",
+								"nullable": true
+							},
+							"reason": {
+								"type": "string",
+								"nullable": true
+							},
+							"available": {
+								"type": "boolean"
+							}
+						},
+						"required": [
+							"headline",
+							"summary",
+							"reason",
+							"available"
+						],
+						"type": "object"
+					},
+					"portfolioAlert": {
+						"properties": {
+							"headline": {
+								"type": "string"
+							},
+							"entryZonesActive": {
+								"type": "number",
+								"format": "double"
+							},
+							"stopLossBreaches": {
+								"type": "number",
+								"format": "double"
+							},
+							"overexposedSectors": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"headline",
+							"entryZonesActive",
+							"stopLossBreaches",
+							"overexposedSectors"
+						],
+						"type": "object",
+						"nullable": true
+					}
+				},
+				"required": [
+					"greeting",
+					"generatedAt",
+					"decisionSupport",
+					"portfolioAlert"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HealthScoreBreakdown": {
+				"properties": {
+					"diversification": {
+						"type": "number",
+						"format": "double"
+					},
+					"riskReward": {
+						"type": "number",
+						"format": "double"
+					},
+					"volatility": {
+						"type": "number",
+						"format": "double"
+					},
+					"alertHealth": {
+						"type": "number",
+						"format": "double"
+					},
+					"watchlistDiscipline": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"diversification",
+					"riskReward",
+					"volatility",
+					"alertHealth",
+					"watchlistDiscipline"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HealthScore": {
+				"properties": {
+					"score": {
+						"type": "number",
+						"format": "double"
+					},
+					"band": {
+						"type": "string",
+						"enum": [
+							"Excellent",
+							"Good",
+							"Fair",
+							"Poor"
+						]
+					},
+					"label": {
+						"type": "string"
+					},
+					"breakdown": {
+						"$ref": "#/components/schemas/HealthScoreBreakdown"
+					}
+				},
+				"required": [
+					"score",
+					"band",
+					"label",
+					"breakdown"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DashboardPortfolio": {
+				"properties": {
+					"available": {
+						"type": "boolean"
+					},
+					"reason": {
+						"type": "string"
+					},
+					"totalValue": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalUnrealizedPnL": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalUnrealizedPnLPct": {
+						"type": "number",
+						"format": "double"
+					},
+					"todayGainLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"todayGainLossPct": {
+						"type": "number",
+						"format": "double"
+					},
+					"bestPerformer": {
+						"properties": {
+							"changePercent": {
+								"type": "number",
+								"format": "double"
+							},
+							"symbol": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"changePercent",
+							"symbol"
+						],
+						"type": "object",
+						"nullable": true
+					},
+					"worstPerformer": {
+						"properties": {
+							"changePercent": {
+								"type": "number",
+								"format": "double"
+							},
+							"symbol": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"changePercent",
+							"symbol"
+						],
+						"type": "object",
+						"nullable": true
+					},
+					"healthScore": {
+						"$ref": "#/components/schemas/HealthScore"
+					}
+				},
+				"required": [
+					"available"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ImpactType": {
+				"type": "string",
+				"enum": [
+					"NEGATIVE_HOLDING",
+					"POSITIVE_HOLDING",
+					"NEGATIVE_WATCHLIST",
+					"POSITIVE_WATCHLIST"
+				]
+			},
+			"ImpactNewsItem": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"headline": {
+						"type": "string"
+					},
+					"sentiment": {
+						"type": "string",
+						"enum": [
+							"BULLISH",
+							"BEARISH",
+							"NEUTRAL"
+						]
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"impact": {
+						"$ref": "#/components/schemas/ImpactType"
+					},
+					"sharesHeld": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"publishedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"source": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"headline",
+					"sentiment",
+					"symbol",
+					"impact",
+					"sharesHeld",
+					"publishedAt",
+					"source",
+					"url"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SmartTriggerType": {
+				"type": "string",
+				"enum": [
+					"STOP_LOSS_BREACHED",
+					"EARNINGS_APPROACHING",
+					"ENTRY_ZONE",
+					"DIVIDEND_APPROACHING",
+					"ANALYST_RATING_CHANGE",
+					"AI_SIGNAL_CHANGED",
+					"PCT_CHANGE_UP",
+					"PCT_CHANGE_DOWN"
+				]
+			},
+			"TriggerUrgency": {
+				"type": "string",
+				"enum": [
+					"HIGH",
+					"MEDIUM",
+					"LOW"
+				]
+			},
+			"SmartTrigger": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/SmartTriggerType"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"urgency": {
+						"$ref": "#/components/schemas/TriggerUrgency"
+					},
+					"message": {
+						"type": "string"
+					},
+					"context": {
+						"type": "string"
+					},
+					"action": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"type",
+					"symbol",
+					"urgency",
+					"message",
+					"context",
+					"action"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SectorSignal": {
+				"type": "string",
+				"enum": [
+					"OVEREXPOSED",
+					"BLIND_SPOT",
+					"WELL_POSITIONED",
+					"UNDERPERFORMING",
+					"NEUTRAL",
+					"NO_EXPOSURE"
+				]
+			},
+			"SectorHeatmapItem": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"performance": {
+						"properties": {
+							"1m": {
+								"type": "number",
+								"format": "double"
+							},
+							"5d": {
+								"type": "number",
+								"format": "double"
+							},
+							"1d": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"1m",
+							"5d",
+							"1d"
+						],
+						"type": "object"
+					},
+					"userExposurePct": {
+						"type": "number",
+						"format": "double"
+					},
+					"userSymbols": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"signal": {
+						"$ref": "#/components/schemas/SectorSignal"
+					}
+				},
+				"required": [
+					"name",
+					"performance",
+					"userExposurePct",
+					"userSymbols",
+					"signal"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DashboardResponse": {
+				"properties": {
+					"briefing": {
+						"$ref": "#/components/schemas/DashboardBriefing"
+					},
+					"portfolio": {
+						"$ref": "#/components/schemas/DashboardPortfolio"
+					},
+					"impactNews": {
+						"properties": {
+							"totalCount": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/ImpactNewsItem"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"totalCount",
+							"items"
+						],
+						"type": "object"
+					},
+					"smartTriggers": {
+						"properties": {
+							"totalCount": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/SmartTrigger"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"totalCount",
+							"items"
+						],
+						"type": "object"
+					},
+					"sectorHeatmap": {
+						"properties": {
+							"sectors": {
+								"items": {
+									"$ref": "#/components/schemas/SectorHeatmapItem"
+								},
+								"type": "array"
+							},
+							"cachedAt": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"sectors",
+							"cachedAt"
+						],
+						"type": "object"
+					},
+					"trendingStocks": {
+						"items": {
+							"$ref": "#/components/schemas/RankedStockRow"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"briefing",
+					"portfolio",
+					"impactNews",
+					"smartTriggers",
+					"sectorHeatmap",
+					"trendingStocks"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetDashboardApiResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/DashboardResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MeProfile": {
+				"description": "Profile shape returned by the authenticated \"me\" endpoint.",
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true
+					},
+					"userRoles": {
+						"items": {
+							"properties": {
+								"role": {
+									"properties": {
+										"name": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"name"
+									],
+									"type": "object"
+								}
+							},
+							"required": [
+								"role"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"userId",
+					"email",
+					"displayName",
+					"userRoles"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthApiResponse_MeProfile_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"user": {
+						"$ref": "#/components/schemas/MeProfile"
+					},
+					"accessToken": {
+						"type": "string"
+					},
+					"requiresOnboarding": {
+						"type": "boolean"
+					},
+					"onboardingToken": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthApiResponse_void_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"user": {},
+					"accessToken": {
+						"type": "string"
+					},
+					"requiresOnboarding": {
+						"type": "boolean"
+					},
+					"onboardingToken": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RequestMagicLinkBody": {
+				"properties": {
+					"email": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthApiResponse_any_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"user": {},
+					"accessToken": {
+						"type": "string"
+					},
+					"requiresOnboarding": {
+						"type": "boolean"
+					},
+					"onboardingToken": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"VerifyMagicLinkBody": {
+				"properties": {
+					"token": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CompleteOnboardingBody": {
+				"properties": {
+					"onboardingToken": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GoogleLoginBody": {
+				"properties": {
+					"credential": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"credential"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RefreshTokenBody": {
+				"properties": {
+					"refresh_token": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LogoutBody": {
+				"properties": {
+					"refresh_token": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AccessControlResponse_any_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateRoleBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"description"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AccessControlResponse_void_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AssignRoleBody": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"roleIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"userId",
+					"roleIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PermissionInput": {
+				"properties": {
+					"resourceName": {
+						"type": "string"
+					},
+					"actions": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"resourceName",
+					"actions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AssignPermissionsBody": {
+				"properties": {
+					"roleId": {
+						"type": "string"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/PermissionInput"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"roleId",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AssignActionsResourceItem": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"actions": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"name",
+					"actions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AssignActionsBody": {
+				"properties": {
+					"resources": {
+						"items": {
+							"$ref": "#/components/schemas/AssignActionsResourceItem"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"resources"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {
+			"bearerAuth": {
+				"type": "http",
+				"scheme": "bearer",
+				"bearerFormat": "JWT"
+			}
+		}
+	},
+	"info": {
+		"title": "stock-backend",
+		"version": "1.0.0",
+		"description": "Stock prediction, decision making and analytics platform.",
+		"contact": {
+			"name": "Hamza Ahmed"
+		}
+	},
+	"paths": {
+		"/api/v1/watchlist": {
+			"get": {
+				"operationId": "GetWatchlist",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_WatchlistItemResponse-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all watchlist items for the authenticated user with real-time pricing and AI zones.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "AddToWatchlist",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_WatchlistItemResponse_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Add a stock symbol to user's watchlist.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AddToWatchlistBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/watchlist/{symbol}": {
+			"patch": {
+				"operationId": "UpdateWatchlistEntry",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_WatchlistItemResponse_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update target prices or notes for a watchlist entry.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateWatchlistBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RemoveFromWatchlist",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_void_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Remove a stock from user's watchlist.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/watchlist/{symbol}/convert-to-position": {
+			"post": {
+				"operationId": "ConvertToPosition",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Convert a watchlist entry to a portfolio position.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ConvertToPositionBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/watchlist/{symbol}/alerts": {
+			"get": {
+				"operationId": "GetAlerts",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all active alerts for a watchlist symbol.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateAlert",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create an alert rule for a watchlist symbol.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateAlertBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/watchlist/{symbol}/alerts/{id}": {
+			"patch": {
+				"operationId": "UpdateAlert",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update an alert rule.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateAlertBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteAlert",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WatchlistDataResponse_void_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete an alert rule.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/search/symbol-lookup": {
+			"get": {
+				"operationId": "SymbolLookup",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SymbolLookupResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Look up stock symbols matching a search query.",
+				"tags": [
+					"Search"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "exchange",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/notifications": {
+			"get": {
+				"operationId": "GetNotifications",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetNotificationsEnvelopeResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get paginated notifications for the authenticated user.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/notifications/summary": {
+			"get": {
+				"operationId": "GetNotificationSummary",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationDataResponse_NotificationSummary_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get notification summary (unread count + latest 5 notifications).",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/notifications/read-all": {
+			"patch": {
+				"operationId": "MarkAllAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationDataResponse_NotificationsBatchUpdateResult_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark all unread notifications as read.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/notifications/read-multiple": {
+			"patch": {
+				"operationId": "MarkMultipleAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationDataResponse_NotificationsBatchUpdateResult_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark multiple notifications as read.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MarkMultipleNotificationsReadBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/notifications/{id}/read": {
+			"patch": {
+				"operationId": "MarkAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationDataResponse_NotificationItem_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a single notification as read.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/notifications/{id}": {
+			"delete": {
+				"operationId": "DeleteNotification",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SimpleNotificationMessageResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete a notification.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/feed": {
+			"get": {
+				"operationId": "GetNewsFeed",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsFeedEnvelopeResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get paginated financial news feed filtered by category, symbol, or portfolio/watchlist context.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "category",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/NewsCategory"
+						}
+					},
+					{
+						"in": "query",
+						"name": "symbol",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "filter",
+						"required": false,
+						"schema": {
+							"default": "all",
+							"type": "string",
+							"enum": [
+								"portfolio",
+								"watchlist",
+								"all"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/search": {
+			"get": {
+				"operationId": "SearchNews",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_PaginatedNews_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Search news articles by text query, symbol, category, and date range.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "symbol",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "category",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/NewsCategory"
+						}
+					},
+					{
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/summary": {
+			"get": {
+				"operationId": "GetNewsSummary",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_NewsSummaryResponse_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get personalized news summary: portfolio news, watchlist news, top market headlines, and unread count.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/news/saved": {
+			"get": {
+				"operationId": "GetSavedNews",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_PaginatedNews_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get user's saved/bookmarked news articles.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/symbol/{symbol}": {
+			"get": {
+				"operationId": "GetNewsBySymbol",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_PaginatedNews_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get news articles specific to a stock symbol.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/read-all": {
+			"patch": {
+				"operationId": "MarkAllAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_MarkReadResult_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark all news articles as read for the user.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/news/read-multiple": {
+			"patch": {
+				"operationId": "MarkMultipleAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_MarkReadResult_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark multiple news articles as read.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MarkMultipleReadBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/news/{id}/read": {
+			"patch": {
+				"operationId": "MarkAsRead",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_ArticleActionState_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a single news article as read.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/{id}/save": {
+			"post": {
+				"operationId": "SaveArticle",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NewsDataResponse_ArticleActionState_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Save/bookmark a news article.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnsaveArticle",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SimpleNewsMessageResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Unsave/remove bookmark from a news article.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/market/top-stocks": {
+			"get": {
+				"operationId": "GetTopStocks",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetTopStocksResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve ranked top US stocks with live market quotes.",
+				"tags": [
+					"Market Data"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/forecast": {
+			"get": {
+				"operationId": "GetStockForecast",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForecastResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve AI Forecast predictions (1d, 1w) combined with technical baselines for a stock symbol.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "period",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"1d",
+								"1w"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/decision-support/market/decision/{symbol}": {
+			"get": {
+				"operationId": "GetMarketBasedTradeDecision",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DecisionResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get comprehensive AI market-based trade decision, sentiment, and action guidance for a stock symbol.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/decision-support/upload-portfolio": {
+			"post": {
+				"operationId": "UploadTraderPortfolio",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DecisionResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Upload CSV or Excel file containing trader portfolio holdings.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"PORTFOLIO:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"portfolio": {
+										"type": "string",
+										"format": "binary"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/decision-support/portfolio/decision": {
+			"post": {
+				"operationId": "GetPortfolioBasedTradeDecision",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DecisionResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Run multi-position AI decision analysis against an uploaded portfolio.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"PORTFOLIO:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PortfolioDecisionRequestBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/decision-support/portfolio/latest": {
+			"get": {
+				"operationId": "GetLatestPortfolio",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DecisionResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get user's latest uploaded portfolio snapshot with real-time valuation.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"PORTFOLIO:READ"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/dashboard": {
+			"get": {
+				"operationId": "GetDashboardData",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetDashboardApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get personalized user dashboard briefing, portfolio metrics, smart triggers, and market insights.",
+				"tags": [
+					"Dashboard"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/me": {
+			"get": {
+				"operationId": "GetMyInfo",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthApiResponse_MeProfile_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get currently authenticated user details and assigned roles.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/magic-link": {
+			"post": {
+				"operationId": "RequestMagicLink",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthApiResponse_void_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Request a magic login/signup link sent via email.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestMagicLinkBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/verify-magic-link": {
+			"post": {
+				"operationId": "VerifyMagicLinkToken",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthApiResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify a magic link token to log in or proceed to onboarding.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyMagicLinkBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/onboarding": {
+			"post": {
+				"operationId": "CompleteOnboarding",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthApiResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Complete new user onboarding or update user profile.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CompleteOnboardingBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/google": {
+			"post": {
+				"operationId": "GoogleLogin",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AuthApiResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Authenticate using Google OAuth 2.0 credential.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GoogleLoginBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/refresh-token": {
+			"post": {
+				"operationId": "RefreshToken",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"accessToken": {
+											"type": "string"
+										},
+										"message": {
+											"type": "string"
+										},
+										"success": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"accessToken",
+										"message",
+										"success"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Refresh JWT access token using the HTTP-only refresh token cookie or body token.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RefreshTokenBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/logout": {
+			"post": {
+				"operationId": "Logout",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										},
+										"success": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"message",
+										"success"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Log out user and revoke refresh session.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/LogoutBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/user-screens": {
+			"get": {
+				"operationId": "GetUserScreenPermissions",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get effective screen permissions for the authenticated caller.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/rbac/users": {
+			"get": {
+				"operationId": "GetAllUsers",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all users with paginated list (Admin/RBAC read).",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:READ"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/rbac/roles": {
+			"get": {
+				"operationId": "GetAllRoles",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all roles defined in the system.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:READ"
+						]
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "AddRole",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new role in the system.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateRoleBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/roles/{roleId}": {
+			"delete": {
+				"operationId": "RevokeRole",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_void_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke a role from a user.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:DELETE"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "roleId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/rbac/assign-role": {
+			"post": {
+				"operationId": "AssignRole",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Assign roles to a user.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignRoleBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/permissions": {
+			"get": {
+				"operationId": "GetAllPermissions",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all permission definitions.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:READ"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/rbac/assign-permissions": {
+			"post": {
+				"operationId": "AssignPermissionsToRole",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Assign permissions to a specific role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignPermissionsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/revoke-permissions": {
+			"delete": {
+				"operationId": "RevokePermissionsFromRole",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_void_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke permissions from a specific role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:DELETE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignPermissionsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/resources": {
+			"get": {
+				"operationId": "GetAllResources",
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all registered system resources.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:READ"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/rbac/resource-mappings": {
+			"post": {
+				"operationId": "AssignActionsToResources",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AccessControlResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Map actions to resources.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": [
+							"ROLE:CREATE"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignActionsBody"
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "/"
+		}
+	]
+}
