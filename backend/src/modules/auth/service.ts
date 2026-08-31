@@ -197,17 +197,26 @@ export function getLocalIpAddress(): string | null {
 }
 
 export function resolveFrontendUrl(clientOrigin?: string): string {
-  if (config.server.frontendUrl) {
-    return config.server.frontendUrl
-  }
-
   if (config.server.nodeEnv === 'production') {
+    if (config.server.frontendUrl) return config.server.frontendUrl
     throw new Error(
       'FRONTEND_URL must be configured in production to generate magic links',
     )
   }
 
-  return 'http://localhost:5173'
+  // Development mode: prefer clientOrigin, fallback to config, fallback to localhost
+  let url = clientOrigin || config.server.frontendUrl || 'http://localhost:5173'
+
+  // If the URL is localhost/127.0.0.1, swap it for the local IP address 
+  // so the link can be opened from a mobile device on the same Wi-Fi network.
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    const localIp = getLocalIpAddress()
+    if (localIp) {
+      url = url.replace(/localhost|127\.0\.0\.1/, localIp)
+    }
+  }
+
+  return url
 }
 
 export async function generateMagicLink(

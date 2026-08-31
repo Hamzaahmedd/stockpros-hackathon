@@ -1,6 +1,6 @@
 import { prisma } from '../../../shared/infrastructure/database'
 import polygonClient from '../../../shared/infrastructure/clients/polygon-client'
-import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
+import { fetchYahooSector } from '../../../shared/infrastructure/clients/yahoo-quote'
 import { parseSummaryBullets } from '../utils/summary-parser'
 import { getCache, setCache } from '../../../shared/infrastructure/cache'
 import {
@@ -56,13 +56,10 @@ const getSectorForSymbol = async (symbol: string): Promise<string | null> => {
   if (cached) return cached
 
   try {
-    const { data } = await finnhubClient.get<{ finnhubIndustry?: string }>(
-      '/stock/profile2',
-      { params: { symbol } },
-    )
-    const sector = data.finnhubIndustry ?? null
-    if (sector) await setCache(cacheKey, sector, SECTOR_CACHE_TTL_SECONDS)
-    return sector
+    const sector = await fetchYahooSector(symbol)
+    const result = sector !== 'Unknown' ? sector : null
+    if (result) await setCache(cacheKey, result, SECTOR_CACHE_TTL_SECONDS)
+    return result
   } catch {
     return null
   }

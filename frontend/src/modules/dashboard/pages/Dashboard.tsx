@@ -86,12 +86,12 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
              {stock.logoUrl ? (
                 <img src={stock.logoUrl} alt={stock.symbol} className="w-full h-full object-contain" />
              ) : (
-                <div className="text-sm font-bold text-primary">{stock.symbol[0]}</div>
+                <div className="text-sm font-bold text-foreground">{stock.symbol ? stock.symbol[0] : '•'}</div>
              )}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold tracking-tight truncate">{stock.symbol}</div>
-            <div className="text-[11px] text-muted-foreground font-medium truncate">{stock.companyName}</div>
+            <div className="text-sm font-bold tracking-tight truncate text-foreground">{stock.symbol}</div>
+            <div className="text-[11px] text-muted-foreground font-medium truncate">{stock.companyName || stock.symbol}</div>
           </div>
         </div>
         <div className="text-right">

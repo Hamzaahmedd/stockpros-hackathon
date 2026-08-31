@@ -154,7 +154,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`font-black tracking-widest ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.symbol}</span>
+                    <span className="font-extrabold tracking-widest text-foreground dark:text-white text-gray-900">{item.symbol}</span>
                     <span className="px-1.5 py-0.5 bg-cyan-500/10 text-cyan-500 text-[8px] font-black rounded uppercase border border-cyan-500/20">{item.type}</span>
                   </div>
                   <div className="text-[10px] text-gray-500 truncate font-semibold uppercase tracking-wider">{item.description}</div>

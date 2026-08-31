@@ -22,6 +22,27 @@ StockPros is a monorepo with three services:
 
 The backend follows a **modular monolith** pattern — a single deployable process composed from independent business modules with enforced boundary rules. See [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md) for details.
 
+### System Architecture Diagram
+
+<p align="center">
+  <img src="architecture.svg" alt="StockPros System Architecture Diagram" width="100%" />
+</p>
+<p align="center">
+  <sub><i>Tip: Click <a href="architecture.svg" target="_blank">here for interactive full-res vector SVG</a> or view the <a href="architecture.png" target="_blank">4K PNG</a></i></sub>
+</p>
+
+### Data Flow Summary
+
+| Flow | Path |
+|------|------|
+| **Live Prices** | Finnhub WSS → FinnhubService → PriceCache → Socket.io → Browser |
+| **REST Quotes** | Browser → Backend → Yahoo Finance REST → Response |
+| **Alert Firing** | Finnhub trade tick → AlertEvaluator → Socket.io room + Email queue |
+| **AI Forecast** | Browser → Backend `/api/forecast` → FastAPI GRU model → cached prediction |
+| **News Ingest** | NewsCron (*/15 min) → Polygon.io → PostgreSQL |
+| **Auth** | Browser → `/api/auth` → JWT cookies / Google OAuth 2.0 |
+| **Email** | Alert/Auth event → BullMQ → EmailWorker → SMTP / Resend |
+
 ## Features
 
 - **Authentication** — JWT sessions, magic-link login, Google OAuth

@@ -5,6 +5,7 @@ import { validateOrThrow, ValidationError } from '../../shared/errors'
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
+import { fetchYahooQuote } from '../../shared/infrastructure/clients/yahoo-quote'
 import polygonClient from '../../shared/infrastructure/clients/polygon-client'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { prisma } from '../../shared/infrastructure/database'
@@ -177,9 +178,7 @@ export const getMarketDecisionResponse = async (symbol: string) => {
 }
 
 export const getQuote = async (symbol: string) => {
-  const { data } = await finnhubClient.get<StockQuote>(`/quote`, {
-    params: { symbol: symbol },
-  })
+  const data = await fetchYahooQuote(symbol)
   return data
 }
 

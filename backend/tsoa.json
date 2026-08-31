@@ -1,0 +1,45 @@
+{
+  "entryFile": "src/index.ts",
+  "noImplicitAdditionalProperties": "ignore",
+  "controllerPathGlobs": ["src/docs/controllers/**/*.ts"],
+  "spec": {
+    "outputDirectory": "src/docs/generated",
+    "specVersion": 3,
+    "name": "StockPros Platform API",
+    "version": "1.0.0",
+    "description": "AI-powered stock forecasting, portfolio analytics, and decision-support platform backend.",
+    "contact": {
+      "name": "StockPros Platform Engineering",
+      "url": "https://stockpros-platform.vercel.app"
+    },
+    "license": "Private & Proprietary",
+    "securityDefinitions": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token"
+      }
+    },
+    "tags": [
+      { "name": "Authentication", "description": "User login, OAuth, magic links, session refresh, and onboarding" },
+      { "name": "Access Control (RBAC)", "description": "Role definitions, screen permissions, and user role assignments" },
+      { "name": "Dashboard", "description": "Aggregated metrics, user portfolio summary, and market overview" },
+      { "name": "Decision Support", "description": "AI trade recommendations, portfolio uploads, and risk analysis" },
+      { "name": "AI Forecast", "description": "GRU machine learning stock predictions and time-series projections" },
+      { "name": "Market Data", "description": "Top ranked stocks and real-time equity market data" },
+      { "name": "News", "description": "Financial news feed, sentiment analysis, search, and bookmarks" },
+      { "name": "Notifications", "description": "User notifications, unread counts, and batch actions" },
+      { "name": "Search", "description": "Symbol lookup and company autocomplete" },
+      { "name": "Watchlist", "description": "Tracked symbols, AI baseline calculation, alerts, and position conversion" },
+      { "name": "System", "description": "Platform health and operational readiness" }
+    ],
+    "servers": [
+      { "url": "http://localhost:3000", "description": "Local Development Server" }
+    ]
+  }
+}

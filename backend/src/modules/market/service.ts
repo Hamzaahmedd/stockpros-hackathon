@@ -1,14 +1,12 @@
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
-import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
+import { fetchYahooQuote, fetchYahooSector } from '../../shared/infrastructure/clients/yahoo-quote'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { getCompanyLogo } from './caches/logo-cache'
 import {
-    FinnhubProfile,
     FmpMostActiveItem,
     RankedStockRow,
-    StockQuote,
 } from './types'
 
 const CACHE_KEY = 'market:top-us-stocks'
@@ -27,15 +25,12 @@ export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
     .map((stock) => stock.symbol || stock.ticker)
     .filter((symbol): symbol is string => Boolean(symbol))
 
-  // Fetch Details sequentially / in pairs from Finnhub (Quote + Profile2)
+  // Fetch Details from Yahoo Finance (Quote + Logo)
   const results: RankedStockRow[] = []
   for (let index = 0; index < topSymbols.length; index++) {
     const symbol = topSymbols[index]
     try {
-      const quoteRes = await finnhubClient.get<StockQuote>(`/quote`, {
-        params: { symbol },
-      })
-      const quote = quoteRes.data
+      const quote = await fetchYahooQuote(symbol)
 
       // Use cached logo / profile fetch
       const logoUrl = (await getCompanyLogo(symbol)) || ''
@@ -44,7 +39,7 @@ export async function getRankedTopStocks(): Promise<RankedStockRow[]> {
         rank: index + 1,
         logoUrl,
         symbol,
-        companyName: symbol,
+        companyName: quote.name || symbol,
         price: quote.c,
         change: quote.d,
         changePercent: quote.dp,
@@ -74,14 +69,8 @@ export async function getLivePrices(
 
   for (const symbol of symbols) {
     try {
-      const response = await finnhubClient.get<StockQuote>(`/quote`, {
-        params: {
-          symbol,
-        },
-      })
-
-      const currentPrice = response.data?.c ?? 0
-      priceMap[symbol] = currentPrice
+      const quote = await fetchYahooQuote(symbol)
+      priceMap[symbol] = quote.c ?? 0
     } catch (error) {
       logger.error(`Failed to fetch price for ${symbol}`, error)
       priceMap[symbol] = 0
@@ -104,16 +93,7 @@ export async function getCompanySectors(
         continue
       }
 
-      const response = await finnhubClient.get<FinnhubProfile>(
-        `/stock/profile2`,
-        {
-          params: {
-            symbol,
-          },
-        },
-      )
-
-      const sector = response.data?.finnhubIndustry ?? 'Unknown'
+      const sector = await fetchYahooSector(symbol)
       sectorMap[symbol] = sector
 
       await setCache(`sector:${symbol}`, sector, CACHE_TTL.MARKET.SECTOR_LOOKUP)

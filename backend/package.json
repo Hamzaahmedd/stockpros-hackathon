@@ -10,6 +10,7 @@
     "test": "jest",
     "test:finnhub": "jest src/modules/market/infrastructure/finnhub-stream.test.ts",
     "architecture:check": "node scripts/check-module-boundaries.cjs",
+    "tsoa:spec": "tsoa spec",
     "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {
@@ -44,8 +45,8 @@
     "prisma": "^6.17.1",
     "resend": "^6.11.0",
     "socket.io": "^4.8.1",
-    "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "tsoa": "^7.0.0-alpha.0",
     "technicalindicators": "^3.1.0",
     "ts-node": "^10.9.2",
     "uuidv7": "^1.0.2",
@@ -66,7 +67,6 @@
     "@types/node": "^25.3.3",
     "@types/nodemailer": "^7.0.11",
     "@types/supertest": "^7.2.1",
-    "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
     "jest": "^30.2.0",

@@ -1,0 +1,159 @@
+graph TB
+    %% ─── Client Layer ───────────────────────────────────────────────────────────
+    subgraph CLIENT["🖥️  Frontend  (React 18 · Vite · TypeScript)"]
+        direction TB
+        UI_Auth["Auth\n(Login / Register / OAuth / Magic Link)"]
+        UI_Dashboard["Dashboard\n(Portfolio Summary · Activity Feed)"]
+        UI_Market["Markets\n(Top Stocks · Live Quotes · Rankings)"]
+        UI_Watchlist["Watchlist\n(Symbols · AI Targets · Alerts)"]
+        UI_Decision["Decision Support\n(Buy/Sell/Hold · Risk · PDF)"]
+        UI_Forecast["Forecast\n(GRU Predictions · Charts · CSV/PDF)"]
+        UI_News["News\n(Feed · Sentiment · Bookmarks)"]
+        UI_Notif["Notifications\n(In-App · Email Alerts)"]
+        UI_RBAC["Access Control\n(Roles · Permissions)"]
+        UI_Settings["Settings\n(Profile · Preferences)"]
+    end
+
+    %% ─── Transport ──────────────────────────────────────────────────────────────
+    REST["REST API  (HTTPS)"]
+    WS_Client["WebSocket  (Socket.io)"]
+
+    CLIENT -- "HTTP Requests" --> REST
+    CLIENT -- "Subscribe / Unsubscribe" --> WS_Client
+
+    %% ─── Backend Monolith ───────────────────────────────────────────────────────
+    subgraph BACKEND["⚙️  Backend  (Express 5 · Node.js · TypeScript)"]
+        direction TB
+
+        subgraph MIDDLEWARE["Middleware Layer"]
+            SEC["Security\n(Helmet · CORS · Rate-limit)"]
+            AUTH_MW["Auth Guard\n(JWT · Cookie)"]
+            ERR["Error Handler"]
+        end
+
+        subgraph MODULES["Business Modules"]
+            M_Auth["auth\n/api/auth"]
+            M_Market["market\n/api/market"]
+            M_Watchlist["watchlist\n/api/watchlist"]
+            M_Decision["decision-support\n/api/decision-support"]
+            M_Forecast["forecast\n/api/forecast"]
+            M_News["news\n/api/news"]
+            M_Notif["notifications\n/api/notifications"]
+            M_Dashboard["dashboard\n/api/dashboard"]
+            M_Search["search\n/api/search"]
+            M_RBAC["access-control\n/api/access-control"]
+        end
+
+        subgraph REALTIME["Real-Time Layer"]
+            SOCK["SocketServer\n(Socket.io)"]
+            FH_WS["FinnhubService\n(WebSocket Client)"]
+            PRICE_CACHE["PriceCache\n(In-Memory Map)"]
+            ALERT_EVAL["AlertEvaluator\n(Price · % · Threshold)"]
+        end
+
+        subgraph WORKERS["Background Workers"]
+            CRON["CronScheduler\n(node-cron)"]
+            EMAIL_W["EmailWorker\n(BullMQ Queue)"]
+            AUTH_EMAIL_W["AuthEmailWorker\n(BullMQ Queue)"]
+            NEWS_CRON["NewsCronJobs\n(*/15 min ingest)"]
+            WATCHLIST_JOBS["WatchlistJobs\n(Earnings · Analyst · SEC · AI)"]
+        end
+
+        subgraph CACHE_LAYER["Cache Layer"]
+            LOGO_C["LogoCache\n(24h TTL)"]
+            PORTFOLIO_C["PortfolioFitCache\n(Price-drift eviction)"]
+            QUOTE_CACHE["QuoteCache\n(30s TTL)"]
+        end
+    end
+
+    %% ─── Data Stores ────────────────────────────────────────────────────────────
+    subgraph DATA["🗄️  Data Stores"]
+        PG["PostgreSQL\n(Neon / Prisma ORM)"]
+        REDIS["Redis\n(Cache · BullMQ · Sessions)"]
+    end
+
+    %% ─── AI Service ─────────────────────────────────────────────────────────────
+    subgraph AI["🤖  AI Service  (FastAPI · Python 3.11)"]
+        AI_ROUTER["forecast router\n/forecast/predict"]
+        AI_DATA["DataService\n(Tiingo OHLCV fetch)"]
+        AI_MODEL["ModelService\n(GRU · TensorFlow · ONNX)"]
+        AI_REDIS["Redis Cache\n(prediction TTL)"]
+    end
+
+    %% ─── External APIs ──────────────────────────────────────────────────────────
+    subgraph EXTERNAL["🌐  External APIs"]
+        FINNHUB_WS["Finnhub\n(WebSocket — live trades)"]
+        YAHOO["Yahoo Finance 2\n(REST quotes · profiles)"]
+        POLYGON["Polygon.io\n(Historical OHLCV · News)"]
+        FMP["FMP\n(Most-actives · Earnings)"]
+        TWELVE["Twelve Data\n(Technicals)"]
+        TIINGO["Tiingo\n(OHLCV for ML training)"]
+        CLEARBIT["Clearbit Logo API\n(Company logos)"]
+        SMTP["SMTP / Resend\n(Transactional email)"]
+        GOOGLE["Google OAuth 2.0"]
+    end
+
+    %% ─── Connections: Transport → Backend ───────────────────────────────────────
+    REST --> MIDDLEWARE
+    WS_Client --> SOCK
+    MIDDLEWARE --> MODULES
+
+    %% ─── Socket / Real-Time flow ─────────────────────────────────────────────────
+    FINNHUB_WS -- "trade ticks (WSS)" --> FH_WS
+    FH_WS --> PRICE_CACHE
+    FH_WS --> ALERT_EVAL
+    PRICE_CACHE --> SOCK
+    ALERT_EVAL --> SOCK
+    SOCK -- "price:update · alert:triggered" --> WS_Client
+
+    %% ─── Module → Data / External ────────────────────────────────────────────────
+    MODULES --> PG
+    MODULES --> REDIS
+    M_Market --> YAHOO
+    M_Market --> FMP
+    M_Market --> LOGO_C
+    LOGO_C --> CLEARBIT
+    M_Watchlist --> PORTFOLIO_C
+    PORTFOLIO_C --> YAHOO
+    M_Decision --> YAHOO
+    M_Decision --> POLYGON
+    M_Decision --> TWELVE
+    M_News --> POLYGON
+    M_News --> YAHOO
+    M_Auth --> GOOGLE
+    M_Forecast --> AI_ROUTER
+    M_Notif --> EMAIL_W
+
+    %% ─── Workers → External / Data ───────────────────────────────────────────────
+    CRON --> WATCHLIST_JOBS
+    CRON --> NEWS_CRON
+    WATCHLIST_JOBS --> YAHOO
+    WATCHLIST_JOBS --> FMP
+    WATCHLIST_JOBS --> POLYGON
+    NEWS_CRON --> POLYGON
+    EMAIL_W --> SMTP
+    AUTH_EMAIL_W --> SMTP
+    WORKERS --> REDIS
+
+    %% ─── AI Service internals ────────────────────────────────────────────────────
+    AI_ROUTER --> AI_DATA
+    AI_ROUTER --> AI_MODEL
+    AI_DATA --> TIINGO
+    AI_MODEL --> AI_REDIS
+    AI_REDIS --> REDIS
+
+    %% ─── Cache layer links ───────────────────────────────────────────────────────
+    QUOTE_CACHE --> YAHOO
+
+    %% ─── Styles ──────────────────────────────────────────────────────────────────
+    classDef clientBox fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    classDef backendBox fill:#1a2e1a,stroke:#22c55e,color:#e2e8f0
+    classDef dataBox fill:#3b1f00,stroke:#f97316,color:#e2e8f0
+    classDef aiBox fill:#2d1b4e,stroke:#a855f7,color:#e2e8f0
+    classDef extBox fill:#1f1f1f,stroke:#64748b,color:#cbd5e1
+
+    class UI_Auth,UI_Dashboard,UI_Market,UI_Watchlist,UI_Decision,UI_Forecast,UI_News,UI_Notif,UI_RBAC,UI_Settings clientBox
+    class SEC,AUTH_MW,ERR,M_Auth,M_Market,M_Watchlist,M_Decision,M_Forecast,M_News,M_Notif,M_Dashboard,M_Search,M_RBAC,SOCK,FH_WS,PRICE_CACHE,ALERT_EVAL,CRON,EMAIL_W,AUTH_EMAIL_W,NEWS_CRON,WATCHLIST_JOBS,LOGO_C,PORTFOLIO_C,QUOTE_CACHE backendBox
+    class PG,REDIS dataBox
+    class AI_ROUTER,AI_DATA,AI_MODEL,AI_REDIS aiBox
+    class FINNHUB_WS,YAHOO,POLYGON,FMP,TWELVE,TIINGO,CLEARBIT,SMTP,GOOGLE extBox

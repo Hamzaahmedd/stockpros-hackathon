@@ -1,8 +1,8 @@
 import config from '@/config'
 import EventEmitter from 'events'
 import WebSocket from 'ws'
-import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { logger } from '../../../shared/infrastructure/logger'
+import { fetchYahooQuote } from '../../../shared/infrastructure/clients/yahoo-quote'
 import { StockQuote } from '../types'
 import { FinnhubTradeMsg } from './finnhub-types'
 
@@ -112,11 +112,9 @@ export class FinnhubService extends EventEmitter {
     }
 
     try {
-      const res = await finnhubClient.get<StockQuote>(`/quote`, {
-        params: { symbol: s },
-      })
-      this.quoteCache.set(s, { data: res.data, ts: Date.now() })
-      return res.data
+      const data = await fetchYahooQuote(s)
+      this.quoteCache.set(s, { data, ts: Date.now() })
+      return data
     } catch (err) {
       // Fallback: if the API fails but we have stale data, return that instead
       if (cached) return cached.data

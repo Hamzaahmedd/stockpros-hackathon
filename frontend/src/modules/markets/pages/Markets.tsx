@@ -136,13 +136,13 @@ const Markets = () => {
                           }`}
                         >
                           <TableCell className="py-3.5 px-6 text-muted-foreground font-semibold">{index + 1}</TableCell>
-                          <TableCell className="py-3.5 px-6 font-bold">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="w-7 h-7 bg-muted/50">
+                          <TableCell className="py-3.5 px-6 font-bold text-foreground">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar className="w-7 h-7 bg-muted/50 shrink-0">
                                 <AvatarImage src={r.logoUrl} alt={r.symbol} />
-                                <AvatarFallback className="text-[10px]">{r.symbol.slice(0,2)}</AvatarFallback>
+                                <AvatarFallback className="text-[10px] font-bold text-foreground">{r.symbol.slice(0,2)}</AvatarFallback>
                               </Avatar>
-                              {r.symbol}
+                              <span className="font-bold text-foreground tracking-wide">{r.symbol}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-3.5 px-6 truncate max-w-[200px] text-muted-foreground font-medium">{r.companyName}</TableCell>
