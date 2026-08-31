@@ -1,13 +1,13 @@
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
-import { fetchYahooQuote, fetchYahooSector } from '../../shared/infrastructure/clients/yahoo-quote'
+import {
+  fetchYahooQuote,
+  fetchYahooSector,
+} from '../../shared/infrastructure/clients/yahoo-quote'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { getCompanyLogo } from './caches/logo-cache'
-import {
-    FmpMostActiveItem,
-    RankedStockRow,
-} from './types'
+import { FmpMostActiveItem, RankedStockRow } from './types'
 
 const CACHE_KEY = 'market:top-us-stocks'
 

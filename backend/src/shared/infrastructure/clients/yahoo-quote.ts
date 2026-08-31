@@ -19,7 +19,9 @@ const yahoo = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
  *   t  = unix timestamp (seconds)
  *   v  = regularMarketVolume
  */
-export async function fetchYahooQuote(symbol: string): Promise<StockQuote & { v: number; name?: string }> {
+export async function fetchYahooQuote(
+  symbol: string,
+): Promise<StockQuote & { v: number; name?: string }> {
   const q = await yahoo.quote(symbol)
 
   return {
@@ -42,7 +44,9 @@ export async function fetchYahooQuote(symbol: string): Promise<StockQuote & { v:
  */
 export async function fetchYahooSector(symbol: string): Promise<string> {
   try {
-    const summary = await yahoo.quoteSummary(symbol, { modules: ['assetProfile'] })
+    const summary = await yahoo.quoteSummary(symbol, {
+      modules: ['assetProfile'],
+    })
     return summary.assetProfile?.industry ?? 'Unknown'
   } catch {
     return 'Unknown'
@@ -54,9 +58,13 @@ export async function fetchYahooSector(symbol: string): Promise<string> {
  * Yahoo Finance does not expose logos directly, so we use the
  * free Clearbit Logo API (no key required) as a fallback.
  */
-export async function fetchYahooCompanyLogo(symbol: string): Promise<string | null> {
+export async function fetchYahooCompanyLogo(
+  symbol: string,
+): Promise<string | null> {
   try {
-    const summary = await yahoo.quoteSummary(symbol, { modules: ['assetProfile'] })
+    const summary = await yahoo.quoteSummary(symbol, {
+      modules: ['assetProfile'],
+    })
     const website = summary.assetProfile?.website
     if (website) {
       try {

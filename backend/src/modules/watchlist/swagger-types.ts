@@ -1,5 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Tags, Security, Body, Path, Query, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse, PaginatedResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Tags,
+  Security,
+  Body,
+  Path,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -12,69 +25,84 @@ export interface WatchlistEntry {
   currentPrice?: number
   priceChange?: number
   priceChangePercent?: number
-  entryPrice?: number
-  targetPrice?: number
+  targetEntryPrice?: number
   stopLoss?: number
-  aiBaselineCalculated: boolean
-  addedAt: string
+  notes?: string
+  priceAtCreatedAt?: number
+  aiSuggestedEntry?: number
+  aiTakeProfit?: number
+  aiStopLoss?: number
+  /** @enum {string} */
+  aiConfidence?: 'LOW' | 'MEDIUM' | 'HIGH'
+  aiSuggestionBasis?: string
+  aiComputedAt?: string
+  createdAt: string
 }
 
 export interface AddToWatchlistRequest {
   /** @example "TSLA" */
   symbol: string
+  targetEntryPrice?: number
+  stopLoss?: number
+  /** @maxLength 500 */
+  notes?: string
 }
 
 export interface UpdateWatchlistEntryRequest {
-  entryPrice?: number
-  targetPrice?: number
+  targetEntryPrice?: number
   stopLoss?: number
+  /** @maxLength 500 */
+  notes?: string
 }
 
-export interface Alert {
+export interface WatchlistAlert {
   id: string
-  symbol: string
-  type: string
-  condition: string
-  value?: number | string
+  watchlistId: string
+  /** @enum {string} */
+  type:
+    | 'PRICE_ABOVE'
+    | 'PRICE_BELOW'
+    | 'PCT_CHANGE_UP'
+    | 'PCT_CHANGE_DOWN'
+    | 'ENTRY_ZONE'
+    | 'STOP_LOSS_BREACHED'
+    | 'EARNINGS_APPROACHING'
+    | 'DIVIDEND_APPROACHING'
+    | 'ANALYST_RATING_CHANGE'
+    | 'NEWS_PUBLISHED'
+    | 'SEC_FILING'
+    | 'AI_SIGNAL_CHANGED'
+  threshold?: number
   isActive: boolean
-  lastTriggered?: string
   createdAt: string
 }
 
-export type AlertType =
-  | 'PRICE_ABOVE'
-  | 'PRICE_BELOW'
-  | 'PERCENT_CHANGE_UP'
-  | 'PERCENT_CHANGE_DOWN'
-  | 'EARNINGS_DATE'
-  | 'DIVIDEND_DATE'
-  | 'ANALYST_UPGRADE'
-  | 'ANALYST_DOWNGRADE'
-  | 'SEC_FILING'
-  | 'NEWS_MENTION'
-  | 'RSI_OVERBOUGHT'
-  | 'RSI_OVERSOLD'
-
 export interface CreateAlertRequest {
-  type: AlertType
+  /** @enum {string} */
+  type:
+    | 'PRICE_ABOVE'
+    | 'PRICE_BELOW'
+    | 'PCT_CHANGE_UP'
+    | 'PCT_CHANGE_DOWN'
+    | 'ENTRY_ZONE'
+    | 'STOP_LOSS_BREACHED'
+    | 'EARNINGS_APPROACHING'
+    | 'DIVIDEND_APPROACHING'
+    | 'ANALYST_RATING_CHANGE'
+    | 'NEWS_PUBLISHED'
+    | 'SEC_FILING'
+    | 'AI_SIGNAL_CHANGED'
   /** Numeric threshold (for price/percent alerts) */
-  value?: number
-  /** Freeform condition description */
-  condition?: string
+  threshold?: number
 }
 
-export interface ConvertToPositionRequest {
-  quantity: number
-  avgCost: number
-}
-
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/watchlist')
 @Tags('Watchlist')
-export class WatchlistController extends Controller {
+export class WatchlistSwaggerController extends Controller {
   /**
-   * Get the authenticated user's watchlist with current quotes and AI baseline data.
+   * Get the authenticated user's watchlist with current quotes and AI suggestion data.
    */
   @Get('')
   @Security('bearerAuth')
@@ -90,12 +118,14 @@ export class WatchlistController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(201, 'Symbol added to watchlist')
   @Response<ApiErrorResponse>(409, 'Symbol already in watchlist')
-  async addToWatchlist(@Body() body: AddToWatchlistRequest): Promise<ApiResponse<WatchlistEntry>> {
+  async addToWatchlist(
+    @Body() body: AddToWatchlistRequest,
+  ): Promise<ApiResponse<WatchlistEntry>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Update entry price, target, or stop-loss for a watchlist symbol.
+   * Update trade plan fields (target entry, stop-loss, notes) for a watchlist symbol.
    */
   @Put('{symbol}')
   @Security('bearerAuth')
@@ -120,15 +150,20 @@ export class WatchlistController extends Controller {
   }
 
   /**
-   * Trigger AI baseline calculation for a watchlist symbol.
+   * Trigger AI suggestion calculation for a watchlist symbol.
    * Computes suggested entry price, take-profit, and stop-loss from technical analysis.
    */
   @Post('{symbol}/ai-baseline')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'AI baseline calculated')
-  async calculateAiBaseline(
-    @Path() symbol: string,
-  ): Promise<ApiResponse<{ entryPrice: number; targetPrice: number; stopLoss: number }>> {
+  @SuccessResponse(200, 'AI suggestions calculated')
+  async calculateAiBaseline(@Path() symbol: string): Promise<
+    ApiResponse<{
+      aiSuggestedEntry: number
+      aiTakeProfit: number
+      aiStopLoss: number
+      aiConfidence: 'LOW' | 'MEDIUM' | 'HIGH'
+    }>
+  > {
     throw new Error('tsoa spec-only')
   }
 
@@ -138,13 +173,15 @@ export class WatchlistController extends Controller {
   @Get('{symbol}/alerts')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Alerts returned')
-  async getAlerts(@Path() symbol: string): Promise<ApiResponse<Alert[]>> {
+  async getAlerts(
+    @Path() symbol: string,
+  ): Promise<ApiResponse<WatchlistAlert[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
    * Create a new alert for a watchlist symbol.
-   * Supports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, RSI signals, and more.
+   * Supports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.
    */
   @Post('{symbol}/alerts')
   @Security('bearerAuth')
@@ -153,7 +190,7 @@ export class WatchlistController extends Controller {
   async createAlert(
     @Path() symbol: string,
     @Body() body: CreateAlertRequest,
-  ): Promise<ApiResponse<Alert>> {
+  ): Promise<ApiResponse<WatchlistAlert>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -167,7 +204,7 @@ export class WatchlistController extends Controller {
     @Path() symbol: string,
     @Path() id: string,
     @Body() body: Partial<CreateAlertRequest>,
-  ): Promise<ApiResponse<Alert>> {
+  ): Promise<ApiResponse<WatchlistAlert>> {
     throw new Error('tsoa spec-only')
   }
 

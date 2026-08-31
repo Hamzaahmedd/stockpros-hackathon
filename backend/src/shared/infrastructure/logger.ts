@@ -30,7 +30,12 @@ const formatError = (err?: unknown): unknown => {
       return '[Unserializable Object]'
     }
   }
-  if (typeof err === 'string' || typeof err === 'number' || typeof err === 'boolean' || typeof err === 'bigint') {
+  if (
+    typeof err === 'string' ||
+    typeof err === 'number' ||
+    typeof err === 'boolean' ||
+    typeof err === 'bigint'
+  ) {
     return err.toString()
   }
   return ''
@@ -47,4 +52,3 @@ export const logger = {
     }
   },
 }
-

@@ -1,5 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Tags, Security, Body, Path, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Tags,
+  Security,
+  Body,
+  Path,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -12,11 +25,19 @@ export interface Role {
 
 export interface Permission {
   id: string
-  screen: string
-  canCreate: boolean
+  action: string
+  resourceId: string
+}
+
+export interface Screen {
+  id: string
+  resourceId: string
+  roleId: string
   canRead: boolean
+  canCreate: boolean
   canUpdate: boolean
-  canDelete: boolean
+  canArchive: boolean
+  canManage: boolean
 }
 
 export interface CreateRoleRequest {
@@ -39,11 +60,11 @@ export interface AssignRoleRequest {
   roleId: string
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/access-control')
 @Tags('Access Control (RBAC)')
-export class AccessControlController extends Controller {
+export class AccessControlSwaggerController extends Controller {
   /**
    * List all defined roles and their associated permissions.
    */
@@ -61,7 +82,9 @@ export class AccessControlController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(201, 'Role created')
   @Response<ApiErrorResponse>(409, 'Role name already exists')
-  async createRole(@Body() body: CreateRoleRequest): Promise<ApiResponse<Role>> {
+  async createRole(
+    @Body() body: CreateRoleRequest,
+  ): Promise<ApiResponse<Role>> {
     throw new Error('tsoa spec-only')
   }
 

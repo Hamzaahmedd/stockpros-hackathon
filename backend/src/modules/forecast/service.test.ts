@@ -70,7 +70,11 @@ function computeTargetRange(
   const support = swingLow !== null ? Math.max(ema, swingLow) : ema
 
   let summaryBull = periodHigh + ATR_MULT * atr
-  if (resistance !== null && resistance < summaryBull && resistance >= periodHigh) {
+  if (
+    resistance !== null &&
+    resistance < summaryBull &&
+    resistance >= periodHigh
+  ) {
     summaryBull = resistance
   }
 
@@ -184,23 +188,55 @@ describe('Target range summary — computeTargetRange', () => {
   const terminal = 103
 
   it('bull is above periodHigh when resistance is null', () => {
-    const range = computeTargetRange(periodHigh, periodLow, terminal, atr, null, null, ema)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      atr,
+      null,
+      null,
+      ema,
+    )
     expect(range.bull).toBeCloseTo(periodHigh + ATR_MULT * atr, 2)
   })
 
   it('bull is clamped to resistance when applicable', () => {
     const resistance = 106 // between periodHigh (105) and unclamped bull (108)
-    const range = computeTargetRange(periodHigh, periodLow, terminal, atr, resistance, null, ema)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      atr,
+      resistance,
+      null,
+      ema,
+    )
     expect(range.bull).toBe(resistance)
   })
 
   it('base is the terminal (last) price', () => {
-    const range = computeTargetRange(periodHigh, periodLow, terminal, atr, null, null, ema)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      atr,
+      null,
+      null,
+      ema,
+    )
     expect(range.base).toBe(terminal)
   })
 
   it('bear is below periodLow when there is no support above it', () => {
-    const range = computeTargetRange(periodHigh, periodLow, terminal, atr, null, null, ema)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      atr,
+      null,
+      null,
+      ema,
+    )
     // support = max(ema=98, swingLow=null→ema=98) = 98; 98 > (95 − 3) = 92 AND 98 <= 95? NO
     // So bear = 95 - 3 = 92
     expect(range.bear).toBeCloseTo(periodLow - ATR_MULT * atr, 2)
@@ -209,12 +245,28 @@ describe('Target range summary — computeTargetRange', () => {
   it('bear is clamped to support when support is between unclamped bear and periodLow', () => {
     // swingLow=93, support=max(98,93)=98; 98 > 92(unclamped) AND 98 <= 95? NO — so no clamp
     // Use ema=94 so support=max(94,93)=94; 94 > 92 AND 94<=95 → YES
-    const range = computeTargetRange(periodHigh, periodLow, terminal, atr, null, 93, 94)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      atr,
+      null,
+      93,
+      94,
+    )
     expect(range.bear).toBe(94)
   })
 
   it('atr field echoes the input atr rounded to 2dp', () => {
-    const range = computeTargetRange(periodHigh, periodLow, terminal, 2.555, null, null, ema)
+    const range = computeTargetRange(
+      periodHigh,
+      periodLow,
+      terminal,
+      2.555,
+      null,
+      null,
+      ema,
+    )
     expect(range.atr).toBe(2.56)
   })
 })

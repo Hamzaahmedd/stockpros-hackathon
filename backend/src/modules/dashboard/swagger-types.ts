@@ -1,5 +1,5 @@
 import { Controller, Get, Route, Tags, Security, SuccessResponse } from 'tsoa'
-import { ApiResponse } from './auth.controller'
+import { ApiResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -38,11 +38,11 @@ export interface ActivityItem {
   timestamp: string
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/dashboard')
 @Tags('Dashboard')
-export class DashboardController extends Controller {
+export class DashboardSwaggerController extends Controller {
   /**
    * Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.
    * Combines data from multiple modules for a single-request page load.

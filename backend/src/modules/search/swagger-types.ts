@@ -1,5 +1,13 @@
-import { Controller, Get, Route, Tags, Security, Query, SuccessResponse } from 'tsoa'
-import { ApiResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Route,
+  Tags,
+  Security,
+  Query,
+  SuccessResponse,
+} from 'tsoa'
+import { ApiResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -11,11 +19,11 @@ export interface SymbolSearchResult {
   currency?: string
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/search')
 @Tags('Search')
-export class SearchController extends Controller {
+export class SearchSwaggerController extends Controller {
   /**
    * Search for stock symbols or company names (autocomplete).
    * Powered by Finnhub symbol search with US exchange filter by default.

@@ -16,12 +16,6 @@
 ## Project Overview
 Web frontend for the Stock Prediction Platform, built with React + TypeScript. Provides dashboards, visualizations, and interactive interfaces for users to view real-time and forecasted stock data.
 
-### System Architecture Diagram
-
-<p align="center">
-  <img src="architecture.svg" alt="StockPros System Architecture Diagram" width="100%" />
-</p>
-
 ## Prerequisites
 - Node.js (v18.0.0+)
 - npm (v9.0.0+)

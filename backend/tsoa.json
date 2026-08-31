@@ -1,7 +1,8 @@
 {
   "entryFile": "src/index.ts",
   "noImplicitAdditionalProperties": "ignore",
-  "controllerPathGlobs": ["src/docs/controllers/**/*.ts"],
+  "controllerPathGlobs": ["src/modules/**/swagger-types.ts"],
+
   "spec": {
     "outputDirectory": "src/docs/generated",
     "specVersion": 3,

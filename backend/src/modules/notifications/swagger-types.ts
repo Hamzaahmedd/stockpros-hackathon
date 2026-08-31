@@ -1,23 +1,37 @@
-import { Controller, Get, Post, Delete, Route, Tags, Security, Path, Query, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse, PaginatedResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Route,
+  Tags,
+  Security,
+  Path,
+  Query,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import {
+  ApiResponse,
+  ApiErrorResponse,
+  PaginatedResponse,
+} from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 export interface Notification {
   id: string
-  type: string
   title: string
-  message: string
-  isRead: boolean
-  metadata?: Record<string, unknown>
+  body: string
+  read: boolean
   createdAt: string
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/notifications')
 @Tags('Notifications')
-export class NotificationsController extends Controller {
+export class NotificationsSwaggerController extends Controller {
   /**
    * Fetch paginated notifications for the authenticated user, newest first.
    */

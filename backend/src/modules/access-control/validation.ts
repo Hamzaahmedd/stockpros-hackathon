@@ -16,12 +16,10 @@ export const createRoleValidator = z.object({
       message:
         "Role name must be in all caps snake case (e.g., 'SALES_MANAGER' or 'HR_ADMIN_V2').",
     }),
-  description: z
-    .string()
-    .min(5, {
-      message:
-        'Role description is required and must be at least 5 characters long.',
-    }),
+  description: z.string().min(5, {
+    message:
+      'Role description is required and must be at least 5 characters long.',
+  }),
 })
 
 export const assignPermissionsValidator = z.object({

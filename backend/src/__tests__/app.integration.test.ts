@@ -43,7 +43,17 @@ jest.mock('../modules/market/infrastructure/finnhub-stream', () => ({
     unsubscribe: jest.fn(),
     on: jest.fn(),
     close: jest.fn().mockResolvedValue(undefined),
-    getQuote: jest.fn().mockResolvedValue({ c: 100, d: 1, dp: 1, h: 101, l: 99, o: 100, pc: 99 }),
+    getQuote: jest
+      .fn()
+      .mockResolvedValue({
+        c: 100,
+        d: 1,
+        dp: 1,
+        h: 101,
+        l: 99,
+        o: 100,
+        pc: 99,
+      }),
   },
 }))
 

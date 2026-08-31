@@ -1,29 +1,21 @@
-import { Controller, Get, Post, Put, Delete, Patch, Route, Tags, Security, Body, Path, Query, SuccessResponse, Response, Request } from 'tsoa'
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Route,
+  Tags,
+  Security,
+  Body,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
 
-// ─── Shared response shapes ───────────────────────────────────────────────────
-
-export interface ApiResponse<T = unknown> {
-  success: boolean
-  message: string
-  data?: T
-}
-
-export interface ApiErrorResponse {
-  success: false
-  message: string
-  errors?: Array<{ field: string; message: string }>
-}
-
-export interface PaginatedResponse<T> {
-  success: boolean
-  message: string
-  data: {
-    items: T[]
-    total: number
-    page: number
-    limit: number
-  }
-}
+import {
+  ApiResponse,
+  ApiErrorResponse,
+  PaginatedResponse,
+} from '../../shared/docs-types'
 
 // ─── Auth models ──────────────────────────────────────────────────────────────
 
@@ -89,24 +81,11 @@ export interface AuthTokensResponse {
   user: UserProfile
 }
 
-export interface LoginRequest {
-  /** @format email */
-  email: string
-  password: string
-}
-
-export interface RegisterRequest {
-  /** @format email */
-  email: string
-  password: string
-  displayName?: string
-}
-
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/auth')
 @Tags('Authentication')
-export class AuthController extends Controller {
+export class AuthSwaggerController extends Controller {
   /**
    * Send a magic link login email. A one-time link will be emailed to the address.
    */
@@ -120,10 +99,12 @@ export class AuthController extends Controller {
   /**
    * Verify a magic link token and return JWT access token + session cookie.
    */
-  @Post('magic-link/verify')
+  @Post('verify-magic-link')
   @SuccessResponse(200, 'Magic link verified, tokens issued')
   @Response<ApiErrorResponse>(400, 'Invalid or expired token')
-  async verifyMagicLink(@Body() body: VerifyMagicLinkRequest): Promise<ApiResponse<AuthTokensResponse>> {
+  async verifyMagicLink(
+    @Body() body: VerifyMagicLinkRequest,
+  ): Promise<ApiResponse<AuthTokensResponse>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -133,7 +114,9 @@ export class AuthController extends Controller {
   @Post('google')
   @SuccessResponse(200, 'Google login successful')
   @Response<ApiErrorResponse>(401, 'Invalid Google credential')
-  async googleLogin(@Body() body: GoogleLoginRequest): Promise<ApiResponse<AuthTokensResponse>> {
+  async googleLogin(
+    @Body() body: GoogleLoginRequest,
+  ): Promise<ApiResponse<AuthTokensResponse>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -142,14 +125,16 @@ export class AuthController extends Controller {
    */
   @Post('onboarding')
   @SuccessResponse(200, 'Onboarding completed')
-  async completeOnboarding(@Body() body: OnboardingRequest): Promise<ApiResponse<UserProfile>> {
+  async completeOnboarding(
+    @Body() body: OnboardingRequest,
+  ): Promise<ApiResponse<UserProfile>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
    * Rotate session — exchange a valid refresh_token cookie for a new access token.
    */
-  @Post('refresh')
+  @Post('refresh-token')
   @Security('cookieAuth')
   @SuccessResponse(200, 'Tokens refreshed')
   @Response<ApiErrorResponse>(401, 'Missing or expired refresh token')
@@ -184,7 +169,9 @@ export class AuthController extends Controller {
   @Put('profile')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Profile updated')
-  async updateProfile(@Body() body: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {
+  async updateProfile(
+    @Body() body: UpdateProfileRequest,
+  ): Promise<ApiResponse<UserProfile>> {
     throw new Error('tsoa spec-only')
   }
 

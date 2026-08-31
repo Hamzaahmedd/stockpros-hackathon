@@ -54,4 +54,3 @@ export const portfolioRiskMetricsValidator = z.object({
 export const opportunityRadarQueryValidator = z.object({
   timeline: z.enum(['1D', '1W']).optional(),
 })
-

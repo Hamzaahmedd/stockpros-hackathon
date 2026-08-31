@@ -10,7 +10,7 @@
     "test": "jest",
     "test:finnhub": "jest src/modules/market/infrastructure/finnhub-stream.test.ts",
     "architecture:check": "node scripts/check-module-boundaries.cjs",
-    "tsoa:spec": "tsoa spec",
+    "tsoa:spec": "npx tsoa spec",
     "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {

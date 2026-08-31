@@ -1,5 +1,16 @@
-import { Controller, Get, Post, Route, Tags, Security, Body, Path, Query, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Route,
+  Tags,
+  Security,
+  Body,
+  Query,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -68,11 +79,11 @@ export interface GetLogosBatchRequest {
   symbols: string[]
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/market')
 @Tags('Market Data')
-export class MarketController extends Controller {
+export class MarketSwaggerController extends Controller {
   /**
    * Get ranked top US stocks ordered by a composite score (volume, momentum, market cap).
    * Results are cached for performance.
@@ -95,7 +106,9 @@ export class MarketController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Live prices returned')
   @Response<ApiErrorResponse>(400, 'No symbols provided')
-  async getLivePrices(@Body() body: GetLivePricesRequest): Promise<ApiResponse<LivePriceEntry[]>> {
+  async getLivePrices(
+    @Body() body: GetLivePricesRequest,
+  ): Promise<ApiResponse<LivePriceEntry[]>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -105,7 +118,9 @@ export class MarketController extends Controller {
   @Post('company-sectors')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Sectors returned')
-  async getCompanySectors(@Body() body: { symbols: string[] }): Promise<ApiResponse<CompanySector[]>> {
+  async getCompanySectors(
+    @Body() body: { symbols: string[] },
+  ): Promise<ApiResponse<CompanySector[]>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -115,7 +130,9 @@ export class MarketController extends Controller {
   @Post('logos')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Logos returned')
-  async getLogos(@Body() body: GetLogosBatchRequest): Promise<ApiResponse<LogoResponse[]>> {
+  async getLogos(
+    @Body() body: GetLogosBatchRequest,
+  ): Promise<ApiResponse<LogoResponse[]>> {
     throw new Error('tsoa spec-only')
   }
 }

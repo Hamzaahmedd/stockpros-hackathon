@@ -737,7 +737,10 @@ export const buildSectorHeatmap = async (userId: string) => {
 
         await new Promise((resolve) => setTimeout(resolve, 250))
       } catch (e) {
-        logger.error(`Failed to fetch ETF ${ticker} for sector ${sectorName}`, e)
+        logger.error(
+          `Failed to fetch ETF ${ticker} for sector ${sectorName}`,
+          e,
+        )
       }
     }
 

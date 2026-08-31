@@ -32,10 +32,16 @@ const isInCooldown = async (alertId: string): Promise<boolean> => {
  * Returns false when the threshold is null/undefined; otherwise evaluates `cmp`.
  * Keeps the rule switch free of per-case null-guard nesting.
  */
-const compareGte = (value: number, threshold: number | null | undefined): boolean =>
+const compareGte = (
+  value: number,
+  threshold: number | null | undefined,
+): boolean =>
   threshold !== null && threshold !== undefined && value >= threshold
 
-const compareLte = (value: number, threshold: number | null | undefined): boolean =>
+const compareLte = (
+  value: number,
+  threshold: number | null | undefined,
+): boolean =>
   threshold !== null && threshold !== undefined && value <= threshold
 
 /**

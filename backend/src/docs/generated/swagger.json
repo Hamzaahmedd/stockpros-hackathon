@@ -7,7 +7,89 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"ApiResponse": {
+			"WatchlistEntry": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"logoUrl": {
+						"type": "string"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"currentPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"priceChange": {
+						"type": "number",
+						"format": "double"
+					},
+					"priceChangePercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"priceAtCreatedAt": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiSuggestedEntry": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiTakeProfit": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiStopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiConfidence": {
+						"type": "string",
+						"enum": [
+							"LOW",
+							"MEDIUM",
+							"HIGH"
+						]
+					},
+					"aiSuggestionBasis": {
+						"type": "string"
+					},
+					"aiComputedAt": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"symbol",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistEntry-Array_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -15,7 +97,31 @@
 					"message": {
 						"type": "string"
 					},
-					"data": {}
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WatchlistEntry"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistEntry_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/WatchlistEntry"
+					}
 				},
 				"required": [
 					"success",
@@ -62,330 +168,13 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"MagicLinkRequest": {
+			"AddToWatchlistRequest": {
 				"properties": {
-					"email": {
-						"type": "string",
-						"example": "investor@stockpros.com",
-						"format": "email"
-					}
-				},
-				"required": [
-					"email"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"UserProfile": {
-				"properties": {
-					"id": {
-						"type": "string",
-						"example": "usr_01j7xyz987"
-					},
-					"email": {
-						"type": "string",
-						"example": "trader@example.com",
-						"format": "email"
-					},
-					"displayName": {
-						"type": "string",
-						"example": "Alex Morgan"
-					},
-					"avatarUrl": {
-						"type": "string",
-						"nullable": true
-					},
-					"country": {
-						"type": "string",
-						"nullable": true
-					},
-					"tradingExperience": {
-						"type": "string",
-						"nullable": true,
-						"example": "INTERMEDIATE"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"nullable": true,
-						"example": "MODERATE"
-					},
-					"isProfileComplete": {
-						"type": "boolean"
-					},
-					"roles": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"email",
-					"displayName",
-					"isProfileComplete",
-					"roles",
-					"createdAt"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"AuthTokensResponse": {
-				"properties": {
-					"accessToken": {
-						"type": "string"
-					},
-					"user": {
-						"$ref": "#/components/schemas/UserProfile"
-					}
-				},
-				"required": [
-					"accessToken",
-					"user"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_AuthTokensResponse_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/AuthTokensResponse"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"VerifyMagicLinkRequest": {
-				"properties": {
-					"token": {
-						"type": "string",
-						"example": "d7a46f2c81e94a81b305e54d8b67..."
-					}
-				},
-				"required": [
-					"token"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"GoogleLoginRequest": {
-				"properties": {
-					"credential": {
-						"type": "string",
-						"description": "Google ID token credential string"
-					}
-				},
-				"required": [
-					"credential"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_UserProfile_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/UserProfile"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"OnboardingRequest": {
-				"properties": {
-					"displayName": {
-						"type": "string",
-						"example": "Jordan Belfort"
-					},
-					"email": {
-						"type": "string",
-						"example": "jordan@example.com",
-						"format": "email"
-					},
-					"onboardingToken": {
-						"type": "string"
-					},
-					"country": {
-						"type": "string",
-						"example": "US"
-					},
-					"tradingExperience": {
-						"type": "string",
-						"enum": [
-							"BEGINNER",
-							"INTERMEDIATE",
-							"ADVANCED"
-						],
-						"example": "ADVANCED"
-					},
-					"preferredSectors": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"enum": [
-							"CONSERVATIVE",
-							"MODERATE",
-							"AGGRESSIVE"
-						],
-						"example": "AGGRESSIVE"
-					}
-				},
-				"required": [
-					"displayName",
-					"email"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse__accessToken-string__": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"properties": {
-							"accessToken": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"accessToken"
-						],
-						"type": "object"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"UpdateProfileRequest": {
-				"properties": {
-					"displayName": {
-						"type": "string"
-					},
-					"country": {
-						"type": "string"
-					},
-					"tradingExperience": {
-						"type": "string",
-						"enum": [
-							"BEGINNER",
-							"INTERMEDIATE",
-							"ADVANCED"
-						]
-					},
-					"preferredSectors": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"enum": [
-							"CONSERVATIVE",
-							"MODERATE",
-							"AGGRESSIVE"
-						]
-					}
-				},
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse__avatarUrl-string__": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"properties": {
-							"avatarUrl": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"avatarUrl"
-						],
-						"type": "object"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"WatchlistEntry": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
 					"symbol": {
-						"type": "string"
+						"type": "string",
+						"example": "TSLA"
 					},
-					"name": {
-						"type": "string"
-					},
-					"logoUrl": {
-						"type": "string"
-					},
-					"sector": {
-						"type": "string"
-					},
-					"currentPrice": {
-						"type": "number",
-						"format": "double"
-					},
-					"priceChange": {
-						"type": "number",
-						"format": "double"
-					},
-					"priceChangePercent": {
-						"type": "number",
-						"format": "double"
-					},
-					"entryPrice": {
-						"type": "number",
-						"format": "double"
-					},
-					"targetPrice": {
+					"targetEntryPrice": {
 						"type": "number",
 						"format": "double"
 					},
@@ -393,68 +182,9 @@
 						"type": "number",
 						"format": "double"
 					},
-					"aiBaselineCalculated": {
-						"type": "boolean"
-					},
-					"addedAt": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"symbol",
-					"aiBaselineCalculated",
-					"addedAt"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_WatchlistEntry-Array_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/WatchlistEntry"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_WatchlistEntry_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/WatchlistEntry"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"AddToWatchlistRequest": {
-				"properties": {
-					"symbol": {
+					"notes": {
 						"type": "string",
-						"example": "TSLA"
+						"maxLength": 500
 					}
 				},
 				"required": [
@@ -465,23 +195,40 @@
 			},
 			"UpdateWatchlistEntryRequest": {
 				"properties": {
-					"entryPrice": {
-						"type": "number",
-						"format": "double"
-					},
-					"targetPrice": {
+					"targetEntryPrice": {
 						"type": "number",
 						"format": "double"
 					},
 					"stopLoss": {
 						"type": "number",
 						"format": "double"
+					},
+					"notes": {
+						"type": "string",
+						"maxLength": 500
 					}
 				},
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__entryPrice-number--targetPrice-number--stopLoss-number__": {
+			"ApiResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -491,23 +238,32 @@
 					},
 					"data": {
 						"properties": {
-							"stopLoss": {
+							"aiConfidence": {
+								"type": "string",
+								"enum": [
+									"LOW",
+									"MEDIUM",
+									"HIGH"
+								]
+							},
+							"aiStopLoss": {
 								"type": "number",
 								"format": "double"
 							},
-							"targetPrice": {
+							"aiTakeProfit": {
 								"type": "number",
 								"format": "double"
 							},
-							"entryPrice": {
+							"aiSuggestedEntry": {
 								"type": "number",
 								"format": "double"
 							}
 						},
 						"required": [
-							"stopLoss",
-							"targetPrice",
-							"entryPrice"
+							"aiConfidence",
+							"aiStopLoss",
+							"aiTakeProfit",
+							"aiSuggestedEntry"
 						],
 						"type": "object"
 					}
@@ -519,36 +275,37 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"Alert": {
+			"WatchlistAlert": {
 				"properties": {
 					"id": {
 						"type": "string"
 					},
-					"symbol": {
+					"watchlistId": {
 						"type": "string"
 					},
 					"type": {
-						"type": "string"
-					},
-					"condition": {
-						"type": "string"
-					},
-					"value": {
-						"anyOf": [
-							{
-								"type": "number",
-								"format": "double"
-							},
-							{
-								"type": "string"
-							}
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
 						]
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double"
 					},
 					"isActive": {
 						"type": "boolean"
-					},
-					"lastTriggered": {
-						"type": "string"
 					},
 					"createdAt": {
 						"type": "string"
@@ -556,16 +313,15 @@
 				},
 				"required": [
 					"id",
-					"symbol",
+					"watchlistId",
 					"type",
-					"condition",
 					"isActive",
 					"createdAt"
 				],
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse_Alert-Array_": {
+			"ApiResponse_WatchlistAlert-Array_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -575,7 +331,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/Alert"
+							"$ref": "#/components/schemas/WatchlistAlert"
 						},
 						"type": "array"
 					}
@@ -587,7 +343,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse_Alert_": {
+			"ApiResponse_WatchlistAlert_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -596,7 +352,7 @@
 						"type": "string"
 					},
 					"data": {
-						"$ref": "#/components/schemas/Alert"
+						"$ref": "#/components/schemas/WatchlistAlert"
 					}
 				},
 				"required": [
@@ -606,36 +362,29 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"AlertType": {
-				"type": "string",
-				"enum": [
-					"PRICE_ABOVE",
-					"PRICE_BELOW",
-					"PERCENT_CHANGE_UP",
-					"PERCENT_CHANGE_DOWN",
-					"EARNINGS_DATE",
-					"DIVIDEND_DATE",
-					"ANALYST_UPGRADE",
-					"ANALYST_DOWNGRADE",
-					"SEC_FILING",
-					"NEWS_MENTION",
-					"RSI_OVERBOUGHT",
-					"RSI_OVERSOLD"
-				]
-			},
 			"CreateAlertRequest": {
 				"properties": {
 					"type": {
-						"$ref": "#/components/schemas/AlertType"
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
+						]
 					},
-					"value": {
+					"threshold": {
 						"type": "number",
 						"format": "double",
 						"description": "Numeric threshold (for price/percent alerts)"
-					},
-					"condition": {
-						"type": "string",
-						"description": "Freeform condition description"
 					}
 				},
 				"required": [
@@ -647,16 +396,26 @@
 			"Partial_CreateAlertRequest_": {
 				"properties": {
 					"type": {
-						"$ref": "#/components/schemas/AlertType"
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
+						]
 					},
-					"value": {
+					"threshold": {
 						"type": "number",
 						"format": "double",
 						"description": "Numeric threshold (for price/percent alerts)"
-					},
-					"condition": {
-						"type": "string",
-						"description": "Freeform condition description"
 					}
 				},
 				"type": "object",
@@ -711,31 +470,19 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
 			"Notification": {
 				"properties": {
 					"id": {
 						"type": "string"
 					},
-					"type": {
-						"type": "string"
-					},
 					"title": {
 						"type": "string"
 					},
-					"message": {
+					"body": {
 						"type": "string"
 					},
-					"isRead": {
+					"read": {
 						"type": "boolean"
-					},
-					"metadata": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
 					},
 					"createdAt": {
 						"type": "string"
@@ -743,10 +490,9 @@
 				},
 				"required": [
 					"id",
-					"type",
 					"title",
-					"message",
-					"isRead",
+					"body",
+					"read",
 					"createdAt"
 				],
 				"type": "object",
@@ -887,11 +633,14 @@
 					"id": {
 						"type": "string"
 					},
-					"title": {
+					"headline": {
 						"type": "string"
 					},
-					"summary": {
-						"type": "string"
+					"summaryBullets": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
 					},
 					"url": {
 						"type": "string"
@@ -905,7 +654,7 @@
 					"publishedAt": {
 						"type": "string"
 					},
-					"symbols": {
+					"relatedSymbols": {
 						"items": {
 							"type": "string"
 						},
@@ -924,28 +673,35 @@
 						"format": "double"
 					},
 					"category": {
-						"type": "string"
+						"type": "string",
+						"enum": [
+							"EARNINGS",
+							"ANALYST",
+							"FILING",
+							"MERGER",
+							"MACRO",
+							"SECTOR",
+							"GENERAL"
+						]
 					},
 					"isRead": {
 						"type": "boolean"
 					},
-					"isBookmarked": {
+					"isSaved": {
 						"type": "boolean"
 					}
 				},
 				"required": [
 					"id",
-					"title",
-					"summary",
+					"headline",
+					"summaryBullets",
 					"url",
 					"source",
 					"publishedAt",
-					"symbols",
-					"sentiment",
-					"sentimentScore",
+					"relatedSymbols",
 					"category",
 					"isRead",
-					"isBookmarked"
+					"isSaved"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -996,7 +752,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__bookmarked-boolean__": {
+			"ApiResponse__saved-boolean__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -1006,12 +762,12 @@
 					},
 					"data": {
 						"properties": {
-							"bookmarked": {
+							"saved": {
 								"type": "boolean"
 							}
 						},
 						"required": [
-							"bookmarked"
+							"saved"
 						],
 						"type": "object"
 					}
@@ -1482,55 +1238,33 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"DecisionFactor": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"value": {
-						"anyOf": [
-							{
-								"type": "string"
-							},
-							{
-								"type": "number",
-								"format": "double"
-							}
-						]
-					},
-					"signal": {
-						"type": "string",
-						"enum": [
-							"BULLISH",
-							"BEARISH",
-							"NEUTRAL"
-						]
-					},
-					"weight": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"name",
-					"value",
-					"signal",
-					"weight"
-				],
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
 				"type": "object",
-				"additionalProperties": true
+				"description": "Construct a type with a set of properties K of type T"
 			},
 			"DecisionResult": {
 				"properties": {
 					"symbol": {
 						"type": "string"
 					},
-					"action": {
+					"marketDecision": {
 						"type": "string",
 						"enum": [
 							"BUY",
 							"SELL",
 							"HOLD"
+						]
+					},
+					"portfolioDecision": {
+						"type": "string",
+						"enum": [
+							"BUY",
+							"SELL",
+							"HOLD",
+							"REDUCE",
+							"INCREASE"
 						]
 					},
 					"confidence": {
@@ -1545,40 +1279,64 @@
 							"HIGH"
 						]
 					},
-					"summary": {
+					"sector": {
 						"type": "string"
 					},
-					"factors": {
-						"items": {
-							"$ref": "#/components/schemas/DecisionFactor"
-						},
-						"type": "array"
+					"reasoning": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
 					},
-					"priceTarget": {
-						"type": "number",
-						"format": "double"
+					"exposure": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
 					},
-					"stopLoss": {
-						"type": "number",
-						"format": "double"
-					},
-					"timestamp": {
-						"type": "string"
+					"actionGuidance": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
 					}
 				},
 				"required": [
 					"symbol",
-					"action",
+					"marketDecision",
+					"portfolioDecision",
 					"confidence",
 					"riskLevel",
-					"summary",
-					"factors",
-					"timestamp"
+					"reasoning",
+					"exposure",
+					"actionGuidance"
 				],
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse_DecisionResult_": {
+			"DecisionRunRecord": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"portfolioId": {
+						"type": "string"
+					},
+					"mode": {
+						"type": "string"
+					},
+					"runAt": {
+						"type": "string"
+					},
+					"results": {
+						"items": {
+							"$ref": "#/components/schemas/DecisionResult"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"portfolioId",
+					"mode",
+					"runAt",
+					"results"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_DecisionRunRecord_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -1587,12 +1345,31 @@
 						"type": "string"
 					},
 					"data": {
-						"$ref": "#/components/schemas/DecisionResult"
+						"$ref": "#/components/schemas/DecisionRunRecord"
 					}
 				},
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RunDecisionRequest": {
+				"properties": {
+					"portfolioId": {
+						"type": "string"
+					},
+					"mode": {
+						"type": "string",
+						"enum": [
+							"DETAILED",
+							"SUMMARY"
+						]
+					}
+				},
+				"required": [
+					"portfolioId"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1606,34 +1383,18 @@
 						"type": "number",
 						"format": "double"
 					},
-					"avgCost": {
+					"avgEntryPrice": {
 						"type": "number",
 						"format": "double"
+					},
+					"sector": {
+						"type": "string"
 					}
 				},
 				"required": [
 					"symbol",
 					"quantity",
-					"avgCost"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"RunDecisionRequest": {
-				"properties": {
-					"symbol": {
-						"type": "string"
-					},
-					"portfolio": {
-						"items": {
-							"$ref": "#/components/schemas/PortfolioPosition"
-						},
-						"type": "array",
-						"description": "Snapshot of user holdings for exposure analysis"
-					}
-				},
-				"required": [
-					"symbol"
+					"avgEntryPrice"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1664,39 +1425,6 @@
 				"required": [
 					"success",
 					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"DecisionRunRecord": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"symbol": {
-						"type": "string"
-					},
-					"action": {
-						"type": "string"
-					},
-					"confidence": {
-						"type": "number",
-						"format": "double"
-					},
-					"riskLevel": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"symbol",
-					"action",
-					"confidence",
-					"riskLevel",
-					"createdAt"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1925,34 +1653,312 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"MagicLinkRequest": {
+				"properties": {
+					"email": {
+						"type": "string",
+						"example": "investor@stockpros.com",
+						"format": "email"
+					}
+				},
+				"required": [
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UserProfile": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"example": "usr_01j7xyz987"
+					},
+					"email": {
+						"type": "string",
+						"example": "trader@example.com",
+						"format": "email"
+					},
+					"displayName": {
+						"type": "string",
+						"example": "Alex Morgan"
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"country": {
+						"type": "string",
+						"nullable": true
+					},
+					"tradingExperience": {
+						"type": "string",
+						"nullable": true,
+						"example": "INTERMEDIATE"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"nullable": true,
+						"example": "MODERATE"
+					},
+					"isProfileComplete": {
+						"type": "boolean"
+					},
+					"roles": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"displayName",
+					"isProfileComplete",
+					"roles",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AuthTokensResponse": {
+				"properties": {
+					"accessToken": {
+						"type": "string"
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserProfile"
+					}
+				},
+				"required": [
+					"accessToken",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_AuthTokensResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/AuthTokensResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"VerifyMagicLinkRequest": {
+				"properties": {
+					"token": {
+						"type": "string",
+						"example": "d7a46f2c81e94a81b305e54d8b67..."
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"GoogleLoginRequest": {
+				"properties": {
+					"credential": {
+						"type": "string",
+						"description": "Google ID token credential string"
+					}
+				},
+				"required": [
+					"credential"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_UserProfile_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/UserProfile"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"OnboardingRequest": {
+				"properties": {
+					"displayName": {
+						"type": "string",
+						"example": "Jordan Belfort"
+					},
+					"email": {
+						"type": "string",
+						"example": "jordan@example.com",
+						"format": "email"
+					},
+					"onboardingToken": {
+						"type": "string"
+					},
+					"country": {
+						"type": "string",
+						"example": "US"
+					},
+					"tradingExperience": {
+						"type": "string",
+						"enum": [
+							"BEGINNER",
+							"INTERMEDIATE",
+							"ADVANCED"
+						],
+						"example": "ADVANCED"
+					},
+					"preferredSectors": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"enum": [
+							"CONSERVATIVE",
+							"MODERATE",
+							"AGGRESSIVE"
+						],
+						"example": "AGGRESSIVE"
+					}
+				},
+				"required": [
+					"displayName",
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__accessToken-string__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"accessToken": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"accessToken"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UpdateProfileRequest": {
+				"properties": {
+					"displayName": {
+						"type": "string"
+					},
+					"country": {
+						"type": "string"
+					},
+					"tradingExperience": {
+						"type": "string",
+						"enum": [
+							"BEGINNER",
+							"INTERMEDIATE",
+							"ADVANCED"
+						]
+					},
+					"preferredSectors": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"enum": [
+							"CONSERVATIVE",
+							"MODERATE",
+							"AGGRESSIVE"
+						]
+					}
+				},
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__avatarUrl-string__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"avatarUrl"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"Permission": {
 				"properties": {
 					"id": {
 						"type": "string"
 					},
-					"screen": {
+					"action": {
 						"type": "string"
 					},
-					"canCreate": {
-						"type": "boolean"
-					},
-					"canRead": {
-						"type": "boolean"
-					},
-					"canUpdate": {
-						"type": "boolean"
-					},
-					"canDelete": {
-						"type": "boolean"
+					"resourceId": {
+						"type": "string"
 					}
 				},
 				"required": [
 					"id",
-					"screen",
-					"canCreate",
-					"canRead",
-					"canUpdate",
-					"canDelete"
+					"action",
+					"resourceId"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2139,333 +2145,6 @@
 		}
 	},
 	"paths": {
-		"/api/auth/magic-link": {
-			"post": {
-				"operationId": "SendMagicLink",
-				"responses": {
-					"200": {
-						"description": "Magic link sent",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Invalid email",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Send a magic link login email. A one-time link will be emailed to the address.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/MagicLinkRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/magic-link/verify": {
-			"post": {
-				"operationId": "VerifyMagicLink",
-				"responses": {
-					"200": {
-						"description": "Magic link verified, tokens issued",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Invalid or expired token",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Verify a magic link token and return JWT access token + session cookie.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/VerifyMagicLinkRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/google": {
-			"post": {
-				"operationId": "GoogleLogin",
-				"responses": {
-					"200": {
-						"description": "Google login successful",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Invalid Google credential",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Authenticate via Google Identity Services (ID token credential).",
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/GoogleLoginRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/onboarding": {
-			"post": {
-				"operationId": "CompleteOnboarding",
-				"responses": {
-					"200": {
-						"description": "Onboarding completed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Complete user onboarding after magic link / OAuth signup.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/OnboardingRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/refresh": {
-			"post": {
-				"operationId": "Refresh",
-				"responses": {
-					"200": {
-						"description": "Tokens refreshed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__accessToken-string__"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or expired refresh token",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Rotate session — exchange a valid refresh_token cookie for a new access token.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"cookieAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/auth/logout": {
-			"post": {
-				"operationId": "Logout",
-				"responses": {
-					"200": {
-						"description": "Logged out successfully",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Invalidate the current session (clears the refresh_token cookie).",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/auth/me": {
-			"get": {
-				"operationId": "GetMe",
-				"responses": {
-					"200": {
-						"description": "User profile returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Unauthorized",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch the authenticated user's full profile including roles and preferences.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/auth/profile": {
-			"put": {
-				"operationId": "UpdateProfile",
-				"responses": {
-					"200": {
-						"description": "Profile updated",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Partially update the authenticated user's profile.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdateProfileRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/avatar": {
-			"post": {
-				"operationId": "UploadAvatar",
-				"responses": {
-					"200": {
-						"description": "Avatar uploaded",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__avatarUrl-string__"
-								}
-							}
-						}
-					}
-				},
-				"description": "Upload a profile avatar image (multipart/form-data).",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
 		"/api/watchlist": {
 			"get": {
 				"operationId": "GetWatchlist",
@@ -2481,7 +2160,7 @@
 						}
 					}
 				},
-				"description": "Get the authenticated user's watchlist with current quotes and AI baseline data.",
+				"description": "Get the authenticated user's watchlist with current quotes and AI suggestion data.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2563,7 +2242,7 @@
 						}
 					}
 				},
-				"description": "Update entry price, target, or stop-loss for a watchlist symbol.",
+				"description": "Update trade plan fields (target entry, stop-loss, notes) for a watchlist symbol.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2643,17 +2322,17 @@
 				"operationId": "CalculateAiBaseline",
 				"responses": {
 					"200": {
-						"description": "AI baseline calculated",
+						"description": "AI suggestions calculated",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__entryPrice-number--targetPrice-number--stopLoss-number__"
+									"$ref": "#/components/schemas/ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__"
 								}
 							}
 						}
 					}
 				},
-				"description": "Trigger AI baseline calculation for a watchlist symbol.\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
+				"description": "Trigger AI suggestion calculation for a watchlist symbol.\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2683,7 +2362,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_Alert-Array_"
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert-Array_"
 								}
 							}
 						}
@@ -2717,7 +2396,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_Alert_"
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert_"
 								}
 							}
 						}
@@ -2733,7 +2412,7 @@
 						}
 					}
 				},
-				"description": "Create a new alert for a watchlist symbol.\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, RSI signals, and more.",
+				"description": "Create a new alert for a watchlist symbol.\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2773,7 +2452,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_Alert_"
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert_"
 								}
 							}
 						}
@@ -3252,16 +2931,16 @@
 				]
 			}
 		},
-		"/api/news/{id}/bookmark": {
+		"/api/news/{id}/save": {
 			"post": {
-				"operationId": "ToggleBookmark",
+				"operationId": "ToggleSave",
 				"responses": {
 					"200": {
-						"description": "Bookmark toggled",
+						"description": "Save state toggled",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__bookmarked-boolean__"
+									"$ref": "#/components/schemas/ApiResponse__saved-boolean__"
 								}
 							}
 						}
@@ -3277,7 +2956,51 @@
 						}
 					}
 				},
-				"description": "Toggle bookmark status of a news article.",
+				"description": "Save or unsave a news article (toggle bookmark).",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "Unsave",
+				"responses": {
+					"200": {
+						"description": "Article unsaved",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Article not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Remove a saved article from the user's saved list.",
 				"tags": [
 					"News"
 				],
@@ -3298,12 +3021,12 @@
 				]
 			}
 		},
-		"/api/news/bookmarks": {
+		"/api/news/saved": {
 			"get": {
-				"operationId": "GetBookmarks",
+				"operationId": "GetSaved",
 				"responses": {
 					"200": {
-						"description": "Bookmarked articles returned",
+						"description": "Saved articles returned",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3313,7 +3036,7 @@
 						}
 					}
 				},
-				"description": "Fetch all bookmarked articles for the authenticated user.",
+				"description": "Fetch all saved articles for the authenticated user.",
 				"tags": [
 					"News"
 				],
@@ -3698,7 +3421,7 @@
 						"description": "CSV file returned"
 					}
 				},
-				"description": "Delete a forecast history record.",
+				"description": "Export a forecast result as a CSV file.",
 				"tags": [
 					"AI Forecast"
 				],
@@ -3728,13 +3451,13 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_DecisionResult_"
+									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
 								}
 							}
 						}
 					},
 					"400": {
-						"description": "Invalid symbol",
+						"description": "Invalid portfolio ID",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3744,7 +3467,7 @@
 						}
 					}
 				},
-				"description": "Run the full multi-factor decision engine for a single symbol.\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\nearnings data, and portfolio exposure to produce a BUY/SELL/HOLD recommendation.",
+				"description": "Run the full multi-factor decision engine for a user's portfolio.\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\nearnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3791,7 +3514,7 @@
 						}
 					}
 				},
-				"description": "Upload a portfolio CSV or XLSX file for batch exposure analysis.\nAccepted columns: symbol, quantity, avgCost.",
+				"description": "Upload a portfolio CSV or XLSX file for batch position import.\nAccepted columns: symbol, quantity, avgEntryPrice, sector.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3850,6 +3573,50 @@
 			}
 		},
 		"/api/decision-support/history/{id}": {
+			"get": {
+				"operationId": "GetHistoryById",
+				"responses": {
+					"200": {
+						"description": "Decision run returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch a single decision run by ID including all per-symbol results.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
 			"delete": {
 				"operationId": "DeleteHistory",
 				"responses": {
@@ -3940,6 +3707,333 @@
 				"description": "Get real-time market overview including top gainers, losers, and most active stocks.",
 				"tags": [
 					"Dashboard"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/magic-link": {
+			"post": {
+				"operationId": "SendMagicLink",
+				"responses": {
+					"200": {
+						"description": "Magic link sent",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Send a magic link login email. A one-time link will be emailed to the address.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MagicLinkRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/verify-magic-link": {
+			"post": {
+				"operationId": "VerifyMagicLink",
+				"responses": {
+					"200": {
+						"description": "Magic link verified, tokens issued",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid or expired token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify a magic link token and return JWT access token + session cookie.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyMagicLinkRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/google": {
+			"post": {
+				"operationId": "GoogleLogin",
+				"responses": {
+					"200": {
+						"description": "Google login successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Invalid Google credential",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Authenticate via Google Identity Services (ID token credential).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GoogleLoginRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/onboarding": {
+			"post": {
+				"operationId": "CompleteOnboarding",
+				"responses": {
+					"200": {
+						"description": "Onboarding completed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Complete user onboarding after magic link / OAuth signup.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OnboardingRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/refresh-token": {
+			"post": {
+				"operationId": "Refresh",
+				"responses": {
+					"200": {
+						"description": "Tokens refreshed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__accessToken-string__"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or expired refresh token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Rotate session — exchange a valid refresh_token cookie for a new access token.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"cookieAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/logout": {
+			"post": {
+				"operationId": "Logout",
+				"responses": {
+					"200": {
+						"description": "Logged out successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Invalidate the current session (clears the refresh_token cookie).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/me": {
+			"get": {
+				"operationId": "GetMe",
+				"responses": {
+					"200": {
+						"description": "User profile returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch the authenticated user's full profile including roles and preferences.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/profile": {
+			"put": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Profile updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Partially update the authenticated user's profile.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateProfileRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/avatar": {
+			"post": {
+				"operationId": "UploadAvatar",
+				"responses": {
+					"200": {
+						"description": "Avatar uploaded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__avatarUrl-string__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Upload a profile avatar image (multipart/form-data).",
+				"tags": [
+					"Authentication"
 				],
 				"security": [
 					{

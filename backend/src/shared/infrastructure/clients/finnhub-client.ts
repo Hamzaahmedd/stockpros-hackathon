@@ -84,4 +84,3 @@ finnhubClient.interceptors.response.use(
 )
 
 export default finnhubClient
-

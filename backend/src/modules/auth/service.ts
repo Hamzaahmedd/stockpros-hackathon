@@ -7,17 +7,17 @@ import jwt, { SignOptions } from 'jsonwebtoken'
 import os from 'os'
 import { uuidv7 } from 'uuidv7'
 import {
-    NotFoundError,
-    UnauthorizedError,
-    ValidationError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
 } from '../../shared/errors'
 import { transporter } from '../../shared/infrastructure/config/email'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
-    convertToMilliseconds,
-    signToken,
-    verifyRefreshToken,
+  convertToMilliseconds,
+  signToken,
+  verifyRefreshToken,
 } from '../../shared/utils'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
 import { enqueueAuthEmail } from '../notifications/public'
@@ -207,7 +207,7 @@ export function resolveFrontendUrl(clientOrigin?: string): string {
   // Development mode: prefer clientOrigin, fallback to config, fallback to localhost
   let url = clientOrigin || config.server.frontendUrl || 'http://localhost:5173'
 
-  // If the URL is localhost/127.0.0.1, swap it for the local IP address 
+  // If the URL is localhost/127.0.0.1, swap it for the local IP address
   // so the link can be opened from a mobile device on the same Wi-Fi network.
   if (url.includes('localhost') || url.includes('127.0.0.1')) {
     const localIp = getLocalIpAddress()
@@ -584,7 +584,10 @@ export async function completeOnboardingFlow(params: {
       : null
     if (bearerToken) {
       try {
-        const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as TokenClaims
+        const decoded = jwt.verify(
+          bearerToken,
+          ACCESS_TOKEN_SECRET,
+        ) as TokenClaims
         if (decoded?.sub) {
           const updated = await prisma.user.update({
             where: { id: decoded.sub },

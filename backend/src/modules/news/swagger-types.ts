@@ -1,42 +1,54 @@
-import { Controller, Get, Post, Delete, Put, Route, Tags, Security, Body, Path, Query, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse, PaginatedResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Route,
+  Tags,
+  Security,
+  Path,
+  Query,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import {
+  ApiResponse,
+  ApiErrorResponse,
+  PaginatedResponse,
+} from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 export interface NewsArticle {
   id: string
-  title: string
-  summary: string
+  headline: string
+  summaryBullets: string[]
   url: string
   imageUrl?: string
   source: string
   publishedAt: string
-  symbols: string[]
-  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
-  sentimentScore: number
-  category: string
-  isRead: boolean
-  isBookmarked: boolean
-}
-
-export interface NewsQueryParams {
-  /** Filter by stock symbol @example "AAPL" */
-  symbol?: string
-  /** Filter by sentiment */
+  relatedSymbols: string[]
+  /** @enum {string} */
   sentiment?: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
-  /** Filter by category */
-  category?: string
-  /** Full-text search query */
-  q?: string
-  page?: number
-  limit?: number
+  sentimentScore?: number
+  /** @enum {string} */
+  category:
+    | 'EARNINGS'
+    | 'ANALYST'
+    | 'FILING'
+    | 'MERGER'
+    | 'MACRO'
+    | 'SECTOR'
+    | 'GENERAL'
+  isRead: boolean
+  isSaved: boolean
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/news')
 @Tags('News')
-export class NewsController extends Controller {
+export class NewsSwaggerController extends Controller {
   /**
    * Fetch a paginated list of financial news articles.
    * Supports filtering by symbol, sentiment, category, and full-text search.
@@ -67,23 +79,25 @@ export class NewsController extends Controller {
   }
 
   /**
-   * Toggle bookmark status of a news article.
+   * Save or unsave a news article (toggle bookmark).
    */
-  @Post('{id}/bookmark')
+  @Post('{id}/save')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Bookmark toggled')
+  @SuccessResponse(200, 'Save state toggled')
   @Response<ApiErrorResponse>(404, 'Article not found')
-  async toggleBookmark(@Path() id: string): Promise<ApiResponse<{ bookmarked: boolean }>> {
+  async toggleSave(
+    @Path() id: string,
+  ): Promise<ApiResponse<{ saved: boolean }>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Fetch all bookmarked articles for the authenticated user.
+   * Fetch all saved articles for the authenticated user.
    */
-  @Get('bookmarks')
+  @Get('saved')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Bookmarked articles returned')
-  async getBookmarks(
+  @SuccessResponse(200, 'Saved articles returned')
+  async getSaved(
     @Query() page?: number,
     @Query() limit?: number,
   ): Promise<PaginatedResponse<NewsArticle>> {
@@ -97,6 +111,17 @@ export class NewsController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'All articles marked as read')
   async markAllRead(): Promise<ApiResponse<{ count: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Remove a saved article from the user's saved list.
+   */
+  @Delete('{id}/save')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Article unsaved')
+  @Response<ApiErrorResponse>(404, 'Article not found')
+  async unsave(@Path() id: string): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 }

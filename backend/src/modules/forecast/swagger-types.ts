@@ -1,5 +1,17 @@
-import { Controller, Get, Post, Route, Tags, Security, Body, Path, Query, SuccessResponse, Response } from 'tsoa'
-import { ApiResponse, ApiErrorResponse } from './auth.controller'
+import {
+  Controller,
+  Get,
+  Post,
+  Route,
+  Tags,
+  Security,
+  Body,
+  Path,
+  Query,
+  SuccessResponse,
+  Response,
+} from 'tsoa'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -47,11 +59,11 @@ export interface ForecastHistoryRecord {
   metrics: ForecastMetrics
 }
 
-// ─── Controller ───────────────────────────────────────────────────────────────
+// ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
 @Route('api/forecast')
 @Tags('AI Forecast')
-export class ForecastController extends Controller {
+export class ForecastSwaggerController extends Controller {
   /**
    * Generate a GRU-based time-series stock price forecast.
    * Delegates to the Python AI Service which trains/loads a GRU model on Tiingo OHLCV data.
@@ -62,7 +74,9 @@ export class ForecastController extends Controller {
   @SuccessResponse(200, 'Forecast generated successfully')
   @Response<ApiErrorResponse>(400, 'Invalid symbol or horizon')
   @Response<ApiErrorResponse>(503, 'AI service unavailable')
-  async predict(@Body() body: ForecastRequest): Promise<ApiResponse<ForecastResult>> {
+  async predict(
+    @Body() body: ForecastRequest,
+  ): Promise<ApiResponse<ForecastResult>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -86,12 +100,14 @@ export class ForecastController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Forecast record returned')
   @Response<ApiErrorResponse>(404, 'Not found')
-  async getHistoryById(@Path() id: string): Promise<ApiResponse<ForecastResult>> {
+  async getHistoryById(
+    @Path() id: string,
+  ): Promise<ApiResponse<ForecastResult>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Delete a forecast history record.
+   * Export a forecast result as a CSV file.
    */
   @Get('{id}/export/csv')
   @Security('bearerAuth')

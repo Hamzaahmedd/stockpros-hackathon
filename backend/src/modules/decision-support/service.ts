@@ -11,24 +11,24 @@ import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import { getPakistanMonth } from '../../shared/utils'
-import { getCompanySectors, getLivePrices, StockQuote } from '../market'
+import { getCompanySectors, getLivePrices } from '../market'
 import { mapPolygonCategory, mapPolygonSentiment } from '../news'
 import { persistDecisionRun } from './repository'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import twelveDataClient from '../../shared/infrastructure/clients/twelve-data-client'
 import {
-    ActionGuidance,
-    DecisionResult,
-    EnrichedPortfolioPosition,
-    PortfolioPosition,
-    PortfolioRiskMetrics,
-    PortfolioSummary,
-    PositionSizeResult,
-    PriceTargets,
-    RadarCard,
-    RawPortfolioRow,
-    RiskLevel,
-    VolatilityLevel,
+  ActionGuidance,
+  DecisionResult,
+  EnrichedPortfolioPosition,
+  PortfolioPosition,
+  PortfolioRiskMetrics,
+  PortfolioSummary,
+  PositionSizeResult,
+  PriceTargets,
+  RadarCard,
+  RawPortfolioRow,
+  RiskLevel,
+  VolatilityLevel,
 } from './types'
 import { PortfolioArrayValidator } from './validation'
 
@@ -130,7 +130,11 @@ export const getUnifiedMarketDecision = async (symbol: string) => {
     actionGuidance,
   }
 
-  await setCache(CACHE_KEY, finalData, CACHE_TTL.DECISION_SUPPORT.TRADE_DECISION)
+  await setCache(
+    CACHE_KEY,
+    finalData,
+    CACHE_TTL.DECISION_SUPPORT.TRADE_DECISION,
+  )
   return finalData
 }
 
@@ -221,7 +225,11 @@ export const getHistoricalCloses = async (
       .filter((quote) => quote.close !== null && quote.close !== undefined)
       .map((quote) => quote.close as number)
 
-    await setCache(CACHE_KEY, closes, CACHE_TTL.DECISION_SUPPORT.HISTORICAL_CLOSES)
+    await setCache(
+      CACHE_KEY,
+      closes,
+      CACHE_TTL.DECISION_SUPPORT.HISTORICAL_CLOSES,
+    )
     return closes
   } catch (error) {
     logger.error(`Internal Yahoo Finance Error for ${symbol}`, error)
@@ -1006,10 +1014,14 @@ export const computePriceTargets = (
   const safePrice = currentPrice > 0 ? currentPrice : 100
   const effectiveAtr = atr > 0 ? atr : safePrice * 0.02
 
-  const entryLow = Number(Math.max(0.01, safePrice - 0.5 * effectiveAtr).toFixed(2))
+  const entryLow = Number(
+    Math.max(0.01, safePrice - 0.5 * effectiveAtr).toFixed(2),
+  )
   const entryHigh = Number((safePrice + 0.25 * effectiveAtr).toFixed(2))
   const bullTarget = Number((safePrice + 2 * effectiveAtr).toFixed(2))
-  const stopLoss = Number(Math.max(0.01, safePrice - 1.5 * effectiveAtr).toFixed(2))
+  const stopLoss = Number(
+    Math.max(0.01, safePrice - 1.5 * effectiveAtr).toFixed(2),
+  )
 
   return {
     entryLow,
@@ -1031,9 +1043,7 @@ const estimateAtrFromCloses = async (
         diffs.push(Math.abs(recent[i] - recent[i - 1]))
       }
       const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length
-      return Number(
-        (avgDiff || ((closes.at(-1) ?? 0) * 0.02)).toFixed(2),
-      )
+      return Number((avgDiff || (closes.at(-1) ?? 0) * 0.02).toFixed(2))
     }
   } catch (historyErr) {
     logger.error(`[getATR] Fallback closes failed for ${symbol}`, historyErr)
@@ -1099,9 +1109,14 @@ export const calculatePositionSize = (opts: {
   const shares = Math.floor(capital / currentPrice)
   const riskPerShare = Number(Math.max(0, currentPrice - stopLoss).toFixed(2))
   const totalRisk = Number((shares * riskPerShare).toFixed(2))
-  const potentialGain = Number((shares * Math.max(0, bullTarget - currentPrice)).toFixed(2))
-  const riskRewardRatio = totalRisk > 0 ? Number((potentialGain / totalRisk).toFixed(2)) : 0
-  const percentOfCapital = Number(((shares * currentPrice) / capital * 100).toFixed(2))
+  const potentialGain = Number(
+    (shares * Math.max(0, bullTarget - currentPrice)).toFixed(2),
+  )
+  const riskRewardRatio =
+    totalRisk > 0 ? Number((potentialGain / totalRisk).toFixed(2)) : 0
+  const percentOfCapital = Number(
+    (((shares * currentPrice) / capital) * 100).toFixed(2),
+  )
 
   return {
     shares,
@@ -1137,7 +1152,8 @@ export const getOpportunityRadar = async (
         .filter(
           (item: any) =>
             item.symbol &&
-            (spusSymbolSet.has(item.symbol) || (item.marketCap && item.marketCap > 20000000000)),
+            (spusSymbolSet.has(item.symbol) ||
+              (item.marketCap && item.marketCap > 20000000000)),
         )
         .slice(0, 30)
         .map((item: any) => ({
@@ -1292,7 +1308,11 @@ export const computePortfolioRiskMetrics = (
   betasMap: Record<string, number>,
 ): PortfolioRiskMetrics => {
   const totalValue = positions.reduce(
-    (sum, p) => sum + (p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0),
+    (sum, p) =>
+      sum +
+      (p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0),
     0,
   )
 
@@ -1316,13 +1336,19 @@ export const computePortfolioRiskMetrics = (
 
   if (totalValue > 0) {
     weightedBeta = positions.reduce((sum, p, i) => {
-      const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+      const pVal =
+        p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0
       const weight = pVal / totalValue
       return sum + weight * perSymbol[i].beta
     }, 0)
 
     portfolioSharpe = positions.reduce((sum, p, i) => {
-      const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+      const pVal =
+        p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0
       const weight = pVal / totalValue
       return sum + weight * perSymbol[i].sharpe
     }, 0)
@@ -1332,14 +1358,18 @@ export const computePortfolioRiskMetrics = (
   const sectorMap: Record<string, number> = {}
   positions.forEach((p) => {
     const sec = p.sector || 'Unknown'
-    const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+    const pVal =
+      p.currentValue ||
+      p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+      0
     sectorMap[sec] = (sectorMap[sec] || 0) + pVal
   })
 
   const sectorConcentration = Object.entries(sectorMap)
     .map(([sector, val]) => ({
       sector,
-      weight: totalValue > 0 ? Number(((val / totalValue) * 100).toFixed(2)) : 0,
+      weight:
+        totalValue > 0 ? Number(((val / totalValue) * 100).toFixed(2)) : 0,
     }))
     .sort((a, b) => b.weight - a.weight)
 
@@ -1384,4 +1414,3 @@ export const getPortfolioRiskMetrics = async (
     betasMap,
   )
 }
-
