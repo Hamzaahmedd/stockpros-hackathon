@@ -106,12 +106,14 @@ export const buildConfig = (
     user: string
     pass: string
   }
+  brand: {
+    logoUrl: string
+  }
   email: {
     resendApiKey: string
     useSmtp: boolean
     useResend: boolean
     resendFrom: string
-    logoUrl: string
   }
   fmp: {
     apiKey: string
@@ -135,7 +137,9 @@ export const buildConfig = (
     nodeEnv: env.env,
     logLevel: env.server.logLevel,
     trustProxy: env.server.trustProxy,
-    frontendUrl: env.server.frontendUrl.replace(/\/+$/, ''),
+    frontendUrl: env.server.frontendUrl.endsWith('/')
+      ? env.server.frontendUrl.slice(0, -1)
+      : env.server.frontendUrl,
   },
   database: {
     url: secrets.databaseUrl,
@@ -169,12 +173,14 @@ export const buildConfig = (
     user: secrets.smtpUser,
     pass: secrets.smtpPass
   },
+  brand: {
+    logoUrl: env.brand.logoUrl,
+  },
   email: {
     resendApiKey: secrets.resendApiKey,
     useSmtp: env.email.useSmtp,
     useResend: env.email.useResend,
     resendFrom: env.email.resendFrom,
-    logoUrl: env.email.logoUrl,
   },
   fmp: {
     apiKey: secrets.fmpApiKey,

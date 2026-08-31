@@ -193,7 +193,7 @@ export const exportTradePlanPdf = async (
 ) => {
   try {
     const plan = req.body
-    if (!plan || !plan.symbol) {
+    if (!plan?.symbol) {
       throw new Error('Trade plan data with symbol is required for PDF export.')
     }
 

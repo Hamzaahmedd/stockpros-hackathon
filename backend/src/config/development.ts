@@ -30,12 +30,14 @@ export const developmentConfig = {
     host: 'smtp.gmail.com',
     port: 587,
   },
+  brand: {
+    logoUrl:
+      'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png',
+  },
   email: {
     useSmtp: true,
     useResend: false,
     resendFrom: 'StockPros <onboarding@resend.dev>',
-    logoUrl:
-      'https://weyddqoxrfdtgmbcnzew.supabase.co/storage/v1/object/public/public-assets/stockpros-logo.png',
   },
   features: {
     enableNewsCron: true,

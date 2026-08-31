@@ -268,7 +268,9 @@ function getUserInitials(displayName?: string | null, email?: string | null): st
   if (!fullName) return (email?.charAt(0) || "U").toUpperCase();
   const parts = fullName.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    const firstChar = parts[0][0] || "";
+    const lastChar = parts.at(-1)?.[0] || "";
+    return (firstChar + lastChar).toUpperCase();
   }
   return fullName.slice(0, 2).toUpperCase();
 }

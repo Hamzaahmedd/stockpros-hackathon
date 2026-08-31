@@ -37,7 +37,7 @@ export const exportForecastPdf = async (
 ) => {
   try {
     let forecastData = req.body
-    if (!forecastData || !forecastData.symbol) {
+    if (!forecastData?.symbol) {
       const { symbol, period } = validateOrThrow(
         forecastQueryValidator,
         req.query,
