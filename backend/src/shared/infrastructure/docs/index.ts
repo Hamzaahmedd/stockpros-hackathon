@@ -1,1 +1,1 @@
-export { setupSwaggerDocs, swaggerSpec } from './swagger'
+export { setupSwaggerDocs, getSwaggerSpec } from './swagger'
