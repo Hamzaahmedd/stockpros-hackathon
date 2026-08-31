@@ -27,7 +27,9 @@ if (redisUrl) {
     const u = new URL(redisUrl)
     isTLS = u.protocol === 'rediss:'
   } catch {
-    logger.warn('Invalid REDIS_URL format. TLS may not be configured correctly.')
+    logger.warn(
+      'Invalid REDIS_URL format. TLS may not be configured correctly.',
+    )
   }
 }
 

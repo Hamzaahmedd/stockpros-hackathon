@@ -3,11 +3,11 @@ import axios, { AxiosError } from 'axios'
 import { NextFunction, Request, Response } from 'express'
 import { ZodError } from 'zod'
 import {
-    AppError,
-    ConflictError,
-    InternalServerError,
-    NotFoundError,
-    ValidationError,
+  AppError,
+  ConflictError,
+  InternalServerError,
+  NotFoundError,
+  ValidationError,
 } from '../errors'
 import { logger } from '../infrastructure/logger'
 import { sendError } from '../utils'
@@ -54,7 +54,10 @@ const handleAxiosError = (err: AxiosError, res: Response): void => {
   })
 }
 
-const mapKnownCodeToError = (code: string | undefined, fallbackMsg: string): AppError => {
+const mapKnownCodeToError = (
+  code: string | undefined,
+  fallbackMsg: string,
+): AppError => {
   switch (code) {
     case 'ECONNRESET':
     case 'ECONNABORTED':
@@ -95,7 +98,8 @@ const mapKnownCodeToError = (code: string | undefined, fallbackMsg: string): App
 
 const resolveAppError = (err: unknown): AppError => {
   if (err instanceof AppError) return err
-  if (err instanceof ZodError) return new ValidationError('Validation failed', err.issues)
+  if (err instanceof ZodError)
+    return new ValidationError('Validation failed', err.issues)
   return mapKnownCodeToError(getErrorCode(err), getErrorMessage(err))
 }
 

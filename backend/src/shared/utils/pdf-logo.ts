@@ -46,4 +46,3 @@ export async function getStockProsLogoDataUri(): Promise<string | null> {
   cachedLogoDataUri = readLocalLogoDataUri()
   return cachedLogoDataUri
 }
-

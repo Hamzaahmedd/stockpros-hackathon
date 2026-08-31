@@ -5,10 +5,10 @@ import { logger } from '../../../shared/infrastructure/logger'
 import { buildMagicLinkEmail } from '../email-templates/index'
 import type { AuthEmailJobPayload } from '../types'
 import {
-    AUTH_EMAIL_DEFAULT_JOB_OPTIONS,
-    AUTH_EMAIL_JOB_NAME,
-    AUTH_EMAIL_QUEUE_NAME,
-    AUTH_EMAIL_QUEUE_OPTIONS,
+  AUTH_EMAIL_DEFAULT_JOB_OPTIONS,
+  AUTH_EMAIL_JOB_NAME,
+  AUTH_EMAIL_QUEUE_NAME,
+  AUTH_EMAIL_QUEUE_OPTIONS,
 } from './auth-email.config'
 
 // ─── Queue ────────────────────────────────────────────────────────────────────

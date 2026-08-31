@@ -109,11 +109,14 @@ export async function getForecast(
     let enhancedPredictions: Prediction[] = []
 
     if (rawPredictions.length > 0 && technicals) {
-      const basePrices = rawPredictions.map(
-        (p) => Number(p.price ?? p.predicted_close),
+      const basePrices = rawPredictions.map((p) =>
+        Number(p.price ?? p.predicted_close),
       )
       targetRange = computeSummaryTargets(basePrices, technicals)
-      enhancedPredictions = computeEnhancedPredictions(rawPredictions, technicals)
+      enhancedPredictions = computeEnhancedPredictions(
+        rawPredictions,
+        technicals,
+      )
     }
 
     return {

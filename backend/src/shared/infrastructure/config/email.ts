@@ -17,10 +17,7 @@ const useResend = config.email.useResend
 
 const logoPublicUrl = config.brand.logoUrl
 
-const localLogoPath = path.resolve(
-  __dirname,
-  '../../assets/stockpros-logo.png',
-)
+const localLogoPath = path.resolve(__dirname, '../../assets/stockpros-logo.png')
 
 const readLocalLogo = (): string | undefined => {
   try {
@@ -78,8 +75,7 @@ const getLogoBase64 = (): Promise<string | undefined> => {
 }
 
 // Initialise Resend only when enabled for this environment and an API key is provided.
-const resend =
-  useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
+const resend = useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
 // Gmail SMTP transporter — created only when SMTP is enabled and credentials are present.
 const smtpTransportOptions = {

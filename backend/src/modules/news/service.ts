@@ -63,8 +63,10 @@ const resolveFilterSymbols = (
   watchlistSymbols?: Set<string>,
 ): string[] | undefined => {
   if (symbol) return [symbol]
-  if (filter === 'portfolio') return portfolioSymbols ? Array.from(portfolioSymbols) : []
-  if (filter === 'watchlist') return watchlistSymbols ? Array.from(watchlistSymbols) : []
+  if (filter === 'portfolio')
+    return portfolioSymbols ? Array.from(portfolioSymbols) : []
+  if (filter === 'watchlist')
+    return watchlistSymbols ? Array.from(watchlistSymbols) : []
   return undefined
 }
 
@@ -124,7 +126,7 @@ export const getNewsFeed = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
+  const nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
 
   const ranked =
     filter === 'all'
@@ -174,7 +176,7 @@ export const getNewsBySymbol = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
+  const nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
   const enriched = await enrichArticles(userId, pageRows)
   const result = { data: enriched, nextCursor, hasMore }
 
@@ -207,7 +209,7 @@ export const searchNews = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
+  const nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
   const enriched = await enrichArticles(userId, pageRows)
 
   return { data: enriched, nextCursor, hasMore }
@@ -342,7 +344,7 @@ export const getSavedNews = async (
 
   const hasMore = savedRows.length > limit
   const pageRows = hasMore ? savedRows.slice(0, limit) : savedRows
-  const nextCursor = hasMore ? pageRows.at(-1)?.articleId ?? null : null
+  const nextCursor = hasMore ? (pageRows.at(-1)?.articleId ?? null) : null
   const enriched = await enrichArticles(
     userId,
     pageRows.map((r) => r.article),

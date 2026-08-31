@@ -22,7 +22,9 @@ export async function connectRedis(): Promise<void> {
   try {
     redisClient = new Redis(redisUrl, finalOpts)
 
-    redisClient.on('error', (err) => logger.error('Redis error', err?.message || err))
+    redisClient.on('error', (err) =>
+      logger.error('Redis error', err?.message || err),
+    )
     redisClient.on('end', () => logger.warn('Redis: connection closed'))
     redisClient.on('ready', () => logger.info('Redis connected successfully.'))
 
@@ -74,7 +76,10 @@ export function getRedisClient(): RedisConnectionOptions | undefined {
         password: decodeURIComponent(parsed.password) || undefined,
       }
     } catch (err) {
-      logger.error('[Redis] Invalid REDIS_URL format', err instanceof Error ? err.message : err)
+      logger.error(
+        '[Redis] Invalid REDIS_URL format',
+        err instanceof Error ? err.message : err,
+      )
       return undefined
     }
   }

@@ -355,8 +355,7 @@ export const runSecFilingJob = async (): Promise<void> => {
 
         const symbolEntries = entries.filter((e) => e.symbol === symbol)
         for (const entry of symbolEntries) {
-          if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING')))
-            continue
+          if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING'))) continue
           await fireEventAlert(
             entry.watchlistId,
             entry.userId,

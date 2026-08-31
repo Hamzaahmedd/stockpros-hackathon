@@ -1,0 +1,124 @@
+graph TB
+    subgraph Client["Client Layer"]
+        FE["React SPA<br/>(Vite + TypeScript)<br/>Deployed on Vercel"]
+    end
+
+    subgraph Backend["Backend — Node.js / Express 5"]
+        direction TB
+        GW["Express HTTP Server<br/>+ TSOA / Swagger"]
+        WS["Socket.IO Server<br/>(Real-time WebSocket)"]
+
+        subgraph Modules["Domain Modules"]
+            AUTH["Auth Module<br/>JWT · Magic Link · Google OAuth"]
+            MKTM["Market Module<br/>Quotes · OHLCV · Indicators"]
+            NEWS["News Module<br/>Ingestion · Sentiment"]
+            WATCH["Watchlist Module<br/>Alerts · AI Suggestions"]
+            DASH["Dashboard Module<br/>Portfolio · Positions"]
+            FORE["Forecast Module<br/>AI Proxy"]
+            DEC["Decision Support Module<br/>Buy/Sell Signals"]
+            NOTI["Notifications Module<br/>In-App · Email"]
+            ACL["Access Control Module<br/>RBAC · Screens"]
+            SRCH["Search Module<br/>Symbol Lookup"]
+        end
+
+        subgraph Infra["Shared Infrastructure"]
+            DB["Prisma ORM"]
+            CACHE["Redis Cache + BullMQ"]
+            LOG["Winston Logger"]
+            CLIENTS["API Clients<br/>Finnhub · Polygon · FMP<br/>TwelveData · Yahoo Finance"]
+        end
+
+        subgraph Workers["Background Workers / Cron Jobs"]
+            NEWS_CRON["News Ingest Cron<br/>(Scheduled)"]
+            WATCH_CRON["Watchlist Alert Cron<br/>(Price Check)"]
+            EMAIL_WRK["Email Worker (BullMQ)"]
+            AUTH_WRK["Auth Email Worker (BullMQ)"]
+        end
+    end
+
+    subgraph AIService["AI Service — Python / FastAPI"]
+        AI_API["FastAPI REST API"]
+        GRU["GRU Neural Network<br/>(TensorFlow CPU + ONNX)"]
+        DATA_SVC["Data Service<br/>(OHLCV Fetch)"]
+        MODEL_SVC["Model Service<br/>(Train · Predict · Cache)"]
+        AI_CACHE["Redis Cache<br/>(Forecast Results)"]
+    end
+
+    subgraph DataStores["Data Stores"]
+        PG["PostgreSQL (Supabase)<br/>Primary Database"]
+        REDIS["Redis<br/>Cache + Job Queues"]
+    end
+
+    subgraph ExternalAPIs["External Market Data APIs"]
+        FINNHUB["Finnhub.io<br/>(WebSocket Stream)"]
+        POLYGON["Polygon.io<br/>(News + Sentiment)"]
+        FMP["Financial Modeling Prep<br/>(Fundamentals)"]
+        TWELVEDATA["TwelveData<br/>(OHLCV)"]
+        YAHOO["Yahoo Finance<br/>(Quotes)"]
+    end
+
+    subgraph EmailProvider["Email Provider"]
+        RESEND["Resend API<br/>(Magic Links · Alerts)"]
+    end
+
+    %% Client ↔ Backend
+    FE -->|"REST API (HTTPS)"| GW
+    FE <-->|"WebSocket (WSS)"| WS
+
+    %% Backend internal routing
+    GW --> AUTH
+    GW --> MKTM
+    GW --> NEWS
+    GW --> WATCH
+    GW --> DASH
+    GW --> FORE
+    GW --> DEC
+    GW --> NOTI
+    GW --> ACL
+    GW --> SRCH
+
+    %% Modules → Infrastructure
+    AUTH --> DB
+    AUTH --> CACHE
+    MKTM --> CLIENTS
+    MKTM --> CACHE
+    MKTM -->|"Live Price Events"| WS
+    NEWS --> DB
+    NEWS --> CACHE
+    WATCH --> DB
+    WATCH --> CACHE
+    DASH --> DB
+    FORE --> AI_API
+    DEC --> DB
+    NOTI --> DB
+    NOTI --> CACHE
+    ACL --> DB
+
+    %% Cron Workers
+    NEWS_CRON --> CLIENTS
+    NEWS_CRON --> DB
+    WATCH_CRON --> DB
+    WATCH_CRON -->|"Trigger Notification"| CACHE
+    EMAIL_WRK --> RESEND
+    AUTH_WRK --> RESEND
+
+    %% DB & Cache
+    DB --> PG
+    CACHE --> REDIS
+
+    %% AI Service
+    AI_API --> MODEL_SVC
+    MODEL_SVC --> GRU
+    MODEL_SVC --> DATA_SVC
+    MODEL_SVC --> AI_CACHE
+    AI_CACHE --> REDIS
+
+    %% External API Clients
+    CLIENTS --> FINNHUB
+    CLIENTS --> POLYGON
+    CLIENTS --> FMP
+    CLIENTS --> TWELVEDATA
+    CLIENTS --> YAHOO
+
+    %% Finnhub WebSocket stream
+    FINNHUB -->|"Real-time Price Feed"| MKTM

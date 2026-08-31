@@ -163,7 +163,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
                 key={row.s}
                 className={`border-b border-border transition-colors ${index % 2 === 0 ? 'bg-muted/20 hover:bg-muted/40' : 'hover:bg-muted/30'}`}
               >
-                <td className="py-3.5 px-6 font-semibold">
+                <td className="py-3.5 px-6 font-bold text-foreground tracking-wide">
                   {row.s}
                 </td>
 

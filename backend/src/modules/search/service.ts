@@ -28,11 +28,13 @@ export async function searchSymbols(
 
     if (!data || !data.result) return []
 
-    const results: SymbolSearchResult[] = data.result.map((item: FinnhubSearchItem) => ({
-      symbol: item.symbol,
-      description: item.description,
-      type: item.type,
-    }))
+    const results: SymbolSearchResult[] = data.result.map(
+      (item: FinnhubSearchItem) => ({
+        symbol: item.symbol,
+        description: item.description,
+        type: item.type,
+      }),
+    )
 
     await setCache(cacheKey, results, CACHE_TTL.SEARCH.SYMBOL_LOOKUP) // 24 hours
 

@@ -40,7 +40,7 @@ finnhubClient.interceptors.request.use(async (reqConfig) => {
   return reqConfig
 })
 
-// Auto-retry interceptor for 429 & 503 (rate limit / Cloudflare)
+// Auto-retry interceptor for 429 (rate limit), 502 & 503 (Cloudflare/origin overload)
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retryCount?: number
 }
@@ -52,9 +52,9 @@ finnhubClient.interceptors.response.use(
     if (!originalRequest) throw error
 
     const status = error.response?.status
-    const isRateLimited = status === 429 || status === 503
+    const isRetriable = status === 429 || status === 502 || status === 503
 
-    if (isRateLimited) {
+    if (isRetriable) {
       originalRequest._retryCount = (originalRequest._retryCount || 0) + 1
 
       if (originalRequest._retryCount <= 3) {
@@ -71,7 +71,7 @@ finnhubClient.interceptors.response.use(
         const delayMs = Math.min(rawDelayMs, 3000)
 
         logger.warn(
-          `[FinnhubClient] Rate limited (${status}) for ${originalRequest.url}. Retrying in ${delayMs}ms (Attempt ${originalRequest._retryCount}/3)...`,
+          `[FinnhubClient] Transient error (${status}) for ${originalRequest.url}. Retrying in ${delayMs}ms (Attempt ${originalRequest._retryCount}/3)...`,
         )
 
         await new Promise((resolve) => setTimeout(resolve, delayMs))
@@ -84,4 +84,3 @@ finnhubClient.interceptors.response.use(
 )
 
 export default finnhubClient
-

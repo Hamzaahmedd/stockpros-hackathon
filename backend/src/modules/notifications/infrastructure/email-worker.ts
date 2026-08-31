@@ -19,10 +19,10 @@ const getEmailQueue = (): Queue<EmailJobPayload> | null => {
   const connection = getRedisClient()
   if (!connection) return null
   _emailQueue ??= new Queue<EmailJobPayload>(ALERT_EMAIL_QUEUE_NAME, {
-      connection,
-      ...ALERT_EMAIL_QUEUE_OPTIONS,
-      defaultJobOptions: ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
-    });
+    connection,
+    ...ALERT_EMAIL_QUEUE_OPTIONS,
+    defaultJobOptions: ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
+  })
   return _emailQueue
 }
 

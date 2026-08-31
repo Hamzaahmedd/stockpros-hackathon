@@ -5,10 +5,10 @@ import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { getCompanyLogo } from './caches/logo-cache'
 import {
-    FinnhubProfile,
-    FmpMostActiveItem,
-    RankedStockRow,
-    StockQuote,
+  FinnhubProfile,
+  FmpMostActiveItem,
+  RankedStockRow,
+  StockQuote,
 } from './types'
 
 const CACHE_KEY = 'market:top-us-stocks'
@@ -125,3 +125,4 @@ export async function getCompanySectors(
 
   return sectorMap
 }
+

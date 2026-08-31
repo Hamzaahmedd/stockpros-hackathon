@@ -14,13 +14,89 @@
 
 StockPros is a monorepo with three services:
 
-| Service | Stack | Purpose |
-|---------|-------|---------|
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui | Interactive dashboards, charts, and real-time UI |
-| **Backend** | Node.js, Express 5, Prisma, PostgreSQL, Redis | REST API, auth, market data, background jobs |
-| **AI Service** | Python 3.11, FastAPI, TensorFlow, scikit-learn | ML-powered time-series stock forecasting (GRU) |
+| Service        | Stack                                               | Purpose                                          |
+| -------------- | --------------------------------------------------- | ------------------------------------------------ |
+| **Frontend**   | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui | Interactive dashboards, charts, and real-time UI |
+| **Backend**    | Node.js, Express 5, Prisma, PostgreSQL, Redis       | REST API, auth, market data, background jobs     |
+| **AI Service** | Python 3.11, FastAPI, TensorFlow, scikit-learn      | ML-powered time-series stock forecasting (GRU)   |
 
 The backend follows a **modular monolith** pattern — a single deployable process composed from independent business modules with enforced boundary rules. See [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md) for details.
+
+### System Architecture
+
+```mermaid
+flowchart LR
+    %% Styling
+    classDef client fill:#1e3a5f,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0;
+    classDef backend fill:#1a2e1a,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef ai fill:#2d1b4e,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef storage fill:#3b1f00,stroke:#f97316,stroke-width:2px,color:#e2e8f0;
+    classDef external fill:#1f1f1f,stroke:#64748b,stroke-width:2px,color:#cbd5e1;
+
+    %% Components
+    FE["Frontend (React + Vite)<br/>• Tailored Dashboards<br/>• Real-time Tickers"]:::client
+
+    subgraph CoreBackend["Core Backend (Node.js / Express 5)"]
+        BE["API & Business Logic<br/>(10 Domain Modules)"]:::backend
+        WS["Socket.IO Server<br/>(Real-time Push)"]:::backend
+        WRK["BullMQ Workers<br/>(Cron & Async Tasks)"]:::backend
+    end
+
+    AI["AI Service (FastAPI)<br/>• GRU Neural Network<br/>• Stock Price Predictions"]:::ai
+
+    subgraph Data["Persistence & Cache"]
+        DB[("PostgreSQL<br/>Users, Portfolios, News")]:::storage
+        REDIS[("Redis<br/>Cache & Job Queue")]:::storage
+    end
+
+    subgraph ThirdParty["External Services"]
+        EXT["Market Data Feeds<br/>(Finnhub, Polygon, FMP)"]:::external
+        EMAIL["Email (Resend)"]:::external
+    end
+
+    %% Connections
+    FE <-->|REST & WSS| CoreBackend
+    CoreBackend -->|Inference Req| AI
+    CoreBackend --> DB
+    CoreBackend <--> REDIS
+    CoreBackend <--> EXT
+    WRK --> EMAIL
+    AI <--> REDIS
+```
+
+<details>
+<summary><b>Click to view Deep-Dive Architectural Diagram & Details</b></summary>
+
+<br/>
+
+<p align="center">
+  <img src="architecture.svg" alt="StockPros Detailed System Architecture Diagram" width="100%" />
+</p>
+<p align="center">
+  <sub><i>Tip: Click <a href="architecture.svg" target="_blank">here for interactive full-res vector SVG</a> or view the <a href="architecture.png" target="_blank">4K PNG</a></i></sub>
+</p>
+
+#### Key Architectural Patterns
+
+- **Modular Monolith**: Node.js backend separated into 10 domain modules with enforced boundary checks.
+- **Event-Driven & Decoupled Workers**: BullMQ queues handle email notifications and asynchronous alert tasks.
+- **Real-Time Streaming**: Finnhub WebSocket trades streamed via Socket.io directly to connected clients.
+- **AI Proxy Pattern**: Python FastAPI service isolates heavy GRU ML inference and caching behind the backend.
+- **Multi-Tier Caching**: In-memory and Redis TTL caching for stock quotes, logos, and ML forecasts.
+
+</details>
+
+### Data Flow Summary
+
+| Flow             | Path                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| **Live Prices**  | Finnhub WSS → FinnhubService → PriceCache → Socket.io → Browser           |
+| **REST Quotes**  | Browser → Backend → Yahoo Finance REST → Response                         |
+| **Alert Firing** | Finnhub trade tick → AlertEvaluator → Socket.io room + Email queue        |
+| **AI Forecast**  | Browser → Backend `/api/forecast` → FastAPI GRU model → cached prediction |
+| **News Ingest**  | NewsCron (\*/15 min) → Polygon.io → PostgreSQL                            |
+| **Auth**         | Browser → `/api/auth` → JWT cookies / Google OAuth 2.0                    |
+| **Email**        | Alert/Auth event → BullMQ → EmailWorker → SMTP / Resend                   |
 
 ## Features
 
@@ -41,18 +117,21 @@ The backend follows a **modular monolith** pattern — a single deployable proce
 <summary><strong>Frontend</strong></summary>
 
 React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui (Radix UI) · TanStack React Query · Zustand · Recharts · Chart.js · Socket.io Client · React Hook Form + Zod · Lucide Icons · jsPDF
+
 </details>
 
 <details>
 <summary><strong>Backend</strong></summary>
 
 Express 5 · TypeScript · Prisma ORM · PostgreSQL · Redis (ioredis) · Socket.io · BullMQ · JWT + bcrypt · Helmet · Nodemailer / Resend / SendGrid · Zod · Yahoo Finance 2 · TechnicalIndicators
+
 </details>
 
 <details>
 <summary><strong>AI Service</strong></summary>
 
 FastAPI · Python 3.11 · TensorFlow / Keras · scikit-learn · ONNX Runtime · pandas · NumPy · Pydantic · Redis · Supabase
+
 </details>
 
 ## Getting Started
@@ -136,7 +215,7 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 
-```env
+````env
 REDIS_URL=your_app_env
 SUPABASE_URL=your_app_env
 SUPABASE_KEY=your_app_env
@@ -146,27 +225,27 @@ GITHUB_TOKEN=your_app_env```
 
 ```bash
 uvicorn app.main:app --host localhost --port 8000 --reload
-```
+````
 
 ## Scripts
 
-| Service | Command | Description |
-|---------|---------|-------------|
-| Backend | `npm run dev` | Start with hot reload (nodemon) |
-| Backend | `npm run build` | Compile TypeScript for production |
-| Backend | `npm start` | Run production build |
-| Frontend | `npm run dev` | Start Vite dev server |
-| Frontend | `npm run build` | Production build |
-| Frontend | `npm run preview` | Preview production build |
-| AI Service | `uvicorn app.main:app --reload` | Start dev server |
+| Service    | Command                         | Description                       |
+| ---------- | ------------------------------- | --------------------------------- |
+| Backend    | `npm run dev`                   | Start with hot reload (nodemon)   |
+| Backend    | `npm run build`                 | Compile TypeScript for production |
+| Backend    | `npm start`                     | Run production build              |
+| Frontend   | `npm run dev`                   | Start Vite dev server             |
+| Frontend   | `npm run build`                 | Production build                  |
+| Frontend   | `npm run preview`               | Preview production build          |
+| AI Service | `uvicorn app.main:app --reload` | Start dev server                  |
 
 ## Deployment
 
-| Service | Target | Config |
-|---------|--------|--------|
-| Frontend | **Vercel** | `frontend/vercel.json` — SPA rewrites for client-side routing |
-| AI Service | **Railway** | `ai-service/railway.toml` — nixpacks builder, Python 3.11 |
-| Backend | Any Node.js host | Standard `npm run build && npm start` |
+| Service    | Target           | Config                                                        |
+| ---------- | ---------------- | ------------------------------------------------------------- |
+| Frontend   | **Vercel**       | `frontend/vercel.json` — SPA rewrites for client-side routing |
+| AI Service | **Railway**      | `ai-service/railway.toml` — nixpacks builder, Python 3.11     |
+| Backend    | Any Node.js host | Standard `npm run build && npm start`                         |
 
 ## Documentation
 

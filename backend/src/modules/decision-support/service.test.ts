@@ -88,7 +88,9 @@ describe('parseAnalystConsensus', () => {
   })
 
   it('returns HOLD for 40–59% bullish consensus', () => {
-    const data = [{ strongBuy: 20, buy: 30, hold: 30, sell: 10, strongSell: 10 }]
+    const data = [
+      { strongBuy: 20, buy: 30, hold: 30, sell: 10, strongSell: 10 },
+    ]
     const result = parseAnalystConsensus(data)
     expect(result.rating).toBe('HOLD')
     expect(result.confidencePercent).toBe(50)
@@ -142,7 +144,9 @@ describe('computeSentiment', () => {
   })
 
   it('returns trend "UP" when average weighted score ≥ 0.15', () => {
-    const feed = Array(10).fill(null).map(() => makeArticle(0.3))
+    const feed = Array(10)
+      .fill(null)
+      .map(() => makeArticle(0.3))
     const result = computeSentiment(feed, 'AAPL')
     expect(result.trend).toBe('UP')
     expect(result.score).toBeGreaterThan(0)
@@ -150,14 +154,18 @@ describe('computeSentiment', () => {
   })
 
   it('returns trend "DOWN" when average weighted score ≤ −0.15', () => {
-    const feed = Array(10).fill(null).map(() => makeArticle(-0.3))
+    const feed = Array(10)
+      .fill(null)
+      .map(() => makeArticle(-0.3))
     const result = computeSentiment(feed, 'AAPL')
     expect(result.trend).toBe('DOWN')
     expect(result.score).toBeLessThan(0)
   })
 
   it('returns trend "FLAT" when score is between −0.15 and 0.15', () => {
-    const feed = Array(10).fill(null).map(() => makeArticle(0.05))
+    const feed = Array(10)
+      .fill(null)
+      .map(() => makeArticle(0.05))
     const result = computeSentiment(feed, 'AAPL')
     expect(result.trend).toBe('FLAT')
   })
@@ -175,7 +183,9 @@ describe('computeSentiment', () => {
   })
 
   it('newsVolume reflects the feed length', () => {
-    const feed = Array(7).fill(null).map(() => makeArticle(0.2))
+    const feed = Array(7)
+      .fill(null)
+      .map(() => makeArticle(0.2))
     const result = computeSentiment(feed, 'AAPL')
     expect(result.newsVolume).toBe(7)
   })
@@ -296,7 +306,9 @@ describe('generateReasoning', () => {
       sentimentChange48h: 0,
       analystRating: 'STRONG_BUY',
     })
-    expect(details.some((d) => d.toLowerCase().includes('strong buy'))).toBe(true)
+    expect(details.some((d) => d.toLowerCase().includes('strong buy'))).toBe(
+      true,
+    )
   })
 
   it('includes sentiment warning for DOWN trend', () => {
@@ -306,7 +318,9 @@ describe('generateReasoning', () => {
       sentimentChange48h: -20,
       analystRating: 'HOLD',
     })
-    expect(details.some((d) => d.toLowerCase().includes('sentiment'))).toBe(true)
+    expect(details.some((d) => d.toLowerCase().includes('sentiment'))).toBe(
+      true,
+    )
   })
 
   it('includes overbought warning when RSI ≥ 70', () => {
@@ -316,7 +330,9 @@ describe('generateReasoning', () => {
       sentimentChange48h: 0,
       analystRating: 'HOLD',
     })
-    expect(details.some((d) => d.toLowerCase().includes('overbought'))).toBe(true)
+    expect(details.some((d) => d.toLowerCase().includes('overbought'))).toBe(
+      true,
+    )
   })
 
   it('includes oversold note when RSI ≤ 30', () => {
@@ -503,13 +519,19 @@ describe('calculateFinalConfidence', () => {
   })
 
   it('boosts score for strong PnL gains (>20%)', () => {
-    const boosted = calculateFinalConfidence({ ...base, unrealizedPnLPercent: 25 })
+    const boosted = calculateFinalConfidence({
+      ...base,
+      unrealizedPnLPercent: 25,
+    })
     const normal = calculateFinalConfidence(base)
     expect(boosted).toBeGreaterThan(normal)
   })
 
   it('penalises large unrealized losses (<−20%)', () => {
-    const penalised = calculateFinalConfidence({ ...base, unrealizedPnLPercent: -25 })
+    const penalised = calculateFinalConfidence({
+      ...base,
+      unrealizedPnLPercent: -25,
+    })
     const normal = calculateFinalConfidence(base)
     expect(penalised).toBeLessThan(normal)
   })
@@ -653,4 +675,3 @@ describe('Sharpe Ratio and Volatility Math', () => {
     })
   })
 })
-

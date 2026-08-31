@@ -16,18 +16,18 @@ import { persistDecisionRun } from './repository'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import twelveDataClient from '../../shared/infrastructure/clients/twelve-data-client'
 import {
-    ActionGuidance,
-    DecisionResult,
-    EnrichedPortfolioPosition,
-    PortfolioPosition,
-    PortfolioRiskMetrics,
-    PortfolioSummary,
-    PositionSizeResult,
-    PriceTargets,
-    RadarCard,
-    RawPortfolioRow,
-    RiskLevel,
-    VolatilityLevel,
+  ActionGuidance,
+  DecisionResult,
+  EnrichedPortfolioPosition,
+  PortfolioPosition,
+  PortfolioRiskMetrics,
+  PortfolioSummary,
+  PositionSizeResult,
+  PriceTargets,
+  RadarCard,
+  RawPortfolioRow,
+  RiskLevel,
+  VolatilityLevel,
 } from './types'
 import { PortfolioArrayValidator } from './validation'
 
@@ -129,7 +129,11 @@ export const getUnifiedMarketDecision = async (symbol: string) => {
     actionGuidance,
   }
 
-  await setCache(CACHE_KEY, finalData, CACHE_TTL.DECISION_SUPPORT.TRADE_DECISION)
+  await setCache(
+    CACHE_KEY,
+    finalData,
+    CACHE_TTL.DECISION_SUPPORT.TRADE_DECISION,
+  )
   return finalData
 }
 
@@ -222,7 +226,11 @@ export const getHistoricalCloses = async (
       .filter((quote) => quote.close !== null && quote.close !== undefined)
       .map((quote) => quote.close as number)
 
-    await setCache(CACHE_KEY, closes, CACHE_TTL.DECISION_SUPPORT.HISTORICAL_CLOSES)
+    await setCache(
+      CACHE_KEY,
+      closes,
+      CACHE_TTL.DECISION_SUPPORT.HISTORICAL_CLOSES,
+    )
     return closes
   } catch (error) {
     logger.error(`Internal Yahoo Finance Error for ${symbol}`, error)
@@ -1007,10 +1015,14 @@ export const computePriceTargets = (
   const safePrice = currentPrice > 0 ? currentPrice : 100
   const effectiveAtr = atr > 0 ? atr : safePrice * 0.02
 
-  const entryLow = Number(Math.max(0.01, safePrice - 0.5 * effectiveAtr).toFixed(2))
+  const entryLow = Number(
+    Math.max(0.01, safePrice - 0.5 * effectiveAtr).toFixed(2),
+  )
   const entryHigh = Number((safePrice + 0.25 * effectiveAtr).toFixed(2))
   const bullTarget = Number((safePrice + 2 * effectiveAtr).toFixed(2))
-  const stopLoss = Number(Math.max(0.01, safePrice - 1.5 * effectiveAtr).toFixed(2))
+  const stopLoss = Number(
+    Math.max(0.01, safePrice - 1.5 * effectiveAtr).toFixed(2),
+  )
 
   return {
     entryLow,
@@ -1032,9 +1044,7 @@ const estimateAtrFromCloses = async (
         diffs.push(Math.abs(recent[i] - recent[i - 1]))
       }
       const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length
-      return Number(
-        (avgDiff || ((closes.at(-1) ?? 0) * 0.02)).toFixed(2),
-      )
+      return Number((avgDiff || (closes.at(-1) ?? 0) * 0.02).toFixed(2))
     }
   } catch (historyErr) {
     logger.error(`[getATR] Fallback closes failed for ${symbol}`, historyErr)
@@ -1100,9 +1110,14 @@ export const calculatePositionSize = (opts: {
   const shares = Math.floor(capital / currentPrice)
   const riskPerShare = Number(Math.max(0, currentPrice - stopLoss).toFixed(2))
   const totalRisk = Number((shares * riskPerShare).toFixed(2))
-  const potentialGain = Number((shares * Math.max(0, bullTarget - currentPrice)).toFixed(2))
-  const riskRewardRatio = totalRisk > 0 ? Number((potentialGain / totalRisk).toFixed(2)) : 0
-  const percentOfCapital = Number(((shares * currentPrice) / capital * 100).toFixed(2))
+  const potentialGain = Number(
+    (shares * Math.max(0, bullTarget - currentPrice)).toFixed(2),
+  )
+  const riskRewardRatio =
+    totalRisk > 0 ? Number((potentialGain / totalRisk).toFixed(2)) : 0
+  const percentOfCapital = Number(
+    (((shares * currentPrice) / capital) * 100).toFixed(2),
+  )
 
   return {
     shares,
@@ -1132,17 +1147,19 @@ export const getOpportunityRadar = async (
         marketCapMoreThan: 10000000000,
       },
     })
+
     if (Array.isArray(data) && data.length > 0) {
       const spusSymbolSet = new Set(SPUS_TOP_50_STOCKS.map((s) => s.symbol))
       const filtered = data
         .filter(
           (item: any) =>
             item.symbol &&
-            (spusSymbolSet.has(item.symbol) || (item.marketCap && item.marketCap > 20000000000)),
+            (spusSymbolSet.has(item.symbol) ||
+              (item.marketCap && item.marketCap > 20000000000)),
         )
         .slice(0, 30)
         .map((item: any) => ({
-          symbol: item.symbol,
+          symbol: item.symbol.toUpperCase(),
           sector: item.sector,
         }))
 
@@ -1157,23 +1174,58 @@ export const getOpportunityRadar = async (
   }
 
   if (candidates.length === 0) {
-    candidates = SPUS_TOP_50_STOCKS.slice(0, 25)
+    candidates = SPUS_TOP_50_STOCKS.slice(0, 15)
   }
 
-  const topCandidates = candidates.slice(0, 20)
+  const topCandidates = candidates.slice(0, 10)
+  const symbols = topCandidates.map((c) => c.symbol)
 
+  let batchQuotesMap: Record<string, number> = {}
+  try {
+    const symbolsString = symbols.join(',')
+    const { data: batchQuotes } = await fmpClient.get(`/quote/${symbolsString}`)
+
+    if (Array.isArray(batchQuotes)) {
+      batchQuotesMap = batchQuotes.reduce(
+        (acc: Record<string, number>, quote: any) => {
+          if (quote.symbol && quote.price) {
+            acc[quote.symbol.toUpperCase()] = quote.price
+          }
+          return acc
+        },
+        {},
+      )
+    }
+  } catch (err: any) {
+    logger.error(
+      `[getOpportunityRadar] Failed to fetch batch quotes: ${err?.message || err}`,
+    )
+  }
+
+  // 3. Process remaining indicators (ATR & Decisions) with per-symbol fallback
   const results: (RadarCard | null)[] = await Promise.all(
     topCandidates.map(async (cand) => {
       try {
-        const symbol = cand.symbol.toUpperCase()
+        const symbol = cand.symbol
+
+        // Fetch ATR and Market Decision (ensure getATR has internal Redis caching)
         const [marketData, atr] = await Promise.all([
           getUnifiedMarketDecision(symbol),
           getATR(symbol),
         ])
 
-        const currentPrice = marketData.quote?.c || marketData.quote?.pc || 0
+        // Fallback to batch quote price if marketData quote is missing
+        const currentPrice =
+          marketData.quote?.c ||
+          marketData.quote?.pc ||
+          batchQuotesMap[symbol] ||
+          0
+
+        if (currentPrice === 0) return null // Skip invalid records
+
         const targets = computePriceTargets(currentPrice, atr)
         const confidence = marketData.decision.confidence
+
         let confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW'
         if (confidence >= 0.7) {
           confidenceLabel = 'HIGH'
@@ -1205,6 +1257,7 @@ export const getOpportunityRadar = async (
   const validCards = results.filter((r): r is RadarCard => r !== null)
   validCards.sort((a, b) => b.confidence - a.confidence)
 
+  // Cache final radar response
   await setCache(CACHE_KEY, validCards, CACHE_TTL.DECISION_SUPPORT.RADAR)
   return validCards
 }
@@ -1293,7 +1346,11 @@ export const computePortfolioRiskMetrics = (
   betasMap: Record<string, number>,
 ): PortfolioRiskMetrics => {
   const totalValue = positions.reduce(
-    (sum, p) => sum + (p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0),
+    (sum, p) =>
+      sum +
+      (p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0),
     0,
   )
 
@@ -1317,13 +1374,19 @@ export const computePortfolioRiskMetrics = (
 
   if (totalValue > 0) {
     weightedBeta = positions.reduce((sum, p, i) => {
-      const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+      const pVal =
+        p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0
       const weight = pVal / totalValue
       return sum + weight * perSymbol[i].beta
     }, 0)
 
     portfolioSharpe = positions.reduce((sum, p, i) => {
-      const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+      const pVal =
+        p.currentValue ||
+        p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+        0
       const weight = pVal / totalValue
       return sum + weight * perSymbol[i].sharpe
     }, 0)
@@ -1333,14 +1396,18 @@ export const computePortfolioRiskMetrics = (
   const sectorMap: Record<string, number> = {}
   positions.forEach((p) => {
     const sec = p.sector || 'Unknown'
-    const pVal = p.currentValue || (p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0)) || 0
+    const pVal =
+      p.currentValue ||
+      p.quantity * (livePrices[p.symbol] ?? p.currentPrice ?? 0) ||
+      0
     sectorMap[sec] = (sectorMap[sec] || 0) + pVal
   })
 
   const sectorConcentration = Object.entries(sectorMap)
     .map(([sector, val]) => ({
       sector,
-      weight: totalValue > 0 ? Number(((val / totalValue) * 100).toFixed(2)) : 0,
+      weight:
+        totalValue > 0 ? Number(((val / totalValue) * 100).toFixed(2)) : 0,
     }))
     .sort((a, b) => b.weight - a.weight)
 
@@ -1385,4 +1452,3 @@ export const getPortfolioRiskMetrics = async (
     betasMap,
   )
 }
-

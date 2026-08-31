@@ -1,0 +1,4373 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"WatchlistEntry": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"logoUrl": {
+						"type": "string"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"currentPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"priceChange": {
+						"type": "number",
+						"format": "double"
+					},
+					"priceChangePercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"priceAtCreatedAt": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiSuggestedEntry": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiTakeProfit": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiStopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"aiConfidence": {
+						"type": "string",
+						"enum": [
+							"LOW",
+							"MEDIUM",
+							"HIGH"
+						]
+					},
+					"aiSuggestionBasis": {
+						"type": "string"
+					},
+					"aiComputedAt": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"symbol",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistEntry-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WatchlistEntry"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistEntry_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/WatchlistEntry"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiErrorResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [
+							false
+						],
+						"nullable": false
+					},
+					"message": {
+						"type": "string"
+					},
+					"errors": {
+						"items": {
+							"properties": {
+								"message": {
+									"type": "string"
+								},
+								"field": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"message",
+								"field"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AddToWatchlistRequest": {
+				"properties": {
+					"symbol": {
+						"type": "string",
+						"example": "TSLA"
+					},
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string",
+						"maxLength": 500
+					}
+				},
+				"required": [
+					"symbol"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UpdateWatchlistEntryRequest": {
+				"properties": {
+					"targetEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"stopLoss": {
+						"type": "number",
+						"format": "double"
+					},
+					"notes": {
+						"type": "string",
+						"maxLength": 500
+					}
+				},
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"aiConfidence": {
+								"type": "string",
+								"enum": [
+									"LOW",
+									"MEDIUM",
+									"HIGH"
+								]
+							},
+							"aiStopLoss": {
+								"type": "number",
+								"format": "double"
+							},
+							"aiTakeProfit": {
+								"type": "number",
+								"format": "double"
+							},
+							"aiSuggestedEntry": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"aiConfidence",
+							"aiStopLoss",
+							"aiTakeProfit",
+							"aiSuggestedEntry"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"WatchlistAlert": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"watchlistId": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
+						]
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double"
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"watchlistId",
+					"type",
+					"isActive",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistAlert-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WatchlistAlert"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_WatchlistAlert_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/WatchlistAlert"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"CreateAlertRequest": {
+				"properties": {
+					"type": {
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
+						]
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double",
+						"description": "Numeric threshold (for price/percent alerts)"
+					}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Partial_CreateAlertRequest_": {
+				"properties": {
+					"type": {
+						"type": "string",
+						"enum": [
+							"PRICE_ABOVE",
+							"PRICE_BELOW",
+							"PCT_CHANGE_UP",
+							"PCT_CHANGE_DOWN",
+							"ENTRY_ZONE",
+							"STOP_LOSS_BREACHED",
+							"EARNINGS_APPROACHING",
+							"DIVIDEND_APPROACHING",
+							"ANALYST_RATING_CHANGE",
+							"NEWS_PUBLISHED",
+							"SEC_FILING",
+							"AI_SIGNAL_CHANGED"
+						]
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double",
+						"description": "Numeric threshold (for price/percent alerts)"
+					}
+				},
+				"type": "object",
+				"description": "Make all properties in T optional"
+			},
+			"SymbolSearchResult": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"exchange": {
+						"type": "string"
+					},
+					"currency": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol",
+					"description",
+					"type",
+					"exchange"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SymbolSearchResult-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/SymbolSearchResult"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Notification": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"body": {
+						"type": "string"
+					},
+					"read": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"title",
+					"body",
+					"read",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PaginatedResponse_Notification_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"limit": {
+								"type": "number",
+								"format": "double"
+							},
+							"page": {
+								"type": "number",
+								"format": "double"
+							},
+							"total": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/Notification"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"limit",
+							"page",
+							"total",
+							"items"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__count-number__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"count": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"count"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__updated-number__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"updated": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"updated"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__deleted-number__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"deleted": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"deleted"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"NewsArticle": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"headline": {
+						"type": "string"
+					},
+					"summaryBullets": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"url": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"source": {
+						"type": "string"
+					},
+					"publishedAt": {
+						"type": "string"
+					},
+					"relatedSymbols": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"sentiment": {
+						"type": "string",
+						"enum": [
+							"BULLISH",
+							"BEARISH",
+							"NEUTRAL"
+						]
+					},
+					"sentimentScore": {
+						"type": "number",
+						"format": "double"
+					},
+					"category": {
+						"type": "string",
+						"enum": [
+							"EARNINGS",
+							"ANALYST",
+							"FILING",
+							"MERGER",
+							"MACRO",
+							"SECTOR",
+							"GENERAL"
+						]
+					},
+					"isRead": {
+						"type": "boolean"
+					},
+					"isSaved": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id",
+					"headline",
+					"summaryBullets",
+					"url",
+					"source",
+					"publishedAt",
+					"relatedSymbols",
+					"category",
+					"isRead",
+					"isSaved"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PaginatedResponse_NewsArticle_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"limit": {
+								"type": "number",
+								"format": "double"
+							},
+							"page": {
+								"type": "number",
+								"format": "double"
+							},
+							"total": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/NewsArticle"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"limit",
+							"page",
+							"total",
+							"items"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__saved-boolean__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"saved": {
+								"type": "boolean"
+							}
+						},
+						"required": [
+							"saved"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RankedStock": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"change": {
+						"type": "number",
+						"format": "double"
+					},
+					"changePercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"volume": {
+						"type": "number",
+						"format": "double"
+					},
+					"marketCap": {
+						"type": "number",
+						"format": "double"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"logoUrl": {
+						"type": "string"
+					},
+					"rank": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"symbol",
+					"name",
+					"price",
+					"change",
+					"changePercent",
+					"volume",
+					"rank"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_RankedStock-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/RankedStock"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"LivePriceEntry": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"change": {
+						"type": "number",
+						"format": "double"
+					},
+					"changePercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"high": {
+						"type": "number",
+						"format": "double"
+					},
+					"low": {
+						"type": "number",
+						"format": "double"
+					},
+					"open": {
+						"type": "number",
+						"format": "double"
+					},
+					"previousClose": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"symbol",
+					"price",
+					"change",
+					"changePercent",
+					"high",
+					"low",
+					"open",
+					"previousClose"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_LivePriceEntry-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/LivePriceEntry"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"GetLivePricesRequest": {
+				"properties": {
+					"symbols": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"symbols"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"CompanySector": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"industry": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol",
+					"sector"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_CompanySector-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/CompanySector"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"LogoResponse": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"logoUrl": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"symbol",
+					"logoUrl"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_LogoResponse-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/LogoResponse"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"GetLogosBatchRequest": {
+				"properties": {
+					"symbols": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"symbols"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ForecastDataPoint": {
+				"properties": {
+					"date": {
+						"type": "string",
+						"example": "2024-02-15",
+						"format": "date"
+					},
+					"predicted": {
+						"type": "number",
+						"format": "double",
+						"description": "Predicted closing price"
+					},
+					"lower": {
+						"type": "number",
+						"format": "double",
+						"description": "Lower confidence bound"
+					},
+					"upper": {
+						"type": "number",
+						"format": "double",
+						"description": "Upper confidence bound"
+					}
+				},
+				"required": [
+					"date",
+					"predicted"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ForecastMetrics": {
+				"properties": {
+					"mse": {
+						"type": "number",
+						"format": "double"
+					},
+					"rmse": {
+						"type": "number",
+						"format": "double"
+					},
+					"mae": {
+						"type": "number",
+						"format": "double"
+					},
+					"r2": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"mse",
+					"rmse",
+					"mae"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ForecastResult": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"model": {
+						"type": "string",
+						"enum": [
+							"GRU"
+						],
+						"nullable": false
+					},
+					"horizon": {
+						"type": "number",
+						"format": "double"
+					},
+					"forecasts": {
+						"items": {
+							"$ref": "#/components/schemas/ForecastDataPoint"
+						},
+						"type": "array"
+					},
+					"metrics": {
+						"$ref": "#/components/schemas/ForecastMetrics"
+					},
+					"generatedAt": {
+						"type": "string"
+					},
+					"cached": {
+						"type": "boolean",
+						"description": "Cached result — true if served from Redis"
+					}
+				},
+				"required": [
+					"symbol",
+					"model",
+					"horizon",
+					"forecasts",
+					"metrics",
+					"generatedAt",
+					"cached"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_ForecastResult_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/ForecastResult"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ForecastRequest": {
+				"properties": {
+					"symbol": {
+						"type": "string",
+						"example": "AAPL"
+					},
+					"days": {
+						"type": "number",
+						"format": "double",
+						"description": "Forecast horizon in days",
+						"example": 30
+					}
+				},
+				"required": [
+					"symbol"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ForecastHistoryRecord": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"horizon": {
+						"type": "number",
+						"format": "double"
+					},
+					"generatedAt": {
+						"type": "string"
+					},
+					"metrics": {
+						"$ref": "#/components/schemas/ForecastMetrics"
+					}
+				},
+				"required": [
+					"id",
+					"symbol",
+					"horizon",
+					"generatedAt",
+					"metrics"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__items-ForecastHistoryRecord-Array--total-number__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"total": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/ForecastHistoryRecord"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"total",
+							"items"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"DecisionResult": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"marketDecision": {
+						"type": "string",
+						"enum": [
+							"BUY",
+							"SELL",
+							"HOLD"
+						]
+					},
+					"portfolioDecision": {
+						"type": "string",
+						"enum": [
+							"BUY",
+							"SELL",
+							"HOLD",
+							"REDUCE",
+							"INCREASE"
+						]
+					},
+					"confidence": {
+						"type": "number",
+						"format": "double"
+					},
+					"riskLevel": {
+						"type": "string",
+						"enum": [
+							"LOW",
+							"MEDIUM",
+							"HIGH"
+						]
+					},
+					"sector": {
+						"type": "string"
+					},
+					"reasoning": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"exposure": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"actionGuidance": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"symbol",
+					"marketDecision",
+					"portfolioDecision",
+					"confidence",
+					"riskLevel",
+					"reasoning",
+					"exposure",
+					"actionGuidance"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"DecisionRunRecord": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"portfolioId": {
+						"type": "string"
+					},
+					"mode": {
+						"type": "string"
+					},
+					"runAt": {
+						"type": "string"
+					},
+					"results": {
+						"items": {
+							"$ref": "#/components/schemas/DecisionResult"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"portfolioId",
+					"mode",
+					"runAt",
+					"results"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_DecisionRunRecord_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/DecisionRunRecord"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RunDecisionRequest": {
+				"properties": {
+					"portfolioId": {
+						"type": "string"
+					},
+					"mode": {
+						"type": "string",
+						"enum": [
+							"DETAILED",
+							"SUMMARY"
+						]
+					}
+				},
+				"required": [
+					"portfolioId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PortfolioPosition": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					},
+					"avgEntryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"sector": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol",
+					"quantity",
+					"avgEntryPrice"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__positions-PortfolioPosition-Array__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"positions": {
+								"items": {
+									"$ref": "#/components/schemas/PortfolioPosition"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"positions"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PaginatedResponse_DecisionRunRecord_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"limit": {
+								"type": "number",
+								"format": "double"
+							},
+							"page": {
+								"type": "number",
+								"format": "double"
+							},
+							"total": {
+								"type": "number",
+								"format": "double"
+							},
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/DecisionRunRecord"
+								},
+								"type": "array"
+							}
+						},
+						"required": [
+							"limit",
+							"page",
+							"total",
+							"items"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PortfolioSummary": {
+				"properties": {
+					"totalValue": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalCost": {
+						"type": "number",
+						"format": "double"
+					},
+					"unrealizedPnl": {
+						"type": "number",
+						"format": "double"
+					},
+					"unrealizedPnlPercent": {
+						"type": "number",
+						"format": "double"
+					},
+					"positions": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"totalValue",
+					"totalCost",
+					"unrealizedPnl",
+					"unrealizedPnlPercent",
+					"positions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MarketMover": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"change": {
+						"type": "number",
+						"format": "double"
+					},
+					"changePercent": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"symbol",
+					"name",
+					"price",
+					"change",
+					"changePercent"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MarketOverview": {
+				"properties": {
+					"topGainers": {
+						"items": {
+							"$ref": "#/components/schemas/MarketMover"
+						},
+						"type": "array"
+					},
+					"topLosers": {
+						"items": {
+							"$ref": "#/components/schemas/MarketMover"
+						},
+						"type": "array"
+					},
+					"mostActive": {
+						"items": {
+							"$ref": "#/components/schemas/MarketMover"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"topGainers",
+					"topLosers",
+					"mostActive"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ActivityItem": {
+				"properties": {
+					"type": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"timestamp": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"type",
+					"title",
+					"description",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"DashboardSummary": {
+				"properties": {
+					"portfolio": {
+						"$ref": "#/components/schemas/PortfolioSummary"
+					},
+					"market": {
+						"$ref": "#/components/schemas/MarketOverview"
+					},
+					"recentActivity": {
+						"items": {
+							"$ref": "#/components/schemas/ActivityItem"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"portfolio",
+					"market",
+					"recentActivity"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_DashboardSummary_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/DashboardSummary"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_MarketOverview_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/MarketOverview"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MagicLinkRequest": {
+				"properties": {
+					"email": {
+						"type": "string",
+						"example": "investor@stockpros.com",
+						"format": "email"
+					}
+				},
+				"required": [
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UserProfile": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"example": "usr_01j7xyz987"
+					},
+					"email": {
+						"type": "string",
+						"example": "trader@example.com",
+						"format": "email"
+					},
+					"displayName": {
+						"type": "string",
+						"example": "Alex Morgan"
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"country": {
+						"type": "string",
+						"nullable": true
+					},
+					"tradingExperience": {
+						"type": "string",
+						"nullable": true,
+						"example": "INTERMEDIATE"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"nullable": true,
+						"example": "MODERATE"
+					},
+					"isProfileComplete": {
+						"type": "boolean"
+					},
+					"roles": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"displayName",
+					"isProfileComplete",
+					"roles",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AuthTokensResponse": {
+				"properties": {
+					"accessToken": {
+						"type": "string"
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserProfile"
+					}
+				},
+				"required": [
+					"accessToken",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_AuthTokensResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/AuthTokensResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"VerifyMagicLinkRequest": {
+				"properties": {
+					"token": {
+						"type": "string",
+						"example": "d7a46f2c81e94a81b305e54d8b67..."
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"GoogleLoginRequest": {
+				"properties": {
+					"credential": {
+						"type": "string",
+						"description": "Google ID token credential string"
+					}
+				},
+				"required": [
+					"credential"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_UserProfile_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/UserProfile"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"OnboardingRequest": {
+				"properties": {
+					"displayName": {
+						"type": "string",
+						"example": "Jordan Belfort"
+					},
+					"email": {
+						"type": "string",
+						"example": "jordan@example.com",
+						"format": "email"
+					},
+					"onboardingToken": {
+						"type": "string"
+					},
+					"country": {
+						"type": "string",
+						"example": "US"
+					},
+					"tradingExperience": {
+						"type": "string",
+						"enum": [
+							"BEGINNER",
+							"INTERMEDIATE",
+							"ADVANCED"
+						],
+						"example": "ADVANCED"
+					},
+					"preferredSectors": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"enum": [
+							"CONSERVATIVE",
+							"MODERATE",
+							"AGGRESSIVE"
+						],
+						"example": "AGGRESSIVE"
+					}
+				},
+				"required": [
+					"displayName",
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__accessToken-string__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"accessToken": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"accessToken"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UpdateProfileRequest": {
+				"properties": {
+					"displayName": {
+						"type": "string"
+					},
+					"country": {
+						"type": "string"
+					},
+					"tradingExperience": {
+						"type": "string",
+						"enum": [
+							"BEGINNER",
+							"INTERMEDIATE",
+							"ADVANCED"
+						]
+					},
+					"preferredSectors": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"riskTolerance": {
+						"type": "string",
+						"enum": [
+							"CONSERVATIVE",
+							"MODERATE",
+							"AGGRESSIVE"
+						]
+					}
+				},
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__avatarUrl-string__": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"avatarUrl"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Permission": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"action": {
+						"type": "string"
+					},
+					"resourceId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"action",
+					"resourceId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Role": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/Permission"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_Role-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/Role"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_Role_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/Role"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"CreateRoleRequest": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UpdatePermissionsRequest": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"properties": {
+								"canDelete": {
+									"type": "boolean"
+								},
+								"canUpdate": {
+									"type": "boolean"
+								},
+								"canRead": {
+									"type": "boolean"
+								},
+								"canCreate": {
+									"type": "boolean"
+								},
+								"screen": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"screen"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AssignRoleRequest": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"roleId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"roleId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_Permission-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/Permission"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			}
+		},
+		"securitySchemes": {
+			"bearerAuth": {
+				"type": "http",
+				"scheme": "bearer",
+				"bearerFormat": "JWT"
+			},
+			"cookieAuth": {
+				"type": "apiKey",
+				"in": "cookie",
+				"name": "refresh_token"
+			}
+		}
+	},
+	"info": {
+		"title": "StockPros Platform API",
+		"version": "1.0.0",
+		"description": "AI-powered stock forecasting, portfolio analytics, and decision-support platform backend.",
+		"license": {
+			"name": "Private & Proprietary"
+		},
+		"contact": {
+			"name": "StockPros Platform Engineering",
+			"url": "https://stockpros-platform.vercel.app"
+		}
+	},
+	"paths": {
+		"/api/watchlist": {
+			"get": {
+				"operationId": "GetWatchlist",
+				"responses": {
+					"200": {
+						"description": "Watchlist returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistEntry-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get the authenticated user's watchlist with current quotes and AI suggestion data.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "AddToWatchlist",
+				"responses": {
+					"201": {
+						"description": "Symbol added to watchlist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistEntry_"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Symbol already in watchlist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Add a stock symbol to the authenticated user's watchlist.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AddToWatchlistRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/watchlist/{symbol}": {
+			"put": {
+				"operationId": "UpdateEntry",
+				"responses": {
+					"200": {
+						"description": "Watchlist entry updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistEntry_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Symbol not in watchlist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update trade plan fields (target entry, stop-loss, notes) for a watchlist symbol.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateWatchlistEntryRequest"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RemoveFromWatchlist",
+				"responses": {
+					"200": {
+						"description": "Symbol removed from watchlist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Symbol not in watchlist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Remove a symbol from the watchlist.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/watchlist/{symbol}/ai-baseline": {
+			"post": {
+				"operationId": "CalculateAiBaseline",
+				"responses": {
+					"200": {
+						"description": "AI suggestions calculated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Trigger AI suggestion calculation for a watchlist symbol.\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/watchlist/{symbol}/alerts": {
+			"get": {
+				"operationId": "GetAlerts",
+				"responses": {
+					"200": {
+						"description": "Alerts returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all alerts configured for a watchlist symbol.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateAlert",
+				"responses": {
+					"201": {
+						"description": "Alert created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid alert configuration",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new alert for a watchlist symbol.\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateAlertRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/watchlist/{symbol}/alerts/{id}": {
+			"put": {
+				"operationId": "UpdateAlert",
+				"responses": {
+					"200": {
+						"description": "Alert updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_WatchlistAlert_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update an existing alert configuration.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Partial_CreateAlertRequest_"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteAlert",
+				"responses": {
+					"200": {
+						"description": "Alert deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete an alert.",
+				"tags": [
+					"Watchlist"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/search": {
+			"get": {
+				"operationId": "SearchSymbols",
+				"responses": {
+					"200": {
+						"description": "Search results returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SymbolSearchResult-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Search for stock symbols or company names (autocomplete).\nPowered by Finnhub symbol search with US exchange filter by default.",
+				"tags": [
+					"Search"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Search query (e.g. \"Apple\" or \"AAPL\")",
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Exchange filter (default: \"US\")",
+						"in": "query",
+						"name": "exchange",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/notifications": {
+			"get": {
+				"operationId": "GetNotifications",
+				"responses": {
+					"200": {
+						"description": "Notifications returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PaginatedResponse_Notification_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch paginated notifications for the authenticated user, newest first.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "ClearAll",
+				"responses": {
+					"200": {
+						"description": "All notifications cleared",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__deleted-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete all notifications for the authenticated user.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/notifications/unread-count": {
+			"get": {
+				"operationId": "GetUnreadCount",
+				"responses": {
+					"200": {
+						"description": "Unread count returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__count-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get the count of unread notifications for the authenticated user.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/notifications/{id}/read": {
+			"post": {
+				"operationId": "MarkRead",
+				"responses": {
+					"200": {
+						"description": "Notification marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Notification not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a specific notification as read.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/notifications/mark-all-read": {
+			"post": {
+				"operationId": "MarkAllRead",
+				"responses": {
+					"200": {
+						"description": "All notifications marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__updated-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark all notifications as read for the authenticated user.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/notifications/{id}": {
+			"delete": {
+				"operationId": "DeleteNotification",
+				"responses": {
+					"200": {
+						"description": "Notification deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Notification not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete a specific notification.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/news": {
+			"get": {
+				"operationId": "GetNews",
+				"responses": {
+					"200": {
+						"description": "News articles returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PaginatedResponse_NewsArticle_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch a paginated list of financial news articles.\nSupports filtering by symbol, sentiment, category, and full-text search.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "symbol",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "sentiment",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"BULLISH",
+								"BEARISH",
+								"NEUTRAL"
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "category",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/news/{id}/read": {
+			"post": {
+				"operationId": "MarkRead",
+				"responses": {
+					"200": {
+						"description": "Article marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Article not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a news article as read for the authenticated user.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/news/{id}/save": {
+			"post": {
+				"operationId": "ToggleSave",
+				"responses": {
+					"200": {
+						"description": "Save state toggled",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__saved-boolean__"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Article not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Save or unsave a news article (toggle bookmark).",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "Unsave",
+				"responses": {
+					"200": {
+						"description": "Article unsaved",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Article not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Remove a saved article from the user's saved list.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/news/saved": {
+			"get": {
+				"operationId": "GetSaved",
+				"responses": {
+					"200": {
+						"description": "Saved articles returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PaginatedResponse_NewsArticle_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch all saved articles for the authenticated user.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/news/mark-all-read": {
+			"post": {
+				"operationId": "MarkAllRead",
+				"responses": {
+					"200": {
+						"description": "All articles marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__count-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark all unread articles as read.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/market/top-stocks": {
+			"get": {
+				"operationId": "GetTopStocks",
+				"responses": {
+					"200": {
+						"description": "Top stocks returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_RankedStock-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get ranked top US stocks ordered by a composite score (volume, momentum, market cap).\nResults are cached for performance.",
+				"tags": [
+					"Market Data"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Number of stocks to return (1–100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/market/live-prices": {
+			"post": {
+				"operationId": "GetLivePrices",
+				"responses": {
+					"200": {
+						"description": "Live prices returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_LivePriceEntry-Array_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "No symbols provided",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch live quote snapshots for a batch of symbols.\nPulls from the in-memory PriceCache (updated via Finnhub WebSocket) with Yahoo Finance fallback.",
+				"tags": [
+					"Market Data"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GetLivePricesRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/market/company-sectors": {
+			"post": {
+				"operationId": "GetCompanySectors",
+				"responses": {
+					"200": {
+						"description": "Sectors returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_CompanySector-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Resolve company sectors and industry classification for a list of symbols.",
+				"tags": [
+					"Market Data"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"symbols": {
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									}
+								},
+								"required": [
+									"symbols"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/market/logos": {
+			"post": {
+				"operationId": "GetLogos",
+				"responses": {
+					"200": {
+						"description": "Logos returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_LogoResponse-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch cached logo URLs for a batch of symbols. Missing logos fall back to Clearbit.",
+				"tags": [
+					"Market Data"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GetLogosBatchRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/forecast/predict": {
+			"post": {
+				"operationId": "Predict",
+				"responses": {
+					"200": {
+						"description": "Forecast generated successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_ForecastResult_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid symbol or horizon",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "AI service unavailable",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Generate a GRU-based time-series stock price forecast.\nDelegates to the Python AI Service which trains/loads a GRU model on Tiingo OHLCV data.\nResults are cached in Redis to avoid redundant inference.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ForecastRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/forecast/history": {
+			"get": {
+				"operationId": "GetHistory",
+				"responses": {
+					"200": {
+						"description": "Forecast history returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__items-ForecastHistoryRecord-Array--total-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve paginated forecast history for the authenticated user.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/forecast/history/{id}": {
+			"get": {
+				"operationId": "GetHistoryById",
+				"responses": {
+					"200": {
+						"description": "Forecast record returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_ForecastResult_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch a single historical forecast record by ID.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/forecast/{id}/export/csv": {
+			"get": {
+				"operationId": "ExportCsv",
+				"responses": {
+					"200": {
+						"description": "CSV file returned"
+					}
+				},
+				"description": "Export a forecast result as a CSV file.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/decision-support/run": {
+			"post": {
+				"operationId": "RunDecision",
+				"responses": {
+					"200": {
+						"description": "Decision analysis complete",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid portfolio ID",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Run the full multi-factor decision engine for a user's portfolio.\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\nearnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RunDecisionRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/decision-support/portfolio/upload": {
+			"post": {
+				"operationId": "UploadPortfolio",
+				"responses": {
+					"200": {
+						"description": "Portfolio uploaded and parsed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__positions-PortfolioPosition-Array__"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Unsupported file format",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Upload a portfolio CSV or XLSX file for batch position import.\nAccepted columns: symbol, quantity, avgEntryPrice, sector.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/decision-support/history": {
+			"get": {
+				"operationId": "GetHistory",
+				"responses": {
+					"200": {
+						"description": "Decision history returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PaginatedResponse_DecisionRunRecord_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch paginated history of decision runs for the authenticated user.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/decision-support/history/{id}": {
+			"get": {
+				"operationId": "GetHistoryById",
+				"responses": {
+					"200": {
+						"description": "Decision run returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch a single decision run by ID including all per-symbol results.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteHistory",
+				"responses": {
+					"200": {
+						"description": "Decision run deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete a specific decision run record.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dashboard": {
+			"get": {
+				"operationId": "GetDashboard",
+				"responses": {
+					"200": {
+						"description": "Dashboard data returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_DashboardSummary_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\nCombines data from multiple modules for a single-request page load.",
+				"tags": [
+					"Dashboard"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/dashboard/market-overview": {
+			"get": {
+				"operationId": "GetMarketOverview",
+				"responses": {
+					"200": {
+						"description": "Market overview returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_MarketOverview_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get real-time market overview including top gainers, losers, and most active stocks.",
+				"tags": [
+					"Dashboard"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/magic-link": {
+			"post": {
+				"operationId": "SendMagicLink",
+				"responses": {
+					"200": {
+						"description": "Magic link sent",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Send a magic link login email. A one-time link will be emailed to the address.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MagicLinkRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/verify-magic-link": {
+			"post": {
+				"operationId": "VerifyMagicLink",
+				"responses": {
+					"200": {
+						"description": "Magic link verified, tokens issued",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid or expired token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify a magic link token and return JWT access token + session cookie.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyMagicLinkRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/google": {
+			"post": {
+				"operationId": "GoogleLogin",
+				"responses": {
+					"200": {
+						"description": "Google login successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_AuthTokensResponse_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Invalid Google credential",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Authenticate via Google Identity Services (ID token credential).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GoogleLoginRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/onboarding": {
+			"post": {
+				"operationId": "CompleteOnboarding",
+				"responses": {
+					"200": {
+						"description": "Onboarding completed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Complete user onboarding after magic link / OAuth signup.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OnboardingRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/refresh-token": {
+			"post": {
+				"operationId": "Refresh",
+				"responses": {
+					"200": {
+						"description": "Tokens refreshed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__accessToken-string__"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or expired refresh token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Rotate session — exchange a valid refresh_token cookie for a new access token.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"cookieAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/logout": {
+			"post": {
+				"operationId": "Logout",
+				"responses": {
+					"200": {
+						"description": "Logged out successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Invalidate the current session (clears the refresh_token cookie).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/me": {
+			"get": {
+				"operationId": "GetMe",
+				"responses": {
+					"200": {
+						"description": "User profile returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch the authenticated user's full profile including roles and preferences.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/auth/profile": {
+			"put": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Profile updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Partially update the authenticated user's profile.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateProfileRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/avatar": {
+			"post": {
+				"operationId": "UploadAvatar",
+				"responses": {
+					"200": {
+						"description": "Avatar uploaded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__avatarUrl-string__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Upload a profile avatar image (multipart/form-data).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/access-control/roles": {
+			"get": {
+				"operationId": "GetRoles",
+				"responses": {
+					"200": {
+						"description": "Roles returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Role-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "List all defined roles and their associated permissions.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "CreateRole",
+				"responses": {
+					"201": {
+						"description": "Role created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Role_"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Role name already exists",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateRoleRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/access-control/roles/{id}/permissions": {
+			"put": {
+				"operationId": "UpdatePermissions",
+				"responses": {
+					"200": {
+						"description": "Permissions updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Role_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Role not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update screen-level CRUD permissions for a role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdatePermissionsRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/access-control/roles/{id}": {
+			"delete": {
+				"operationId": "DeleteRole",
+				"responses": {
+					"200": {
+						"description": "Role deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Role not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete a role and revoke it from all assigned users.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/access-control/assign": {
+			"post": {
+				"operationId": "AssignRole",
+				"responses": {
+					"200": {
+						"description": "Role assigned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Assign a role to a user.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignRoleRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/access-control/revoke": {
+			"post": {
+				"operationId": "RevokeRole",
+				"responses": {
+					"200": {
+						"description": "Role revoked",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke a role from a user.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignRoleRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/access-control/my-permissions": {
+			"get": {
+				"operationId": "GetMyPermissions",
+				"responses": {
+					"200": {
+						"description": "User's permissions returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Permission-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get the permission matrix for the currently authenticated user.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "https://[object Object]/"
+		}
+	],
+	"tags": [
+		{
+			"name": "Authentication",
+			"description": "User login, OAuth, magic links, session refresh, and onboarding"
+		},
+		{
+			"name": "Access Control (RBAC)",
+			"description": "Role definitions, screen permissions, and user role assignments"
+		},
+		{
+			"name": "Dashboard",
+			"description": "Aggregated metrics, user portfolio summary, and market overview"
+		},
+		{
+			"name": "Decision Support",
+			"description": "AI trade recommendations, portfolio uploads, and risk analysis"
+		},
+		{
+			"name": "AI Forecast",
+			"description": "GRU machine learning stock predictions and time-series projections"
+		},
+		{
+			"name": "Market Data",
+			"description": "Top ranked stocks and real-time equity market data"
+		},
+		{
+			"name": "News",
+			"description": "Financial news feed, sentiment analysis, search, and bookmarks"
+		},
+		{
+			"name": "Notifications",
+			"description": "User notifications, unread counts, and batch actions"
+		},
+		{
+			"name": "Search",
+			"description": "Symbol lookup and company autocomplete"
+		},
+		{
+			"name": "Watchlist",
+			"description": "Tracked symbols, AI baseline calculation, alerts, and position conversion"
+		},
+		{
+			"name": "System",
+			"description": "Platform health and operational readiness"
+		}
+	]
+}

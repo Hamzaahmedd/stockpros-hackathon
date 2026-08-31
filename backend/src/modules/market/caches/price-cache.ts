@@ -15,7 +15,7 @@ export function formatWatchlistItem(entry: {
   aiSuggestionBasis: string | null
   aiComputedAt: Date | null
   createdAt: Date
-  alerts?: WatchlistItemResponse['alerts']
+  alerts?: NonNullable<WatchlistItemResponse['alerts']>
 }): WatchlistItemResponse {
   const hasAiData =
     entry.aiSuggestedEntry !== null &&

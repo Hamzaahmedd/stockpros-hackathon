@@ -2,22 +2,26 @@ import { AppError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
-    finnhubService,
-    formatWatchlistItem,
-    getCompanyLogo,
-    getCurrentPrice,
-    MAX_WATCHLIST_ITEMS,
+  finnhubService,
+  formatWatchlistItem,
+  getCompanyLogo,
+  getCurrentPrice,
+  MAX_WATCHLIST_ITEMS,
 } from '../market'
 import { invalidateAlertCache } from './caches/alert-rule-cache'
-import { evictPortfolioFitEntry, getPortfolioFit, invalidateUserPortfolioFitCache } from './caches/portfolio-fit-cache'
+import {
+  evictPortfolioFitEntry,
+  getPortfolioFit,
+  invalidateUserPortfolioFitCache,
+} from './caches/portfolio-fit-cache'
 import { computeAndStoreAiZones } from './evaluators/ai-zone-calculator'
 import { WatchlistItemResponse } from './types'
 import type {
-    AddToWatchlistInput,
-    ConvertToPositionInput,
-    CreateAlertInput,
-    UpdateAlertInput,
-    UpdateWatchlistInput,
+  AddToWatchlistInput,
+  ConvertToPositionInput,
+  CreateAlertInput,
+  UpdateAlertInput,
+  UpdateWatchlistInput,
 } from './validation'
 
 // ── GET Operations ──

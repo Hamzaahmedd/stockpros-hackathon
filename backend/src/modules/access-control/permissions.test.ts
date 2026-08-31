@@ -5,7 +5,10 @@
  * set of allowed Actions, enforcing the RBAC contract without coupling to
  * the hierarchy's internal data structure.
  */
-import { Action, permissionHierarchy } from '../../modules/access-control/permissions'
+import {
+  Action,
+  permissionHierarchy,
+} from '../../modules/access-control/permissions'
 
 describe('permissionHierarchy', () => {
   it('READ action only implies READ', () => {
@@ -18,21 +21,27 @@ describe('permissionHierarchy', () => {
 
   it('CREATE action implies READ and CREATE', () => {
     const implied = permissionHierarchy[Action.CREATE]
-    expect(implied).toEqual(expect.arrayContaining([Action.READ, Action.CREATE]))
+    expect(implied).toEqual(
+      expect.arrayContaining([Action.READ, Action.CREATE]),
+    )
     expect(implied).not.toContain(Action.UPDATE)
     expect(implied).not.toContain(Action.DELETE)
   })
 
   it('UPDATE action implies READ and UPDATE (not CREATE or DELETE)', () => {
     const implied = permissionHierarchy[Action.UPDATE]
-    expect(implied).toEqual(expect.arrayContaining([Action.READ, Action.UPDATE]))
+    expect(implied).toEqual(
+      expect.arrayContaining([Action.READ, Action.UPDATE]),
+    )
     expect(implied).not.toContain(Action.CREATE)
     expect(implied).not.toContain(Action.DELETE)
   })
 
   it('DELETE action implies READ and DELETE (not CREATE or UPDATE)', () => {
     const implied = permissionHierarchy[Action.DELETE]
-    expect(implied).toEqual(expect.arrayContaining([Action.READ, Action.DELETE]))
+    expect(implied).toEqual(
+      expect.arrayContaining([Action.READ, Action.DELETE]),
+    )
     expect(implied).not.toContain(Action.CREATE)
     expect(implied).not.toContain(Action.UPDATE)
   })

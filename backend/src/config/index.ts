@@ -6,7 +6,8 @@ import { productionConfig } from './production'
 import { testConfig } from './test'
 
 /** Non-sensitive, environment-specific settings defined per config file. */
-export type EnvConfig = typeof developmentConfig | typeof productionConfig | typeof testConfig
+export type EnvConfig =
+  typeof developmentConfig | typeof productionConfig | typeof testConfig
 
 /** Sensitive values sourced exclusively from the process environment. */
 export const readSecrets = (): {
@@ -171,7 +172,7 @@ export const buildConfig = (
     host: env.smtp.host,
     port: env.smtp.port,
     user: secrets.smtpUser,
-    pass: secrets.smtpPass
+    pass: secrets.smtpPass,
   },
   brand: {
     logoUrl: env.brand.logoUrl,
@@ -197,16 +198,24 @@ export const buildConfig = (
 export type AppConfig = ReturnType<typeof buildConfig>
 
 // Secrets required to boot: [env label, Secrets key].
-const REQUIRED_SECRETS: ReadonlyArray<readonly [label: string, key: keyof Secrets]> = [
+const REQUIRED_SECRETS: ReadonlyArray<
+  readonly [label: string, key: keyof Secrets]
+> = [
   ['DATABASE_URL', 'databaseUrl'],
   ['ACCESS_TOKEN_SECRET', 'accessTokenSecret'],
   ['REFRESH_TOKEN_SECRET', 'refreshTokenSecret'],
 ]
 
-const validateConfig = (config: AppConfig, secrets: Secrets, env: 'development' | 'test' | 'production'): void => {
+const validateConfig = (
+  config: AppConfig,
+  secrets: Secrets,
+  env: 'development' | 'test' | 'production',
+): void => {
   if (env === 'test') return
 
-  const missing = REQUIRED_SECRETS.filter(([, key]) => !secrets[key]).map(([label]) => label)
+  const missing = REQUIRED_SECRETS.filter(([, key]) => !secrets[key]).map(
+    ([label]) => label,
+  )
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment secret(s): ${missing.join(', ')}. ` +
@@ -215,7 +224,9 @@ const validateConfig = (config: AppConfig, secrets: Secrets, env: 'development' 
   }
 
   if (!config.database.url) {
-    throw new Error('Invalid configuration: database.url resolved to an empty value.')
+    throw new Error(
+      'Invalid configuration: database.url resolved to an empty value.',
+    )
   }
   if (!Number.isFinite(config.server.port) || config.server.port <= 0) {
     throw new Error(
