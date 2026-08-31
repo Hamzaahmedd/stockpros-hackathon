@@ -56,6 +56,18 @@ const cursorWhere = (cursorDate: Date, cursor: string) => ({
   ],
 })
 
+const resolveFilterSymbols = (
+  filter?: string,
+  symbol?: string,
+  portfolioSymbols?: Set<string>,
+  watchlistSymbols?: Set<string>,
+): string[] | undefined => {
+  if (symbol) return [symbol]
+  if (filter === 'portfolio') return portfolioSymbols ? Array.from(portfolioSymbols) : []
+  if (filter === 'watchlist') return watchlistSymbols ? Array.from(watchlistSymbols) : []
+  return undefined
+}
+
 export const getNewsFeed = async (
   userId: string,
   query: NewsFeedQuery,
@@ -89,17 +101,14 @@ export const getNewsFeed = async (
       .filter((s): s is string => s !== null),
   )
 
-  let symbolFilter: string[] | undefined
-  if (symbol) {
-    symbolFilter = [symbol]
-  } else if (filter === 'portfolio') {
-    symbolFilter = Array.from(portfolioSymbols)
-    if (symbolFilter.length === 0)
-      return { data: [], nextCursor: null, hasMore: false }
-  } else if (filter === 'watchlist') {
-    symbolFilter = Array.from(watchlistSymbols)
-    if (symbolFilter.length === 0)
-      return { data: [], nextCursor: null, hasMore: false }
+  const symbolFilter = resolveFilterSymbols(
+    filter,
+    symbol,
+    portfolioSymbols,
+    watchlistSymbols,
+  )
+  if (symbolFilter?.length === 0) {
+    return { data: [], nextCursor: null, hasMore: false }
   }
 
   const rows = await prisma.newsArticle.findMany({
@@ -115,7 +124,7 @@ export const getNewsFeed = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows[pageRows.length - 1].id : null
+  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
 
   const ranked =
     filter === 'all'
@@ -165,7 +174,7 @@ export const getNewsBySymbol = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows[pageRows.length - 1].id : null
+  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
   const enriched = await enrichArticles(userId, pageRows)
   const result = { data: enriched, nextCursor, hasMore }
 
@@ -198,7 +207,7 @@ export const searchNews = async (
 
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? pageRows[pageRows.length - 1].id : null
+  const nextCursor = hasMore ? pageRows.at(-1)?.id ?? null : null
   const enriched = await enrichArticles(userId, pageRows)
 
   return { data: enriched, nextCursor, hasMore }
@@ -333,7 +342,7 @@ export const getSavedNews = async (
 
   const hasMore = savedRows.length > limit
   const pageRows = hasMore ? savedRows.slice(0, limit) : savedRows
-  const nextCursor = hasMore ? pageRows[pageRows.length - 1].articleId : null
+  const nextCursor = hasMore ? pageRows.at(-1)?.articleId ?? null : null
   const enriched = await enrichArticles(
     userId,
     pageRows.map((r) => r.article),

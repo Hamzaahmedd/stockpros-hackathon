@@ -30,11 +30,13 @@ export const testConfig = {
     host: 'localhost',
     port: 1025,
   },
+  brand: {
+    logoUrl: '',
+  },
   email: {
     useSmtp: true,
     useResend: true,
     resendFrom: 'StockPros Test <test@example.com>',
-    logoUrl: '',
   },
   features: {
     enableNewsCron: false,

@@ -34,9 +34,8 @@ declare global {
 
 const schema = z.object({
   email: z
-    .string()
+    .email("Please enter a valid email address")
     .min(1, "Email is required")
-    .email({ message: "Please enter a valid email address" })
     .trim()
     .toLowerCase(),
 });
@@ -228,11 +227,9 @@ export const Login: React.FC = () => {
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              {resendCooldown > 0
-                ? `Resend link in ${resendCooldown}s`
-                : isSubmitting
-                ? "Resending..."
-                : "Resend email link"}
+              {resendCooldown > 0 && `Resend link in ${resendCooldown}s`}
+              {resendCooldown <= 0 && isSubmitting && "Resending..."}
+              {resendCooldown <= 0 && !isSubmitting && "Resend email link"}
             </Button>
 
             <button
@@ -305,9 +302,7 @@ export const Login: React.FC = () => {
               <span>Sending link...</span>
             </div>
           ) : (
-            <>
-              <span>Continue with email</span>
-            </>
+            <span>Continue with email</span>
           )}
         </Button>
       </form>

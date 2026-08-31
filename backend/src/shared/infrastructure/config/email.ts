@@ -15,11 +15,11 @@ const isDev = config.server.nodeEnv !== 'production'
 const useSmtp = config.email.useSmtp
 const useResend = config.email.useResend
 
-const logoPublicUrl = config.email.logoUrl
+const logoPublicUrl = config.brand.logoUrl
 
 const localLogoPath = path.resolve(
   __dirname,
-  '../../../modules/notifications/email-templates/stockpros-logo.png',
+  '../../assets/stockpros-logo.png',
 )
 
 const readLocalLogo = (): string | undefined => {
@@ -36,12 +36,19 @@ let logoResolved = false
 let cachedLogo: string | undefined
 let inflightLogo: Promise<string | undefined> | null = null
 
-const errorMessage = (err: unknown): string =>
-  err instanceof Error ? err.message : String(err)
+const errorMessage = (err: unknown): string => {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  try {
+    return JSON.stringify(err)
+  } catch {
+    return String(err)
+  }
+}
 
 const getLogoBase64 = (): Promise<string | undefined> => {
   if (logoResolved) return Promise.resolve(cachedLogo)
-  if (inflightLogo) return inflightLogo
+  if (inflightLogo !== null) return inflightLogo
 
   inflightLogo = (async () => {
     if (logoPublicUrl) {
@@ -75,10 +82,10 @@ const resend =
   useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
 // Gmail SMTP transporter — created only when SMTP is enabled and credentials are present.
-// `service: 'gmail'` uses STARTTLS on port 587 automatically; Sonar's S5332 is a false positive here
-// because nodemailer upgrades the connection via STARTTLS before any credentials are sent.
 const smtpTransportOptions = {
-  service: 'gmail', // NOSONAR typescript:S5332 -- STARTTLS is negotiated automatically
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
 }
 

@@ -1,8 +1,7 @@
 import { Router } from 'express'
 import * as DecisionController from './controller'
 import { authTokenMiddleware as authenticate } from '../auth'
-import { Action, Resource } from '../access-control/permissions'
-import { rbacMiddleware } from '../access-control/middleware'
+import { Action, Resource, rbacMiddleware } from '../access-control'
 import { upload } from '../../shared/middlewares'
 
 const router = Router()
@@ -15,10 +14,7 @@ router.get(
   DecisionController.getMarketBasedTradeDecision,
 )
 
-router.get(
-  '/market/radar',
-  DecisionController.getOpportunityRadarHandler,
-)
+router.get('/market/radar', DecisionController.getOpportunityRadarHandler)
 
 router.post(
   '/market/position-size',
@@ -49,6 +45,15 @@ router.get(
   '/portfolio/latest',
   rbacMiddleware(Resource.PORTFOLIO, Action.READ),
   DecisionController.getLatestPortfolio,
+)
+
+// ─── PDF Exports ─────────────────────────────────────────────────────────────
+router.post('/trade-plan/pdf', DecisionController.exportTradePlanPdf)
+
+router.post(
+  '/portfolio/pdf',
+  rbacMiddleware(Resource.PORTFOLIO, Action.READ),
+  DecisionController.exportPortfolioPdf,
 )
 
 export default router
