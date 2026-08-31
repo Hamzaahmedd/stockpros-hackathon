@@ -5,13 +5,12 @@ import { validateOrThrow, ValidationError } from '../../shared/errors'
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
-import { fetchYahooQuote } from '../../shared/infrastructure/clients/yahoo-quote'
 import polygonClient from '../../shared/infrastructure/clients/polygon-client'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import { getPakistanMonth } from '../../shared/utils'
-import { getCompanySectors, getLivePrices } from '../market'
+import { getCompanySectors, getLivePrices, StockQuote } from '../market'
 import { mapPolygonCategory, mapPolygonSentiment } from '../news'
 import { persistDecisionRun } from './repository'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
@@ -182,7 +181,9 @@ export const getMarketDecisionResponse = async (symbol: string) => {
 }
 
 export const getQuote = async (symbol: string) => {
-  const data = await fetchYahooQuote(symbol)
+  const { data } = await finnhubClient.get<StockQuote>(`/quote`, {
+    params: { symbol: symbol },
+  })
   return data
 }
 
@@ -1146,6 +1147,7 @@ export const getOpportunityRadar = async (
         marketCapMoreThan: 10000000000,
       },
     })
+
     if (Array.isArray(data) && data.length > 0) {
       const spusSymbolSet = new Set(SPUS_TOP_50_STOCKS.map((s) => s.symbol))
       const filtered = data
@@ -1157,7 +1159,7 @@ export const getOpportunityRadar = async (
         )
         .slice(0, 30)
         .map((item: any) => ({
-          symbol: item.symbol,
+          symbol: item.symbol.toUpperCase(),
           sector: item.sector,
         }))
 
@@ -1172,23 +1174,58 @@ export const getOpportunityRadar = async (
   }
 
   if (candidates.length === 0) {
-    candidates = SPUS_TOP_50_STOCKS.slice(0, 25)
+    candidates = SPUS_TOP_50_STOCKS.slice(0, 15)
   }
 
-  const topCandidates = candidates.slice(0, 20)
+  const topCandidates = candidates.slice(0, 10)
+  const symbols = topCandidates.map((c) => c.symbol)
 
+  let batchQuotesMap: Record<string, number> = {}
+  try {
+    const symbolsString = symbols.join(',')
+    const { data: batchQuotes } = await fmpClient.get(`/quote/${symbolsString}`)
+
+    if (Array.isArray(batchQuotes)) {
+      batchQuotesMap = batchQuotes.reduce(
+        (acc: Record<string, number>, quote: any) => {
+          if (quote.symbol && quote.price) {
+            acc[quote.symbol.toUpperCase()] = quote.price
+          }
+          return acc
+        },
+        {},
+      )
+    }
+  } catch (err: any) {
+    logger.error(
+      `[getOpportunityRadar] Failed to fetch batch quotes: ${err?.message || err}`,
+    )
+  }
+
+  // 3. Process remaining indicators (ATR & Decisions) with per-symbol fallback
   const results: (RadarCard | null)[] = await Promise.all(
     topCandidates.map(async (cand) => {
       try {
-        const symbol = cand.symbol.toUpperCase()
+        const symbol = cand.symbol
+
+        // Fetch ATR and Market Decision (ensure getATR has internal Redis caching)
         const [marketData, atr] = await Promise.all([
           getUnifiedMarketDecision(symbol),
           getATR(symbol),
         ])
 
-        const currentPrice = marketData.quote?.c || marketData.quote?.pc || 0
+        // Fallback to batch quote price if marketData quote is missing
+        const currentPrice =
+          marketData.quote?.c ||
+          marketData.quote?.pc ||
+          batchQuotesMap[symbol] ||
+          0
+
+        if (currentPrice === 0) return null // Skip invalid records
+
         const targets = computePriceTargets(currentPrice, atr)
         const confidence = marketData.decision.confidence
+
         let confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW'
         if (confidence >= 0.7) {
           confidenceLabel = 'HIGH'
@@ -1220,6 +1257,7 @@ export const getOpportunityRadar = async (
   const validCards = results.filter((r): r is RadarCard => r !== null)
   validCards.sort((a, b) => b.confidence - a.confidence)
 
+  // Cache final radar response
   await setCache(CACHE_KEY, validCards, CACHE_TTL.DECISION_SUPPORT.RADAR)
   return validCards
 }

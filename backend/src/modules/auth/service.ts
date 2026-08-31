@@ -1,10 +1,9 @@
 // Consolidated auth service
 import config from '@/config'
 import { RoleName, UserStatus } from '@prisma/client'
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
-import os from 'os'
 import { uuidv7 } from 'uuidv7'
 import {
   NotFoundError,
@@ -70,6 +69,9 @@ export async function refreshAccessToken(refreshToken: string) {
 
     return accessToken
   } catch (err: unknown) {
+    if (!(err instanceof UnauthorizedError)) {
+      logger.warn(`[Auth] refreshAccessToken failed: ${String(err)}`)
+    }
     throw new UnauthorizedError('Invalid refresh token')
   }
 }
@@ -142,60 +144,6 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
 
 // ─── Passwordless Magic Link Methods ───────────────────────────────────────────
 
-export function getLocalIpAddress(): string | null {
-  try {
-    const interfaces = os.networkInterfaces()
-
-    // Adapter names that are VPN tunnels or virtual/host-only adapters
-    const virtualAdapterNames =
-      /nordlynx|nordvpn|vmware|vmnet|virtualbox|hyper-v|vethernet|tun\d|tap\d|docker|wsl/i
-
-    // IP addresses that indicate virtual/host-only adapters:
-    //   - .1 suffix on 192.168.x.x (usually router gateway or host-only adapter)
-    //   - NordVPN range: 10.5.x.x
-    //   - VirtualBox host-only: 192.168.56.x
-    const isVirtualIp = (addr: string): boolean => {
-      if (/^10\.5\./.test(addr)) return true // NordVPN
-      if (/^192\.168\.56\./.test(addr)) return true // VirtualBox host-only
-      if (/^192\.168\.\d+\.1$/.test(addr)) return true // likely host-only gateway
-      return false
-    }
-
-    // Priority names for real physical Wi-Fi / Ethernet adapters
-    const preferredNames = /^wi-fi|^wifi|^wlan|^wireless/i
-
-    // Pass 1: Preferred physical Wi-Fi adapters only
-    for (const name of Object.keys(interfaces)) {
-      if (virtualAdapterNames.test(name)) continue
-      if (!preferredNames.test(name)) continue
-      for (const iface of interfaces[name] || []) {
-        if (
-          iface.family === 'IPv4' &&
-          !iface.internal &&
-          !isVirtualIp(iface.address)
-        ) {
-          return iface.address
-        }
-      }
-    }
-
-    // Pass 2: Any non-virtual, non-internal IPv4 (Ethernet, etc.)
-    for (const name of Object.keys(interfaces)) {
-      if (virtualAdapterNames.test(name)) continue
-      for (const iface of interfaces[name] || []) {
-        if (
-          iface.family === 'IPv4' &&
-          !iface.internal &&
-          !isVirtualIp(iface.address)
-        ) {
-          return iface.address
-        }
-      }
-    }
-  } catch {}
-  return null
-}
-
 export function resolveFrontendUrl(clientOrigin?: string): string {
   if (config.server.nodeEnv === 'production') {
     if (config.server.frontendUrl) return config.server.frontendUrl
@@ -205,18 +153,7 @@ export function resolveFrontendUrl(clientOrigin?: string): string {
   }
 
   // Development mode: prefer clientOrigin, fallback to config, fallback to localhost
-  let url = clientOrigin || config.server.frontendUrl || 'http://localhost:5173'
-
-  // If the URL is localhost/127.0.0.1, swap it for the local IP address
-  // so the link can be opened from a mobile device on the same Wi-Fi network.
-  if (url.includes('localhost') || url.includes('127.0.0.1')) {
-    const localIp = getLocalIpAddress()
-    if (localIp) {
-      url = url.replace(/localhost|127\.0\.0\.1/, localIp)
-    }
-  }
-
-  return url
+  return clientOrigin || config.server.frontendUrl || 'http://localhost:5173'
 }
 
 export async function generateMagicLink(
@@ -287,6 +224,30 @@ export async function generateMagicLink(
   }
 }
 
+// ─── Helper: diagnose why a magic-link update matched 0 rows ─────────────────
+
+async function diagnoseMagicLinkFailure(
+  tokenHash: string,
+  now: Date,
+): Promise<never> {
+  const existing = await prisma.magicLinkToken.findUnique({
+    where: { tokenHash },
+  })
+
+  if (existing?.isUsed) {
+    throw new UnauthorizedError('This login link has already been used')
+  }
+
+  if (existing && existing.expiresAt <= now) {
+    await prisma.magicLinkToken.deleteMany({ where: { tokenHash } })
+    throw new UnauthorizedError(
+      'This login link has expired. Please request a new one',
+    )
+  }
+
+  throw new UnauthorizedError('Invalid or expired login link')
+}
+
 export async function verifyMagicLink(
   rawToken: string,
   ip: string,
@@ -332,23 +293,7 @@ export async function verifyMagicLink(
 
   // If update count is 0, the token is either invalid, already used, or expired
   if (updateResult.count === 0) {
-    const existing = await prisma.magicLinkToken.findUnique({
-      where: { tokenHash },
-    })
-
-    if (existing) {
-      if (existing.isUsed) {
-        throw new UnauthorizedError('This login link has already been used')
-      }
-      if (existing.expiresAt <= now) {
-        await prisma.magicLinkToken.deleteMany({ where: { tokenHash } })
-        throw new UnauthorizedError(
-          'This login link has expired. Please request a new one',
-        )
-      }
-    }
-
-    throw new UnauthorizedError('Invalid or expired login link')
+    await diagnoseMagicLinkFailure(tokenHash, now)
   }
 
   // 3. Retrieve the token record to get the associated email
@@ -423,7 +368,7 @@ export async function verifyMagicLink(
     }
   }
 
-  if (!user || user.status !== UserStatus.ACTIVE) {
+  if (user?.status !== UserStatus.ACTIVE) {
     throw new UnauthorizedError('Account is inactive or suspended')
   }
 
@@ -547,6 +492,58 @@ export type OnboardingFlowResult =
       refreshToken: string
     }
 
+// ─── Helper: resolve email from a bearer access token ────────────────────────
+
+async function resolveEmailFromBearer(
+  authHeader: string | undefined,
+  resolvedName: string,
+): Promise<{ email: string } | { kind: 'profileUpdated'; user: UserData } | null> {
+  const bearerToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : null
+
+  if (!bearerToken) return null
+
+  try {
+    const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as TokenClaims
+    if (!decoded?.sub) return null
+
+    const updated = await prisma.user.update({
+      where: { id: decoded.sub },
+      data: { displayName: resolvedName },
+      include: { userRoles: { include: { role: true } } },
+    })
+
+    return {
+      kind: 'profileUpdated',
+      user: {
+        userId: updated.id,
+        email: updated.email,
+        displayName: updated.displayName,
+        roleId: updated.userRoles?.[0]?.roleId,
+        status: updated.status,
+      },
+    }
+  } catch {
+    // invalid bearer token — fall through to body email
+    return null
+  }
+}
+
+// ─── Helper: extract email claim from a short-lived onboarding JWT ────────────
+
+function resolveEmailFromOnboardingToken(token: string): string {
+  try {
+    const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as TokenClaims
+    if (payload.type === 'onboarding' && payload.sub) {
+      return payload.sub
+    }
+    throw new UnauthorizedError('Invalid or expired onboarding token')
+  } catch {
+    throw new UnauthorizedError('Invalid or expired onboarding token')
+  }
+}
+
 /** Resolves identity from an onboarding or bearer token, then completes signup or updates the display name. */
 export async function completeOnboardingFlow(params: {
   onboardingToken?: string
@@ -563,69 +560,27 @@ export async function completeOnboardingFlow(params: {
 
   let email: string | undefined
 
-  if (params.onboardingToken && typeof params.onboardingToken === 'string') {
-    try {
-      const payload = jwt.verify(
-        params.onboardingToken,
-        ACCESS_TOKEN_SECRET,
-      ) as TokenClaims
-      if (payload.type === 'onboarding' && payload.sub) {
-        email = payload.sub
-      }
-    } catch {
-      throw new UnauthorizedError('Invalid or expired onboarding token')
-    }
+  if (params.onboardingToken) {
+    email = resolveEmailFromOnboardingToken(params.onboardingToken)
   }
 
-  // Bearer access token implies the user already exists and is only setting a display name.
   if (!email) {
-    const bearerToken = params.authHeader?.startsWith('Bearer ')
-      ? params.authHeader.substring(7)
-      : null
-    if (bearerToken) {
-      try {
-        const decoded = jwt.verify(
-          bearerToken,
-          ACCESS_TOKEN_SECRET,
-        ) as TokenClaims
-        if (decoded?.sub) {
-          const updated = await prisma.user.update({
-            where: { id: decoded.sub },
-            data: { displayName: resolvedName },
-            include: { userRoles: { include: { role: true } } },
-          })
+    const bearerResult = await resolveEmailFromBearer(params.authHeader, resolvedName)
 
-          return {
-            kind: 'profileUpdated',
-            user: {
-              userId: updated.id,
-              email: updated.email,
-              displayName: updated.displayName,
-              roleId: updated.userRoles?.[0]?.roleId,
-              status: updated.status,
-            },
-          }
-        }
-      } catch {
-        // invalid bearer token — fall through to body email
-      }
+    if (bearerResult && 'kind' in bearerResult) {
+      return bearerResult as OnboardingFlowResult
     }
 
-    if (params.emailFromBody && typeof params.emailFromBody === 'string') {
-      email = params.emailFromBody
-    }
+    email =
+      (bearerResult && 'email' in bearerResult ? bearerResult.email : undefined) ??
+      (typeof params.emailFromBody === 'string' ? params.emailFromBody : undefined)
   }
 
   if (!email) {
     throw new ValidationError('Onboarding token or authentication is required')
   }
 
-  const result = await completeOnboarding(
-    email,
-    resolvedName,
-    params.ip,
-    params.userAgent,
-  )
+  const result = await completeOnboarding(email, resolvedName, params.ip, params.userAgent)
   return { kind: 'signupCompleted', ...result }
 }
 

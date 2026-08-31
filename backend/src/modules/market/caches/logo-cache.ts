@@ -1,4 +1,4 @@
-import { fetchYahooCompanyLogo } from '@/shared/infrastructure/clients/yahoo-quote'
+import finnhubClient from '@/shared/infrastructure/clients/finnhub-client'
 import { logger } from '../../../shared/infrastructure/logger'
 import { LogoCacheEntry } from '../types'
 import { CACHE_TTL } from '../../../shared/constants'
@@ -11,7 +11,13 @@ export const fetchAndCacheLogo = async (
   symbol: string,
 ): Promise<string | null> => {
   try {
-    const logo = await fetchYahooCompanyLogo(symbol)
+    const { data } = await finnhubClient.get<{
+      logo: string
+    }>(`/stock/profile2`, {
+      params: { symbol },
+    })
+
+    const logo = data.logo || null
     logoCache.set(symbol, {
       logo,
       timestamp: Date.now(),

@@ -15,7 +15,7 @@ export function formatWatchlistItem(entry: {
   aiSuggestionBasis: string | null
   aiComputedAt: Date | null
   createdAt: Date
-  alerts?: WatchlistItemResponse['alerts']
+  alerts?: NonNullable<WatchlistItemResponse['alerts']>
 }): WatchlistItemResponse {
   const hasAiData =
     entry.aiSuggestedEntry !== null &&
@@ -52,7 +52,7 @@ export function formatWatchlistItem(entry: {
   }
 }
 
-import { fetchYahooQuote } from '../../../shared/infrastructure/clients/yahoo-quote'
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import type { PriceCacheEntry } from '../types'
 import { CACHE_TTL } from '../../../shared/constants'
 
@@ -102,7 +102,13 @@ export const updatePriceCache = (
 export const fetchAndCacheQuote = async (
   symbol: string,
 ): Promise<PriceCacheEntry> => {
-  const data = await fetchYahooQuote(symbol)
+  const { data } = await finnhubClient.get<{
+    c: number // current price
+    dp: number // percent change
+    v: number // volume (not always present)
+  }>(`/quote`, {
+    params: { symbol },
+  })
 
   const entry: PriceCacheEntry = {
     price: data.c,

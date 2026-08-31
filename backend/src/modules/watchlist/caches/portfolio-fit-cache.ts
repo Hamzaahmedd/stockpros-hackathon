@@ -1,4 +1,4 @@
-import { fetchYahooSector } from '../../../shared/infrastructure/clients/yahoo-quote'
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { prisma } from '../../../shared/infrastructure/database'
 import { logger } from '../../../shared/infrastructure/logger'
 import { getCurrentPrice } from '../../market'
@@ -29,15 +29,19 @@ const isStale = (
   return drift > PRICE_DRIFT_THRESHOLD
 }
 
-// ─── Yahoo Finance Profile ────────────────────────────────────────────────────
+// ─── Finnhub Profile ──────────────────────────────────────────────────────────
 
 /**
- * Fetch the sector for a symbol via Yahoo Finance.
+ * Fetch the sector for a symbol via Finnhub GET /stock/profile2.
  * Returns 'Unknown' on failure so the rest of the computation still runs.
  */
 const fetchSector = async (symbol: string): Promise<string> => {
   try {
-    return await fetchYahooSector(symbol)
+    const { data } = await finnhubClient.get<{ finnhubIndustry?: string }>(
+      `/stock/profile2`,
+      { params: { symbol } },
+    )
+    return data.finnhubIndustry || 'Unknown'
   } catch (err) {
     logger.error(`[PortfolioFit] Failed to fetch sector for ${symbol}`, err)
     return 'Unknown'
