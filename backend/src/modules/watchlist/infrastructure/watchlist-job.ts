@@ -141,45 +141,43 @@ export const runDividendAlertJob = async (): Promise<void> => {
   logger.info('[CronJob] Running dividend alert job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = new Set(entries.map((e) => e.symbol))
+    const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
     const now = new Date()
     const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
 
-    await Promise.all(
-      [...symbols].map(async (symbol) => {
-        try {
-          const { data } = await finnhubClient.get<
-            Array<{ symbol: string; exDate: string }>
-          >(`/stock/dividend`, {
-            params: { symbol },
-          })
+    for (const symbol of symbols) {
+      try {
+        const { data } = await finnhubClient.get<
+          Array<{ symbol: string; exDate: string }>
+        >(`/stock/dividend`, {
+          params: { symbol },
+        })
 
-          const hasUpcoming = (data ?? []).some((d) => {
-            const exDate = new Date(d.exDate)
-            return exDate >= now && exDate <= in3Days
-          })
+        const hasUpcoming = (data ?? []).some((d) => {
+          const exDate = new Date(d.exDate)
+          return exDate >= now && exDate <= in3Days
+        })
 
-          if (!hasUpcoming) return
-
+        if (hasUpcoming) {
           const symbolEntries = entries.filter((e) => e.symbol === symbol)
           for (const entry of symbolEntries) {
             if (
-              !(await hasActiveAlert(entry.watchlistId, 'DIVIDEND_APPROACHING'))
-            )
-              continue
-            await fireEventAlert(
-              entry.watchlistId,
-              entry.userId,
-              symbol,
-              'DIVIDEND_APPROACHING',
-              0,
-            )
+              await hasActiveAlert(entry.watchlistId, 'DIVIDEND_APPROACHING')
+            ) {
+              await fireEventAlert(
+                entry.watchlistId,
+                entry.userId,
+                symbol,
+                'DIVIDEND_APPROACHING',
+                0,
+              )
+            }
           }
-        } catch (err) {
-          logger.error(`[CronJob] Dividend fetch failed for ${symbol}`, err)
         }
-      }),
-    )
+      } catch (err) {
+        logger.error(`[CronJob] Dividend fetch failed for ${symbol}`, err)
+      }
+    }
   } catch (err) {
     logger.error('[CronJob] Dividend alert job failed:', err)
   }
@@ -197,72 +195,70 @@ export const runDividendAlertJob = async (): Promise<void> => {
  * use AlertLog frequency — if no log exists for this symbol in the last
  * 24 hours, we treat the latest record as potentially new.
  */
+const processAnalystRatingEntry = async (
+  entry: { symbol: string; userId: string; watchlistId: string },
+  oneDayAgo: Date,
+): Promise<void> => {
+  if (!(await hasActiveAlert(entry.watchlistId, 'ANALYST_RATING_CHANGE'))) {
+    return
+  }
+
+  const alert = await prisma.watchlistAlert.findFirst({
+    where: {
+      watchlistId: entry.watchlistId,
+      type: 'ANALYST_RATING_CHANGE',
+    },
+  })
+  if (!alert) return
+
+  const recentLog = await prisma.alertLog.findFirst({
+    where: { alertId: alert.id, firedAt: { gte: oneDayAgo } },
+    orderBy: { firedAt: 'desc' },
+  })
+  if (recentLog) return // already fired today
+
+  await fireEventAlert(
+    entry.watchlistId,
+    entry.userId,
+    entry.symbol,
+    'ANALYST_RATING_CHANGE',
+    0,
+  )
+}
+
 export const runAnalystRatingJob = async (): Promise<void> => {
   logger.info('[CronJob] Running analyst rating job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = new Set(entries.map((e) => e.symbol))
+    const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-    await Promise.all(
-      [...symbols].map(async (symbol) => {
-        try {
-          const { data } = await finnhubClient.get<
-            Array<{
-              period: string
-              strongBuy: number
-              buy: number
-              hold: number
-            }>
-          >(`/stock/recommendation`, {
-            params: { symbol },
-          })
+    for (const symbol of symbols) {
+      try {
+        const { data } = await finnhubClient.get<
+          Array<{
+            period: string
+            strongBuy: number
+            buy: number
+            hold: number
+          }>
+        >(`/stock/recommendation`, {
+          params: { symbol },
+        })
 
-          if (!data || data.length === 0) return
+        if (!data || data.length === 0) continue
 
-          // Delta check: has any user's ANALYST_RATING_CHANGE alert for this
-          // symbol fired in the last 24 hours? If yes, skip (already notified).
-          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-          const symbolEntries = entries.filter((e) => e.symbol === symbol)
-
-          for (const entry of symbolEntries) {
-            if (
-              !(await hasActiveAlert(
-                entry.watchlistId,
-                'ANALYST_RATING_CHANGE',
-              ))
-            )
-              continue
-
-            const alert = await prisma.watchlistAlert.findFirst({
-              where: {
-                watchlistId: entry.watchlistId,
-                type: 'ANALYST_RATING_CHANGE',
-              },
-            })
-            if (!alert) continue
-
-            const recentLog = await prisma.alertLog.findFirst({
-              where: { alertId: alert.id, firedAt: { gte: oneDayAgo } },
-              orderBy: { firedAt: 'desc' },
-            })
-            if (recentLog) continue // already fired today
-
-            await fireEventAlert(
-              entry.watchlistId,
-              entry.userId,
-              symbol,
-              'ANALYST_RATING_CHANGE',
-              0,
-            )
-          }
-        } catch (err) {
-          logger.error(
-            `[CronJob] Analyst rating fetch failed for ${symbol}:`,
-            err,
-          )
+        const symbolEntries = entries.filter((e) => e.symbol === symbol)
+        for (const entry of symbolEntries) {
+          await processAnalystRatingEntry(entry, oneDayAgo)
         }
-      }),
-    )
+      } catch (err) {
+        logger.error(
+          `[CronJob] Analyst rating fetch failed for ${symbol}:`,
+          err,
+        )
+      }
+    }
   } catch (err) {
     logger.error('[CronJob] Analyst rating job failed:', err)
   }
@@ -284,46 +280,44 @@ export const runNewsAlertJob = async (): Promise<void> => {
   logger.info('[CronJob] Running news alert job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = new Set(entries.map((e) => e.symbol))
+    const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
     const now = new Date()
     const from = new Date(now.getTime() - 30 * 60 * 1000) // last 30 min
     const fromStr = from.toISOString().split('T')[0]
     const toStr = now.toISOString().split('T')[0]
 
-    await Promise.all(
-      [...symbols].map(async (symbol) => {
-        try {
-          const { data } = await finnhubClient.get<
-            Array<{ id: number; datetime: number; headline: string }>
-          >(`/company-news`, {
-            params: { symbol, from: fromStr, to: toStr },
-          })
+    for (const symbol of symbols) {
+      try {
+        const { data } = await finnhubClient.get<
+          Array<{ id: number; datetime: number; headline: string }>
+        >(`/company-news`, {
+          params: { symbol, from: fromStr, to: toStr },
+        })
 
-          if (!data || data.length === 0) return
+        if (!data || data.length === 0) continue
 
-          // Filter to articles published in the last 30 minutes
-          const recentArticles = data.filter(
-            (a) => a.datetime * 1000 >= from.getTime(),
+        // Filter to articles published in the last 30 minutes
+        const recentArticles = data.filter(
+          (a) => a.datetime * 1000 >= from.getTime(),
+        )
+        if (recentArticles.length === 0) continue
+
+        const symbolEntries = entries.filter((e) => e.symbol === symbol)
+        for (const entry of symbolEntries) {
+          if (!(await hasActiveAlert(entry.watchlistId, 'NEWS_PUBLISHED')))
+            continue
+          await fireEventAlert(
+            entry.watchlistId,
+            entry.userId,
+            symbol,
+            'NEWS_PUBLISHED',
+            0,
           )
-          if (recentArticles.length === 0) return
-
-          const symbolEntries = entries.filter((e) => e.symbol === symbol)
-          for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'NEWS_PUBLISHED')))
-              continue
-            await fireEventAlert(
-              entry.watchlistId,
-              entry.userId,
-              symbol,
-              'NEWS_PUBLISHED',
-              0,
-            )
-          }
-        } catch (err) {
-          logger.error(`[CronJob] News fetch failed for ${symbol}`, err)
         }
-      }),
-    )
+      } catch (err) {
+        logger.error(`[CronJob] News fetch failed for ${symbol}`, err)
+      }
+    }
   } catch (err) {
     logger.error('[CronJob] News alert job failed:', err)
   }
@@ -340,43 +334,41 @@ export const runSecFilingJob = async (): Promise<void> => {
   logger.info('[CronJob] Running SEC filing job')
   try {
     const entries = await getWatchedSymbolsWithUsers()
-    const symbols = new Set(entries.map((e) => e.symbol))
+    const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
 
-    await Promise.all(
-      [...symbols].map(async (symbol) => {
-        try {
-          const { data } = await finnhubClient.get<{
-            data: Array<{ filedDate: string; form: string }>
-          }>(`/stock/filings`, {
-            params: { symbol },
-          })
+    for (const symbol of symbols) {
+      try {
+        const { data } = await finnhubClient.get<{
+          data: Array<{ filedDate: string; form: string }>
+        }>(`/stock/filings`, {
+          params: { symbol },
+        })
 
-          if (!data?.data || data.data.length === 0) return
+        if (!data?.data || data.data.length === 0) continue
 
-          const latestFiling = data.data[0]
-          const filedDate = new Date(latestFiling.filedDate)
-          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const latestFiling = data.data[0]
+        const filedDate = new Date(latestFiling.filedDate)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-          // Only fire if the most recent filing was within the last day
-          if (filedDate < oneDayAgo) return
+        // Only fire if the most recent filing was within the last day
+        if (filedDate < oneDayAgo) continue
 
-          const symbolEntries = entries.filter((e) => e.symbol === symbol)
-          for (const entry of symbolEntries) {
-            if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING')))
-              continue
-            await fireEventAlert(
-              entry.watchlistId,
-              entry.userId,
-              symbol,
-              'SEC_FILING',
-              0,
-            )
-          }
-        } catch (err) {
-          logger.error(`[CronJob] SEC filing fetch failed for ${symbol}`, err)
+        const symbolEntries = entries.filter((e) => e.symbol === symbol)
+        for (const entry of symbolEntries) {
+          if (!(await hasActiveAlert(entry.watchlistId, 'SEC_FILING')))
+            continue
+          await fireEventAlert(
+            entry.watchlistId,
+            entry.userId,
+            symbol,
+            'SEC_FILING',
+            0,
+          )
         }
-      }),
-    )
+      } catch (err) {
+        logger.error(`[CronJob] SEC filing fetch failed for ${symbol}`, err)
+      }
+    }
   } catch (err) {
     logger.error('[CronJob] SEC filing job failed:', err)
   }

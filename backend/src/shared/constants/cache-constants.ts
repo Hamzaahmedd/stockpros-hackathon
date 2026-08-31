@@ -15,7 +15,7 @@ export const CACHE_TTL = {
 
   /** Real-Time Market Data, Quotes, and Asset Metadata */
   MARKET: {
-    TOP_STOCKS_QUOTE: 30, // 30 seconds
+    TOP_STOCKS_QUOTE: 120, // 2 minutes
     REST_PRICE_MS: 60 * 1000, // 60,000 milliseconds (1 minute in-memory fallback)
     LOGO_URL_MS: 24 * 60 * 60 * 1000, // 24 hours in-memory
     SECTOR_LOOKUP: 60 * 60 * 24, // 24 hours (86,400 seconds)
