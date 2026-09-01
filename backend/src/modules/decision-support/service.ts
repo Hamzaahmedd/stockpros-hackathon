@@ -188,11 +188,16 @@ export const getQuote = async (symbol: string) => {
 }
 
 export const getMarketStatus = async () => {
-  const { data } = await finnhubClient.get(`/stock/market-status`, {
+  const CACHE_KEY = 'market:status:us'
+  const cached = await getCache<string>(CACHE_KEY)
+  if (cached) return cached
+
+  const { data } = await finnhubClient.get('/stock/market-status', {
     params: { exchange: 'US' },
   })
-  let marketStatus = 'CLOSED'
-  if (data.isOpen) marketStatus = 'OPEN'
+  const marketStatus = data.isOpen ? 'OPEN' : 'CLOSED'
+
+  await setCache(CACHE_KEY, marketStatus, CACHE_TTL.DECISION_SUPPORT.MARKET_STATUS)
   return marketStatus
 }
 

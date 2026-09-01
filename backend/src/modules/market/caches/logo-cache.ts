@@ -1,27 +1,24 @@
-import finnhubClient from '@/shared/infrastructure/clients/finnhub-client'
-import { logger } from '../../../shared/infrastructure/logger'
-import { LogoCacheEntry } from '../types'
+import { getCache, setCache } from '../../../shared/infrastructure/cache'
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { CACHE_TTL } from '../../../shared/constants'
+import { logger } from '../../../shared/infrastructure/logger'
 
-const LOGO_CACHE_TTL_MS = CACHE_TTL.MARKET.LOGO_URL_MS // 24 hours
+const LOGO_CACHE_TTL_SECONDS = Math.floor(CACHE_TTL.MARKET.LOGO_URL_MS / 1000) // 24 h
+const LOGO_CACHE_PREFIX = 'market:logo:'
 
-export const logoCache = new Map<string, LogoCacheEntry>()
-
-export const fetchAndCacheLogo = async (
-  symbol: string,
-): Promise<string | null> => {
+/**
+ * Fetch a company logo URL from Finnhub and persist it in Redis.
+ * Returns null if the API call fails or returns no logo.
+ */
+const fetchAndCacheLogo = async (symbol: string): Promise<string | null> => {
   try {
-    const { data } = await finnhubClient.get<{
-      logo: string
-    }>(`/stock/profile2`, {
-      params: { symbol },
-    })
+    const { data } = await finnhubClient.get<{ logo: string }>(
+      '/stock/profile2',
+      { params: { symbol } },
+    )
 
-    const logo = data.logo || null
-    logoCache.set(symbol, {
-      logo,
-      timestamp: Date.now(),
-    })
+    const logo = data.logo ?? null
+    await setCache(`${LOGO_CACHE_PREFIX}${symbol}`, logo, LOGO_CACHE_TTL_SECONDS)
     return logo
   } catch (err) {
     logger.error(`[LogoCache] Failed to fetch logo for ${symbol}`, err)
@@ -29,14 +26,17 @@ export const fetchAndCacheLogo = async (
   }
 }
 
-export const getCompanyLogo = async (
-  symbol: string,
-): Promise<string | null> => {
-  const cached = logoCache.get(symbol)
+/**
+ * Return the logo URL for a given symbol.
+ * Reads from Redis first (24-hour TTL); falls back to a Finnhub REST call only
+ * on a cache miss. This replaces the old in-memory Map that was lost on restart.
+ */
+export const getCompanyLogo = async (symbol: string): Promise<string | null> => {
+  const cached = await getCache<string | null>(`${LOGO_CACHE_PREFIX}${symbol}`)
 
-  if (cached && Date.now() - cached.timestamp < LOGO_CACHE_TTL_MS) {
-    return cached.logo
+  if (cached !== null && cached !== undefined) {
+    return cached
   }
 
-  return await fetchAndCacheLogo(symbol)
+  return fetchAndCacheLogo(symbol)
 }

@@ -34,11 +34,13 @@ export const CACHE_TTL = {
     RADAR: 4 * 60 * 60, // 4 hours (14,400 seconds)
     ATR: 60 * 60, // 1 hour (3,600 seconds)
     PORTFOLIO_BETAS: 4 * 60 * 60, // 4 hours (14,400 seconds)
+    MARKET_STATUS: 5 * 60, // 5 minutes (300 seconds) — changes at most once per trading session
   },
 
   /** Consolidated User Dashboard Metrics & Aggregations */
   DASHBOARD: {
     SECTOR_SUMMARY: 60 * 60, // 1 hour (3,600 seconds)
+    WATCHLIST_PRICE_MS: 30 * 1000, // 30,000 milliseconds (30 seconds in-memory)
   },
 
   /** Symbol Lookup & Autocomplete Search */
