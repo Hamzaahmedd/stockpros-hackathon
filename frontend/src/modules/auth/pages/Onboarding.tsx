@@ -98,7 +98,7 @@ const ALERT_OPTIONS: AlertOption[] = [
 ];
 
 export const Onboarding: React.FC = () => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,9 +112,12 @@ export const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { user, refreshMe } = useAuth();
 
+  const storedGoogleName =
+    typeof window !== "undefined" ? sessionStorage.getItem("onboarding_display_name") : null;
+
   const { register, handleSubmit, formState, getValues, setValue } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { displayName: user?.displayName || "" },
+    defaultValues: { displayName: user?.displayName || storedGoogleName || "" },
   });
 
   const toggleTopic = (topicName: string) => {
@@ -159,9 +162,12 @@ export const Onboarding: React.FC = () => {
       setError(null);
 
       const onboardingToken = sessionStorage.getItem("onboarding_token");
-      const displayNameValue = getValues("displayName") || user?.displayName || "Trader";
+      const displayNameValue = getValues("displayName") || user?.displayName || storedGoogleName || "Trader";
 
-      // If we have an onboarding token, complete the initial auth registration
+      if (storedGoogleName) {
+        sessionStorage.removeItem("onboarding_display_name");
+      }
+
       if (onboardingToken) {
         const response = await api.post("/api/v1/auth/onboarding", {
           displayName: displayNameValue,
@@ -171,10 +177,10 @@ export const Onboarding: React.FC = () => {
         if (response.data?.accessToken) {
           setAccessToken(response.data.accessToken);
         }
+
         sessionStorage.removeItem("onboarding_token");
       }
 
-      // Persist preferences locally so news & dashboard can instantly personalize
       const finalTopics = skipAll ? ["AI & Tech", "Growth Stocks"] : selectedTopics;
       const finalSymbols = skipAll ? ["NVDA", "AAPL", "MSFT"] : selectedSymbols;
       const finalAlerts = skipAll ? ["in_app", "daily_digest"] : selectedAlerts;
@@ -182,7 +188,6 @@ export const Onboarding: React.FC = () => {
       localStorage.setItem("stockpros_market_interests", JSON.stringify(finalTopics));
       localStorage.setItem("stockpros_alert_preferences", JSON.stringify(finalAlerts));
 
-      // Populate initial watchlist
       if (finalSymbols.length > 0) {
         await Promise.all(
           finalSymbols.map((symbol) =>
@@ -219,10 +224,6 @@ export const Onboarding: React.FC = () => {
       title: "Alert Preferences",
       subtitle: "Choose how you want market intelligence and volatility alerts delivered.",
     },
-    4: {
-      title: "Your Dashboard is Ready!",
-      subtitle: "Your personalized terminal view has been prepared.",
-    },
   };
 
   return (
@@ -231,21 +232,20 @@ export const Onboarding: React.FC = () => {
       title={titles[step].title}
       subtitle={titles[step].subtitle}
     >
-      {/* 4-Step Progress Bar */}
+      {/* 3-Step Progress Bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          <span>Step {step} of 4</span>
+          <span>Step {step} of 3</span>
           <span className="text-cyan-400 font-mono">
             {step === 1 && "Interests & Identity"}
             {step === 2 && "Watchlist & AI"}
-            {step === 3 && "Alerts"}
-            {step === 4 && "Launch"}
+            {step === 3 && "Launch"}
           </span>
         </div>
         <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 transition-all duration-500"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
       </div>
@@ -453,9 +453,45 @@ export const Onboarding: React.FC = () => {
         </div>
       )}
 
-      {/* ─── SCREEN 3: Alert Preferences ──────────────────────────────────────── */}
+      {/* ─── SCREEN 3: Alert Preferences + Launch ───────────────────────────── */}
       {step === 3 && (
         <div className="space-y-5">
+          <div className="rounded-2xl border border-cyan-500/30 bg-slate-950/80 p-4 space-y-3 shadow-xl shadow-cyan-950/20">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Configuration Complete</p>
+                <p className="text-xs text-slate-400">Your AI market workspace is primed.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="text-slate-400">Market Interests:</span>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {selectedTopics.map((t) => (
+                    <span key={t} className="rounded-md bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 text-cyan-300 font-medium">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-400">Starter Watchlist:</span>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {selectedSymbols.map((s) => (
+                    <span key={s} className="rounded-md bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 text-emerald-300 font-mono font-bold">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-3">
             {ALERT_OPTIONS.map((opt) => {
               const active = selectedAlerts.includes(opt.id);
@@ -516,11 +552,21 @@ export const Onboarding: React.FC = () => {
               </button>
               <Button
                 type="button"
-                onClick={() => setStep(4)}
+                onClick={() => finishOnboarding(false)}
+                disabled={loading}
                 className="flex-1 h-11 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2"
               >
-                <span>Review & Finish</span>
-                <ArrowRight className="w-4 h-4" />
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-4 h-4 rounded-full bg-white/30" />
+                    <span>Launching...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span>Go to Dashboard</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </Button>
             </div>
 
@@ -530,93 +576,6 @@ export const Onboarding: React.FC = () => {
               className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition py-1"
             >
               Skip for now
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── SCREEN 4: Ready / Go to Dashboard ─────────────────────────────────── */}
-      {step === 4 && (
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-cyan-500/30 bg-slate-950/80 p-5 space-y-4 shadow-xl shadow-cyan-950/20">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">Configuration Complete</p>
-                <p className="text-xs text-slate-400">Your AI market workspace is primed.</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-slate-400">Market Interests:</span>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {selectedTopics.length > 0 ? (
-                    selectedTopics.map((t) => (
-                      <span key={t} className="rounded-md bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 text-cyan-300 font-medium">
-                        {t}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-slate-500 italic">None selected (Default market overview)</span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-slate-400">Starter Watchlist:</span>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {selectedSymbols.length > 0 ? (
-                    selectedSymbols.map((s) => (
-                      <span key={s} className="rounded-md bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 text-emerald-300 font-mono font-bold">
-                        {s}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-slate-500 italic">Default index tickers</span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-slate-400">Alert Channels:</span>
-                <p className="text-white font-medium mt-0.5">
-                  {selectedAlerts.length > 0
-                    ? selectedAlerts.map((a) => (a === "in_app" ? "In-App Alerts" : a === "email_alerts" ? "Email Volatility" : "Daily Digest")).join(" • ")
-                    : "Muted"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <Button
-              type="button"
-              onClick={() => finishOnboarding(false)}
-              disabled={loading}
-              className="w-full h-12 bg-gradient-to-r from-blue-700 via-cyan-600 to-emerald-500 hover:from-blue-600 hover:via-cyan-500 hover:to-emerald-400 text-white font-bold text-base shadow-lg shadow-cyan-950/50 border border-cyan-400/40 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Skeleton className="w-4 h-4 rounded-full bg-white/30" />
-                  <span>Launching Terminal...</span>
-                </div>
-              ) : (
-                <>
-                  <span>🚀 Go to Dashboard</span>
-                </>
-              )}
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => setStep(3)}
-              disabled={loading}
-              className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition py-1"
-            >
-              Modify preferences
             </button>
           </div>
         </div>

@@ -1,22 +1,22 @@
 // Consolidated auth service
 import config from '@/config'
 import { RoleName, UserStatus } from '@prisma/client'
-import crypto from 'node:crypto'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
+import crypto from 'node:crypto'
 import { uuidv7 } from 'uuidv7'
 import {
-  NotFoundError,
-  UnauthorizedError,
-  ValidationError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
 } from '../../shared/errors'
 import { transporter } from '../../shared/infrastructure/config/email'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
-  convertToMilliseconds,
-  signToken,
-  verifyRefreshToken,
+    convertToMilliseconds,
+    signToken,
+    verifyRefreshToken,
 } from '../../shared/utils'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
 import { enqueueAuthEmail } from '../notifications/public'
@@ -590,12 +590,28 @@ export async function googleLogin(
   idToken: string,
   ip: string,
   userAgent: string,
-): Promise<{ user: UserData; accessToken: string; refreshToken: string }> {
+): Promise<
+  | {
+      requiresOnboarding: true
+      onboardingToken: string
+      defaultDisplayName: string
+      user: null
+      accessToken: null
+      refreshToken: null
+    }
+  | {
+      requiresOnboarding: false
+      user: UserData
+      accessToken: string
+      refreshToken: string
+      onboardingToken?: undefined
+      defaultDisplayName?: undefined
+    }
+> {
   if (!GOOGLE_CLIENT_ID) {
     throw new UnauthorizedError('Google login is not configured on the server')
   }
 
-  // 1. Verify the ID token issued by Google Identity Services
   let payload
   try {
     const ticket = await googleOAuthClient.verifyIdToken({
@@ -612,56 +628,35 @@ export async function googleLogin(
   }
 
   const email = payload.email.toLowerCase().trim()
-  const displayName = (payload.name || email.split('@')[0]).trim()
+  const defaultDisplayName = (payload.name || email.split('@')[0]).trim()
 
-  // 2. Find existing user by email
   let user = await prisma.user.findUnique({
     where: { email },
     include: {
       userRoles: {
-        include: {
-          role: true,
-        },
+        include: { role: true },
       },
     },
   })
 
-  // 3. New user — create account and assign default ANALYST role
   if (!user) {
-    user = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email,
-          displayName,
-          status: UserStatus.ACTIVE,
-        },
-      })
+    const onboardingToken = signToken(
+      { sub: email, type: 'onboarding' },
+      ACCESS_TOKEN_SECRET,
+      '15m',
+    )
 
-      const analystRole = await tx.role.findFirst({
-        where: { name: RoleName.ANALYST },
-      })
+    return {
+      requiresOnboarding: true,
+      onboardingToken,
+      defaultDisplayName,
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+    }
+  }
 
-      if (analystRole) {
-        await tx.userRole.create({
-          data: {
-            userId: createdUser.id,
-            roleId: analystRole.id,
-            assignedById: createdUser.id,
-          },
-        })
-      }
-
-      return tx.user.findUniqueOrThrow({
-        where: { id: createdUser.id },
-        include: {
-          userRoles: {
-            include: { role: true },
-          },
-        },
-      })
-    })
-  } else if (user.userRoles.length === 0) {
-    // Existing user has no roles — assign default ANALYST role
+  if (user.userRoles.length === 0) {
     const analystRole = await prisma.role.findFirst({
       where: { name: RoleName.ANALYST },
     })
@@ -678,11 +673,7 @@ export async function googleLogin(
       user = (await prisma.user.findUnique({
         where: { id: user.id },
         include: {
-          userRoles: {
-            include: {
-              role: true,
-            },
-          },
+          userRoles: { include: { role: true } },
         },
       }))!
     }
@@ -692,9 +683,7 @@ export async function googleLogin(
     throw new UnauthorizedError('Account is inactive or suspended')
   }
 
-  // 4. Generate session tokens (same flow as magic link login)
   const { accessToken, refreshToken, jti } = await generateTokens(user.id)
-
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
@@ -709,6 +698,7 @@ export async function googleLogin(
   })
 
   return {
+    requiresOnboarding: false,
     user: {
       userId: user.id,
       email: user.email,

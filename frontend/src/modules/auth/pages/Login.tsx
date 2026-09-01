@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
-import { Input } from "../components/Input";
-import { Button } from "../components/Button";
-import { useNavigate } from "react-router-dom";
-import { AuthLayout } from "../components/AuthLayout";
-import { Mail, RefreshCw, CheckCircle2, ShieldCheck } from "lucide-react";
-import { toast } from "react-toastify";
 import api from "@/shared/api/axios";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { GOOGLE_CLIENT_ID } from "@/shared/config";
 import { setAccessToken } from "@/shared/utils/token";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckCircle2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { z } from "zod";
+import { AuthLayout } from "../components/AuthLayout";
+import { Button } from "../components/Button";
+import { Input } from "../components/Input";
 import { googleLogin } from "../services";
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
@@ -122,7 +122,17 @@ export const Login: React.FC = () => {
       setIsGoogleLoading(true);
       try {
         const response = await googleLogin(credential);
-        const accessToken = response.data?.accessToken;
+        const { requiresOnboarding, onboardingToken, defaultDisplayName, accessToken } = response.data || {};
+
+        if (requiresOnboarding && onboardingToken) {
+          sessionStorage.setItem("onboarding_token", onboardingToken);
+          if (defaultDisplayName) {
+            sessionStorage.setItem("onboarding_display_name", defaultDisplayName);
+          }
+          toast.success("Welcome! Let’s finish setting up your profile.");
+          navigate("/auth/onboarding", { replace: true });
+          return;
+        }
 
         if (!accessToken) {
           toast.error("Google sign-in failed. Please try again.");
@@ -139,7 +149,7 @@ export const Login: React.FC = () => {
         setIsGoogleLoading(false);
       }
     },
-    [refreshMe]
+    [navigate, refreshMe]
   );
 
   // Initialize Google Identity Services and render the official sign-in button
