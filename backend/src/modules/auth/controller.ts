@@ -1,21 +1,21 @@
 import config from '@/config'
 import { NextFunction, Request, Response } from 'express'
 import {
-  NotFoundError,
-  UnauthorizedError,
-  validateOrThrow,
-  ValidationError,
+    NotFoundError,
+    UnauthorizedError,
+    validateOrThrow,
+    ValidationError,
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
 import { convertToMilliseconds, getUserId } from '../../shared/utils'
 import {
-  completeOnboardingFlow,
-  fetchMe,
-  generateMagicLink,
-  googleLogin as googleLoginService,
-  logoutUser,
-  refreshAccessToken,
-  verifyMagicLink,
+    completeOnboardingFlow,
+    fetchMe,
+    generateMagicLink,
+    googleLogin as googleLoginService,
+    logoutUser,
+    refreshAccessToken,
+    verifyMagicLink,
 } from './service'
 import { AuthenticatedRequest } from './types'
 import { emailValidator, googleLoginValidator } from './validation'
@@ -221,6 +221,16 @@ export const googleLogin = async (
       req.headers['user-agent'] || 'Unknown',
     )
 
+    if (loginResult.requiresOnboarding) {
+      return res.status(200).json({
+        success: true,
+        message: 'Onboarding required to complete Google registration',
+        requiresOnboarding: true,
+        onboardingToken: loginResult.onboardingToken,
+        defaultDisplayName: loginResult.defaultDisplayName,
+      })
+    }
+
     const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(
       config.auth.refreshTokenExpiry,
     )
@@ -234,6 +244,7 @@ export const googleLogin = async (
       .json({
         success: true,
         message: 'Login successful via Google',
+        requiresOnboarding: false,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
       })

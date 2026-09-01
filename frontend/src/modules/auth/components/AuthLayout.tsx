@@ -8,6 +8,9 @@ interface AuthLayoutProps {
   loading?: boolean;
 }
 
+export const NON_ADVISORY_NOTICE =
+  'StockPros outputs are informational and educational only. They are based on market data, portfolio inputs, and model signals and do not constitute personalized financial, legal, tax, or fiduciary advice.';
+
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ 
   children, 
   title, 
@@ -83,6 +86,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
 
           {children}
+
+          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+            {NON_ADVISORY_NOTICE}
+          </div>
         </div>
       </div>
     </div>
