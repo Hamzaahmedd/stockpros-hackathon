@@ -40,6 +40,7 @@ export const CACHE_TTL = {
   /** Consolidated User Dashboard Metrics & Aggregations */
   DASHBOARD: {
     SECTOR_SUMMARY: 60 * 60, // 1 hour (3,600 seconds)
+    WATCHLIST_PRICE_MS: 30 * 1000, // 30,000 milliseconds (30 seconds in-memory)
   },
 
   /** Symbol Lookup & Autocomplete Search */

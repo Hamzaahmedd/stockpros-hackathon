@@ -7,12 +7,7 @@ export const DASHBOARD_SMART_TRIGGER_LIMIT = 10
 export const DASHBOARD_IMPACT_NEWS_LIMIT = 5
 export const OVEREXPOSURE_THRESHOLD = 30 // % — matches watchlist spec
 
-/**
- * How long (ms) fetched watchlist prices are considered fresh within a single
- * dashboard request. Prevents the same symbol being hit 3× across
- * buildBriefing / computeHealthScore / buildSmartTriggers.
- */
-export const DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS = 30 * 1000 // 30 seconds
+export const DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS = CACHE_TTL.DASHBOARD.WATCHLIST_PRICE_MS
 
 export const HEALTH_SCORE_WEIGHTS = {
   diversification: 0.25,
