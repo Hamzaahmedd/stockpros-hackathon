@@ -7,6 +7,7 @@ import {
   DASHBOARD_SECTOR_CACHE_KEY,
   DASHBOARD_SECTOR_CACHE_TTL,
   DASHBOARD_SMART_TRIGGER_LIMIT,
+  DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS,
   HEALTH_SCORE_WEIGHTS,
   OVEREXPOSURE_THRESHOLD,
 } from './constants'
@@ -30,11 +31,47 @@ import { getLatestDecisionRun } from '../decision-support'
 import type { RankedStockRow } from '../market'
 import { getCurrentPrice, getRankedTopStocks } from '../market'
 
+/** Shape of a pre-fetched watchlist price entry passed between dashboard builders. */
+type WatchlistPriceMap = Map<string, { price: number; changePercent: number }>
+
+/**
+ * Fetches live prices for every watchlist symbol belonging to a user in a single
+ * pass, de-duplicating calls across buildBriefing / computeHealthScore /
+ * buildSmartTriggers. Results are valid for DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS.
+ */
+const fetchWatchlistPriceMap = async (
+  userId: string,
+): Promise<WatchlistPriceMap> => {
+  const watchlistItems = await prisma.watchlist.findMany({
+    where: { userId },
+    select: { symbol: true },
+  })
+
+  const priceMap: WatchlistPriceMap = new Map()
+  const uniqueSymbols = [...new Set(watchlistItems.map((w) => w.symbol))]
+
+  await Promise.all(
+    uniqueSymbols.map(async (symbol) => {
+      try {
+        const priceData = await getCurrentPrice(symbol)
+        if (priceData) priceMap.set(symbol, priceData)
+      } catch (err) {
+        logger.warn(
+          `[Dashboard] Price fetch failed for ${symbol}: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }),
+  )
+
+  return priceMap
+}
+
 // ─── Briefing ─────────────────────────────────────────────────────────────────
 
 const buildBriefing = async (
   userId: string,
   displayName: string,
+  priceMap: WatchlistPriceMap,
 ): Promise<DashboardBriefing> => {
   const hour = getPakistanHour()
   const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
@@ -97,13 +134,11 @@ const buildBriefing = async (
     }
   }
 
-  // Portfolio alert section — watchlist signals
-  const symbolsWithPrice = await Promise.all(
-    watchlistItems.map(async (item) => {
-      const priceData = await getCurrentPrice(item.symbol)
-      return { ...item, currentPrice: priceData?.price ?? null }
-    }),
-  )
+  // Portfolio alert section — uses pre-fetched priceMap (no extra API calls)
+  const symbolsWithPrice = watchlistItems.map((item) => ({
+    ...item,
+    currentPrice: priceMap.get(item.symbol)?.price ?? null,
+  }))
 
   const stopLossBreaches = symbolsWithPrice.filter(
     (item) =>
@@ -173,6 +208,7 @@ const computeHealthScore = async (
   }>,
   lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
   totalValue: number,
+  priceMap: WatchlistPriceMap,
 ): Promise<HealthScore> => {
   // Diversification — penalty for any sector > 30%
   const sectorMap = new Map<string, number>()
@@ -214,18 +250,16 @@ const computeHealthScore = async (
     )
   }
 
-  // Alert health — penalty for stop loss breaches
+  // Alert health — penalty for stop loss breaches (uses pre-fetched priceMap)
   const watchlistItems = await prisma.watchlist.findMany({
     where: { userId },
     select: { symbol: true, stopLoss: true, targetEntryPrice: true },
   })
-  const breachCount = await Promise.all(
-    watchlistItems.map(async (item) => {
-      if (!item.stopLoss) return false
-      const priceData = await getCurrentPrice(item.symbol)
-      return priceData && priceData.price <= item.stopLoss
-    }),
-  ).then((results) => results.filter(Boolean).length)
+  const breachCount = watchlistItems.filter((item) => {
+    if (!item.stopLoss) return false
+    const priceData = priceMap.get(item.symbol)
+    return priceData !== undefined && priceData.price <= item.stopLoss
+  }).length
 
   const alertHealthScore = Math.max(0, 100 - breachCount * 20)
 
@@ -347,6 +381,7 @@ const buildPortfolioSection = async (
     positions,
     lastRun,
     totalCost,
+    new Map(), // positions use portfolio prices fetched above, not watchlist prices
   )
 
   return {
@@ -477,6 +512,7 @@ const buildImpactNews = async (
 
 const buildSmartTriggers = async (
   userId: string,
+  priceMap: WatchlistPriceMap,
 ): Promise<{ items: SmartTrigger[]; totalCount: number }> => {
   const [watchlistItems, portfolios] = await Promise.all([
     prisma.watchlist.findMany({
@@ -514,9 +550,9 @@ const buildSmartTriggers = async (
 
   const triggers: SmartTrigger[] = []
 
-  // Price-based triggers from priceCache
+  // Price-based triggers — uses pre-fetched priceMap (no extra API calls)
   for (const item of watchlistItems) {
-    const priceData = await getCurrentPrice(item.symbol)
+    const priceData = priceMap.get(item.symbol)
     if (!priceData) continue
 
     const { price, changePercent } = priceData
@@ -635,7 +671,7 @@ const buildSmartTriggers = async (
     const position = positionMap.get(symbol)
     let context = ''
     if (position) {
-      const priceData = await getCurrentPrice(symbol)
+      const priceData = priceMap.get(symbol)
       if (priceData) {
         const pnlPct = (
           ((priceData.price - position.avgEntryPrice) /
@@ -870,7 +906,12 @@ export const getDashboard = async (
   })
   if (!user) throw new NotFoundError('User not found')
 
-  const lastRun = await getLatestDecisionRun(userId)
+  // Fetch all watchlist prices ONCE — shared by buildBriefing, computeHealthScore,
+  // and buildSmartTriggers to eliminate the N×3 duplicate Finnhub call pattern.
+  const [lastRun, watchlistPriceMap] = await Promise.all([
+    getLatestDecisionRun(userId),
+    fetchWatchlistPriceMap(userId),
+  ])
 
   const [
     briefing,
@@ -880,10 +921,10 @@ export const getDashboard = async (
     sectorHeatmap,
     trendingStocks,
   ] = await Promise.all([
-    buildBriefing(userId, user.displayName),
+    buildBriefing(userId, user.displayName, watchlistPriceMap),
     buildPortfolioSection(userId, lastRun),
     buildImpactNews(userId),
-    buildSmartTriggers(userId),
+    buildSmartTriggers(userId, watchlistPriceMap),
     buildSectorHeatmap(userId),
     buildTrendingStocks(),
   ])

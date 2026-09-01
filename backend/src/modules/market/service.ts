@@ -4,6 +4,7 @@ import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { getCompanyLogo } from './caches/logo-cache'
+import { priceCache } from './caches/price-cache'
 import {
   FinnhubProfile,
   FmpMostActiveItem,
@@ -71,17 +72,33 @@ export async function getLivePrices(
   symbols: string[],
 ): Promise<Record<string, number>> {
   const priceMap: Record<string, number> = {}
+  const cacheTtlSeconds = Math.floor(CACHE_TTL.MARKET.REST_PRICE_MS / 1000)
 
   for (const symbol of symbols) {
+    // 1. Check in-memory WebSocket price cache (zero latency, no API call)
+    const memEntry = priceCache.get(symbol)
+    if (memEntry && Date.now() - memEntry.timestamp < CACHE_TTL.MARKET.REST_PRICE_MS) {
+      priceMap[symbol] = memEntry.price
+      continue
+    }
+
+    // 2. Check Redis cache before hitting Finnhub
+    const cacheKey = `live_price:${symbol}`
+    const cached = await getCache<number>(cacheKey)
+    if (cached !== null && cached !== undefined) {
+      priceMap[symbol] = cached
+      continue
+    }
+
+    // 3. Fallback to Finnhub REST — only on full cache miss
     try {
       const response = await finnhubClient.get<StockQuote>(`/quote`, {
-        params: {
-          symbol,
-        },
+        params: { symbol },
       })
 
       const currentPrice = response.data?.c ?? 0
       priceMap[symbol] = currentPrice
+      await setCache(cacheKey, currentPrice, cacheTtlSeconds)
     } catch (error) {
       logger.error(`Failed to fetch price for ${symbol}`, error)
       priceMap[symbol] = 0
@@ -90,6 +107,7 @@ export async function getLivePrices(
 
   return priceMap
 }
+
 
 export async function getCompanySectors(
   symbols: string[],
@@ -125,4 +143,3 @@ export async function getCompanySectors(
 
   return sectorMap
 }
-
