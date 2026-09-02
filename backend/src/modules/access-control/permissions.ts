@@ -10,9 +10,8 @@ export enum Resource {
   ROLE = 'role',
 }
 
-export const permissionHierarchy: Record<Action, Action[]> = {
-  [Action.CREATE]: [Action.READ, Action.CREATE],
-  [Action.READ]: [Action.READ],
-  [Action.UPDATE]: [Action.READ, Action.UPDATE],
-  [Action.DELETE]: [Action.READ, Action.DELETE],
+export type Authority = `${Uppercase<string>}:${Uppercase<string>}`
+
+export function toAuthority(resource: string, action: string): Authority {
+  return `${resource.toUpperCase()}:${action.toUpperCase()}` as Authority
 }

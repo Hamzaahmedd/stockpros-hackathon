@@ -9,17 +9,11 @@ const SystemOverview = () => {
     const { theme } = useTheme();
     let { resources, permissions, roles, users, loading, refresh } = useRBAC();
 
-    // Filter permissions to only include CREATE and READ globally for this page
-    permissions = permissions.filter(p =>
-        ['CREATE', 'READ'].includes(p.action.toUpperCase())
-    );
-
     // Group permissions by resource
     const getResourceActions = (resourceId: string) => {
         return permissions
             .filter(p => p.resourceId === resourceId)
-            .map(p => p.action.toUpperCase())
-            .filter(action => ['CREATE', 'READ'].includes(action));
+            .map(p => p.action.toUpperCase());
     };
 
     return (

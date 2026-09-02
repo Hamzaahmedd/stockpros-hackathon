@@ -14,7 +14,7 @@ export const VerifyMagicLink = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const navigate = useNavigate();
-  const { refreshMe } = useAuth();
+  const { can, refreshMe } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -60,19 +60,7 @@ export const VerifyMagicLink = () => {
             return;
           }
 
-          const roles =
-            user.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
-            user.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
-            [];
-
-          const isAdmin = roles.includes("ADMIN");
-          const isPortfolioManager =
-            roles.includes("PORTFOLIO_MANAGER") ||
-            roles.includes("PORTFOLIO MANAGER") ||
-            roles.includes("PORTFOLIO");
-          const isAnalyst =
-            roles.includes("ANALYST") || roles.includes("ANALYST_ROLE") || roles.includes("ANALYST ROLE");
-          const isAdminOnly = isAdmin && !isPortfolioManager && !isAnalyst;
+          const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
 
           if (isAdminOnly) {
             navigate("/access-control/users", { replace: true });
@@ -89,7 +77,7 @@ export const VerifyMagicLink = () => {
     };
 
     verify();
-  }, [token, navigate, refreshMe]);
+  }, [token, can, navigate, refreshMe]);
 
   if (error) {
     return (

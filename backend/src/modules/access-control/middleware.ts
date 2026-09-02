@@ -1,10 +1,9 @@
 import { Response, NextFunction } from 'express'
 import { AuthenticatedRequest } from '../auth'
-import { Action, Resource } from './permissions'
 import { ForbiddenError } from '../../shared/errors'
 import { checkPermission } from './service'
 
-export function rbacMiddleware(resource: Resource, action: Action) {
+export function rbacMiddleware(resource: string, action: string) {
   return async (
     req: AuthenticatedRequest,
     res: Response,

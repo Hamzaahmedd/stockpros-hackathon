@@ -44,7 +44,7 @@ type Form = z.infer<typeof schema>;
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { loading, user, refreshMe } = useAuth();
+  const { loading, user, can, refreshMe } = useAuth();
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -62,19 +62,7 @@ export const Login: React.FC = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      const roles =
-        user.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) ||
-        user.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) ||
-        [];
-
-      const isAdmin = roles.includes("ADMIN");
-      const isPortfolioManager =
-        roles.includes("PORTFOLIO_MANAGER") ||
-        roles.includes("PORTFOLIO MANAGER") ||
-        roles.includes("PORTFOLIO");
-      const isAnalyst =
-        roles.includes("ANALYST") || roles.includes("ANALYST_ROLE") || roles.includes("ANALYST ROLE");
-      const isAdminOnly = isAdmin && !isPortfolioManager && !isAnalyst;
+      const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
 
       if (isAdminOnly) {
         navigate("/access-control/users", { replace: true });
@@ -82,7 +70,7 @@ export const Login: React.FC = () => {
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [user, navigate]);
+  }, [user, can, navigate]);
 
   // Resend cooldown timer
   useEffect(() => {
