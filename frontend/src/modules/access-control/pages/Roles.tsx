@@ -12,9 +12,7 @@ import type { Resource, Role, RolePermission } from "../types";
 
 const Roles = () => {
     const { theme } = useTheme();
-    const { can, user } = useAuth();
-    const userRoleList = user?.userRoles?.map((ur: any) => ur.role?.name?.toUpperCase()) || [];
-    const isAdmin = userRoleList.includes("ADMIN") || user?.email === "hamzahmed30333@gmail.com";
+    const { can } = useAuth();
     const [roles, setRoles] = useState<Role[]>([]);
     const [resources, setResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,12 +54,9 @@ const Roles = () => {
 
             if (permsRes.data?.success || permsRes.data?.data) {
                 const fetchedPerms = permsRes.data.data || permsRes.data;
-                const filteredPerms = Array.isArray(fetchedPerms)
-                    ? fetchedPerms.filter((p: any) => ['create', 'read'].includes(p.action.toLowerCase()))
-                    : [];
-                setAllSystemPermissions(filteredPerms);
+                setAllSystemPermissions(Array.isArray(fetchedPerms) ? fetchedPerms : []);
             } else if (Array.isArray(permsRes.data)) {
-                setAllSystemPermissions(permsRes.data.filter((p: any) => ['create', 'read'].includes(p.action.toLowerCase())));
+                setAllSystemPermissions(permsRes.data);
             }
         } catch (err) {
             console.error("Error fetching data:", err);
@@ -109,13 +104,6 @@ const Roles = () => {
             // Fetch all permissions to build the matrix AND current assignments
             const permsRes = await api.get("/api/v1/rbac/permissions");
             let allPerms = permsRes.data?.data || permsRes.data;
-
-            // Filter to only include create and read
-            if (Array.isArray(allPerms)) {
-                allPerms = allPerms.filter((p: any) =>
-                    ['create', 'read'].includes(p.action.toLowerCase())
-                );
-            }
 
             // Update all system permissions in case they changed
             setAllSystemPermissions(allPerms);
@@ -167,26 +155,10 @@ const Roles = () => {
                 // Unchecking
                 newActions = newActions.filter(a => a !== action);
 
-                // LOGIC: If 'read' is unchecked, all other actions for this resource must be cleared.
-                if (action.toLowerCase() === "read") {
-                    newActions = [];
-                }
             } else {
                 // Checking
                 newActions.push(action);
 
-                // LOGIC: If any action other than 'read' is checked, force 'read' to be checked as well (if it's not already)
-                if (action.toLowerCase() !== "read") {
-                    if (!newActions.includes("read")) {
-                        // We check if "read" is a valid action for this resource by looking at allSystemPermissions
-                        const hasReadOption = allSystemPermissions.some(p =>
-                            (p.resource?.name === resourceName) && p.action.toLowerCase() === "read"
-                        );
-                        if (hasReadOption) {
-                            newActions.push("read");
-                        }
-                    }
-                }
             }
 
             return {
@@ -245,7 +217,7 @@ const Roles = () => {
                             </div>
                         </div>
 
-                        {(isAdmin || can('ROLE', 'canCreate')) && (
+                        {can('ROLE', 'canCreate') && (
                             <Button
                                 onClick={() => setIsAddRoleModalOpen(true)}
                                 className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]"
@@ -304,7 +276,7 @@ const Roles = () => {
 
                                             {/* Actions */}
                                             <div className="text-right flex justify-end gap-2">
-                                                {(isAdmin || can('ROLE', 'canUpdate')) && (
+                                                {can('ROLE', 'canUpdate') && (
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
@@ -424,8 +396,7 @@ const Roles = () => {
                                     {resources.map((resource) => {
                                         const availableActions = allSystemPermissions
                                             .filter(p => p.resourceId === resource.id || p.resource?.name === resource.name)
-                                            .map(p => p.action)
-                                            .filter(a => ['create', 'read'].includes(a.toLowerCase()));
+                                            .map(p => p.action);
 
                                         return (
                                             <div key={resource.id} className="border border-border rounded-lg p-5 flex items-center justify-between group transition-all duration-300 bg-muted/20 hover:border-primary/30">

@@ -58,8 +58,7 @@ const formatNumber = (val: number | null, prefix = "", suffix = "") => {
 
 const Watchlist: React.FC = () => {
   const { theme } = useTheme();
-  const { user } = useAuth();
-  const isAnalyst = user?.userRoles?.some((ur: any) => ur.role?.name === "ANALYST");
+  const { can } = useAuth();
   const { connected, subscribe, unsubscribe, getTradeMap } = useSocket(true);
   const tradeMap = getTradeMap();
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -490,7 +489,7 @@ const Watchlist: React.FC = () => {
                    {/* Actions */}
                   <div className="flex flex-row lg:flex-col justify-between items-center lg:items-stretch py-2 border-t lg:border-t-0 lg:border-l-2 pt-4 lg:pt-0 lg:pl-10 gap-4 border-border">
                     <div className="flex flex-col gap-2">
-                      {!isAnalyst && (
+                      {can("PORTFOLIO", "canCreate") && (
                         <button 
                           onClick={() => handleConvertToPosition(item.symbol)}
                           className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition lg:whitespace-nowrap"

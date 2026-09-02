@@ -9,7 +9,6 @@ import type { Role, AccessControlUser as User } from "../types";
 const Users = () => {
   const { can, user, refreshMe } = useAuth();
   const userRoleList = user?.userRoles?.map((ur: any) => ur.role?.name?.toUpperCase()) || [];
-  const isAdmin = userRoleList.includes("ADMIN") || user?.email === "hamzahmed30333@gmail.com";
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -210,7 +209,7 @@ const Users = () => {
                       </div>
 
                       <div className="text-right">
-                        {(isAdmin || can('ROLE', 'canCreate')) && (
+                        {can('ROLE', 'canCreate') && (
                           <button
                             className="px-4 py-1.5 text-[10px] font-bold border border-border rounded-md bg-secondary hover:bg-secondary/80 transition-all uppercase tracking-wider"
                             onClick={() => openEditModal(user)}

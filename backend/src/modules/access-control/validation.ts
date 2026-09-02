@@ -1,4 +1,4 @@
-import { Resource, Action } from './permissions'
+import { Action } from './permissions'
 import z from 'zod'
 
 const ALL_CAPS_SNAKE_CASE_REGEX = /^[A-Z0-9_]+$/
@@ -27,8 +27,8 @@ export const assignPermissionsValidator = z.object({
   permissions: z
     .array(
       z.object({
-        resourceName: z.nativeEnum(Resource),
-        actions: z.array(z.nativeEnum(Action)),
+        resourceName: z.string().trim().min(1, 'Resource name is required'),
+        actions: z.array(z.string().trim().min(1, 'Permission name is required')),
       }),
     )
     .nonempty(),
@@ -52,11 +52,7 @@ export const assignActionsValidator = z.object({
       z.object({
         name: z.string().min(1, 'Resource name is required'),
         actions: z
-          .array(
-            z.nativeEnum(Action, {
-              required_error: 'At least one action is required',
-            }),
-          )
+          .array(z.string().trim().min(1, 'Permission name is required'))
           .nonempty('At least one action must be provided'),
       }),
     )

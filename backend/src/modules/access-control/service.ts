@@ -12,7 +12,7 @@ import {
 } from './types'
 import { RoleName } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
-import { Action, Resource, permissionHierarchy } from './permissions'
+import { Action, Resource, toAuthority } from './permissions'
 import {
   deleteCache,
   getCache,
@@ -104,16 +104,8 @@ export async function unassignRole(params: RevokeRoleParams) {
       throw new NotFoundError('roleId, revokedByUserId, or userId not found')
     }
 
-    const revokerHasAdminRole = await tx.userRole.findFirst({
-      where: {
-        userId: revokedByUserId,
-        role: { name: RoleName.ADMIN },
-      },
-      include: { role: true },
-    })
-
-    if (!revokerHasAdminRole) {
-      throw new UnauthorizedError('Only admins can revoke roles')
+    if (!(await checkPermission(revokedByUserId, Resource.ROLE, Action.DELETE))) {
+      throw new UnauthorizedError('Missing ROLE:DELETE authority')
     }
 
     const userRole = await tx.userRole.findFirst({
@@ -143,10 +135,16 @@ export async function createRole(params: CreateRoleParams) {
 export async function assignPermissions(params: AssignPermissionsParams) {
   const { roleId, permissions } = params
 
-  const [role, existingResources] = await Promise.all([
+  const [role, existingResources, existingPermissions] = await Promise.all([
     prisma.role.findUnique({ where: { id: roleId } }),
     prisma.resource.findMany({
       where: { name: { in: permissions.map((p) => p.resourceName) } },
+    }),
+    prisma.permission.findMany({
+      where: {
+        resource: { name: { in: permissions.map((p) => p.resourceName) } },
+      },
+      select: { action: true, resourceId: true },
     }),
   ])
 
@@ -166,24 +164,20 @@ export async function assignPermissions(params: AssignPermissionsParams) {
     if (!resourceId)
       throw new NotFoundError(`Resource ${p.resourceName} not found`)
 
-    let actions = [...p.actions]
+    return p.actions.map((action) => {
+      const exists = existingPermissions.some(
+        (permission) =>
+          permission.resourceId === resourceId && permission.action === action,
+      )
 
-    const hasModifyingActions = actions.some((a) =>
-      [Action.CREATE, Action.UPDATE, Action.DELETE].includes(a as Action),
-    )
+      if (!exists) {
+        throw new NotFoundError(
+          `Permission ${toAuthority(p.resourceName, action)} is not defined for this resource`,
+        )
+      }
 
-    if (hasModifyingActions && !actions.includes(Action.READ)) {
-      actions.push(Action.READ)
-    }
-
-    if (!actions.includes(Action.READ)) {
-      return []
-    }
-
-    return actions.map((action) => ({
-      action: action as Action,
-      resourceId,
-    }))
+      return { action, resourceId }
+    })
   })
 
   return await prisma.$transaction(
@@ -373,43 +367,25 @@ export async function fetchAllScreenPermissions(
   for (const resource of resources) {
     const allowedActions = await getUserPermissions(
       userId,
-      resource.name as Resource,
+      resource.name,
     )
 
     const allowed = {
-      canRead: allowedActions.some((a) =>
-        permissionHierarchy[a as Action].includes(Action.READ),
-      ),
-      canCreate: allowedActions.some((a) =>
-        permissionHierarchy[a as Action].includes(Action.CREATE),
-      ),
-      canUpdate: allowedActions.some((a) =>
-        permissionHierarchy[a as Action].includes(Action.UPDATE),
-      ),
-      canArchive: allowedActions.some((a) =>
-        permissionHierarchy[a as Action].includes(Action.DELETE),
-      ),
+      canRead: allowedActions.includes(Action.READ),
+      canCreate: allowedActions.includes(Action.CREATE),
+      canUpdate: allowedActions.includes(Action.UPDATE),
+      canArchive: allowedActions.includes(Action.DELETE),
     }
 
-    const screen = await prisma.screen.findFirst({
-      where: { roleId: userRole.roleId, resourceId: resource.id },
-      select: {
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        canArchive: true,
-      },
-    })
-
-    const isRead = Boolean(allowed.canRead || screen?.canRead)
+    const isRead = allowed.canRead
 
     if (!isRead) continue
 
     const combined: Partial<ScreenPermissions> = {
       canRead: true,
-      ...(allowed.canCreate || screen?.canCreate ? { canCreate: true } : {}),
-      ...(allowed.canUpdate || screen?.canUpdate ? { canUpdate: true } : {}),
-      ...(allowed.canArchive || screen?.canArchive ? { canArchive: true } : {}),
+      ...(allowed.canCreate ? { canCreate: true } : {}),
+      ...(allowed.canUpdate ? { canUpdate: true } : {}),
+      ...(allowed.canArchive ? { canArchive: true } : {}),
     }
 
     result[resource.name] = combined
@@ -421,21 +397,19 @@ export async function fetchAllScreenPermissions(
 
 export async function checkPermission(
   userId: string | undefined,
-  resourceName: Resource,
-  action: Action,
+  resourceName: string,
+  action: string,
 ): Promise<boolean> {
   const userActions = await getUserPermissions(userId, resourceName)
-  return userActions.some((a) =>
-    permissionHierarchy[a as Action].includes(action),
-  )
+  return userActions.includes(action)
 }
 
 export async function getUserPermissions(
   userId: string | undefined,
-  resourceName: Resource,
-): Promise<Action[]> {
+  resourceName: string,
+): Promise<string[]> {
   const cacheKey = `user:${userId}:resource:${resourceName}`
-  const cached = await getCache<Action[]>(cacheKey)
+  const cached = await getCache<string[]>(cacheKey)
   if (cached) return cached
 
   const userRoles = await prisma.userRole.findMany({
@@ -451,10 +425,10 @@ export async function getUserPermissions(
     include: { permission: { include: { resource: true } } },
   })
 
-  let allowedActions: Action[] = []
+  let allowedActions: string[] = []
   rolePermissions.forEach((rp: any) => {
     if (rp.permission.resource.name === resourceName) {
-      allowedActions.push(rp.permission.action as Action)
+      allowedActions.push(rp.permission.action)
     }
   })
 
@@ -465,7 +439,7 @@ export async function getUserPermissions(
 
   userPermissions.forEach((up: any) => {
     if (up.permission.resource.name === resourceName) {
-      allowedActions.push(up.permission.action as Action)
+      allowedActions.push(up.permission.action)
     }
   })
 

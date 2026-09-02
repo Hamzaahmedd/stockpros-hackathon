@@ -144,7 +144,7 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
 
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, can } = useAuth();
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -154,15 +154,8 @@ export const Dashboard: React.FC = () => {
     const tradeMap = getTradeMap();
     const { theme } = useTheme();
 
-    const roles1 = user?.userRoles?.map((ur: any) => (ur?.role?.name || ur?.name || "").toUpperCase()) || [];
-    const roles2 = user?.roles?.map((r: any) => (typeof r === "string" ? r : r?.name || "").toUpperCase()) || [];
-    const userRoleList = [...roles1, ...roles2];
-    
-    const isAdmin = userRoleList.includes("ADMIN");
-    const isPortfolioManager = userRoleList.includes("PORTFOLIO_MANAGER") || userRoleList.includes("PORTFOLIO MANAGER") || userRoleList.includes("PORTFOLIO");
-    const isAnalyst = userRoleList.includes("ANALYST") || userRoleList.includes("ANALYST_ROLE") || userRoleList.includes("ANALYST ROLE");
-    const isAdminOnly = isAdmin && !isPortfolioManager && !isAnalyst;
-    const hidePortfolio = (isAnalyst || isAdmin) && !isPortfolioManager;
+    const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
+    const hidePortfolio = !can("PORTFOLIO", "canRead");
 
     useEffect(() => {
         if (isAdminOnly) {

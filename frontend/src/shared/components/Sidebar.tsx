@@ -289,30 +289,11 @@ export const Sidebar: React.FC = () => {
 
   const { user, can, logout } = useAuth();
 
-  const userRoleList =
-    user?.userRoles?.map((ur: any) =>
-      (ur?.role?.name || ur?.name || "").toUpperCase(),
-    ) ||
-    user?.roles?.map((r: any) =>
-      (typeof r === "string" ? r : r?.name || "").toUpperCase(),
-    ) ||
-    [];
-
-  const isAdmin = userRoleList.includes("ADMIN");
-  const isPortfolioManager =
-    userRoleList.includes("PORTFOLIO_MANAGER") ||
-    userRoleList.includes("PORTFOLIO MANAGER") ||
-    userRoleList.includes("PORTFOLIO");
-  const isAnalyst =
-    userRoleList.includes("ANALYST") ||
-    userRoleList.includes("ANALYST_ROLE") ||
-    userRoleList.includes("ANALYST ROLE");
-
-  const showStandardMenus = !isAdmin || isPortfolioManager || isAnalyst;
-  const canSeeAccessControl =
-    isAdmin || (can("ROLE", "canRead") && !isAnalyst);
-  const canSeeUsers = isAdmin || can("USER", "canRead");
-  const isAdminOrRoleReader = isAdmin || can("ROLE", "canRead");
+  const isPortfolioManager = can("PORTFOLIO", "canRead");
+  const showStandardMenus = isPortfolioManager;
+  const canSeeAccessControl = can("ROLE", "canRead");
+  const canSeeUsers = can("ROLE", "canRead");
+  const isAdminOrRoleReader = can("ROLE", "canRead");
 
   useEffect(() => {
     if (pathname.startsWith("/decision-support")) {
