@@ -182,7 +182,6 @@ Then set up the database and seed RBAC data:
 
 ```bash
 npm run db:sync
-npm run rbac:seed
 npm run dev
 ```
 

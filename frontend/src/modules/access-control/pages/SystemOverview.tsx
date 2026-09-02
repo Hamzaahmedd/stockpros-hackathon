@@ -25,7 +25,7 @@ const SystemOverview = () => {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl font-bold flex items-center gap-3">
+                            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-3">
                                 <FiActivity className="text-primary" />
                                 System Overview
                             </h1>

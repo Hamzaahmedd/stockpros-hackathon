@@ -1,22 +1,23 @@
 // Consolidated auth service
 import config from '@/config'
-import { RoleName, UserStatus } from '@prisma/client'
+import { Prisma, UserStatus } from '@prisma/client'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import crypto from 'node:crypto'
 import { uuidv7 } from 'uuidv7'
 import {
-    NotFoundError,
-    UnauthorizedError,
-    ValidationError,
+  NotFoundError,
+  InternalServerError,
+  UnauthorizedError,
+  ValidationError,
 } from '../../shared/errors'
 import { transporter } from '../../shared/infrastructure/config/email'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
-    convertToMilliseconds,
-    signToken,
-    verifyRefreshToken,
+  convertToMilliseconds,
+  signToken,
+  verifyRefreshToken,
 } from '../../shared/utils'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
 import { enqueueAuthEmail } from '../notifications/public'
@@ -29,6 +30,21 @@ const REFRESH_TOKEN_SECRET = config.auth.refreshTokenSecret
 const GOOGLE_CLIENT_ID = config.auth.googleClientId
 
 const googleOAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID)
+
+type DatabaseClient = typeof prisma | Prisma.TransactionClient
+
+async function getDefaultRole(database: DatabaseClient) {
+  const configuration = await database.rbacConfiguration.findUnique({
+    where: { id: 'system' },
+    include: { defaultRole: true },
+  })
+
+  if (!configuration?.defaultRole) {
+    throw new InternalServerError('The default user role is not configured')
+  }
+
+  return configuration.defaultRole
+}
 
 export async function generateTokens(userId: string): Promise<AuthTokens> {
   const refreshJti = uuidv7()
@@ -176,8 +192,6 @@ export async function deleteAccount(userId: string): Promise<void> {
 
   logger.info(`[Auth] Account deleted for userId=${userId}`)
 }
-
-
 
 export async function fetchMe(userId: string): Promise<MeProfile> {
   const user = await prisma.user.findUnique({
@@ -407,31 +421,25 @@ export async function verifyMagicLink(
   }
 
   if (user.userRoles.length === 0) {
-    // Existing user has no roles — assign default ANALYST role
-    const analystRole = await prisma.role.findFirst({
-      where: { name: RoleName.ANALYST },
+    const defaultRole = await getDefaultRole(prisma)
+    await prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: defaultRole.id,
+        assignedById: user.id,
+      },
     })
 
-    if (analystRole) {
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: analystRole.id,
-          assignedById: user.id,
-        },
-      })
-
-      user = (await prisma.user.findUnique({
-        where: { id: user.id },
-        include: {
-          userRoles: {
-            include: {
-              role: true,
-            },
+    user = (await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
           },
         },
-      }))!
-    }
+      },
+    }))!
   }
 
   if (user?.status !== UserStatus.ACTIVE) {
@@ -483,7 +491,7 @@ export async function completeOnboarding(
 ): Promise<{ user: UserData; accessToken: string; refreshToken: string }> {
   const normalizedEmail = email.toLowerCase().trim()
 
-  // Create user + assign ANALYST role in a single transaction
+  // Create user and assign the configured default role in a single transaction.
   const user = await prisma.$transaction(async (tx) => {
     const createdUser = await tx.user.create({
       data: {
@@ -493,18 +501,12 @@ export async function completeOnboarding(
       },
     })
 
-    const analystRole = await tx.role.findFirst({
-      where: { name: RoleName.ANALYST },
-    })
-
-    if (!analystRole) {
-      throw new Error('Analyst role not found')
-    }
+    const defaultRole = await getDefaultRole(tx)
 
     await tx.userRole.create({
       data: {
         userId: createdUser.id,
-        roleId: analystRole.id,
+        roleId: defaultRole.id,
         assignedById: createdUser.id,
       },
     })
@@ -563,7 +565,9 @@ export type OnboardingFlowResult =
 async function resolveEmailFromBearer(
   authHeader: string | undefined,
   resolvedName: string,
-): Promise<{ email: string } | { kind: 'profileUpdated'; user: UserData } | null> {
+): Promise<
+  { email: string } | { kind: 'profileUpdated'; user: UserData } | null
+> {
   const bearerToken = authHeader?.startsWith('Bearer ')
     ? authHeader.substring(7)
     : null
@@ -631,22 +635,34 @@ export async function completeOnboardingFlow(params: {
   }
 
   if (!email) {
-    const bearerResult = await resolveEmailFromBearer(params.authHeader, resolvedName)
+    const bearerResult = await resolveEmailFromBearer(
+      params.authHeader,
+      resolvedName,
+    )
 
     if (bearerResult && 'kind' in bearerResult) {
       return bearerResult as OnboardingFlowResult
     }
 
     email =
-      (bearerResult && 'email' in bearerResult ? bearerResult.email : undefined) ??
-      (typeof params.emailFromBody === 'string' ? params.emailFromBody : undefined)
+      (bearerResult && 'email' in bearerResult
+        ? bearerResult.email
+        : undefined) ??
+      (typeof params.emailFromBody === 'string'
+        ? params.emailFromBody
+        : undefined)
   }
 
   if (!email) {
     throw new ValidationError('Onboarding token or authentication is required')
   }
 
-  const result = await completeOnboarding(email, resolvedName, params.ip, params.userAgent)
+  const result = await completeOnboarding(
+    email,
+    resolvedName,
+    params.ip,
+    params.userAgent,
+  )
   return { kind: 'signupCompleted', ...result }
 }
 
@@ -723,26 +739,21 @@ export async function googleLogin(
   }
 
   if (user.userRoles.length === 0) {
-    const analystRole = await prisma.role.findFirst({
-      where: { name: RoleName.ANALYST },
+    const defaultRole = await getDefaultRole(prisma)
+    await prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: defaultRole.id,
+        assignedById: user.id,
+      },
     })
 
-    if (analystRole) {
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: analystRole.id,
-          assignedById: user.id,
-        },
-      })
-
-      user = (await prisma.user.findUnique({
-        where: { id: user.id },
-        include: {
-          userRoles: { include: { role: true } },
-        },
-      }))!
-    }
+    user = (await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        userRoles: { include: { role: true } },
+      },
+    }))!
   }
 
   if (user.status !== UserStatus.ACTIVE) {

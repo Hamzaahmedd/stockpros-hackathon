@@ -62,7 +62,7 @@ export const Login: React.FC = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
+      const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
 
       if (isAdminOnly) {
         navigate("/access-control/users", { replace: true });

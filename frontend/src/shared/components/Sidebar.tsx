@@ -289,11 +289,17 @@ export const Sidebar: React.FC = () => {
 
   const { user, can, logout } = useAuth();
 
-  const isPortfolioManager = can("PORTFOLIO", "canRead");
-  const showStandardMenus = isPortfolioManager;
-  const canSeeAccessControl = can("ROLE", "canRead");
-  const canSeeUsers = can("ROLE", "canRead");
-  const isAdminOrRoleReader = can("ROLE", "canRead");
+  const canReadCoreApp = can("CORE_APP", "canRead");
+  const canReadPortfolio = can("PORTFOLIO", "canRead");
+  const canReadRole = can("ROLE", "canRead");
+  const canReadAccessControl = can("ACCESS_CONTROL", "canRead");
+  // Standard navigation is controlled directly by CORE_APP:READ.
+  const showStandardMenus = canReadCoreApp;
+  // Portfolio Health section is gated to users with portfolio read access
+  const isPortfolioManager = canReadPortfolio;
+  const canSeeAccessControl = canReadAccessControl && canReadRole;
+  const canSeeUsers = canReadRole;
+  const isAdminOrRoleReader = canReadRole;
 
   useEffect(() => {
     if (pathname.startsWith("/decision-support")) {

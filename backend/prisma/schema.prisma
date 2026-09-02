@@ -90,16 +90,28 @@ model Position {
 }
 
 model Role {
-  id              String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  name            String           @unique
-  description     String?
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  rolePermissions RolePermission[]
-  userRoles       UserRole[]
+  id                      String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                    String             @unique
+  description             String?
+  createdAt               DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  rolePermissions         RolePermission[]
+  userRoles               UserRole[]
+  defaultForConfiguration RbacConfiguration? @relation("DefaultUserRole")
 
   @@index([name], map: "idx_roles_name")
   @@map("roles")
+}
+
+model RbacConfiguration {
+  id            String   @id @default("system")
+  defaultRoleId String?  @unique @map("default_role_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  defaultRole Role? @relation("DefaultUserRole", fields: [defaultRoleId], references: [id], onDelete: SetNull)
+
+  @@map("rbac_configuration")
 }
 
 model UserRole {
@@ -393,12 +405,6 @@ enum UserStatus {
   INACTIVE
   SUSPENDED
   DELETED
-}
-
-enum RoleName {
-  ADMIN
-  PORTFOLIO_MANAGER
-  ANALYST
 }
 
 enum AlertType {

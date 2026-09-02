@@ -60,7 +60,7 @@ export const VerifyMagicLink = () => {
             return;
           }
 
-          const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
+          const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
 
           if (isAdminOnly) {
             navigate("/access-control/users", { replace: true });

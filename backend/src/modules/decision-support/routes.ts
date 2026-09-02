@@ -11,13 +11,19 @@ router.use(authenticate)
 // ─── Market Intelligence ─────────────────────────────────────────────────────
 router.get(
   '/market/decision/:symbol',
+  rbacMiddleware(Resource.CORE_APP, Action.READ),
   DecisionController.getMarketBasedTradeDecision,
 )
 
-router.get('/market/radar', DecisionController.getOpportunityRadarHandler)
+router.get(
+  '/market/radar',
+  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  DecisionController.getOpportunityRadarHandler,
+)
 
 router.post(
   '/market/position-size',
+  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
   DecisionController.calculatePositionSizeHandler,
 )
 
@@ -48,7 +54,11 @@ router.get(
 )
 
 // ─── PDF Exports ─────────────────────────────────────────────────────────────
-router.post('/trade-plan/pdf', DecisionController.exportTradePlanPdf)
+router.post(
+  '/trade-plan/pdf',
+  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  DecisionController.exportTradePlanPdf,
+)
 
 router.post(
   '/portfolio/pdf',

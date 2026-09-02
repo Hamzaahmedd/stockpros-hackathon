@@ -11,6 +11,7 @@
     "test:finnhub": "jest src/modules/market/infrastructure/finnhub-stream.test.ts",
     "architecture:check": "node scripts/check-module-boundaries.cjs",
     "tsoa:spec": "npx tsoa spec",
+    "rbac:seed": "ts-node -r tsconfig-paths/register scripts/seed-rbac.ts",
     "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {

@@ -356,17 +356,17 @@ export const OpportunityRadar: React.FC = () => {
         <div className="max-w-[1440px] mx-auto space-y-8">
           
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm">
                   <FiRadio className="text-xl animate-pulse" />
                 </div>
                 <div>
-                  <h1 className="text-3xl lg:text-4xl font-black tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     AI Opportunity Radar
                   </h1>
-                  <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">
                     Live Algorithmic Market Scanner &amp; Quantitative Setup Detector
                   </p>
                 </div>

@@ -6,5 +6,5 @@ export const accessControlModule = defineModule({
   route: '/api/v1/rbac',
   router,
 })
-export { rbacMiddleware } from './middleware'
+export { allRbacMiddleware, rbacMiddleware } from './middleware'
 export { Action, Resource } from './permissions'

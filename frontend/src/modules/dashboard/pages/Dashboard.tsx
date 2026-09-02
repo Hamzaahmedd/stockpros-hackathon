@@ -70,7 +70,6 @@ function CustomCard({ title, actions, children, className = "" }: {
 }
 
 const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
-  const { theme } = useTheme();
   const isPositive = stock.changePercent >= 0;
   
   const chartData = stock.sparkline?.map((price: number, idx: number) => ({
@@ -79,45 +78,49 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
   })) || [];
 
   return (
-    <ShadcnCard className="transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/5 flex flex-col justify-between overflow-hidden group">
-      <div className="p-5 flex justify-between items-start">
+    <div className="rounded-xl border border-border/70 terminal-glass transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 flex flex-col justify-between overflow-hidden group">
+      <div className="p-4 flex justify-between items-start">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border border-border bg-muted/30 flex items-center justify-center p-2 shrink-0">
+          <div className="w-9 h-9 rounded-lg border border-border/80 bg-muted/40 flex items-center justify-center p-1.5 shrink-0">
              {stock.logoUrl ? (
                 <img src={stock.logoUrl} alt={stock.symbol} className="w-full h-full object-contain" />
              ) : (
-                <div className="text-sm font-bold text-primary">{stock.symbol[0]}</div>
+                <div className="text-xs font-mono font-bold text-primary">{stock.symbol.slice(0, 2)}</div>
              )}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold tracking-tight truncate">{stock.symbol}</div>
-            <div className="text-[11px] text-muted-foreground font-medium truncate">{stock.companyName}</div>
+            <div className="text-sm font-mono font-bold tracking-wider text-foreground truncate">{stock.symbol}</div>
+            <div className="text-[11px] text-muted-foreground font-medium truncate max-w-[130px]">{stock.companyName}</div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xl font-bold tracking-tight">${stock.price.toFixed(2)}</div>
-          <div className={`text-xs font-bold flex items-center justify-end gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+        <div className="text-right font-mono">
+          <div className="text-base font-bold tracking-tight tabular-nums text-foreground">${stock.price.toFixed(2)}</div>
+          <div className={`text-[11px] font-semibold tabular-nums inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded ${
+            isPositive
+              ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+              : "text-rose-400 bg-rose-500/10 border border-rose-500/20"
+          }`}>
             {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
           </div>
         </div>
       </div>
 
-      <div className="h-20 w-full">
+      <div className="h-16 w-full -mb-1">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={`grad-${stock.symbol}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={isPositive ? '#22c55e' : '#ef4444'} stopOpacity={0.4}/>
-                <stop offset="95%" stopColor={isPositive ? '#22c55e' : '#ef4444'} stopOpacity={0.05}/>
+                <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.35}/>
+                <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.0}/>
               </linearGradient>
             </defs>
             <Tooltip 
               content={({ active, payload }: any) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-popover text-popover-foreground border px-3 py-2 rounded-lg shadow-lg text-sm">
-                      <div className="text-muted-foreground text-xs mb-1">Price</div>
-                      <div className="font-bold">${Number(payload[0].value).toFixed(2)}</div>
+                    <div className="bg-popover text-popover-foreground border border-border px-2.5 py-1.5 rounded-lg shadow-xl text-xs font-mono">
+                      <div className="text-muted-foreground text-[10px]">Price</div>
+                      <div className="font-bold tabular-nums">${Number(payload[0].value).toFixed(2)}</div>
                     </div>
                   );
                 }
@@ -128,15 +131,15 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
             <Area 
                type="monotone" 
                dataKey="value" 
-               stroke={isPositive ? '#22c55e' : '#ef4444'} 
+               stroke={isPositive ? '#10b981' : '#f43f5e'} 
                fill={`url(#grad-${stock.symbol})`} 
-               strokeWidth={2}
+               strokeWidth={1.75}
                isAnimationActive={true}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </ShadcnCard>
+    </div>
   );
 };
 
@@ -154,7 +157,7 @@ export const Dashboard: React.FC = () => {
     const tradeMap = getTradeMap();
     const { theme } = useTheme();
 
-    const isAdminOnly = !can("PORTFOLIO", "canRead") && can("ROLE", "canRead");
+    const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
     const hidePortfolio = !can("PORTFOLIO", "canRead");
 
     useEffect(() => {

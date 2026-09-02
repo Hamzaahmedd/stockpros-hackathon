@@ -1277,12 +1277,12 @@ export const PortfolioHealth: React.FC = () => {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1440px] mx-auto space-y-8">
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border/60 pb-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-black tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 Portfolio Health
               </h1>
-              <p className="text-muted-foreground text-xs uppercase tracking-wider font-bold mt-1 opacity-80">
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
                 AI-Driven Portfolio Optimization &amp; Quantitative Risk
                 Intelligence
               </p>

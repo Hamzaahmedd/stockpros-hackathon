@@ -289,9 +289,9 @@ const Forecast: React.FC = () => {
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 AI Price Forecast
               </h1>
-              <p className="text-muted-foreground mt-1 text-sm">
-  Analyze historical trends and model predictions based on split/dividend-adjusted closing prices.
-</p>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
+                Analyze historical trends and model predictions based on split/dividend-adjusted closing prices.
+              </p>
             </div>
           </div>
 
