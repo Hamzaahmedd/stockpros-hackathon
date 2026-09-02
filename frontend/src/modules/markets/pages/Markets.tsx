@@ -1,15 +1,16 @@
+import { Pause, Play, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { FiAlertCircle, FiPlus, FiTrendingDown, FiTrendingUp as FiUp } from "react-icons/fi";
 
-import { SmartSearch } from "@/shared/components/SmartSearch";
+import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
+import { SmartSearch } from "@/shared/components/SmartSearch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { Card } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/components/ui/table";
-import api from "@/shared/api/axios";
 import { useSocket } from "@/shared/hooks/useSocket";
 import { useTheme } from "@/shared/hooks/useTheme";
 import type { StockData, Trade } from "../types";
@@ -95,14 +96,50 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     setSymbols((prev) => prev.filter((x) => x !== sym));
   };
 
+  const [prevPriceMap, setPrevPriceMap] = useState<Record<string, number>>({});
+  const [flashMap, setFlashMap] = useState<Record<string, "up" | "down" | null>>({});
+
+  // Detect price changes for real-time Bloomberg-style tick flash
+  React.useEffect(() => {
+    const newFlashes: Record<string, "up" | "down" | null> = {};
+    rows.forEach((r) => {
+      if (Number.isFinite(r.p)) {
+        const prev = prevPriceMap[r.s];
+        if (prev !== undefined && prev !== r.p) {
+          newFlashes[r.s] = r.p > prev ? "up" : "down";
+        }
+      }
+    });
+
+    if (Object.keys(newFlashes).length > 0) {
+      setFlashMap((prev) => ({ ...prev, ...newFlashes }));
+      const timer = setTimeout(() => {
+        setFlashMap((prev) => {
+          const updated = { ...prev };
+          Object.keys(newFlashes).forEach((k) => delete updated[k]);
+          return updated;
+        });
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+
+    // Record last seen prices
+    const nextPrices: Record<string, number> = {};
+    rows.forEach((r) => {
+      if (Number.isFinite(r.p)) nextPrices[r.s] = r.p;
+    });
+    setPrevPriceMap(nextPrices);
+  }, [rows]);
 
   return (
-    <div className="rounded-lg overflow-hidden">
+    <div className="rounded-xl overflow-hidden border border-border/80 terminal-glass">
       {!hideHeader && (
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
             <h3 className="text-lg font-semibold">Live Stock Data</h3>
-            <p className="text-sm text-muted-foreground mt-1">Real-time market streaming</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Real-time market streaming
+            </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -114,7 +151,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
       )}
 
       {!hideHeader && (
-        <div className="p-5 border-b border-border">
+        <div className="p-4 border-b border-border/60 bg-background/40">
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <SmartSearch
@@ -143,95 +180,104 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
           </div>
 
           {error && (
-            <div className="mt-3 flex gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-              <FiAlertCircle className="text-destructive mt-0.5" />
-              <div>
-                <div className="text-sm font-medium text-destructive">Connection Error</div>
-                <div className="text-sm text-destructive/80 mt-1">{error}</div>
-              </div>
+            <div className="mt-3 flex gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+              <FiAlertCircle className="mt-0.5 shrink-0" />
+              <div>{error}</div>
             </div>
           )}
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-left" data-tabular="true">
           <thead>
-            <tr className="border-b border-border">
-              {["Symbol", "Price", "Volume", "Last Time", "Status", "Actions"].map((h) => (
-                <th key={h} className="text-left py-3 px-6 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {h}
+            <tr className="border-b border-border/80 bg-muted/20">
+              {["Ticker", "Price", "Volume", "Last Updated", "Status", "Actions"].map((h, i) => (
+                <th
+                  key={h}
+                  className={`py-3 px-5 text-[11px] font-bold uppercase tracking-wider font-mono text-muted-foreground ${
+                    i === 1 || i === 2 || i === 3 ? "text-right" : "text-left"
+                  }`}
+                >
+                    {h === "Last Updated" ? "Updates" : h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr
-                key={row.s}
-                className={`border-b border-border transition-colors ${index % 2 === 0 ? "bg-muted/20 hover:bg-muted/40" : "hover:bg-muted/30"}`}
-              >
-                <td className="py-3.5 px-6 font-semibold">{row.s}</td>
-                <td className="py-3.5 px-6 font-bold">
-                  {Number.isFinite(row.p) ? `$${row.p.toFixed(2)}` : "—"}
-                </td>
-                <td className="py-3.5 px-6 text-muted-foreground">
-                  {row.v ? row.v.toLocaleString() : "—"}
-                </td>
-                {!hideHeader && (
-                  <td className="py-3.5 px-6 text-muted-foreground text-xs">
-                    {row.t ? new Date(row.t).toLocaleTimeString() : "—"}
+          <tbody className="divide-y divide-border/40 font-mono text-xs">
+            {rows.map((row) => {
+              const flash = flashMap[row.s];
+              const isSubbed = status().subscribed.includes(row.s.toUpperCase());
+              return (
+                <tr
+                  key={row.s}
+                  className={`transition-colors duration-200 hover:bg-muted/30 ${
+                    flash === "up" ? "animate-flash-up" : flash === "down" ? "animate-flash-down" : ""
+                  }`}
+                >
+                  <td className="py-3 px-5 font-bold tracking-wide">
+                    <span className="text-foreground bg-muted/40 px-2 py-0.5 rounded border border-border/50">
+                      {row.s}
+                    </span>
                   </td>
-                )}
-                <td className="py-3.5 px-6">
-                  {status().subscribed.includes(row.s.toUpperCase()) ? (
-                    <span className="text-green-500 font-medium flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                      Streaming
+                  <td className="py-3 px-5 text-right font-bold text-sm tabular-nums">
+                    {Number.isFinite(row.p) ? (
+                      <span className={flash === "up" ? "text-emerald-400" : flash === "down" ? "text-rose-400" : "text-foreground"}>
+                        {fmtPrice(row.p)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/60">—</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-5 text-right text-muted-foreground tabular-nums">
+                    {row.v ? row.v.toLocaleString() : "—"}
+                  </td>
+                  <td className="py-3 px-5 text-right tabular-nums">
+                    <span className="px-2 py-0.5 rounded bg-muted/40 text-[11px] font-medium text-muted-foreground">
+                      {row.updateCount || 0}
                     </span>
-                  ) : (
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                      Paused
-                    </span>
+                  </td>
+                  <td className="py-3 px-5">
+                    {isSubbed ? (
+                      <span className="text-green-500 font-medium flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Streaming
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                        Paused
+                      </span>
+                    )}
+                  </td>
+                  {!hideHeader && (
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => (isSubbed ? unsubscribe(row.s) : subscribe(row.s))}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                            isSubbed
+                              ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                              : "bg-primary/10 text-primary hover:bg-primary/20"
+                          }`}
+                        >
+                          {isSubbed ? <Pause size={13} /> : <Play size={13} />}
+                          {isSubbed ? "Pause" : "Stream"}
+                        </button>
+                        <button
+                          onClick={() => handleRemove(row.s)}
+                          aria-label={`Remove ${row.s}`}
+                          title={`Remove ${row.s}`}
+                          className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-all"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
                   )}
-                </td>
-                {!hideHeader && (
-                  <td className="py-3.5 px-6">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => subscribe(row.s)}
-                        disabled={status().subscribed.includes(row.s.toUpperCase())}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                          status().subscribed.includes(row.s.toUpperCase())
-                            ? "bg-muted text-muted-foreground cursor-not-allowed"
-                            : "bg-primary/10 text-primary hover:bg-primary/20"
-                        }`}
-                      >
-                        Subscribe
-                      </button>
-                      <button
-                        onClick={() => unsubscribe(row.s)}
-                        disabled={!status().subscribed.includes(row.s.toUpperCase())}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                          !status().subscribed.includes(row.s.toUpperCase())
-                            ? "bg-muted text-muted-foreground cursor-not-allowed"
-                            : "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                        }`}
-                      >
-                        Unsubscribe
-                      </button>
-                      <button
-                        onClick={() => handleRemove(row.s)}
-                        className="px-3 py-1.5 text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md transition-all"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -285,7 +331,7 @@ const Markets = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Markets</h1>
-              <p className="text-sm text-muted-foreground">Real-time &amp; snapshot US stock market data</p>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">Real-time &amp; snapshot market streaming</p>
             </div>
           </div>
 
@@ -293,34 +339,43 @@ const Markets = () => {
             <LiveStockTable />
           </Card>
 
-          <h2 className="text-lg font-bold tracking-tight">Most Active Stocks</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight">Most Active Stocks (By Volume)</h2>
+            </div>
+          </div>
 
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden border-border/80 terminal-glass">
             <div className="overflow-x-auto">
-              <Table className="min-w-[1000px]">
+              <Table className="min-w-[1000px] text-xs font-mono" data-tabular="true">
                 <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    {["Rank","Symbol","Name","Price","Change %","Open","High","Low","Prev Close","Time"].map((h) => (
-                      <TableHead key={h} className="py-3 px-6 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <TableRow className="border-border/80 bg-muted/20 hover:bg-transparent">
+                    {["#", "Ticker", "Asset Name", "Price", "24h Chg", "Open", "High", "Low", "Prev Close", "Updated"].map((h, i) => (
+                      <TableHead
+                        key={h}
+                        className={`py-3 px-5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground ${
+                          i >= 3 ? "text-right" : "text-left"
+                        }`}
+                      >
                         {h}
                       </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="divide-y divide-border/40">
                   {loading
                     ? Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={`sk-${i}`} className="border-border">
-                          <TableCell className="py-3.5 px-6"><Skeleton className="h-4 w-6" /></TableCell>
-                          <TableCell className="py-3.5 px-6">
+                        <TableRow key={`sk-${i}`} className="border-border/40">
+                          <TableCell className="py-3 px-5"><Skeleton className="h-4 w-4" /></TableCell>
+                          <TableCell className="py-3 px-5">
                             <div className="flex items-center gap-2">
-                              <Skeleton className="w-7 h-7 rounded-full" />
+                              <Skeleton className="w-6 h-6 rounded-full" />
                               <Skeleton className="h-4 w-12" />
                             </div>
                           </TableCell>
                           {Array.from({ length: 8 }).map((__, j) => (
-                            <TableCell key={j} className="py-3.5 px-6 text-right">
-                              <Skeleton className="h-4 w-16 ml-auto" />
+                            <TableCell key={j} className="py-3 px-5 text-right">
+                              <Skeleton className="h-4 w-14 ml-auto" />
                             </TableCell>
                           ))}
                         </TableRow>
@@ -328,33 +383,35 @@ const Markets = () => {
                     : stocks.map((r, index) => (
                         <TableRow
                           key={r.symbol}
-                          className={`border-border transition-colors whitespace-nowrap ${
-                            index % 2 === 0 ? "bg-muted/20 hover:bg-muted/40" : "hover:bg-muted/30"
-                          }`}
+                          className="border-border/40 hover:bg-muted/30 transition-colors whitespace-nowrap"
                         >
-                          <TableCell className="py-3.5 px-6 text-muted-foreground font-semibold">{index + 1}</TableCell>
-                          <TableCell className="py-3.5 px-6 font-bold">
+                          <TableCell className="py-3 px-5 text-muted-foreground/80 font-mono">{index + 1}</TableCell>
+                          <TableCell className="py-3 px-5">
                             <div className="flex items-center gap-2.5">
-                              <Avatar className="w-7 h-7 bg-muted/50 shrink-0">
+                              <Avatar className="w-6 h-6 bg-muted/40 border border-border/60 shrink-0">
                                 <AvatarImage src={r.logoUrl} alt={r.symbol} />
-                                <AvatarFallback className="text-[10px] font-bold">{r.symbol.slice(0, 2)}</AvatarFallback>
+                                <AvatarFallback className="text-[9px] font-bold">{r.symbol.slice(0, 2)}</AvatarFallback>
                               </Avatar>
-                              <span className="font-bold tracking-wide">{r.symbol}</span>
+                              <span className="font-bold tracking-wider text-foreground">{r.symbol}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3.5 px-6 truncate max-w-[200px] text-muted-foreground font-medium">{r.companyName}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right font-bold">{fmtPrice(r.price)}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right">
-                            <div className={`flex items-center justify-end gap-1 font-bold ${r.changePercent >= 0 ? "text-green-500" : "text-red-500"}`}>
-                              {r.changePercent >= 0 ? <FiUp /> : <FiTrendingDown />}
-                              {r.changePercent.toFixed(2)}%
+                          <TableCell className="py-3 px-5 truncate max-w-[220px] text-muted-foreground font-sans font-medium text-xs">{r.companyName}</TableCell>
+                          <TableCell className="py-3 px-5 text-right font-bold text-foreground tabular-nums">{fmtPrice(r.price)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right tabular-nums">
+                            <div className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded text-[11px] ${
+                              r.changePercent >= 0
+                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                                : "text-rose-400 bg-rose-500/10 border border-rose-500/20"
+                            }`}>
+                              {r.changePercent >= 0 ? <FiUp className="stroke-[3]" /> : <FiTrendingDown className="stroke-[3]" />}
+                              {r.changePercent >= 0 ? "+" : ""}{r.changePercent.toFixed(2)}%
                             </div>
                           </TableCell>
-                          <TableCell className="py-3.5 px-6 text-right text-muted-foreground">{fmtPrice(r.open)}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right text-muted-foreground">{fmtPrice(r.high)}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right text-muted-foreground">{fmtPrice(r.low)}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right text-muted-foreground">{fmtPrice(r.previousClose)}</TableCell>
-                          <TableCell className="py-3.5 px-6 text-right text-muted-foreground text-xs">{fmtTime(r.timestamp)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right text-muted-foreground tabular-nums">{fmtPrice(r.open)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right text-muted-foreground tabular-nums">{fmtPrice(r.high)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right text-muted-foreground tabular-nums">{fmtPrice(r.low)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right text-muted-foreground tabular-nums">{fmtPrice(r.previousClose)}</TableCell>
+                          <TableCell className="py-3 px-5 text-right text-muted-foreground/80 text-[11px] tabular-nums">{fmtTime(r.timestamp)}</TableCell>
                         </TableRow>
                       ))}
                 </TableBody>

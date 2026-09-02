@@ -12,7 +12,7 @@ export const getTopStocks = async (
     const stocks = await getRankedTopStocks()
 
     return sendSuccess(res, {
-      message: 'Top US stocks retrieved successfully.',
+      message: 'Most actively traded stocks retrieved successfully.',
       data: stocks,
     })
   } catch (error) {

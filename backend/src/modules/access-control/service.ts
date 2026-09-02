@@ -1,33 +1,36 @@
 // Consolidated rbac service
+import { CACHE_TTL } from '../../shared/constants'
 import {
-  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
+  ValidationError,
 } from '../../shared/errors'
-import {
-  GrantRoleParams,
-  RevokeRoleParams,
-  AssignPermissionsParams,
-  CreateRoleParams,
-} from './types'
-import { RoleName } from '@prisma/client'
-import { prisma } from '../../shared/infrastructure/database'
-import { Action, Resource, toAuthority } from './permissions'
 import {
   deleteCache,
   getCache,
   setCache,
 } from '../../shared/infrastructure/cache'
-import { CACHE_TTL } from '../../shared/constants'
-import { ScreenPermissions } from './types'
+import { prisma } from '../../shared/infrastructure/database'
+import {
+  Action,
+  hasReadForMutatingActions,
+  Resource,
+  isSupportedAction,
+  toAuthority,
+} from './permissions'
+import {
+  AssignPermissionsParams,
+  CreateRoleParams,
+  GrantRoleParams,
+  RevokeRoleParams,
+  ScreenPermissions,
+} from './types'
 
 // ── Role Management ──
 export async function grantRole(params: GrantRoleParams): Promise<any> {
   const { userId, roleIds, callerId } = params
 
-  await deleteCache(`user:${userId}:screens:effective:all`)
-
-  return prisma.$transaction(async (tx: any) => {
+  const result = await prisma.$transaction(async (tx: any) => {
     const [targetUser, rolesToAssign] = await Promise.all([
       tx.user.findUnique({
         where: { id: userId },
@@ -39,24 +42,6 @@ export async function grantRole(params: GrantRoleParams): Promise<any> {
     if (!targetUser) throw new NotFoundError('Target User not found')
     if (rolesToAssign.length !== roleIds.length) {
       throw new NotFoundError('One or more selected Role IDs are invalid.')
-    }
-
-    const currentUserRoles = await tx.userRole.findMany({
-      where: { userId },
-      include: { role: true },
-    })
-
-    const wasAdmin = currentUserRoles.some(
-      (ur: any) => ur.role.name === RoleName.ADMIN,
-    )
-    const willBeAdmin = rolesToAssign.some(
-      (r: any) => r.name === RoleName.ADMIN,
-    )
-
-    if (wasAdmin && !willBeAdmin) {
-      throw new ForbiddenError(
-        'You cannot strip the admin role from another admin.',
-      )
     }
 
     await tx.userRole.deleteMany({
@@ -86,14 +71,15 @@ export async function grantRole(params: GrantRoleParams): Promise<any> {
       roles: finalAssignments.map((a: any) => a.role),
     }
   })
+
+  await invalidateUserPermissionCache(userId)
+  return result
 }
 
 export async function unassignRole(params: RevokeRoleParams) {
   const { userId, roleId, revokedByUserId } = params
 
-  await deleteCache(`user:${userId}:screens:effective:all`)
-
-  return prisma.$transaction(async (tx: any) => {
+  const result = await prisma.$transaction(async (tx: any) => {
     const [role, revoker, targetUser] = await Promise.all([
       tx.role.findUnique({ where: { id: roleId } }),
       tx.user.findUnique({ where: { id: revokedByUserId } }),
@@ -104,7 +90,9 @@ export async function unassignRole(params: RevokeRoleParams) {
       throw new NotFoundError('roleId, revokedByUserId, or userId not found')
     }
 
-    if (!(await checkPermission(revokedByUserId, Resource.ROLE, Action.DELETE))) {
+    if (
+      !(await checkPermission(revokedByUserId, Resource.ROLE, Action.DELETE))
+    ) {
       throw new UnauthorizedError('Missing ROLE:DELETE authority')
     }
 
@@ -118,6 +106,9 @@ export async function unassignRole(params: RevokeRoleParams) {
 
     return tx.userRole.delete({ where: { id: userRole.id } })
   })
+
+  await invalidateUserPermissionCache(userId)
+  return result
 }
 
 export async function createRole(params: CreateRoleParams) {
@@ -149,12 +140,13 @@ export async function assignPermissions(params: AssignPermissionsParams) {
   ])
 
   if (!role) throw new NotFoundError('Target Role not found')
-  if (role.name === RoleName.ADMIN) {
-    throw new ForbiddenError(
-      'The permissions for the ADMIN role are locked and cannot be modified via the API.',
-    )
+  for (const permission of permissions) {
+    if (!hasReadForMutatingActions(permission.actions)) {
+      throw new ValidationError(
+        `${permission.resourceName} must include read when write or delete is assigned`,
+      )
+    }
   }
-
   const resourceMap = Object.fromEntries(
     existingResources.map((r) => [r.name, r.id]),
   )
@@ -165,6 +157,12 @@ export async function assignPermissions(params: AssignPermissionsParams) {
       throw new NotFoundError(`Resource ${p.resourceName} not found`)
 
     return p.actions.map((action) => {
+      if (!isSupportedAction(p.resourceName, action)) {
+        throw new NotFoundError(
+          `Permission ${toAuthority(p.resourceName, action)} is not supported for this resource`,
+        )
+      }
+
       const exists = existingPermissions.some(
         (permission) =>
           permission.resourceId === resourceId && permission.action === action,
@@ -180,7 +178,7 @@ export async function assignPermissions(params: AssignPermissionsParams) {
     })
   })
 
-  return await prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       if (processedFlatData.length > 0) {
         await tx.permission.createMany({
@@ -238,6 +236,9 @@ export async function assignPermissions(params: AssignPermissionsParams) {
     },
     { timeout: 10000 },
   )
+
+  await invalidateRoleAssigneePermissionCaches(roleId)
+  return result
 }
 
 export async function revokePermissions(params: AssignPermissionsParams) {
@@ -264,6 +265,41 @@ export async function revokePermissions(params: AssignPermissionsParams) {
 
   if (!role) throw new NotFoundError('Role not found')
   if (!grantor) throw new NotFoundError('Grantor user not found')
+
+  const assignedPermissions = await prisma.rolePermission.findMany({
+    where: { roleId },
+    select: {
+      permission: {
+        select: { action: true, resource: { select: { name: true } } },
+      },
+    },
+  })
+
+  const revokedAuthorities = new Set(
+    permissions.flatMap((permission) =>
+      permission.actions.map(
+        (action) => `${permission.resourceName}:${action}`,
+      ),
+    ),
+  )
+  const remainingActionsByResource = new Map<string, string[]>()
+  for (const assignment of assignedPermissions) {
+    const resourceName = assignment.permission.resource.name
+    const authority = `${resourceName}:${assignment.permission.action}`
+    if (revokedAuthorities.has(authority)) continue
+
+    const actions = remainingActionsByResource.get(resourceName) ?? []
+    actions.push(assignment.permission.action)
+    remainingActionsByResource.set(resourceName, actions)
+  }
+
+  for (const [resourceName, actions] of remainingActionsByResource) {
+    if (!hasReadForMutatingActions(actions)) {
+      throw new ValidationError(
+        `${resourceName} must retain read while write or delete is assigned`,
+      )
+    }
+  }
 
   const rolePermissionWhereList: { roleId: string; permissionId: string }[] = []
 
@@ -293,6 +329,33 @@ export async function revokePermissions(params: AssignPermissionsParams) {
       })
     }
   })
+
+  await invalidateRoleAssigneePermissionCaches(roleId)
+}
+
+async function invalidateUserPermissionCache(userId: string): Promise<void> {
+  const resources = await prisma.resource.findMany({ select: { name: true } })
+  await Promise.all([
+    deleteCache(`user:${userId}:screens:effective:all`),
+    ...resources.map((resource) =>
+      deleteCache(`user:${userId}:resource:${resource.name}`),
+    ),
+  ])
+}
+
+async function invalidateRoleAssigneePermissionCaches(
+  roleId: string,
+): Promise<void> {
+  const assignments = await prisma.userRole.findMany({
+    where: { roleId },
+    select: { userId: true },
+  })
+
+  await Promise.all(
+    assignments.map((assignment) =>
+      invalidateUserPermissionCache(assignment.userId),
+    ),
+  )
 }
 
 export async function grantActionsToResources(
@@ -314,6 +377,12 @@ export async function grantActionsToResources(
       results[name] = []
 
       for (const action of actions) {
+        if (!isSupportedAction(name, action)) {
+          throw new NotFoundError(
+            `Permission ${toAuthority(name, action)} is not supported for this resource`,
+          )
+        }
+
         const existing = await tx.permission.findUnique({
           where: {
             action_resourceId: {
@@ -365,15 +434,11 @@ export async function fetchAllScreenPermissions(
   const result: Record<string, Partial<ScreenPermissions>> = {}
 
   for (const resource of resources) {
-    const allowedActions = await getUserPermissions(
-      userId,
-      resource.name,
-    )
+    const allowedActions = await getUserPermissions(userId, resource.name)
 
     const allowed = {
       canRead: allowedActions.includes(Action.READ),
       canWrite: allowedActions.includes(Action.WRITE),
-      canEdit: allowedActions.includes(Action.EDIT),
       canDelete: allowedActions.includes(Action.DELETE),
     }
 
@@ -384,11 +449,10 @@ export async function fetchAllScreenPermissions(
     const combined: Partial<ScreenPermissions> = {
       canRead: true,
       ...(allowed.canWrite ? { canWrite: true } : {}),
-      ...(allowed.canEdit ? { canEdit: true } : {}),
       ...(allowed.canDelete ? { canDelete: true } : {}),
     }
 
-    result[resource.name] = combined
+    result[resource.name.toUpperCase()] = combined
   }
 
   await setCache(cacheKey, result, CACHE_TTL.AUTH.SCREEN_ACTIONS)
@@ -568,11 +632,15 @@ export async function fetchAllPermissions(): Promise<any[]> {
     },
   })
 
-  if (!permissions.length) {
+  const supportedPermissions = permissions.filter((permission) =>
+    isSupportedAction(permission.resource.name, permission.action),
+  )
+
+  if (!supportedPermissions.length) {
     throw new NotFoundError('No permissions found')
   }
 
-  return permissions
+  return supportedPermissions
 }
 
 export async function fetchAllResources(): Promise<any[]> {

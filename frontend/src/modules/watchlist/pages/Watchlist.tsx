@@ -228,7 +228,7 @@ const Watchlist: React.FC = () => {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Market Watchlist
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm">Monitor high-conviction setups and AI insights.</p>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">Monitor high-conviction setups and AI insights.</p>
           </div>
           <Button 
             onClick={() => setShowAddModal(true)}

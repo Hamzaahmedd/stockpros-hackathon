@@ -181,10 +181,10 @@ const MarketAnalysis: React.FC = () => {
           
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 Market Analysis
               </h1>
-              <p className="text-muted-foreground text-sm mt-1 font-medium italic">Precision decision support powered by Intelligence Protocols</p>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">Precision decision support powered by Intelligence Protocols</p>
             </div>
           </div>
 

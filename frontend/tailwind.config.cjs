@@ -51,6 +51,10 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ["'Plus Jakarta Sans'", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
@@ -65,11 +69,26 @@ module.exports = {
             transform: "translateX(100%)",
           },
         },
+        "flash-up": {
+          "0%": { backgroundColor: "rgba(34, 197, 94, 0.28)", color: "#4ade80" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "flash-down": {
+          "0%": { backgroundColor: "rgba(239, 68, 68, 0.28)", color: "#f87171" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.4", transform: "scale(0.95)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite",
+        "flash-up": "flash-up 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
+        "flash-down": "flash-down 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
+        "pulse-glow": "pulse-glow 2.5s ease-in-out infinite",
       },
     },
   },

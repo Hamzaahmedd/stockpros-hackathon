@@ -43,32 +43,32 @@ export default function App() {
 
         {/* Protected routes */}
         <Route path="/dashboard" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <Dashboard />
           </ProtectedRoute>
         } />
         <Route path="/market" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <Markets />
           </ProtectedRoute>
         } />
         <Route path="/forecast" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <Forecast />
           </ProtectedRoute>
         } />
         <Route path="/news" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <News />
           </ProtectedRoute>
         } />
         <Route path="/watchlist" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <Watchlist />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={
-          <ProtectedRoute>
+          <ProtectedRoute resource="CORE_APP">
             <Settings />
           </ProtectedRoute>
         } />
@@ -76,19 +76,19 @@ export default function App() {
         <Route
           path="/decision-support/radar"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute resource="CORE_APP">
               <OpportunityRadar />
             </ProtectedRoute>
           }
         />
         <Route
           path="/decision-support/market-analysis"
-          element={<MarketAnalysis />}
+          element={<ProtectedRoute resource="CORE_APP"><MarketAnalysis /></ProtectedRoute>}
         />
         <Route
           path="/decision-support/portfolio-health"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute resource="PORTFOLIO">
               <PortfolioHealth />
             </ProtectedRoute>
           }
@@ -96,17 +96,17 @@ export default function App() {
 
         {/* Access Control Routes */}
         <Route path="/access-control/users" element={
-          <ProtectedRoute>
+          <ProtectedRoute requirements={[{ resource: "ACCESS_CONTROL" }, { resource: "ROLE" }] }>
             <Users />
           </ProtectedRoute>
         } />
         <Route path="/access-control/roles" element={
-          <ProtectedRoute>
+          <ProtectedRoute requirements={[{ resource: "ACCESS_CONTROL" }, { resource: "ROLE" }] }>
             <Roles />
           </ProtectedRoute>
         } />
         <Route path="/access-control/overview" element={
-          <ProtectedRoute>
+          <ProtectedRoute requirements={[{ resource: "ACCESS_CONTROL" }, { resource: "ROLE" }] }>
             <SystemOverview />
           </ProtectedRoute>
         } />

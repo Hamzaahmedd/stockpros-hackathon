@@ -1,69 +1,63 @@
 import { Router } from 'express'
 import { authTokenMiddleware as authenticate } from '../auth'
-import { rbacMiddleware } from './middleware'
+import { allRbacMiddleware } from './middleware'
 import { Resource, Action } from './permissions'
 import * as RbacController from './controller'
 
 const router = Router()
 
+const requireRoleAction = (action: Action) =>
+  allRbacMiddleware(
+    { resource: Resource.ACCESS_CONTROL, action: Action.READ },
+    { resource: Resource.ROLE, action },
+  )
+
 router.use(authenticate)
 
 // ─── Users & Screens ──────────────────────────────────────────────────────────
 router.get('/user-screens', RbacController.getUserScreenPermissions)
-router.get(
-  '/users',
-  rbacMiddleware(Resource.ROLE, Action.READ),
-  RbacController.getAllUsers,
-)
+router.get('/users', requireRoleAction(Action.READ), RbacController.getAllUsers)
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
-router.get(
-  '/roles',
-  rbacMiddleware(Resource.ROLE, Action.READ),
-  RbacController.getAllRoles,
-)
-router.post(
-  '/roles',
-  rbacMiddleware(Resource.ROLE, Action.WRITE),
-  RbacController.addRole,
-)
+router.get('/roles', requireRoleAction(Action.READ), RbacController.getAllRoles)
+router.post('/roles', requireRoleAction(Action.WRITE), RbacController.addRole)
 router.delete(
   '/roles/:roleId',
-  rbacMiddleware(Resource.ROLE, Action.DELETE),
+  requireRoleAction(Action.DELETE),
   RbacController.revokeRole,
 )
 router.post(
   '/assign-role',
-  rbacMiddleware(Resource.ROLE, Action.WRITE),
+  requireRoleAction(Action.WRITE),
   RbacController.assignRole,
 )
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 router.get(
   '/permissions',
-  rbacMiddleware(Resource.ROLE, Action.READ),
+  requireRoleAction(Action.READ),
   RbacController.getAllPermissions,
 )
 router.post(
   '/assign-permissions',
-  rbacMiddleware(Resource.ROLE, Action.WRITE),
+  requireRoleAction(Action.WRITE),
   RbacController.assignPermissionsToRole,
 )
 router.delete(
   '/revoke-permissions',
-  rbacMiddleware(Resource.ROLE, Action.DELETE),
+  requireRoleAction(Action.DELETE),
   RbacController.revokePermissionsFromRole,
 )
 
 // ─── Resources ────────────────────────────────────────────────────────────────
 router.get(
   '/resources',
-  rbacMiddleware(Resource.ROLE, Action.READ),
+  requireRoleAction(Action.READ),
   RbacController.getAllResources,
 )
 router.post(
   '/resource-mappings',
-  rbacMiddleware(Resource.ROLE, Action.WRITE),
+  requireRoleAction(Action.WRITE),
   RbacController.assignActionsToResources,
 )
 

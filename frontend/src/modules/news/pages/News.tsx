@@ -148,7 +148,7 @@ export default function News() {
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 Market News
               </h1>
-              <p className="text-muted-foreground text-sm mt-1">Real-time intelligence from leading financial sources</p>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">Real-time intelligence from leading financial sources</p>
             </div>
             
              <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">

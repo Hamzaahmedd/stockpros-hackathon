@@ -131,9 +131,9 @@ const Settings: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-4 lg:p-8">
-          <header className="mb-10 px-8 py-10 rounded-lg border border-border bg-card shadow-sm">
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-            <p className="mt-2 text-sm text-muted-foreground font-medium">
+          <header className="mb-10">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+            <p className="mt-1 text-sm text-muted-foreground font-medium">
               Optimize your trading workspace, manage market interests, and adjust notification preferences.
             </p>
           </header>

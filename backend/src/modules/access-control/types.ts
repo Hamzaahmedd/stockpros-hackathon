@@ -17,7 +17,7 @@ export interface RevokeRoleParams {
 
 export interface PermissionInput {
   resourceName: string
-  actions: string[] // list of actions like 'read', 'write', etc.
+  actions: string[]
 }
 
 export interface AssignPermissionsParams {
@@ -29,6 +29,5 @@ export interface AssignPermissionsParams {
 export interface ScreenPermissions {
   canRead: boolean
   canWrite: boolean
-  canEdit: boolean
   canDelete: boolean
 }
