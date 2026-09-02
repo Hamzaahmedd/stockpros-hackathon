@@ -44,4 +44,7 @@ export const testConfig = {
     enableAiRecomputeCron: false,
     enableSwaggerDocs: false,
   },
+  audit: {
+    retentionDays: 30, 
+  },
 }
