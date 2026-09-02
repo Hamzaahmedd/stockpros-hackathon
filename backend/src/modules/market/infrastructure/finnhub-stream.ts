@@ -2,6 +2,7 @@ import config from '@/config'
 import EventEmitter from 'events'
 import WebSocket from 'ws'
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
+import { CACHE_TTL } from '../../../shared/constants'
 import { logger } from '../../../shared/infrastructure/logger'
 import { StockQuote } from '../types'
 import { FinnhubTradeMsg } from './finnhub-types'
@@ -106,8 +107,10 @@ export class FinnhubService extends EventEmitter {
     const s = symbol.toUpperCase()
     const cached = this.quoteCache.get(s)
 
-    // 30-second cache: prevents hammering the API during rapid UI navigation
-    if (cached && Date.now() - cached.ts < 30000) {
+    if (
+      cached &&
+      Date.now() - cached.ts < CACHE_TTL.MARKET.FINNHUB_QUOTE_MS
+    ) {
       return cached.data
     }
 

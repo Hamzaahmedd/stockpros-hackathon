@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Delete,
   Route,
   Tags,
@@ -29,30 +28,9 @@ export interface Permission {
   resourceId: string
 }
 
-export interface Screen {
-  id: string
-  resourceId: string
-  roleId: string
-  canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
-  canArchive: boolean
-  canManage: boolean
-}
-
 export interface CreateRoleRequest {
   name: string
   description?: string
-}
-
-export interface UpdatePermissionsRequest {
-  permissions: Array<{
-    screen: string
-    canCreate?: boolean
-    canRead?: boolean
-    canUpdate?: boolean
-    canDelete?: boolean
-  }>
 }
 
 export interface AssignRoleRequest {
@@ -84,20 +62,6 @@ export class AccessControlSwaggerController extends Controller {
   @Response<ApiErrorResponse>(409, 'Role name already exists')
   async createRole(
     @Body() body: CreateRoleRequest,
-  ): Promise<ApiResponse<Role>> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Update screen-level CRUD permissions for a role.
-   */
-  @Put('roles/{id}/permissions')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'Permissions updated')
-  @Response<ApiErrorResponse>(404, 'Role not found')
-  async updatePermissions(
-    @Path() id: string,
-    @Body() body: UpdatePermissionsRequest,
   ): Promise<ApiResponse<Role>> {
     throw new Error('tsoa spec-only')
   }

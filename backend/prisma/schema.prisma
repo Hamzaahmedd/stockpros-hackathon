@@ -97,7 +97,6 @@ model Role {
   updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   rolePermissions RolePermission[]
   userRoles       UserRole[]
-  screens         Screen[]
 
   @@index([name], map: "idx_roles_name")
   @@map("roles")
@@ -129,7 +128,6 @@ model Resource {
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   permissions Permission[]
-  screens     Screen[]
 
   @@index([name], map: "idx_resources_name")
   @@map("resources")
@@ -163,28 +161,6 @@ model RolePermission {
   @@index([roleId], map: "idx_rolepermissions_roleid")
   @@index([permissionId], map: "idx_rolepermissions_permissionid")
   @@map("role_permissions")
-}
-
-model Screen {
-  id         String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  resourceId String  @map("resource_id") @db.Uuid
-  roleId     String  @map("role_id") @db.Uuid
-  canRead    Boolean @default(false) @map("can_read")
-  canCreate  Boolean @default(false) @map("can_create")
-  canUpdate  Boolean @default(false) @map("can_update")
-  canArchive Boolean @default(false) @map("can_archive")
-  canManage  Boolean @default(false) @map("can_manage")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([resourceId, roleId], map: "uniq_screen_resource_role")
-  @@index([resourceId], map: "idx_screen_resourceid")
-  @@index([roleId], map: "idx_screen_roleid")
-  @@map("screens")
 }
 
 model UserPermission {

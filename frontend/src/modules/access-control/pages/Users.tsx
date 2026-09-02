@@ -209,7 +209,7 @@ const Users = () => {
                       </div>
 
                       <div className="text-right">
-                        {can('ROLE', 'canCreate') && (
+                        {can('ROLE', 'canWrite') && (
                           <button
                             className="px-4 py-1.5 text-[10px] font-bold border border-border rounded-md bg-secondary hover:bg-secondary/80 transition-all uppercase tracking-wider"
                             onClick={() => openEditModal(user)}

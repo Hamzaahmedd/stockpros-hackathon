@@ -372,9 +372,9 @@ export async function fetchAllScreenPermissions(
 
     const allowed = {
       canRead: allowedActions.includes(Action.READ),
-      canCreate: allowedActions.includes(Action.CREATE),
-      canUpdate: allowedActions.includes(Action.UPDATE),
-      canArchive: allowedActions.includes(Action.DELETE),
+      canWrite: allowedActions.includes(Action.WRITE),
+      canEdit: allowedActions.includes(Action.EDIT),
+      canDelete: allowedActions.includes(Action.DELETE),
     }
 
     const isRead = allowed.canRead
@@ -383,9 +383,9 @@ export async function fetchAllScreenPermissions(
 
     const combined: Partial<ScreenPermissions> = {
       canRead: true,
-      ...(allowed.canCreate ? { canCreate: true } : {}),
-      ...(allowed.canUpdate ? { canUpdate: true } : {}),
-      ...(allowed.canArchive ? { canArchive: true } : {}),
+      ...(allowed.canWrite ? { canWrite: true } : {}),
+      ...(allowed.canEdit ? { canEdit: true } : {}),
+      ...(allowed.canDelete ? { canDelete: true } : {}),
     }
 
     result[resource.name] = combined

@@ -24,14 +24,14 @@ router.post(
 // ─── Portfolio Analysis ──────────────────────────────────────────────────────
 router.post(
   '/upload-portfolio',
-  rbacMiddleware(Resource.PORTFOLIO, Action.CREATE),
+  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
   upload.single('portfolio'),
   DecisionController.uploadTraderPortfolio,
 )
 
 router.post(
   '/portfolio/decision',
-  rbacMiddleware(Resource.PORTFOLIO, Action.CREATE),
+  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
   DecisionController.getPortfolioBasedTradeDecision,
 )
 

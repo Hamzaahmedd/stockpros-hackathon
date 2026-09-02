@@ -23,9 +23,6 @@ export const testConfig = {
   ml: {
     internalUrl: 'http://localhost:8000',
   },
-  finnhub: {
-    quoteTTL: 1,
-  },
   smtp: {
     host: 'localhost',
     port: 1025,

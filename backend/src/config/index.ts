@@ -103,7 +103,6 @@ export const buildConfig = (
   }
   finnhub: {
     apiKey: string
-    quoteTTL: number
   }
   smtp: {
     host: string
@@ -178,7 +177,6 @@ export const buildConfig = (
   },
   finnhub: {
     apiKey: secrets.finnhubApiKey,
-    quoteTTL: env.finnhub.quoteTTL,
   },
   smtp: {
     host: env.smtp.host,

@@ -23,9 +23,6 @@ export const developmentConfig = {
   ml: {
     internalUrl: 'http://localhost:8000',
   },
-  finnhub: {
-    quoteTTL: 30,
-  },
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,

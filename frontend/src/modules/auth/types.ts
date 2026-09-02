@@ -9,9 +9,9 @@ export type User = {
 
 export type ScreenPermissions = {
   canRead?: boolean;
-  canCreate?: boolean;
-  canUpdate?: boolean;
-  canArchive?: boolean;
+  canWrite?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export type RequestMagicLinkDto = {
