@@ -711,6 +711,10 @@ export const getPortfolioDecisionResponse = async (
   portfolioId: string,
   decisionMode: 'OVERVIEW' | 'DETAILED',
 ) => {
+  logger.info(
+    `[AUDIT] Decision engine run initiated: userId=${userId}, portfolioId=${portfolioId}`,
+  )
+
   const fullResults = await generateBatchDecision(portfolioId)
 
   persistDecisionRun(userId, portfolioId, fullResults).catch((err) =>

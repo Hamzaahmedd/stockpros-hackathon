@@ -129,6 +129,10 @@ export const addToWatchlist = async (
     },
   })
 
+  logger.info(
+    `[AUDIT] Watchlist item added: userId=${userId}, symbol=${data.symbol}, targetEntry=${data.targetEntryPrice}, stopLoss=${data.stopLoss}`,
+  )
+
   const priceData = await getCurrentPrice(data.symbol)
 
   if (priceData) {
@@ -186,6 +190,10 @@ export const convertToPosition = async (
   data: ConvertToPositionInput,
 ): Promise<void> => {
   const normalizedSymbol = symbol.toUpperCase()
+
+  logger.info(
+    `[AUDIT] Position conversion initiated: userId=${userId}, symbol=${normalizedSymbol}, quantity=${data.quantity}`,
+  )
 
   const entry = await prisma.watchlist.findUnique({
     where: { userId_symbol: { userId, symbol: normalizedSymbol } },
@@ -280,6 +288,10 @@ export const createAlert = async (
     },
   })
 
+  logger.info(
+    `[AUDIT] Alert created: userId=${userId}, symbol=${normalizedSymbol}, type=${data.type}, threshold=${data.threshold}`,
+  )
+
   invalidateAlertCache(normalizedSymbol)
 
   return alert
@@ -310,6 +322,24 @@ export const updateWatchlistEntry = async (
       ...(data.notes !== undefined && { notes: data.notes }),
     },
   })
+
+  // Audit log for modifications
+  const changes: string[] = []
+  if (data.targetEntryPrice !== undefined && entry.targetEntryPrice !== data.targetEntryPrice) {
+    changes.push(`targetEntry: ${entry.targetEntryPrice} -> ${data.targetEntryPrice}`)
+  }
+  if (data.stopLoss !== undefined && entry.stopLoss !== data.stopLoss) {
+    changes.push(`stopLoss: ${entry.stopLoss} -> ${data.stopLoss}`)
+  }
+  if (data.notes !== undefined && entry.notes !== data.notes) {
+    changes.push(`notes updated`)
+  }
+  
+  if (changes.length > 0) {
+    logger.info(
+      `[AUDIT] Watchlist entry updated: userId=${userId}, symbol=${normalizedSymbol}, changes=[${changes.join(', ')}]`,
+    )
+  }
 
   const item = formatWatchlistItem(updated)
 
@@ -388,6 +418,10 @@ export const removeFromWatchlist = async (
     where: { userId_symbol: { userId, symbol: normalizedSymbol } },
   })
 
+  logger.info(
+    `[AUDIT] Watchlist item removed: userId=${userId}, symbol=${normalizedSymbol}`,
+  )
+
   const remainingWatchers = await prisma.watchlist.count({
     where: { symbol: normalizedSymbol },
   })
@@ -414,6 +448,10 @@ export const deleteAlert = async (
   }
 
   await prisma.watchlistAlert.delete({ where: { id: alertId } })
+
+  logger.info(
+    `[AUDIT] Alert deleted: userId=${userId}, symbol=${normalizedSymbol}, alertId=${alertId}`,
+  )
 
   invalidateAlertCache(normalizedSymbol)
 }

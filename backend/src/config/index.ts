@@ -23,6 +23,8 @@ export const readSecrets = (): {
   fmpApiKey: string
   polygonApiKey: string
   twelveDataApiKey: string
+  axiomToken: string
+  axiomDataset: string
 } => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
@@ -36,6 +38,8 @@ export const readSecrets = (): {
   fmpApiKey: process.env.FMP_API_KEY || '',
   polygonApiKey: process.env.POLYGON_API_KEY || '',
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
+  axiomToken: process.env.AXIOM_TOKEN || '',
+  axiomDataset: process.env.AXIOM_DATASET || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -125,11 +129,19 @@ export const buildConfig = (
   twelveData: {
     apiKey: string
   }
+  axiom: {
+    token: string
+    dataset: string
+  }
   features: {
     enableNewsCron: boolean
     enableWatchlistCron: boolean
     enableAiRecomputeCron: boolean
     enableSwaggerDocs: boolean
+  }
+  audit: {
+    enabled: boolean
+    retentionDays: number
   }
 } => ({
   server: {
@@ -192,7 +204,15 @@ export const buildConfig = (
   twelveData: {
     apiKey: secrets.twelveDataApiKey,
   },
+  axiom: {
+    token: secrets.axiomToken,
+    dataset: secrets.axiomDataset,
+  },
   features: env.features,
+  audit: {
+    enabled: true,
+    retentionDays: env.audit.retentionDays,
+  },
 })
 
 export type AppConfig = ReturnType<typeof buildConfig>

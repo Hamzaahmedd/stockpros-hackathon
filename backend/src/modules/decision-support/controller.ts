@@ -1,6 +1,7 @@
 import { NextFunction, Response } from 'express'
 import { AuthenticatedRequest } from '../auth'
 import { validateOrThrow } from '../../shared/errors'
+import { logger } from '../../shared/infrastructure/logger'
 import {
   calculatePositionSize,
   getLatestPortfolioForUser,
@@ -149,7 +150,14 @@ export const uploadTraderPortfolio = async (
     const buffer = req.file?.buffer
     const userId = getUserId(req)
 
+    logger.info(
+      `[AUDIT] Portfolio upload initiated: userId=${userId}, fileType=${fileType}, fileSize=${buffer?.length || 0} bytes`,
+    )
+
     const data = await uploadPortfolio(fileType, buffer, userId)
+    logger.info(
+      `[AUDIT] Portfolio upload completed: userId=${userId}, positions=${data.positions?.length || 0}`,
+    )
 
     sendSuccess(res, {
       message: 'Portfolio uploaded successfully.',
@@ -192,6 +200,7 @@ export const exportTradePlanPdf = async (
   next: NextFunction,
 ) => {
   try {
+    const userId = getUserId(req)
     const plan = req.body
     if (!plan?.symbol) {
       throw new Error('Trade plan data with symbol is required for PDF export.')
@@ -199,6 +208,10 @@ export const exportTradePlanPdf = async (
 
     const pdfBuffer = await generateTradePlanPdfBuffer(plan)
     const fileName = `stockpros_trade_plan_${String(plan.symbol).toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`
+
+    logger.info(
+      `[AUDIT] Trade plan PDF exported: userId=${userId}, symbol=${plan.symbol}, fileSize=${pdfBuffer.length} bytes`,
+    )
 
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
@@ -215,6 +228,7 @@ export const exportPortfolioPdf = async (
   next: NextFunction,
 ) => {
   try {
+    const userId = getUserId(req)
     const { portfolioData, detailedPositions, riskMetrics } = req.body
     if (!portfolioData) {
       throw new Error('Portfolio data is required for PDF export.')
@@ -226,6 +240,10 @@ export const exportPortfolioPdf = async (
       riskMetrics,
     })
     const fileName = `stockpros_portfolio_health_${new Date().toISOString().split('T')[0]}.pdf`
+
+    logger.info(
+      `[AUDIT] Portfolio health PDF exported: userId=${userId}, positionCount=${detailedPositions?.length || 0}, fileSize=${pdfBuffer.length} bytes`,
+    )
 
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)

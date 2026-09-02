@@ -1,5 +1,6 @@
 import axios from 'axios'
 import pino from 'pino'
+import { config } from '../../config'
 
 const formatError = (err?: unknown): unknown => {
   if (!err) return ''
@@ -42,10 +43,6 @@ const formatError = (err?: unknown): unknown => {
   return ''
 }
 
-// Check for Axiom environment variables
-const AXIOM_TOKEN = process.env.AXIOM_TOKEN || ''
-const AXIOM_DATASET = process.env.AXIOM_DATASET || ''
-
 // Setup Pino transports
 const transports: pino.TransportTargetOptions[] = [
   {
@@ -54,7 +51,7 @@ const transports: pino.TransportTargetOptions[] = [
   },
 ]
 
-if (AXIOM_TOKEN && AXIOM_DATASET) {
+if (config.axiom.token && config.axiom.dataset) {
   transports.push({
     target: 'pino-opentelemetry-transport',
     options: {
@@ -68,8 +65,8 @@ if (AXIOM_TOKEN && AXIOM_DATASET) {
           protocol: 'http/protobuf',
           url: 'https://api.axiom.co/v1/traces', // Axiom's OTLP ingest endpoint
           headers: {
-            Authorization: `Bearer ${AXIOM_TOKEN}`,
-            'X-Axiom-Dataset': AXIOM_DATASET,
+            Authorization: `Bearer ${config.axiom.token}`,
+            'X-Axiom-Dataset': config.axiom.dataset,
           },
         },
       },
