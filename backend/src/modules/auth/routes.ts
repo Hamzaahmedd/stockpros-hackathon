@@ -23,4 +23,7 @@ router.post('/onboarding', AuthController.completeOnboardingHandler)
 router.post('/refresh-token', AuthController.refreshToken)
 router.post('/logout', AuthController.logout)
 
+// ─── Account Deletion ────────────────────────────────────────────────────────
+router.delete('/account', authTokenMiddleware, AuthController.deleteAccount)
+
 export default router

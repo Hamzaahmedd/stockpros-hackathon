@@ -4,6 +4,7 @@ import { Sidebar } from "@/shared/components/Sidebar";
 import { useTheme } from "@/shared/hooks/useTheme";
 import {
   Activity,
+  AlertTriangle,
   Bell,
   Check,
   Cpu,
@@ -14,6 +15,7 @@ import {
   ShoppingBag,
   Sparkles,
   TrendingUp,
+  User,
   Zap,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -52,6 +54,8 @@ const ALERT_OPTIONS = [
   },
 ];
 
+const CONFIRMATION_PHRASE = "DELETE MY ACCOUNT";
+
 const Settings: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("appearance");
@@ -59,6 +63,11 @@ const Settings: React.FC = () => {
   // Market & Alert preferences state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
+
+  // Account deletion state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePhrase, setDeletePhrase] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     try {
@@ -93,6 +102,29 @@ const Settings: React.FC = () => {
     toast.success("Preferences updated successfully!");
   };
 
+  const handleDeleteAccount = async () => {
+    if (deletePhrase.trim() !== CONFIRMATION_PHRASE) return;
+    setIsDeleting(true);
+    try {
+      const { deleteAccount } = await import("@/modules/auth/services");
+      const { clearAccessToken } = await import("@/shared/utils/token");
+      await deleteAccount(CONFIRMATION_PHRASE);
+      clearAccessToken();
+      toast.success("Account deleted. Redirecting…");
+      // Brief pause so the toast is visible before redirect
+      setTimeout(() => {
+        window.location.href = "/auth/login";
+      }, 1500);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ?? "Failed to delete account. Please try again.";
+      toast.error(msg);
+      setIsDeleting(false);
+    }
+  };
+
+  const phraseMatches = deletePhrase.trim() === CONFIRMATION_PHRASE;
+
   return (
     <div className="flex h-screen bg-background text-foreground transition-all duration-300 overflow-hidden">
       <Sidebar />
@@ -112,12 +144,30 @@ const Settings: React.FC = () => {
               {[
                 { id: "appearance", label: "Appearance", icon: <FiLayout className="text-lg" /> },
                 { id: "preferences", label: "Market & Alerts", icon: <FiSliders className="text-lg" /> },
+                {
+                  id: "account",
+                  label: "Account",
+                  icon: (
+                    <svg className="w-[1.1em] h-[1.1em]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  ),
+                },
               ].map((tab) => (
                 <Button
                   key={tab.id}
                   variant={activeTab === tab.id ? "default" : "ghost"}
-                  onClick={() => setActiveTab(tab.id)}
-                  className="w-full flex items-center justify-start gap-4 h-12 rounded-md font-bold text-xs uppercase tracking-widest"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setShowDeleteConfirm(false);
+                    setDeletePhrase("");
+                  }}
+                  className={`w-full flex items-center justify-start gap-4 h-12 rounded-md font-bold text-xs uppercase tracking-widest ${
+                    tab.id === "account" && activeTab !== "account"
+                      ? "hover:text-red-400 hover:border-red-500/30"
+                      : ""
+                  }`}
                 >
                   {tab.icon} {tab.label}
                 </Button>
@@ -344,6 +394,183 @@ const Settings: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* --- ACCOUNT TAB --- */}
+              {activeTab === "account" && (
+                <div className="space-y-6">
+                  {/* Account Info Card */}
+                  <Card className="rounded-lg border border-border bg-card shadow-lg">
+                    <CardHeader className="flex flex-row items-center gap-5 border-b border-border p-8">
+                      <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-bold">Account Management</CardTitle>
+                        <CardDescription className="text-sm font-medium">
+                          Manage your account settings and data.
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Your account is protected and your data is stored securely. If you wish to permanently remove your account and all associated data, you can do so in the Danger Zone below.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* ── Danger Zone Card ── */}
+                  <div className="relative rounded-xl border border-red-500/40 bg-red-950/10 overflow-hidden shadow-lg shadow-red-950/10">
+                    {/* Subtle animated top-border glow */}
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
+
+                    <div className="p-8">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-red-500/15 text-red-400">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-red-400 uppercase tracking-wider">
+                            Danger Zone
+                          </h3>
+                          <p className="text-xs text-red-400/70 mt-0.5">
+                            These actions are irreversible. Proceed with caution.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-6">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground mb-1">Delete this account</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
+                            Permanently delete your StockPros account and all of your data. This action cannot be undone.
+                          </p>
+                        </div>
+                        {!showDeleteConfirm && (
+                          <button
+                            id="btn-open-delete-confirm"
+                            type="button"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="shrink-0 px-5 h-10 rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 hover:border-red-500 transition-all duration-200"
+                          >
+                            Delete Account
+                          </button>
+                        )}
+                      </div>
+
+                      {/* ── Inline confirmation UI ── */}
+                      {showDeleteConfirm && (
+                        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-950/20 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                          {/* Warning block */}
+                          <div className="rounded-lg border border-red-500/20 bg-red-900/10 p-4 space-y-3">
+                            <p className="text-sm font-bold text-red-400 flex items-center gap-2">
+                              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                              </svg>
+                              Warning: Deleting your account is permanent and cannot be undone.
+                            </p>
+                            <p className="text-xs text-red-300/80 font-medium">
+                              You will immediately lose:
+                            </p>
+                            <ul className="space-y-1.5">
+                              {[
+                                "Portfolio data & watchlists",
+                                "Saved AI preferences & custom alerts",
+                                "Premium feature access & account history",
+                                "Active sessions on all devices",
+                              ].map((item) => (
+                                <li key={item} className="flex items-center gap-2 text-xs text-red-300/70">
+                                  <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Typed confirmation */}
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="delete-confirmation-input"
+                              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                            >
+                              To confirm, type{" "}
+                              <span className="text-red-400 font-bold font-mono">{CONFIRMATION_PHRASE}</span>{" "}
+                              below:
+                            </label>
+                            <input
+                              id="delete-confirmation-input"
+                              type="text"
+                              value={deletePhrase}
+                              onChange={(e) => setDeletePhrase(e.target.value)}
+                              placeholder={CONFIRMATION_PHRASE}
+                              autoComplete="off"
+                              spellCheck={false}
+                              className={`w-full h-11 rounded-lg border px-4 text-sm font-mono bg-background/60 outline-none transition-all duration-200 placeholder:text-muted-foreground/40 ${
+                                deletePhrase.length > 0 && !phraseMatches
+                                  ? "border-red-500/60 focus:border-red-500 text-red-300"
+                                  : phraseMatches
+                                  ? "border-green-500/60 focus:border-green-500 text-green-300"
+                                  : "border-border focus:border-red-500/60"
+                              }`}
+                            />
+                            {deletePhrase.length > 0 && !phraseMatches && (
+                              <p className="text-[11px] text-red-400/80">
+                                Phrase doesn't match — type it exactly as shown above.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-3 pt-1">
+                            <button
+                              id="btn-confirm-delete-account"
+                              type="button"
+                              disabled={!phraseMatches || isDeleting}
+                              onClick={handleDeleteAccount}
+                              className={`px-6 h-11 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                                phraseMatches && !isDeleting
+                                  ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/40 cursor-pointer"
+                                  : "bg-red-900/20 text-red-900/40 border border-red-900/20 cursor-not-allowed"
+                              }`}
+                            >
+                              {isDeleting ? (
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                  </svg>
+                                  Deleting…
+                                </span>
+                              ) : (
+                                "Permanently Delete"
+                              )}
+                            </button>
+                            <button
+                              id="btn-cancel-delete-account"
+                              type="button"
+                              onClick={() => {
+                                setShowDeleteConfirm(false);
+                                setDeletePhrase("");
+                              }}
+                              className="px-4 h-11 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>

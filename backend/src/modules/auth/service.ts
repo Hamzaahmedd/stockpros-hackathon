@@ -113,6 +113,72 @@ export async function logoutUser(refreshToken?: string) {
   }
 }
 
+// ─── Account Deletion ─────────────────────────────────────────────────────────
+
+export async function deleteAccount(userId: string): Promise<void> {
+  // Step 1: Verify the user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, status: true },
+  })
+
+  if (!user) {
+    throw new NotFoundError('User not found')
+  }
+
+  if (user.status === UserStatus.DELETED) {
+    throw new UnauthorizedError('Account is already deleted')
+  }
+
+  // Step 2: Immediately revoke ALL active sessions — blocks all future requests
+  await prisma.userSession.updateMany({
+    where: { userId, isRevoked: false },
+    data: { isRevoked: true },
+  })
+
+  // Step 3: Purge all user-owned data in a single transaction
+  await prisma.$transaction(async (tx) => {
+    // Watchlist alerts first (FK child of Watchlist)
+    await tx.watchlistAlert.deleteMany({ where: { userId } })
+    // Watchlists (cascades AlertLog via WatchlistAlert -> AlertLog)
+    await tx.watchlist.deleteMany({ where: { userId } })
+    // Notifications
+    await tx.notification.deleteMany({ where: { userId } })
+    // News read states & saved articles
+    await tx.newsReadState.deleteMany({ where: { userId } })
+    await tx.newsSavedArticle.deleteMany({ where: { userId } })
+    // Decision runs (cascades DecisionResult)
+    await tx.decisionRun.deleteMany({ where: { userId } })
+    // Portfolios (cascades Position)
+    await tx.portfolio.deleteMany({ where: { userId } })
+    // Roles & permissions
+    await tx.userRole.deleteMany({ where: { userId } })
+    await tx.userPermission.deleteMany({ where: { userId } })
+    // Magic link tokens (keyed by email, not userId)
+    await tx.magicLinkToken.deleteMany({ where: { email: user.email } })
+
+    // Step 4: Soft-delete the user — keeps the row for audit/fraud purposes
+    const now = new Date()
+    const purgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        status: UserStatus.DELETED,
+        deletedAt: now,
+        deletionScheduledAt: purgeAt,
+        // Anonymise PII immediately
+        displayName: '[deleted]',
+        email: `deleted+${userId}@stockpros.invalid`,
+      },
+    })
+  })
+
+  logger.info(`[Auth] Account deleted for userId=${userId}`)
+}
+
+
+
 export async function fetchMe(userId: string): Promise<MeProfile> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
