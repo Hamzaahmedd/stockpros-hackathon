@@ -348,33 +348,8 @@ export const Dashboard: React.FC = () => {
         );
     }
 
-    const briefing = data.briefing || {};
-    const portfolio = data.portfolio || {};
-    const impactNews = data.impactNews || { items: [], totalCount: 0 };
-    const smartTriggers = data.smartTriggers || { items: [], totalCount: 0 };
-    const sectorHeatmap = data.sectorHeatmap || { cachedAt: new Date().toISOString(), sectors: [] };
+    const { briefing, portfolio, impactNews, smartTriggers, sectorHeatmap } = data;
 
-    const safeBriefing = {
-        greeting: briefing.greeting || '',
-        generatedAt: briefing.generatedAt || new Date().toISOString(),
-        decisionSupport: briefing.decisionSupport || { summary: {} },
-        portfolioAlert: briefing.portfolioAlert || { overexposedSectors: [], stopLossBreaches: 0 }
-    };
-
-    const safePortfolio = {
-        healthScore: portfolio.healthScore || { score: 0, band: '', label: '', breakdown: {} },
-        totalValue: portfolio.totalValue || 0,
-        totalUnrealizedPnL: portfolio.totalUnrealizedPnL || 0,
-        todayGainLoss: portfolio.todayGainLoss || 0,
-        todayGainLossPct: portfolio.todayGainLossPct || 0,
-        bestPerformer: portfolio.bestPerformer || {},
-        worstPerformer: portfolio.worstPerformer || {}
-    };
-
-    const safeSectorHeatmap = {
-        cachedAt: sectorHeatmap.cachedAt || new Date().toISOString(),
-        sectors: Array.isArray(sectorHeatmap.sectors) ? sectorHeatmap.sectors : []
-    };
     return (
         <div className="h-screen bg-background text-foreground flex overflow-hidden">
             <Sidebar />
@@ -384,11 +359,11 @@ export const Dashboard: React.FC = () => {
                     {/* Header */}
                     <div className="flex flex-col gap-1">
                         <div className="text-2xl md:text-3xl font-bold tracking-tight">
-                            {safeBriefing.greeting || `Good afternoon, ${user?.displayName || 'Investor'}`}
+                            {briefing.greeting || `Good afternoon, ${user?.displayName || 'Investor'}`}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            Real-time Market Insights • {new Date(safeBriefing.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            Real-time Market Insights • {new Date(briefing.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     </div>
 
@@ -421,39 +396,39 @@ export const Dashboard: React.FC = () => {
                                                 Daily Pulse
                                             </Badge>
                                             <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">
-                                                {hidePortfolio ? "Market Overview & Insights" : safeBriefing.portfolioAlert?.headline || "Your Daily Briefing"}
+                                                {hidePortfolio ? "Market Overview & Insights" : briefing.portfolioAlert?.headline || "Your Daily Briefing"}
                                             </h1>
                                             <p className="text-white/70">
-                                                {hidePortfolio ? "Review top-performing sectors, global heatmap activity, and priority market triggers below." : safeBriefing.decisionSupport?.headline || "Review top-performing sectors."}
+                                                {hidePortfolio ? "Review top-performing sectors, global heatmap activity, and priority market triggers below." : briefing.decisionSupport.headline}
                                             </p>
                                         </div>
                                         
                                         {!hidePortfolio && (
                                             <div className="grid grid-cols-2 gap-3 shrink-0">
                                                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-                                                    <div className="text-2xl font-bold">{safeBriefing.decisionSupport?.summary?.buySignals || 0}</div>
+                                                    <div className="text-2xl font-bold">{briefing.decisionSupport.summary?.buySignals}</div>
                                                     <div className="text-[10px] font-bold uppercase tracking-wider text-white/60">Buy Signals</div>
                                                 </div>
                                                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-                                                    <div className="text-2xl font-bold">{safeBriefing.decisionSupport?.summary?.trimSignals || 0}</div>
+                                                    <div className="text-2xl font-bold">{briefing.decisionSupport.summary?.trimSignals}</div>
                                                     <div className="text-[10px] font-bold uppercase tracking-wider text-white/60">Trim Needed</div>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    {!hidePortfolio && safeBriefing.portfolioAlert && (
+                                    {!hidePortfolio && briefing.portfolioAlert && (
                                         <div className="mt-8 flex flex-wrap gap-3 pt-6 border-t border-white/15">
-                                            {(safeBriefing.portfolioAlert?.overexposedSectors || []).map((sector: string) => (
+                                            {briefing.portfolioAlert.overexposedSectors.map(sector => (
                                                 <Badge key={sector} className="bg-red-500/20 text-red-200 border-red-500/30 hover:bg-red-500/30">
                                                     <FiZap className="mr-1 h-3 w-3" />
                                                     Overexposed: {sector}
                                                 </Badge>
                                             ))}
-                                            {(safeBriefing.portfolioAlert?.stopLossBreaches || 0) > 0 && (
+                                            {briefing.portfolioAlert.stopLossBreaches > 0 && (
                                                 <Badge className="bg-red-500 text-white border-0 hover:bg-red-600">
                                                     <FiAlertCircle className="mr-1 h-3 w-3" />
-                                                    {safeBriefing.portfolioAlert.stopLossBreaches} Stop Loss Breached
+                                                    {briefing.portfolioAlert.stopLossBreaches} Stop Loss Breached
                                                 </Badge>
                                             )}
                                         </div>
@@ -487,15 +462,15 @@ export const Dashboard: React.FC = () => {
                                         data={[
                                             {
                                                 id: "Growth",
-                                                data: safeSectorHeatmap.sectors.slice(0, 4).map(s => ({ x: s.name.split(' ')[0], y: s.performance?.[heatmapTimeframe] || 0, full: s.name, exp: s.userExposurePct || 0, syms: s.userSymbols || [] }))
+                                                data: sectorHeatmap.sectors.slice(0, 4).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
                                             },
                                             {
                                                 id: "Industrial",
-                                                data: safeSectorHeatmap.sectors.slice(4, 8).map(s => ({ x: s.name.split(' ')[0], y: s.performance?.[heatmapTimeframe] || 0, full: s.name, exp: s.userExposurePct || 0, syms: s.userSymbols || [] }))
+                                                data: sectorHeatmap.sectors.slice(4, 8).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
                                             },
                                             {
                                                 id: "Utility",
-                                                data: safeSectorHeatmap.sectors.slice(8, 12).map(s => ({ x: s.name.split(' ')[0], y: s.performance?.[heatmapTimeframe] || 0, full: s.name, exp: s.userExposurePct || 0, syms: s.userSymbols || [] }))
+                                                data: sectorHeatmap.sectors.slice(8, 12).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
                                             }
                                         ]}
                                         margin={{ top: 30, right: 30, bottom: 30, left: 80 }}
@@ -544,7 +519,7 @@ export const Dashboard: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="mt-4 text-xs text-muted-foreground text-right">
-                                    Last updated {Math.floor((new Date().getTime() - new Date(safeSectorHeatmap.cachedAt).getTime()) / 60000)}m ago
+                                    Last updated {Math.floor((new Date().getTime() - new Date(sectorHeatmap.cachedAt).getTime()) / 60000)}m ago
                                 </div>
                             </CustomCard>
 
@@ -608,11 +583,11 @@ export const Dashboard: React.FC = () => {
                                                 
                                                 <div className="space-y-4">
                                                     {[
-                                                        { label: "Diversification", value: safePortfolio.healthScore?.breakdown?.diversification || 0 },
-                                                        { label: "Risk/Reward", value: safePortfolio.healthScore?.breakdown?.riskReward || 0 },
-                                                        { label: "Volatility", value: safePortfolio.healthScore?.breakdown?.volatility || 0 },
-                                                        { label: "Alert Health", value: safePortfolio.healthScore?.breakdown?.alertHealth || 0 },
-                                                        { label: "Watchlist Discipline", value: safePortfolio.healthScore?.breakdown?.watchlistDiscipline || 0 }
+                                                        { label: "Diversification", value: portfolio.healthScore.breakdown.diversification },
+                                                        { label: "Risk/Reward", value: portfolio.healthScore.breakdown.riskReward },
+                                                        { label: "Volatility", value: portfolio.healthScore.breakdown.volatility },
+                                                        { label: "Alert Health", value: portfolio.healthScore.breakdown.alertHealth },
+                                                        { label: "Watchlist Discipline", value: portfolio.healthScore.breakdown.watchlistDiscipline }
                                                     ].map((item) => (
                                                         <div key={item.label}>
                                                             <div className="flex justify-between text-xs font-medium mb-1.5">
@@ -636,22 +611,22 @@ export const Dashboard: React.FC = () => {
 
                                     <div className="flex flex-col items-center">
                                         <CircularProgress 
-                                            value={safePortfolio.healthScore?.score || 0} 
-                                            band={safePortfolio.healthScore?.band || ''}
-                                            color={(safePortfolio.healthScore?.score || 0) > 70 ? '#16a34a' : (safePortfolio.healthScore?.score || 0) > 40 ? '#eab308' : '#dc2626'}
+                                            value={portfolio.healthScore.score} 
+                                            band={portfolio.healthScore.band}
+                                            color={portfolio.healthScore.score > 70 ? '#16a34a' : portfolio.healthScore.score > 40 ? '#eab308' : '#dc2626'}
                                         />
                                         <div className="text-center mt-4">
-                                            <div className="text-sm font-medium text-muted-foreground">{safePortfolio.healthScore?.label || ''}</div>
+                                            <div className="text-sm font-medium text-muted-foreground">{portfolio.healthScore.label}</div>
                                         </div>
                                         <div className="w-full flex justify-between gap-6 mt-8 pt-6 border-t">
                                             <div className="min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total Value</div>
-                                                <div className="text-2xl font-bold tracking-tight">${(safePortfolio.totalValue || 0).toLocaleString()}</div>
+                                                <div className="text-2xl font-bold tracking-tight">${portfolio.totalValue.toLocaleString()}</div>
                                             </div>
                                             <div className="text-right min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total P&L</div>
-                                                <div className={`text-2xl font-bold tracking-tight ${(safePortfolio.totalUnrealizedPnL || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {(safePortfolio.totalUnrealizedPnL || 0) >= 0 ? '+' : ''}${Math.abs(safePortfolio.totalUnrealizedPnL || 0).toLocaleString()}
+                                                <div className={`text-2xl font-bold tracking-tight ${portfolio.totalUnrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {portfolio.totalUnrealizedPnL >= 0 ? '+' : ''}${Math.abs(portfolio.totalUnrealizedPnL).toLocaleString()}
                                                 </div>
                                             </div>
                                         </div>
@@ -661,8 +636,8 @@ export const Dashboard: React.FC = () => {
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span className="text-sm font-medium">Today's Performance</span>
                                             </div>
-                                            <div className={`text-sm font-bold ${(safePortfolio.todayGainLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {(safePortfolio.todayGainLoss || 0) >= 0 ? '+' : ''}{safePortfolio.todayGainLossPct || 0}%
+                                            <div className={`text-sm font-bold ${portfolio.todayGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {portfolio.todayGainLoss >= 0 ? '+' : ''}{portfolio.todayGainLossPct}%
                                             </div>
                                         </div>
 
@@ -670,16 +645,16 @@ export const Dashboard: React.FC = () => {
                                             <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                                                 <div className="flex items-center gap-3">
                                                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100">MVP</Badge>
-                                                    <div className="text-sm font-semibold">{safePortfolio.bestPerformer?.symbol || 'N/A'}</div>
+                                                    <div className="text-sm font-semibold">{portfolio.bestPerformer?.symbol || 'N/A'}</div>
                                                 </div>
-                                                <div className="text-sm font-bold text-green-500">+{safePortfolio.bestPerformer?.changePercent || 0}%</div>
+                                                <div className="text-sm font-bold text-green-500">+{portfolio.bestPerformer?.changePercent || 0}%</div>
                                             </div>
                                             <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                                                 <div className="flex items-center gap-3">
                                                     <Badge variant="destructive" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-100">LVP</Badge>
-                                                    <div className="text-sm font-semibold">{safePortfolio.worstPerformer?.symbol || 'N/A'}</div>
+                                                    <div className="text-sm font-semibold">{portfolio.worstPerformer?.symbol || 'N/A'}</div>
                                                 </div>
-                                                <div className="text-sm font-bold text-red-500">{safePortfolio.worstPerformer?.changePercent || 0}%</div>
+                                                <div className="text-sm font-bold text-red-500">{portfolio.worstPerformer?.changePercent || 0}%</div>
                                             </div>
                                         </div>
                                     </div>
@@ -692,12 +667,12 @@ export const Dashboard: React.FC = () => {
                                 title="Impact News" 
                                 actions={
                                     <Button variant="link" className="p-0 h-auto text-xs text-primary" onClick={() => navigate('/news')}>
-                                        View all {impactNews?.totalCount || 0} <FiArrowRight className="ml-1 h-3 w-3" />
+                                        View all {impactNews.totalCount} <FiArrowRight className="ml-1 h-3 w-3" />
                                     </Button>
                                 }
                             >
                                 <div className="space-y-4">
-                                    {(impactNews?.items || []).slice(0, 5).map((news) => (
+                                    {(impactNews.items || []).slice(0, 5).map((news) => (
                                         <div key={news.id} className={`group p-4 rounded-lg border transition-all hover:bg-muted/50 ${news.impact === 'NEGATIVE_HOLDING' ? 'border-l-4 border-l-destructive bg-destructive/5' : 'bg-card'}`}>
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex items-center gap-2">
