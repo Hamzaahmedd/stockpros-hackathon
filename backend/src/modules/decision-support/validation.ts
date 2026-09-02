@@ -2,8 +2,8 @@ import { z } from 'zod'
 
 export const PortfolioRowValidator = z.object({
   symbol: z.string().min(1, 'Invalid symbol'),
-  quantity: z.coerce.number().positive('Invalid quantity'),
-  avg_entry_price: z.coerce.number().positive('Invalid avg_entry_price'),
+  quantity: z.number().positive('Invalid quantity'),
+  avg_entry_price: z.number().positive('Invalid avg_entry_price'),
   sector: z.string().optional(),
 })
 
