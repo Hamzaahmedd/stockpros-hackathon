@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FiAlertCircle, FiPlus, FiTrendingDown, FiTrendingUp as FiUp } from "react-icons/fi";
 
 import { SmartSearch } from "@/shared/components/SmartSearch";
@@ -41,7 +40,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     lastUpdate,
     status,
   } = useSocket(true);
-  const { theme } = useTheme();
+  useTheme();
 
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [input, setInput] = useState("");
@@ -78,7 +77,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
       if (t) {
         return { ...t, updateCount: tradeStats.get(s.toUpperCase()) || 0 };
       }
-      return { s, p: NaN, v: 0, snapshot: false, updateCount: 0 };
+      return { s, p: Number.NaN, v: 0, snapshot: false, updateCount: 0 };
     });
   }, [symbols, tradeMap, tradeStats]);
 
@@ -96,9 +95,6 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     setSymbols((prev) => prev.filter((x) => x !== sym));
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleAdd();
-  };
 
   return (
     <div className="rounded-lg overflow-hidden">

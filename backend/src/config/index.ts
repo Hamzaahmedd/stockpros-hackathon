@@ -24,7 +24,6 @@ export const readSecrets = (): {
   polygonApiKey: string
   twelveDataApiKey: string
   axiomToken: string
-  axiomDataset: string
 } => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
@@ -39,7 +38,6 @@ export const readSecrets = (): {
   polygonApiKey: process.env.POLYGON_API_KEY || '',
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
   axiomToken: process.env.AXIOM_TOKEN || '',
-  axiomDataset: process.env.AXIOM_DATASET || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -103,7 +101,6 @@ export const buildConfig = (
   }
   finnhub: {
     apiKey: string
-    quoteTTL: number
   }
   smtp: {
     host: string
@@ -178,7 +175,6 @@ export const buildConfig = (
   },
   finnhub: {
     apiKey: secrets.finnhubApiKey,
-    quoteTTL: env.finnhub.quoteTTL,
   },
   smtp: {
     host: env.smtp.host,
@@ -206,7 +202,7 @@ export const buildConfig = (
   },
   axiom: {
     token: secrets.axiomToken,
-    dataset: secrets.axiomDataset,
+    dataset: env.axiom.dataset,
   },
   features: env.features,
   audit: {

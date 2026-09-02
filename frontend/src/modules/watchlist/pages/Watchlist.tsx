@@ -489,7 +489,7 @@ const Watchlist: React.FC = () => {
                    {/* Actions */}
                   <div className="flex flex-row lg:flex-col justify-between items-center lg:items-stretch py-2 border-t lg:border-t-0 lg:border-l-2 pt-4 lg:pt-0 lg:pl-10 gap-4 border-border">
                     <div className="flex flex-col gap-2">
-                      {can("PORTFOLIO", "canCreate") && (
+                      {can("PORTFOLIO", "canWrite") && (
                         <button 
                           onClick={() => handleConvertToPosition(item.symbol)}
                           className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition lg:whitespace-nowrap"

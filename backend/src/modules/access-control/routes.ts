@@ -24,7 +24,7 @@ router.get(
 )
 router.post(
   '/roles',
-  rbacMiddleware(Resource.ROLE, Action.CREATE),
+  rbacMiddleware(Resource.ROLE, Action.WRITE),
   RbacController.addRole,
 )
 router.delete(
@@ -34,7 +34,7 @@ router.delete(
 )
 router.post(
   '/assign-role',
-  rbacMiddleware(Resource.ROLE, Action.CREATE),
+  rbacMiddleware(Resource.ROLE, Action.WRITE),
   RbacController.assignRole,
 )
 
@@ -46,7 +46,7 @@ router.get(
 )
 router.post(
   '/assign-permissions',
-  rbacMiddleware(Resource.ROLE, Action.CREATE),
+  rbacMiddleware(Resource.ROLE, Action.WRITE),
   RbacController.assignPermissionsToRole,
 )
 router.delete(
@@ -63,7 +63,7 @@ router.get(
 )
 router.post(
   '/resource-mappings',
-  rbacMiddleware(Resource.ROLE, Action.CREATE),
+  rbacMiddleware(Resource.ROLE, Action.WRITE),
   RbacController.assignActionsToResources,
 )
 

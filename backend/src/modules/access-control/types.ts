@@ -28,8 +28,7 @@ export interface AssignPermissionsParams {
 
 export interface ScreenPermissions {
   canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
-  canArchive: boolean
-  canManage: boolean
+  canWrite: boolean
+  canEdit: boolean
+  canDelete: boolean
 }

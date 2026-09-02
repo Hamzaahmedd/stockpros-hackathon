@@ -23,9 +23,6 @@ export const productionConfig = {
   ml: {
     internalUrl: 'https://ai-service-oylj.onrender.com',
   },
-  finnhub: {
-    quoteTTL: 30,
-  },
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
@@ -38,6 +35,9 @@ export const productionConfig = {
     useSmtp: false,
     useResend: true,
     resendFrom: 'StockPros <onboarding@resend.dev>',
+  },
+  axiom: {
+    dataset: 'stockpros-audit-logs',
   },
   features: {
     enableNewsCron: true,

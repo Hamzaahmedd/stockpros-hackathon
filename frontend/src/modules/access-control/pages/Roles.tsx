@@ -217,7 +217,7 @@ const Roles = () => {
                             </div>
                         </div>
 
-                        {can('ROLE', 'canCreate') && (
+                        {can('ROLE', 'canWrite') && (
                             <Button
                                 onClick={() => setIsAddRoleModalOpen(true)}
                                 className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]"
@@ -276,7 +276,7 @@ const Roles = () => {
 
                                             {/* Actions */}
                                             <div className="text-right flex justify-end gap-2">
-                                                {can('ROLE', 'canUpdate') && (
+                                                {can('ROLE', 'canEdit') && (
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
