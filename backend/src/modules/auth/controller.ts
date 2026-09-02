@@ -10,6 +10,7 @@ import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
 import { convertToMilliseconds, getUserId } from '../../shared/utils'
 import {
     completeOnboardingFlow,
+    deleteAccount as deleteAccountService,
     fetchMe,
     generateMagicLink,
     googleLogin as googleLoginService,
@@ -80,6 +81,40 @@ export const logout = async (
     return res
       .status(200)
       .json({ success: true, message: 'Logged out successfully' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ─── Account Deletion ─────────────────────────────────────────────────────────
+
+export const deleteAccount = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { confirmationPhrase } = req.body
+
+    if (
+      typeof confirmationPhrase !== 'string' ||
+      confirmationPhrase.trim() !== 'DELETE MY ACCOUNT'
+    ) {
+      throw new ValidationError(
+        'You must type "DELETE MY ACCOUNT" exactly to confirm deletion',
+      )
+    }
+
+    await deleteAccountService(userId)
+
+    // Clear the refresh-token cookie so the browser session dies immediately
+    res.clearCookie('refresh_token', defaultCookieOptions)
+
+    return res.status(200).json({
+      success: true,
+      message: 'Your account has been permanently deleted.',
+    })
   } catch (error) {
     next(error)
   }

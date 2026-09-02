@@ -18,3 +18,6 @@ export const logout = () =>
 
 export const refresh = () =>
   api.post("/api/v1/auth/refresh-token");
+
+export const deleteAccount = (confirmationPhrase: string) =>
+  api.delete("/api/v1/auth/account", { data: { confirmationPhrase } });
