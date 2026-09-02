@@ -1,5 +1,5 @@
 import config from '@/config'
-import EventEmitter from 'events'
+import EventEmitter from 'node:events'
 import WebSocket from 'ws'
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { CACHE_TTL } from '../../../shared/constants'
@@ -9,15 +9,15 @@ import { FinnhubTradeMsg } from './finnhub-types'
 
 export class FinnhubService extends EventEmitter {
   private ws?: WebSocket
-  private subscribed = new Set<string>()
+  private readonly subscribed = new Set<string>()
   private reconnectAttempts = 0
   private heartbeat?: NodeJS.Timeout
   private closed = false
   private lastCloseWas429 = false
   // In-memory quote cache to avoid rate-limit bans on dashboard refresh
-  private quoteCache = new Map<string, { data: StockQuote; ts: number }>()
+  private readonly quoteCache = new Map<string, { data: StockQuote; ts: number }>()
 
-  constructor(private apiKey: string) {
+  constructor(private readonly apiKey: string) {
     super()
     this.connect()
   }
@@ -71,7 +71,7 @@ export class FinnhubService extends EventEmitter {
       this.stopHeartbeat()
 
       // Double check for 429 in the close reason
-      if (code === 429 || (reason && reason.toString().includes('429'))) {
+      if (code === 429 || (reason?.toString().includes('429'))) {
         this.lastCloseWas429 = true
       }
 
@@ -82,7 +82,7 @@ export class FinnhubService extends EventEmitter {
     this.ws.on('error', (err: Error) => {
       // Prevents ECONNRESET from crashing the Node process
       logger.error(`Finnhub WS internal error: ${err.message}`)
-      if (err.message && err.message.includes('429')) {
+      if (err.message?.includes('429')) {
         this.lastCloseWas429 = true
       }
       this.emit('error', err)
@@ -158,7 +158,7 @@ export class FinnhubService extends EventEmitter {
     this.stopHeartbeat()
     this.heartbeat = setInterval(() => {
       try {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.ping()
         }
       } catch {}
@@ -171,7 +171,7 @@ export class FinnhubService extends EventEmitter {
   }
 
   private _send(type: string, symbol: string) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+    if (this.ws?.readyState !== WebSocket.OPEN) return
     this.ws.send(JSON.stringify({ type, symbol }))
   }
 

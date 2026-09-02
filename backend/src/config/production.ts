@@ -36,6 +36,9 @@ export const productionConfig = {
     useResend: true,
     resendFrom: 'StockPros <onboarding@resend.dev>',
   },
+  axiom: {
+    dataset: 'stockpros-audit-logs',
+  },
   features: {
     enableNewsCron: true,
     enableWatchlistCron: true,

@@ -361,7 +361,7 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     {/* TRENDING SECTION */}
-                    {data && data.trendingStocks && data.trendingStocks.length > 0 && (
+                    {data?.trendingStocks && data.trendingStocks.length > 0 && (
                         <section className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-lg font-semibold tracking-tight">Trending</h2>

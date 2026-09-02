@@ -35,6 +35,9 @@ export const testConfig = {
     useResend: true,
     resendFrom: 'StockPros Test <test@example.com>',
   },
+  axiom: {
+    dataset: 'stockpros-audit-logs',
+  },
   features: {
     enableNewsCron: false,
     enableWatchlistCron: false,
@@ -42,6 +45,6 @@ export const testConfig = {
     enableSwaggerDocs: false,
   },
   audit: {
-    retentionDays: 30, 
+    retentionDays: 30,
   },
 }
