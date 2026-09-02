@@ -89,11 +89,11 @@ export const getUnifiedMarketDecision = async (symbol: string) => {
   if (cached) return cached
 
   const [quote, closes, ratings, news, marketStatus] = await Promise.all([
-    getQuote(symbol),
-    getHistoricalCloses(symbol),
-    getAnalystRatings(symbol),
-    getNews(symbol),
-    getMarketStatus(),
+    getQuote(symbol).catch((err) => { logger.error(`getQuote failed for ${symbol}`, err); return null }),
+    getHistoricalCloses(symbol).catch((err) => { logger.error(`getHistoricalCloses failed for ${symbol}`, err); return [] }),
+    getAnalystRatings(symbol).catch((err) => { logger.error(`getAnalystRatings failed for ${symbol}`, err); return [] }),
+    getNews(symbol).catch((err) => { logger.error(`getNews failed for ${symbol}`, err); return [] }),
+    getMarketStatus().catch((err) => { logger.error('getMarketStatus failed', err); return null }),
   ])
 
   const rsi = computeRSI(closes)

@@ -1,0 +1,6 @@
+symbol,quantity,avg_entry_price,sector
+AAPL,10,150,Technology
+MSFT,5,300,Technology
+TSLA,10,200,Consumer Cyclical
+GOOGL,8,120,Communication Services
+AMZN,15,100,Consumer Cyclical
