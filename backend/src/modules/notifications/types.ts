@@ -41,3 +41,7 @@ export interface NotificationSummary {
   unreadCount: number
   preview: NotificationItem[]
 }
+
+export interface NotificationPreferences {
+  dailyDigestEnabled: boolean
+}

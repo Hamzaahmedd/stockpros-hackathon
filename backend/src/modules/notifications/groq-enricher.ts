@@ -1,10 +1,37 @@
 import getGroqClient from '../../shared/infrastructure/clients/groq-client'
+import config from '@/config'
 import { logger } from '../../shared/infrastructure/logger'
 import type { DigestNewsItem } from './email-templates'
 import type { RawNewsInput } from './types'
+import { z } from 'zod'
 
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
 const MAX_BULLETS = 3
+
+const digestResponseValidator = z
+  .object({
+    results: z.array(
+      z
+        .object({
+          index: z.number().int().positive(),
+          bullets: z.array(z.string().trim().min(1)).max(MAX_BULLETS),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+function extractJsonObject(content: string): string {
+  const fencedJson = content.match(/```json\s*([\s\S]*?)\s*```/i)?.[1]
+  if (fencedJson) return fencedJson
+
+  const start = content.indexOf('{')
+  const end = content.lastIndexOf('}')
+  if (start < 0 || end <= start) {
+    throw new Error('Groq response did not contain a JSON object')
+  }
+
+  return content.slice(start, end + 1)
+}
 
 /**
  * Calls Groq to produce high-quality, investment-relevant bullet points for
@@ -44,12 +71,12 @@ Rules:
 - Each bullet must be ≤ 15 words.
 - Do NOT use vague phrases like "shares moved" or "investors reacted".
 - Do NOT add commentary or opinion — only facts from the article.
-- Respond with ONLY valid JSON, no markdown, no explanation.
-- Format: { "results": [ { "index": 1, "bullets": ["...", "..."] }, ... ] }`
+- Return only this JSON object, with no markdown: {"results":[{"index":1,"bullets":["fact"]}]}.
+- Return one result for every input article, using its supplied index.`
 
   try {
     const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
+      model: config.groq.model,
       messages: [
         { role: 'system', content: systemPrompt },
         {
@@ -59,19 +86,16 @@ Rules:
       ],
       temperature: 0.2,
       max_tokens: 1024,
-      response_format: { type: 'json_object' },
     })
 
     const raw = completion.choices[0]?.message?.content ?? '{}'
-    const parsed = JSON.parse(raw) as {
-      results?: Array<{ index: number; bullets: string[] }>
-    }
+    const parsed = digestResponseValidator.parse(
+      JSON.parse(extractJsonObject(raw)),
+    )
 
     const bulletMap = new Map<number, string[]>()
-    for (const entry of parsed.results ?? []) {
-      if (typeof entry.index === 'number' && Array.isArray(entry.bullets)) {
-        bulletMap.set(entry.index, entry.bullets.slice(0, MAX_BULLETS))
-      }
+    for (const entry of parsed.results) {
+      bulletMap.set(entry.index, entry.bullets)
     }
 
     logger.info(
@@ -87,7 +111,10 @@ Rules:
       url: a.url,
     }))
   } catch (err: unknown) {
-    logger.error('[GroqEnricher] Groq enrichment failed — using stored bullets as fallback:', err)
+    logger.error(
+      '[GroqEnricher] Groq enrichment failed — using stored bullets as fallback:',
+      err,
+    )
 
     // Graceful fallback: return stored summaryBullets
     return articles.map((a, i) => ({

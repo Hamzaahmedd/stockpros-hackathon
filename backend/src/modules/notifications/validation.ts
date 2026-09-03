@@ -12,6 +12,12 @@ export const notificationIdsValidator = z.object({
   notificationIds: z.array(z.string().min(1)).min(1),
 })
 
+export const notificationPreferencesValidator = z
+  .object({
+    dailyDigestEnabled: z.boolean(),
+  })
+  .strict()
+
 // ─── PATCH /notifications/:id/read ───────────────────────────────────────────
 // No body required — the id comes from the route param
 

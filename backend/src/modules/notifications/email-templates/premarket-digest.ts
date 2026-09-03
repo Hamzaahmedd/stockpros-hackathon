@@ -15,11 +15,24 @@ export interface DigestNewsItem {
 
 export interface PremarketDigestData {
   userName: string
-  dateFormatted: string
+  issuedAtFormatted: string
+  dashboardUrl: string
   watchlistItems: WatchlistDigestItem[]
   topNews: DigestNewsItem[]
   macroNote?: string
 }
+
+const escapeHtml = (value: string): string =>
+  value.replace(/[&<>'"]/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;',
+    }
+    return entities[character]
+  })
 
 export const buildPremarketDigestText = (data: PremarketDigestData): string => {
   const watchlistText = data.watchlistItems
@@ -37,7 +50,7 @@ export const buildPremarketDigestText = (data: PremarketDigestData): string => {
     .join('\n\n')
 
   return `
-StockPros Pre-Market Digest — ${data.dateFormatted}
+StockPros Pre-Market Digest — ${data.issuedAtFormatted}
 
 Good morning ${data.userName},
 
@@ -49,7 +62,7 @@ ${watchlistText || 'No active watchlist tickers.'}
 TOP WATCHLIST INTELLIGENCE & DEVELOPMENTS
 ${newsText || 'No major overnight news events detected for your symbols.'}
 
-View live terminal: https://stockpros.com/dashboard
+View live terminal: ${data.dashboardUrl}
 `
 }
 
@@ -69,7 +82,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
       return `
       <tr>
         <td style="padding: 10px 14px; border-bottom: 1px solid #242938; font-family: monospace; font-weight: 700; color: #f8fafc;">
-          ${item.symbol}
+          ${escapeHtml(item.symbol)}
         </td>
         <td style="padding: 10px 14px; border-bottom: 1px solid #242938; text-align: right; color: #cbd5e1; font-family: monospace;">
           ${priceStr}
@@ -96,7 +109,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
           ? article.bullets
               .map(
                 (bullet) =>
-                  `<li style="margin-bottom: 4px; color: #cbd5e1; font-size: 13px; line-height: 1.5;">${bullet}</li>`,
+                  `<li style="margin-bottom: 4px; color: #cbd5e1; font-size: 13px; line-height: 1.5;">${escapeHtml(bullet)}</li>`,
               )
               .join('')
           : `<li style="color: #94a3b8; font-size: 13px;">Market coverage in progress.</li>`
@@ -105,7 +118,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
       <div style="background-color: #0f1422; border: 1px solid #1e293b; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
         <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
           <span style="background-color: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); color: #22d3ee; font-family: monospace; font-weight: 700; font-size: 11px; padding: 2px 8px; rounded: 4px;">
-            ${article.symbol}
+            ${escapeHtml(article.symbol)}
           </span>
           ${
             article.sentiment
@@ -116,7 +129,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
           }
         </div>
         <h4 style="margin: 0 0 8px 0; color: #f8fafc; font-size: 14px; font-weight: 600; line-height: 1.4;">
-          ${article.headline}
+          ${escapeHtml(article.headline)}
         </h4>
         <ul style="margin: 0; padding-left: 18px;">
           ${bulletsHtml}
@@ -149,7 +162,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
               </td>
               <td align="right">
                 <span style="font-size: 11px; font-family: monospace; color: #94a3b8; background: #1e293b; padding: 4px 10px; border-radius: 9999px;">
-                  ${data.dateFormatted}
+                  ${data.issuedAtFormatted}
                 </span>
               </td>
             </tr>
@@ -161,7 +174,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
       <tr>
         <td style="padding: 28px;">
           <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #ffffff;">
-            Good Morning, ${data.userName}
+            Good Morning, ${escapeHtml(data.userName)}
           </h2>
           <p style="margin: 0 0 24px 0; font-size: 14px; color: #94a3b8; line-height: 1.5;">
             Here is your daily pre-market digest with overnight moves and key news highlights for your watched tickers.
@@ -196,7 +209,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
 
           <!-- Terminal CTA Button -->
           <div style="text-align: center; margin: 32px 0 16px 0;">
-            <a href="https://stockpros.com/dashboard" style="background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(6, 182, 212, 0.4);">
+            <a href="${escapeHtml(data.dashboardUrl)}" style="background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(6, 182, 212, 0.4);">
               Launch Terminal Dashboard &rarr;
             </a>
           </div>
@@ -207,7 +220,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
       <tr>
         <td style="padding: 20px 28px; background-color: #070a12; border-top: 1px solid #1e293b; text-align: center; font-size: 11px; color: #64748b; line-height: 1.6;">
           &copy; ${new Date().getFullYear()} StockPros Terminal. All rights reserved.<br>
-          You received this email because you opted into the Daily Pre-Market Digest in your StockPros terminal settings.
+          You received this email because your active StockPros account has watchlist symbols.
         </td>
       </tr>
     </table>

@@ -12,6 +12,7 @@ model User {
   displayName         String     @map("display_name")
   email               String     @unique
   status              UserStatus @default(ACTIVE)
+  dailyDigestEnabled  Boolean    @default(true) @map("daily_digest_enabled")
   deletedAt           DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletionScheduledAt DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
   createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)

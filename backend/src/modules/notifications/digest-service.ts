@@ -11,11 +11,15 @@ import {
   type WatchlistDigestItem,
 } from './email-templates'
 import { enrichNewsWithGroq } from './groq-enricher'
+import config from '@/config'
+
+const DIGEST_TIME_ZONE = 'Asia/Karachi'
+const DASHBOARD_PATH = '/dashboard'
 
 /**
  * Compile pre-market briefing data for a given user.
  */
-export const generateDigestDataForUser = async (
+const generateDigestDataForUser = async (
   userId: string,
 ): Promise<PremarketDigestData | null> => {
   const user = await prisma.user.findUnique({
@@ -46,8 +50,10 @@ export const generateDigestDataForUser = async (
 
       watchlistItems.push({
         symbol,
-        currentPrice: typeof quoteRes.data?.c === 'number' ? quoteRes.data.c : null,
-        changePercent: typeof quoteRes.data?.dp === 'number' ? quoteRes.data.dp : null,
+        currentPrice:
+          typeof quoteRes.data?.c === 'number' ? quoteRes.data.c : null,
+        changePercent:
+          typeof quoteRes.data?.dp === 'number' ? quoteRes.data.dp : null,
       })
     } catch {
       watchlistItems.push({
@@ -104,16 +110,22 @@ export const generateDigestDataForUser = async (
   // Attempt Groq enrichment; falls back to stored summaryBullets automatically
   const topNews = await enrichNewsWithGroq(enricherInput, fallbackBullets)
 
-  const dateFormatted = new Date().toLocaleDateString('en-US', {
+  const generatedAt = new Date()
+  const issuedAtFormatted = generatedAt.toLocaleString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: DIGEST_TIME_ZONE,
+    timeZoneName: 'short',
   })
 
   return {
     userName: user.displayName || 'Trader',
-    dateFormatted,
+    issuedAtFormatted,
+    dashboardUrl: `${config.server.frontendUrl}${DASHBOARD_PATH}`,
     watchlistItems,
     topNews,
   }
@@ -139,7 +151,7 @@ export const sendPremarketDigestToUser = async (
     return { success: false, message: 'Unable to compile digest data' }
   }
 
-  const subject = `StockPros Pre-Market Briefing [${digestData.dateFormatted}]`
+  const subject = `StockPros Pre-Market Briefing [${digestData.issuedAtFormatted}]`
   const textContent = buildPremarketDigestText(digestData)
   const htmlContent = buildPremarketDigestHtml(digestData)
 
@@ -191,12 +203,15 @@ export const sendPremarketDigestToUser = async (
  * Scheduled job: dispatches morning digest to all active users with watchlist items.
  */
 export const sendDailyDigestsToAllSubscribers = async (): Promise<void> => {
-  logger.info('[DigestService] Starting daily pre-market digest dispatch run...')
+  logger.info(
+    '[DigestService] Starting daily pre-market digest dispatch run...',
+  )
 
   try {
     const eligibleUsers = await prisma.user.findMany({
       where: {
         status: UserStatus.ACTIVE,
+        dailyDigestEnabled: true,
         watchlistItems: { some: {} },
       },
       select: { id: true, email: true },
@@ -217,7 +232,9 @@ export const sendDailyDigestsToAllSubscribers = async (): Promise<void> => {
       }
     }
 
-    logger.info('[DigestService] Completed daily pre-market digest dispatch run')
+    logger.info(
+      '[DigestService] Completed daily pre-market digest dispatch run',
+    )
   } catch (err) {
     logger.error(
       '[DigestService] Daily pre-market digest dispatch job failed:',

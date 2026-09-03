@@ -8,13 +8,13 @@ router.use(authenticate)
 
 router.get('/', NotificationController.getNotifications)
 router.get('/summary', NotificationController.getNotificationSummary)
+router.get('/preferences', NotificationController.getPreferences)
+router.patch('/preferences', NotificationController.updatePreferences)
 
 router.patch('/read-all', NotificationController.markAllAsRead)
 router.patch('/read-multiple', NotificationController.markMultipleAsRead)
 
 router.patch('/:id/read', NotificationController.markAsRead)
 router.delete('/:id', NotificationController.deleteNotification)
-
-router.post('/digest/send', NotificationController.sendTestDigest)
 
 export default router

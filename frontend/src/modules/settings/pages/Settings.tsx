@@ -38,7 +38,6 @@ interface AlertOption {
   description: string;
   icon: React.ElementType;
   disabled?: boolean;
-  badge?: string;
 }
 
 const ALERT_OPTIONS: AlertOption[] = [
@@ -47,21 +46,18 @@ const ALERT_OPTIONS: AlertOption[] = [
     title: "In-App Real-Time Alerts",
     description: "Instant pop-up triggers when prices cross key levels or AI signals fire.",
     icon: Bell,
-    badge: "Active",
   },
   {
     id: "email_alerts",
     title: "Email Volatility Alerts",
     description: "Direct email notifications for critical stop-loss or take-profit breaches.",
     icon: Mail,
-    badge: "Active",
   },
   {
     id: "daily_digest",
     title: "Daily Pre-Market Digest",
-    description: "Curated morning briefing of overnight news, watchlist movers, and intelligence before market open.",
+    description: "Receive a weekday pre-market briefing for your active watchlist at 8:30 AM New York time.",
     icon: FileText,
-    badge: "8:30 AM EST",
   },
 ];
 
@@ -74,24 +70,13 @@ const Settings: React.FC = () => {
   // Market & Alert preferences state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
-  const [isSendingDigest, setIsSendingDigest] = useState(false);
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState<boolean | null>(null);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
 
   // Account deletion state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhrase, setDeletePhrase] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleSendTestDigest = async () => {
-    try {
-      setIsSendingDigest(true);
-      const res = await api.post("/api/v1/notifications/digest/send");
-      toast.success(res.data?.message || "Pre-market digest dispatched to your email!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to trigger pre-market digest.");
-    } finally {
-      setIsSendingDigest(false);
-    }
-  };
 
   useEffect(() => {
     try {
@@ -101,11 +86,33 @@ const Settings: React.FC = () => {
 
       const savedAlerts = localStorage.getItem("stockpros_alert_preferences");
       if (savedAlerts) setSelectedAlerts(JSON.parse(savedAlerts));
-      else setSelectedAlerts(["in_app", "email_alerts"]);
+      else setSelectedAlerts(["in_app", "email_alerts", "daily_digest"]);
     } catch {
       setSelectedTopics(["AI & Tech", "Growth Stocks"]);
-      setSelectedAlerts(["in_app", "email_alerts"]);
+      setSelectedAlerts(["in_app", "email_alerts", "daily_digest"]);
     }
+  }, []);
+
+  useEffect(() => {
+    const loadNotificationPreferences = async () => {
+      try {
+        const response = await api.get("/api/v1/notifications/preferences");
+        const digestActive = response.data?.data?.dailyDigestEnabled ?? true;
+        setDailyDigestEnabled(digestActive);
+        
+        // Sync API response with alert selection state
+        setSelectedAlerts((prev) => {
+          if (digestActive && !prev.includes("daily_digest")) return [...prev, "daily_digest"];
+          if (!digestActive && prev.includes("daily_digest")) return prev.filter((id) => id !== "daily_digest");
+          return prev;
+        });
+      } catch {
+        toast.error("Failed to load notification preferences.");
+        setDailyDigestEnabled(true);
+      }
+    };
+
+    void loadNotificationPreferences();
   }, []);
 
   const toggleTopic = (topicName: string) => {
@@ -117,15 +124,35 @@ const Settings: React.FC = () => {
   const toggleAlert = (alertId: string) => {
     const opt = ALERT_OPTIONS.find((o) => o.id === alertId);
     if (opt?.disabled) return;
-    setSelectedAlerts((prev) =>
-      prev.includes(alertId) ? prev.filter((a) => a !== alertId) : [...prev, alertId]
-    );
+
+    setSelectedAlerts((prev) => {
+      const isSelected = prev.includes(alertId);
+      const updated = isSelected ? prev.filter((a) => a !== alertId) : [...prev, alertId];
+
+      if (alertId === "daily_digest") {
+        setDailyDigestEnabled(!isSelected);
+      }
+
+      return updated;
+    });
   };
 
-  const handleSavePreferences = () => {
-    localStorage.setItem("stockpros_market_interests", JSON.stringify(selectedTopics));
-    localStorage.setItem("stockpros_alert_preferences", JSON.stringify(selectedAlerts));
-    toast.success("Preferences updated successfully!");
+  const handleSavePreferences = async () => {
+    if (dailyDigestEnabled === null) return;
+
+    try {
+      setIsSavingPreferences(true);
+      await api.patch("/api/v1/notifications/preferences", { 
+        dailyDigestEnabled: selectedAlerts.includes("daily_digest") 
+      });
+      localStorage.setItem("stockpros_market_interests", JSON.stringify(selectedTopics));
+      localStorage.setItem("stockpros_alert_preferences", JSON.stringify(selectedAlerts));
+      toast.success("Preferences updated successfully!");
+    } catch {
+      toast.error("Failed to save notification preferences.");
+    } finally {
+      setIsSavingPreferences(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -137,13 +164,11 @@ const Settings: React.FC = () => {
       await deleteAccount(CONFIRMATION_PHRASE);
       clearAccessToken();
       toast.success("Account deleted. Redirecting…");
-      // Brief pause so the toast is visible before redirect
       setTimeout(() => {
         window.location.href = "/auth/login";
       }, 1500);
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ?? "Failed to delete account. Please try again.";
+      const msg = err?.response?.data?.message ?? "Failed to delete account. Please try again.";
       toast.error(msg);
       setIsDeleting(false);
     }
@@ -398,17 +423,6 @@ const Settings: React.FC = () => {
                                   <Icon className="w-4 h-4" />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {opt.badge && (
-                                    <span
-                                      className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
-                                        isDisabled
-                                          ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                                          : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-                                      }`}
-                                    >
-                                      {opt.badge}
-                                    </span>
-                                  )}
                                   <div
                                     className={`w-5 h-5 rounded flex items-center justify-center transition ${
                                       isDisabled
@@ -432,42 +446,16 @@ const Settings: React.FC = () => {
                           );
                         })}
                       </div>
-
-                      {/* Daily Digest On-Demand Test Action */}
-                      <div className="mt-4 p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                            <Sparkles className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-foreground">
-                              Test Pre-Market Digest Dispatch
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Generate and deliver an instant morning intelligence brief for your active watchlist to your email.
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          onClick={handleSendTestDigest}
-                          disabled={isSendingDigest}
-                          variant="outline"
-                          className="h-9 px-4 text-xs font-semibold border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 shrink-0"
-                        >
-                          {isSendingDigest ? "Generating & Sending..." : "Send Test Digest to Email"}
-                        </Button>
-                      </div>
                     </div>
 
                     <div className="flex justify-end pt-4 border-t border-border">
                       <Button
                         type="button"
                         onClick={handleSavePreferences}
+                        disabled={isSavingPreferences || dailyDigestEnabled === null}
                         className="px-6 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase tracking-wider"
                       >
-                        Save Preferences
+                        {isSavingPreferences ? "Saving..." : "Save Preferences"}
                       </Button>
                     </div>
                   </CardContent>
@@ -500,9 +488,8 @@ const Settings: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  {/* ── Danger Zone Card ── */}
+                  {/* Danger Zone Card */}
                   <div className="relative rounded-xl border border-red-500/40 bg-red-950/10 overflow-hidden shadow-lg shadow-red-950/10">
-                    {/* Subtle animated top-border glow */}
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
 
                     <div className="p-8">
@@ -543,10 +530,9 @@ const Settings: React.FC = () => {
                         )}
                       </div>
 
-                      {/* ── Inline confirmation UI ── */}
+                      {/* Inline confirmation UI */}
                       {showDeleteConfirm && (
                         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-950/20 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
-                          {/* Warning block */}
                           <div className="rounded-lg border border-red-500/20 bg-red-900/10 p-4 space-y-3">
                             <p className="text-sm font-bold text-red-400 flex items-center gap-2">
                               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -574,7 +560,6 @@ const Settings: React.FC = () => {
                             </ul>
                           </div>
 
-                          {/* Typed confirmation */}
                           <div className="space-y-2">
                             <label
                               htmlFor="delete-confirmation-input"
@@ -605,44 +590,6 @@ const Settings: React.FC = () => {
                                 Phrase doesn't match — type it exactly as shown above.
                               </p>
                             )}
-                          </div>
-
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-3 pt-1">
-                            <button
-                              id="btn-confirm-delete-account"
-                              type="button"
-                              disabled={!phraseMatches || isDeleting}
-                              onClick={handleDeleteAccount}
-                              className={`px-6 h-11 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-                                phraseMatches && !isDeleting
-                                  ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/40 cursor-pointer"
-                                  : "bg-red-900/20 text-red-900/40 border border-red-900/20 cursor-not-allowed"
-                              }`}
-                            >
-                              {isDeleting ? (
-                                <span className="flex items-center gap-2">
-                                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                  </svg>
-                                  Deleting…
-                                </span>
-                              ) : (
-                                "Permanently Delete"
-                              )}
-                            </button>
-                            <button
-                              id="btn-cancel-delete-account"
-                              type="button"
-                              onClick={() => {
-                                setShowDeleteConfirm(false);
-                                setDeletePhrase("");
-                              }}
-                              className="px-4 h-11 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200"
-                            >
-                              Cancel
-                            </button>
                           </div>
                         </div>
                       )}
