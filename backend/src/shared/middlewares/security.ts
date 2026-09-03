@@ -1,13 +1,33 @@
 import config from '@/config'
 import cors from 'cors'
 import { Application, Request } from 'express'
-import rateLimit from 'express-rate-limit'
+import rateLimit, { MemoryStore } from 'express-rate-limit'
 import helmet from 'helmet'
+import { RedisStore } from 'rate-limit-redis'
+import { getRawRedisClient } from '../infrastructure/cache'
+
+/**
+ * Creates a rate limit store backed by Redis when available,
+ * falling back gracefully to in-memory store if Redis is unconfigured or offline.
+ */
+function createRateLimitStore(prefix: string) {
+  const client = getRawRedisClient()
+  if (client) {
+    return new RedisStore({
+      // @ts-expect-error ioredis sendCommand signature aligns with rate-limit-redis expectations
+      sendCommand: (...args: string[]) =>
+        client.call(args[0], ...args.slice(1)),
+      prefix,
+    })
+  }
+  return new MemoryStore()
+}
 
 // Rate limiter for passwordless magic link requests — keyed by EMAIL address
 export const emailMagicLinkLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes window
   limit: 5, // Allow up to 5 login attempts per SAME email per 15 minutes
+  store: createRateLimitStore('rl:magic:'),
   keyGenerator: (req: Request): string => {
     const email = req.body?.email
       ? String(req.body.email).toLowerCase().trim()
@@ -21,19 +41,21 @@ export const emailMagicLinkLimiter = rateLimit({
   },
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  validate: false,
+  validate: {
+    keyGeneratorIpFallback: false,
+  },
 })
 
 export const loginLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes window
   limit: 5, // Allow up to 5 login attempts per IP per 5 minutes
+  store: createRateLimitStore('rl:login:'),
   message: {
     success: false,
     message: 'Too many login attempts. Try again later after 5 minutes.',
   },
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  validate: false,
 })
 
 export const securityMiddleware = (app: Application): void => {
@@ -42,9 +64,9 @@ export const securityMiddleware = (app: Application): void => {
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes window
       limit: 600, // Limit each IP to 600 requests per window (~40 req/min)
+      store: createRateLimitStore('rl:global:'),
       standardHeaders: 'draft-8',
       legacyHeaders: false,
-      validate: false,
     }),
   )
 
