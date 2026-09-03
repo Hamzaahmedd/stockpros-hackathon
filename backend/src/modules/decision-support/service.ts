@@ -30,6 +30,8 @@ import {
   VolatilityLevel,
 } from './types'
 import { PortfolioArrayValidator } from './validation'
+import { SPUS_TOP_50_STOCKS } from './constants'
+export { SPUS_TOP_50_STOCKS } from './constants'
 
 export const enrichPortfolio = async (
   rows: RawPortfolioRow[],
@@ -963,59 +965,6 @@ export const generateBatchDecision = async (
 }
 
 // ── Opportunity Radar & Price Targets (Persona A) ──
-
-export const SPUS_TOP_50_STOCKS: { symbol: string; sector: string }[] = [
-  { symbol: 'MSFT', sector: 'Technology' },
-  { symbol: 'AAPL', sector: 'Technology' },
-  { symbol: 'NVDA', sector: 'Technology' },
-  { symbol: 'GOOGL', sector: 'Communication Services' },
-  { symbol: 'AMZN', sector: 'Consumer Cyclical' },
-  { symbol: 'META', sector: 'Communication Services' },
-  { symbol: 'TSLA', sector: 'Consumer Cyclical' },
-  { symbol: 'LLY', sector: 'Healthcare' },
-  { symbol: 'AVGO', sector: 'Technology' },
-  { symbol: 'CRM', sector: 'Technology' },
-  { symbol: 'ADBE', sector: 'Technology' },
-  { symbol: 'AMD', sector: 'Technology' },
-  { symbol: 'QCOM', sector: 'Technology' },
-  { symbol: 'TXN', sector: 'Technology' },
-  { symbol: 'INTC', sector: 'Technology' },
-  { symbol: 'AMAT', sector: 'Technology' },
-  { symbol: 'PANW', sector: 'Technology' },
-  { symbol: 'NOW', sector: 'Technology' },
-  { symbol: 'INTU', sector: 'Technology' },
-  { symbol: 'ISRG', sector: 'Healthcare' },
-  { symbol: 'AMGN', sector: 'Healthcare' },
-  { symbol: 'GILD', sector: 'Healthcare' },
-  { symbol: 'VRTX', sector: 'Healthcare' },
-  { symbol: 'REGN', sector: 'Healthcare' },
-  { symbol: 'MDT', sector: 'Healthcare' },
-  { symbol: 'SYK', sector: 'Healthcare' },
-  { symbol: 'BDX', sector: 'Healthcare' },
-  { symbol: 'EW', sector: 'Healthcare' },
-  { symbol: 'IDXX', sector: 'Healthcare' },
-  { symbol: 'ZTS', sector: 'Healthcare' },
-  { symbol: 'DXCM', sector: 'Healthcare' },
-  { symbol: 'BSX', sector: 'Healthcare' },
-  { symbol: 'KLAC', sector: 'Technology' },
-  { symbol: 'SNPS', sector: 'Technology' },
-  { symbol: 'CDNS', sector: 'Technology' },
-  { symbol: 'MRVL', sector: 'Technology' },
-  { symbol: 'NXPI', sector: 'Technology' },
-  { symbol: 'MCHP', sector: 'Technology' },
-  { symbol: 'FTNT', sector: 'Technology' },
-  { symbol: 'ADI', sector: 'Technology' },
-  { symbol: 'ANSS', sector: 'Technology' },
-  { symbol: 'ASML', sector: 'Technology' },
-  { symbol: 'LRCX', sector: 'Technology' },
-  { symbol: 'WDAY', sector: 'Technology' },
-  { symbol: 'CRWD', sector: 'Technology' },
-  { symbol: 'TEAM', sector: 'Technology' },
-  { symbol: 'DDOG', sector: 'Technology' },
-  { symbol: 'ZS', sector: 'Technology' },
-  { symbol: 'NET', sector: 'Technology' },
-  { symbol: 'HUBS', sector: 'Technology' },
-]
 
 export const computePriceTargets = (
   currentPrice: number,

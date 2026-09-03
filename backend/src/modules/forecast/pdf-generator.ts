@@ -1,28 +1,8 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { getStockProsLogoDataUri } from '../../shared/utils'
-
-export interface ForecastDataPayload {
-  symbol: string
-  period: string
-  currentPrice?: number
-  predictions?: Array<{
-    date: string
-    base: number
-    bull?: number
-    bear?: number
-  }>
-  historicalData?: Array<{ date: string; close?: number; price?: number }>
-  targetRange?: {
-    bull: number
-    base: number
-    bear: number
-    atr: number
-    confidence: 'HIGH' | 'MEDIUM' | 'LOW'
-  }
-  status?: string
-  estimated_ready_at?: number
-}
+import type { ForecastDataPayload } from './types'
+export type { ForecastDataPayload } from './types'
 
 const BRAND_BLUE: [number, number, number] = [37, 99, 235]
 const INK_DARK: [number, number, number] = [17, 24, 39]
