@@ -107,7 +107,7 @@ flowchart LR
 - **Decision Support** — Per-stock buy/sell/hold recommendations with confidence scores, risk levels, and exposure analysis
 - **Watchlist** — Track symbols with AI-suggested entry, take-profit, and stop-loss levels; configure 12 alert types (price, percentage, earnings, analyst changes, SEC filings, etc.)
 - **News Aggregation** — Multi-source articles with sentiment analysis, category classification, read tracking, and bookmarks
-- **Notifications** — In-app alerts and email delivery (Nodemailer / Resend / SendGrid)
+- **Notifications** — Persisted market-interest and delivery preferences; users can independently control in-app alerts, email volatility alerts, and the weekday pre-market digest
 - **Role-Based Access Control** — Admin, Portfolio Manager, and Analyst roles with screen-level CRUD permissions
 - **Search** — Symbol and company lookup
 

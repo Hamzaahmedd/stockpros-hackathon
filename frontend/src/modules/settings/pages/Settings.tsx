@@ -1,8 +1,15 @@
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { useTheme } from "@/shared/hooks/useTheme";
-import api from "@/shared/api/axios";
+import { notificationService } from "@/modules/notifications/services";
+import type { MarketInterest } from "@/modules/notifications/types";
 import {
   Activity,
   Bell,
@@ -18,18 +25,70 @@ import {
   Zap,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { FiCheck, FiLayout, FiMonitor, FiMoon, FiSliders, FiSun } from "react-icons/fi";
+import {
+  FiCheck,
+  FiLayout,
+  FiMonitor,
+  FiMoon,
+  FiSliders,
+  FiSun,
+} from "react-icons/fi";
 import { toast } from "react-toastify";
 
-const MARKET_TOPICS = [
-  { id: "ai_tech", name: "AI & Tech", icon: Cpu, description: "Semiconductors, LLMs, cloud" },
-  { id: "energy", name: "Energy", icon: Zap, description: "Oil, gas, clean renewables" },
-  { id: "finance", name: "Finance", icon: Landmark, description: "Banks, fintech, payments" },
-  { id: "healthcare", name: "Healthcare", icon: Activity, description: "Biotech, medtech, pharma" },
-  { id: "growth", name: "Growth Stocks", icon: TrendingUp, description: "High-momentum tech & SaaS" },
-  { id: "crypto", name: "Crypto & Web3", icon: Sparkles, description: "Digital assets & blockchain" },
-  { id: "consumer", name: "Consumer", icon: ShoppingBag, description: "Retail, e-commerce, staples" },
-  { id: "value", name: "Value Stocks", icon: Gem, description: "Dividend aristocrats & leaders" },
+const MARKET_TOPICS: {
+  id: MarketInterest;
+  name: string;
+  icon: React.ElementType;
+  description: string;
+}[] = [
+  {
+    id: "ai_tech",
+    name: "AI & Tech",
+    icon: Cpu,
+    description: "Semiconductors, LLMs, cloud",
+  },
+  {
+    id: "energy",
+    name: "Energy",
+    icon: Zap,
+    description: "Oil, gas, clean renewables",
+  },
+  {
+    id: "finance",
+    name: "Finance",
+    icon: Landmark,
+    description: "Banks, fintech, payments",
+  },
+  {
+    id: "healthcare",
+    name: "Healthcare",
+    icon: Activity,
+    description: "Biotech, medtech, pharma",
+  },
+  {
+    id: "growth",
+    name: "Growth Stocks",
+    icon: TrendingUp,
+    description: "High-momentum tech & SaaS",
+  },
+  {
+    id: "crypto",
+    name: "Crypto & Web3",
+    icon: Sparkles,
+    description: "Digital assets & blockchain",
+  },
+  {
+    id: "consumer",
+    name: "Consumer",
+    icon: ShoppingBag,
+    description: "Retail, e-commerce, staples",
+  },
+  {
+    id: "value",
+    name: "Value Stocks",
+    icon: Gem,
+    description: "Dividend aristocrats & leaders",
+  },
 ];
 
 interface AlertOption {
@@ -44,19 +103,22 @@ const ALERT_OPTIONS: AlertOption[] = [
   {
     id: "in_app",
     title: "In-App Real-Time Alerts",
-    description: "Instant pop-up triggers when prices cross key levels or AI signals fire.",
+    description:
+      "Instant pop-up triggers when prices cross key levels or AI signals fire.",
     icon: Bell,
   },
   {
     id: "email_alerts",
     title: "Email Volatility Alerts",
-    description: "Direct email notifications for critical stop-loss or take-profit breaches.",
+    description:
+      "Direct email notifications for critical stop-loss or take-profit breaches.",
     icon: Mail,
   },
   {
     id: "daily_digest",
     title: "Daily Pre-Market Digest",
-    description: "Receive a weekday pre-market briefing for your active watchlist at 8:30 AM New York time.",
+    description:
+      "Receive a weekday pre-market briefing for your active watchlist at 8:30 AM New York time.",
     icon: FileText,
   },
 ];
@@ -68,9 +130,9 @@ const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState("appearance");
 
   // Market & Alert preferences state
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [selectedTopics, setSelectedTopics] = useState<MarketInterest[]>([]);
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
-  const [dailyDigestEnabled, setDailyDigestEnabled] = useState<boolean | null>(null);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
 
   // Account deletion state
@@ -79,45 +141,30 @@ const Settings: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    try {
-      const savedTopics = localStorage.getItem("stockpros_market_interests");
-      if (savedTopics) setSelectedTopics(JSON.parse(savedTopics));
-      else setSelectedTopics(["AI & Tech", "Growth Stocks"]);
-
-      const savedAlerts = localStorage.getItem("stockpros_alert_preferences");
-      if (savedAlerts) setSelectedAlerts(JSON.parse(savedAlerts));
-      else setSelectedAlerts(["in_app", "email_alerts", "daily_digest"]);
-    } catch {
-      setSelectedTopics(["AI & Tech", "Growth Stocks"]);
-      setSelectedAlerts(["in_app", "email_alerts", "daily_digest"]);
-    }
-  }, []);
-
-  useEffect(() => {
     const loadNotificationPreferences = async () => {
       try {
-        const response = await api.get("/api/v1/notifications/preferences");
-        const digestActive = response.data?.data?.dailyDigestEnabled ?? true;
-        setDailyDigestEnabled(digestActive);
-        
-        // Sync API response with alert selection state
-        setSelectedAlerts((prev) => {
-          if (digestActive && !prev.includes("daily_digest")) return [...prev, "daily_digest"];
-          if (!digestActive && prev.includes("daily_digest")) return prev.filter((id) => id !== "daily_digest");
-          return prev;
-        });
+        const preferences = await notificationService.getPreferences();
+        setSelectedTopics(preferences.marketInterests);
+        setSelectedAlerts([
+          ...(preferences.inAppAlertsEnabled ? ["in_app"] : []),
+          ...(preferences.emailVolatilityAlertsEnabled ? ["email_alerts"] : []),
+          ...(preferences.dailyDigestEnabled ? ["daily_digest"] : []),
+        ]);
       } catch {
         toast.error("Failed to load notification preferences.");
-        setDailyDigestEnabled(true);
+      } finally {
+        setPreferencesLoaded(true);
       }
     };
 
     void loadNotificationPreferences();
   }, []);
 
-  const toggleTopic = (topicName: string) => {
+  const toggleTopic = (topicId: MarketInterest) => {
     setSelectedTopics((prev) =>
-      prev.includes(topicName) ? prev.filter((t) => t !== topicName) : [...prev, topicName]
+      prev.includes(topicId)
+        ? prev.filter((t) => t !== topicId)
+        : [...prev, topicId],
     );
   };
 
@@ -127,26 +174,25 @@ const Settings: React.FC = () => {
 
     setSelectedAlerts((prev) => {
       const isSelected = prev.includes(alertId);
-      const updated = isSelected ? prev.filter((a) => a !== alertId) : [...prev, alertId];
-
-      if (alertId === "daily_digest") {
-        setDailyDigestEnabled(!isSelected);
-      }
+      const updated = isSelected
+        ? prev.filter((a) => a !== alertId)
+        : [...prev, alertId];
 
       return updated;
     });
   };
 
   const handleSavePreferences = async () => {
-    if (dailyDigestEnabled === null) return;
+    if (!preferencesLoaded) return;
 
     try {
       setIsSavingPreferences(true);
-      await api.patch("/api/v1/notifications/preferences", { 
-        dailyDigestEnabled: selectedAlerts.includes("daily_digest") 
+      await notificationService.updatePreferences({
+        marketInterests: selectedTopics,
+        inAppAlertsEnabled: selectedAlerts.includes("in_app"),
+        emailVolatilityAlertsEnabled: selectedAlerts.includes("email_alerts"),
+        dailyDigestEnabled: selectedAlerts.includes("daily_digest"),
       });
-      localStorage.setItem("stockpros_market_interests", JSON.stringify(selectedTopics));
-      localStorage.setItem("stockpros_alert_preferences", JSON.stringify(selectedAlerts));
       toast.success("Preferences updated successfully!");
     } catch {
       toast.error("Failed to save notification preferences.");
@@ -168,7 +214,9 @@ const Settings: React.FC = () => {
         window.location.href = "/auth/login";
       }, 1500);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? "Failed to delete account. Please try again.";
+      const msg =
+        err?.response?.data?.message ??
+        "Failed to delete account. Please try again.";
       toast.error(msg);
       setIsDeleting(false);
     }
@@ -183,9 +231,12 @@ const Settings: React.FC = () => {
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-4 lg:p-8">
           <header className="mb-10">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Settings
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground font-medium">
-              Optimize your trading workspace, manage market interests, and adjust notification preferences.
+              Optimize your trading workspace, manage market interests, and
+              adjust notification preferences.
             </p>
           </header>
 
@@ -193,13 +244,27 @@ const Settings: React.FC = () => {
             {/* Sidebar Navigation */}
             <div className="lg:col-span-3 space-y-2">
               {[
-                { id: "appearance", label: "Appearance", icon: <FiLayout className="text-lg" /> },
-                { id: "preferences", label: "Market & Alerts", icon: <FiSliders className="text-lg" /> },
+                {
+                  id: "appearance",
+                  label: "Appearance",
+                  icon: <FiLayout className="text-lg" />,
+                },
+                {
+                  id: "preferences",
+                  label: "Market & Alerts",
+                  icon: <FiSliders className="text-lg" />,
+                },
                 {
                   id: "account",
                   label: "Account",
                   icon: (
-                    <svg className="w-[1.1em] h-[1.1em]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="w-[1.1em] h-[1.1em]"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
@@ -235,7 +300,9 @@ const Settings: React.FC = () => {
                       <FiMonitor className="text-2xl" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl font-bold">Workspace Theme</CardTitle>
+                      <CardTitle className="text-xl font-bold">
+                        Workspace Theme
+                      </CardTitle>
                       <CardDescription className="text-sm font-medium">
                         Choose your preferred visual environment.
                       </CardDescription>
@@ -259,7 +326,9 @@ const Settings: React.FC = () => {
                             <div className="absolute inset-0 flex items-center justify-center">
                               <FiSun
                                 className={`text-4xl transform transition-transform group-hover:scale-110 ${
-                                  theme === "light" ? "text-yellow-500" : "text-muted-foreground"
+                                  theme === "light"
+                                    ? "text-yellow-500"
+                                    : "text-muted-foreground"
                                 }`}
                               />
                             </div>
@@ -267,12 +336,16 @@ const Settings: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span
                               className={`text-[10px] font-bold uppercase tracking-widest ${
-                                theme === "light" ? "text-foreground" : "text-muted-foreground"
+                                theme === "light"
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
                               }`}
                             >
                               System Light
                             </span>
-                            {theme === "light" && <FiCheck className="text-primary" />}
+                            {theme === "light" && (
+                              <FiCheck className="text-primary" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -293,7 +366,9 @@ const Settings: React.FC = () => {
                             <div className="absolute inset-0 flex items-center justify-center">
                               <FiMoon
                                 className={`text-4xl transform transition-transform group-hover:scale-110 ${
-                                  theme === "dark" ? "text-primary" : "text-muted-foreground"
+                                  theme === "dark"
+                                    ? "text-primary"
+                                    : "text-muted-foreground"
                                 }`}
                               />
                             </div>
@@ -301,12 +376,16 @@ const Settings: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span
                               className={`text-[10px] font-bold uppercase tracking-widest ${
-                                theme === "dark" ? "text-foreground" : "text-muted-foreground"
+                                theme === "dark"
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
                               }`}
                             >
                               System Dark
                             </span>
-                            {theme === "dark" && <FiCheck className="text-primary" />}
+                            {theme === "dark" && (
+                              <FiCheck className="text-primary" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -323,9 +402,12 @@ const Settings: React.FC = () => {
                       <FiSliders className="text-2xl" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl font-bold">Market Interests & Alerts</CardTitle>
+                      <CardTitle className="text-xl font-bold">
+                        Market Interests & Alerts
+                      </CardTitle>
                       <CardDescription className="text-sm font-medium">
-                        Personalize the news feed filters and notifications configured during onboarding.
+                        Personalize the news feed filters and notifications
+                        configured during onboarding.
                       </CardDescription>
                     </div>
                   </CardHeader>
@@ -338,23 +420,26 @@ const Settings: React.FC = () => {
                             Market Sectors & Themes
                           </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Filter intelligence feeds by the sectors you care about most.
+                            Save the sectors and themes that matter most to you.
                           </p>
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          Selected: <strong className="text-primary">{selectedTopics.length}</strong>
+                          Selected:{" "}
+                          <strong className="text-primary">
+                            {selectedTopics.length}
+                          </strong>
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {MARKET_TOPICS.map((topic) => {
-                          const active = selectedTopics.includes(topic.name);
+                          const active = selectedTopics.includes(topic.id);
                           const Icon = topic.icon;
                           return (
                             <button
                               key={topic.id}
                               type="button"
-                              onClick={() => toggleTopic(topic.name)}
+                              onClick={() => toggleTopic(topic.id)}
                               className={`p-3 rounded-xl border text-left transition-all duration-200 flex items-center justify-between gap-2 ${
                                 active
                                   ? "border-cyan-500 bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-500/40"
@@ -364,7 +449,9 @@ const Settings: React.FC = () => {
                               <div className="flex items-center gap-2 truncate">
                                 <div
                                   className={`p-1.5 rounded-lg shrink-0 ${
-                                    active ? "bg-cyan-500/20 text-cyan-300" : "bg-muted text-muted-foreground"
+                                    active
+                                      ? "bg-cyan-500/20 text-cyan-300"
+                                      : "bg-muted text-muted-foreground"
                                   }`}
                                 >
                                   <Icon className="w-4 h-4" />
@@ -373,7 +460,9 @@ const Settings: React.FC = () => {
                                   {topic.name}
                                 </span>
                               </div>
-                              {active && <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
+                              {active && (
+                                <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                              )}
                             </button>
                           );
                         })}
@@ -387,7 +476,8 @@ const Settings: React.FC = () => {
                           Alert Channels
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Configure where volatility notices and intelligence digests are routed.
+                          Configure where volatility notices and intelligence
+                          digests are routed.
                         </p>
                       </div>
 
@@ -406,8 +496,8 @@ const Settings: React.FC = () => {
                                 isDisabled
                                   ? "opacity-50 cursor-not-allowed border-border/50 bg-muted/10 text-muted-foreground"
                                   : active
-                                  ? "border-cyan-500 bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-500/30"
-                                  : "border-border bg-muted/20 text-muted-foreground hover:border-border"
+                                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-500/30"
+                                    : "border-border bg-muted/20 text-muted-foreground hover:border-border"
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
@@ -416,8 +506,8 @@ const Settings: React.FC = () => {
                                     isDisabled
                                       ? "bg-muted/40 text-muted-foreground"
                                       : active
-                                      ? "bg-cyan-500/20 text-cyan-300"
-                                      : "bg-muted text-muted-foreground"
+                                        ? "bg-cyan-500/20 text-cyan-300"
+                                        : "bg-muted text-muted-foreground"
                                   }`}
                                 >
                                   <Icon className="w-4 h-4" />
@@ -428,16 +518,20 @@ const Settings: React.FC = () => {
                                       isDisabled
                                         ? "border border-border/40 text-transparent"
                                         : active
-                                        ? "bg-cyan-500 text-black font-bold"
-                                        : "border border-border"
+                                          ? "bg-cyan-500 text-black font-bold"
+                                          : "border border-border"
                                     }`}
                                   >
-                                    {active && !isDisabled && <Check className="w-3.5 h-3.5" />}
+                                    {active && !isDisabled && (
+                                      <Check className="w-3.5 h-3.5" />
+                                    )}
                                   </div>
                                 </div>
                               </div>
                               <div>
-                                <p className="text-xs font-bold text-foreground">{opt.title}</p>
+                                <p className="text-xs font-bold text-foreground">
+                                  {opt.title}
+                                </p>
                                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                                   {opt.description}
                                 </p>
@@ -452,7 +546,7 @@ const Settings: React.FC = () => {
                       <Button
                         type="button"
                         onClick={handleSavePreferences}
-                        disabled={isSavingPreferences || dailyDigestEnabled === null}
+                        disabled={isSavingPreferences || !preferencesLoaded}
                         className="px-6 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase tracking-wider"
                       >
                         {isSavingPreferences ? "Saving..." : "Save Preferences"}
@@ -469,13 +563,21 @@ const Settings: React.FC = () => {
                   <Card className="rounded-lg border border-border bg-card shadow-lg">
                     <CardHeader className="flex flex-row items-center gap-5 border-b border-border p-8">
                       <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          className="w-6 h-6"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                           <circle cx="12" cy="7" r="4" />
                         </svg>
                       </div>
                       <div>
-                        <CardTitle className="text-xl font-bold">Account Management</CardTitle>
+                        <CardTitle className="text-xl font-bold">
+                          Account Management
+                        </CardTitle>
                         <CardDescription className="text-sm font-medium">
                           Manage your account settings and data.
                         </CardDescription>
@@ -483,7 +585,10 @@ const Settings: React.FC = () => {
                     </CardHeader>
                     <CardContent className="p-8">
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Your account is protected and your data is stored securely. If you wish to permanently remove your account and all associated data, you can do so in the Danger Zone below.
+                        Your account is protected and your data is stored
+                        securely. If you wish to permanently remove your account
+                        and all associated data, you can do so in the Danger
+                        Zone below.
                       </p>
                     </CardContent>
                   </Card>
@@ -495,7 +600,13 @@ const Settings: React.FC = () => {
                     <div className="p-8">
                       <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 rounded-lg bg-red-500/15 text-red-400">
-                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            className="w-5 h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                             <line x1="12" y1="9" x2="12" y2="13" />
                             <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -506,16 +617,20 @@ const Settings: React.FC = () => {
                             Danger Zone
                           </h3>
                           <p className="text-xs text-red-400/70 mt-0.5">
-                            These actions are irreversible. Proceed with caution.
+                            These actions are irreversible. Proceed with
+                            caution.
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-start justify-between gap-6">
                         <div>
-                          <p className="text-sm font-semibold text-foreground mb-1">Delete this account</p>
+                          <p className="text-sm font-semibold text-foreground mb-1">
+                            Delete this account
+                          </p>
                           <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
-                            Permanently delete your StockPros account and all of your data. This action cannot be undone.
+                            Permanently delete your StockPros account and all of
+                            your data. This action cannot be undone.
                           </p>
                         </div>
                         {!showDeleteConfirm && (
@@ -535,12 +650,19 @@ const Settings: React.FC = () => {
                         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-950/20 p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
                           <div className="rounded-lg border border-red-500/20 bg-red-900/10 p-4 space-y-3">
                             <p className="text-sm font-bold text-red-400 flex items-center gap-2">
-                              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <svg
+                                className="w-4 h-4 shrink-0"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
                                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                                 <line x1="12" y1="9" x2="12" y2="13" />
                                 <line x1="12" y1="17" x2="12.01" y2="17" />
                               </svg>
-                              Warning: Deleting your account is permanent and cannot be undone.
+                              Warning: Deleting your account is permanent and
+                              cannot be undone.
                             </p>
                             <p className="text-xs text-red-300/80 font-medium">
                               You will immediately lose:
@@ -552,7 +674,10 @@ const Settings: React.FC = () => {
                                 "Premium feature access & account history",
                                 "Active sessions on all devices",
                               ].map((item) => (
-                                <li key={item} className="flex items-center gap-2 text-xs text-red-300/70">
+                                <li
+                                  key={item}
+                                  className="flex items-center gap-2 text-xs text-red-300/70"
+                                >
                                   <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
                                   {item}
                                 </li>
@@ -566,7 +691,9 @@ const Settings: React.FC = () => {
                               className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                             >
                               To confirm, type{" "}
-                              <span className="text-red-400 font-bold font-mono">{CONFIRMATION_PHRASE}</span>{" "}
+                              <span className="text-red-400 font-bold font-mono">
+                                {CONFIRMATION_PHRASE}
+                              </span>{" "}
                               below:
                             </label>
                             <input
@@ -581,13 +708,14 @@ const Settings: React.FC = () => {
                                 deletePhrase.length > 0 && !phraseMatches
                                   ? "border-red-500/60 focus:border-red-500 text-red-300"
                                   : phraseMatches
-                                  ? "border-green-500/60 focus:border-green-500 text-green-300"
-                                  : "border-border focus:border-red-500/60"
+                                    ? "border-green-500/60 focus:border-green-500 text-green-300"
+                                    : "border-border focus:border-red-500/60"
                               }`}
                             />
                             {deletePhrase.length > 0 && !phraseMatches && (
                               <p className="text-[11px] text-red-400/80">
-                                Phrase doesn't match — type it exactly as shown above.
+                                Phrase doesn't match — type it exactly as shown
+                                above.
                               </p>
                             )}
                           </div>

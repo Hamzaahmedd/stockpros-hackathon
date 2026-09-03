@@ -6,6 +6,26 @@ export interface Notification {
   createdAt: string;
 }
 
+export const MARKET_INTEREST_OPTIONS = [
+  "ai_tech",
+  "energy",
+  "finance",
+  "healthcare",
+  "growth",
+  "crypto",
+  "consumer",
+  "value",
+] as const;
+
+export type MarketInterest = (typeof MARKET_INTEREST_OPTIONS)[number];
+
+export interface NotificationPreferences {
+  marketInterests: MarketInterest[];
+  inAppAlertsEnabled: boolean;
+  emailVolatilityAlertsEnabled: boolean;
+  dailyDigestEnabled: boolean;
+}
+
 export type PaginatedNotificationsResult = {
   data: Notification[];
   nextCursor: string | null;

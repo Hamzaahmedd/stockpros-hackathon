@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MARKET_INTERESTS } from './preferences'
 
 // ─── GET /notifications ───────────────────────────────────────────────────────
 
@@ -14,6 +15,14 @@ export const notificationIdsValidator = z.object({
 
 export const notificationPreferencesValidator = z
   .object({
+    marketInterests: z
+      .array(z.enum(MARKET_INTERESTS))
+      .max(MARKET_INTERESTS.length)
+      .refine((interests) => new Set(interests).size === interests.length, {
+        message: 'Market interests must not contain duplicates',
+      }),
+    inAppAlertsEnabled: z.boolean(),
+    emailVolatilityAlertsEnabled: z.boolean(),
     dailyDigestEnabled: z.boolean(),
   })
   .strict()

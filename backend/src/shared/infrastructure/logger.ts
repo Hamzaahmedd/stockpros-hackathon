@@ -61,12 +61,21 @@ if (config.axiom.token && config.axiom.dataset) {
         'service.version': '1.0.0',
       },
       logRecordProcessorOptions: {
+        recordProcessorType: 'batch',
+        processorConfig: {
+          scheduledDelayMillis: 1_000,
+          exportTimeoutMillis: 10_000,
+        },
         exporterOptions: {
           protocol: 'http/protobuf',
-          url: 'https://api.axiom.co/v1/logs', // Axiom's OTLP ingest endpoint
-          headers: {
-            Authorization: `Bearer ${config.axiom.token}`,
-            'X-Axiom-Dataset': config.axiom.dataset,
+          protobufExporterOptions: {
+            // Axiom's OTLP/HTTP logs endpoint. The exporter requires these
+            // protocol-specific options to be nested under this key.
+            url: 'https://api.axiom.co/v1/logs',
+            headers: {
+              Authorization: `Bearer ${config.axiom.token}`,
+              'X-Axiom-Dataset': config.axiom.dataset,
+            },
           },
         },
       },

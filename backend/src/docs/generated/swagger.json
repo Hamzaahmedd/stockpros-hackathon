@@ -574,11 +574,36 @@
 			},
 			"NotificationPreferences": {
 				"properties": {
+					"marketInterests": {
+						"items": {
+							"type": "string",
+							"enum": [
+								"ai_tech",
+								"energy",
+								"finance",
+								"healthcare",
+								"growth",
+								"crypto",
+								"consumer",
+								"value"
+							]
+						},
+						"type": "array"
+					},
+					"inAppAlertsEnabled": {
+						"type": "boolean"
+					},
+					"emailVolatilityAlertsEnabled": {
+						"type": "boolean"
+					},
 					"dailyDigestEnabled": {
 						"type": "boolean"
 					}
 				},
 				"required": [
+					"marketInterests",
+					"inAppAlertsEnabled",
+					"emailVolatilityAlertsEnabled",
 					"dailyDigestEnabled"
 				],
 				"type": "object",

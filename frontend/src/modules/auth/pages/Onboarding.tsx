@@ -3,9 +3,15 @@ import { setAccessToken } from "@/shared/utils/token";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowRight,
+  Bell,
   Check,
+  Cpu,
+  FileText,
+  Landmark,
+  Mail,
   Plus,
   Search,
+  ShoppingBag,
   Sparkles,
 } from "lucide-react";
 import React, { useState } from "react";
@@ -13,6 +19,11 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import api from "../../../shared/api/axios";
+import { notificationService } from "../../notifications/services";
+import type {
+  MarketInterest,
+  NotificationPreferences,
+} from "../../notifications/types";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
@@ -35,15 +46,69 @@ interface SuggestedSymbol {
 }
 
 const SUGGESTED_SYMBOLS: SuggestedSymbol[] = [
-  { symbol: "NVDA", name: "NVIDIA Corp.", sector: "Semiconductors", category: "tech", hasAiForecast: true },
-  { symbol: "AAPL", name: "Apple Inc.", sector: "Consumer Tech", category: "tech", hasAiForecast: true },
-  { symbol: "MSFT", name: "Microsoft Corp.", sector: "Cloud & AI", category: "tech", hasAiForecast: true },
-  { symbol: "TSLA", name: "Tesla Inc.", sector: "EV & AI", category: "growth", hasAiForecast: true },
-  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "E-Commerce & Cloud", category: "consumer", hasAiForecast: true },
-  { symbol: "META", name: "Meta Platforms", sector: "Digital Media & AI", category: "growth", hasAiForecast: true },
-  { symbol: "NFLX", name: "Netflix Inc.", sector: "Streaming Media", category: "consumer", hasAiForecast: false },
-  { symbol: "SPY", name: "SPDR S&P 500 ETF", sector: "Index ETF", category: "index", hasAiForecast: true },
-  { symbol: "QQQ", name: "Invesco QQQ Trust", sector: "Nasdaq-100 ETF", category: "index", hasAiForecast: true },
+  {
+    symbol: "NVDA",
+    name: "NVIDIA Corp.",
+    sector: "Semiconductors",
+    category: "tech",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "AAPL",
+    name: "Apple Inc.",
+    sector: "Consumer Tech",
+    category: "tech",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "MSFT",
+    name: "Microsoft Corp.",
+    sector: "Cloud & AI",
+    category: "tech",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "TSLA",
+    name: "Tesla Inc.",
+    sector: "EV & AI",
+    category: "growth",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "AMZN",
+    name: "Amazon.com Inc.",
+    sector: "E-Commerce & Cloud",
+    category: "consumer",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "META",
+    name: "Meta Platforms",
+    sector: "Digital Media & AI",
+    category: "growth",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "NFLX",
+    name: "Netflix Inc.",
+    sector: "Streaming Media",
+    category: "consumer",
+    hasAiForecast: false,
+  },
+  {
+    symbol: "SPY",
+    name: "SPDR S&P 500 ETF",
+    sector: "Index ETF",
+    category: "index",
+    hasAiForecast: true,
+  },
+  {
+    symbol: "QQQ",
+    name: "Invesco QQQ Trust",
+    sector: "Nasdaq-100 ETF",
+    category: "index",
+    hasAiForecast: true,
+  },
 ];
 
 const SECTOR_TABS = [
@@ -54,21 +119,81 @@ const SECTOR_TABS = [
   { id: "index", label: "Index ETFs" },
 ] as const;
 
+const MARKET_TOPICS: {
+  id: MarketInterest;
+  name: string;
+  icon: React.ElementType;
+}[] = [
+  { id: "ai_tech", name: "AI & Tech", icon: Cpu },
+  { id: "energy", name: "Energy", icon: Sparkles },
+  { id: "finance", name: "Finance", icon: Landmark },
+  { id: "healthcare", name: "Healthcare", icon: Bell },
+  { id: "growth", name: "Growth Stocks", icon: ArrowRight },
+  { id: "crypto", name: "Crypto & Web3", icon: Sparkles },
+  { id: "consumer", name: "Consumer", icon: ShoppingBag },
+  { id: "value", name: "Value Stocks", icon: FileText },
+];
+
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  marketInterests: ["ai_tech", "growth"],
+  inAppAlertsEnabled: true,
+  emailVolatilityAlertsEnabled: true,
+  dailyDigestEnabled: true,
+};
+
+type NotificationPreferenceToggle =
+  "inAppAlertsEnabled" | "emailVolatilityAlertsEnabled" | "dailyDigestEnabled";
+
+const ALERT_CHANNEL_OPTIONS: {
+  key: NotificationPreferenceToggle;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+}[] = [
+  {
+    key: "inAppAlertsEnabled",
+    title: "In-App Real-Time Alerts",
+    description: "Live notifications for watchlist triggers.",
+    icon: Bell,
+  },
+  {
+    key: "emailVolatilityAlertsEnabled",
+    title: "Email Volatility Alerts",
+    description: "Email for watchlist alert events.",
+    icon: Mail,
+  },
+  {
+    key: "dailyDigestEnabled",
+    title: "Daily Pre-Market Digest",
+    description: "Weekday email briefing at 8:30 AM New York time.",
+    icon: FileText,
+  },
+];
+
 export const Onboarding: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Starter watchlist state
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(["NVDA", "AAPL", "MSFT"]);
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([
+    "NVDA",
+    "AAPL",
+    "MSFT",
+  ]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [customSymbols, setCustomSymbols] = useState<SuggestedSymbol[]>([]);
+  const [preferences, setPreferences] = useState<NotificationPreferences>(
+    DEFAULT_NOTIFICATION_PREFERENCES,
+  );
 
   const navigate = useNavigate();
   const { user, refreshMe } = useAuth();
 
   const storedGoogleName =
-    typeof window !== "undefined" ? sessionStorage.getItem("onboarding_display_name") : null;
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("onboarding_display_name")
+      : null;
 
   const { register, handleSubmit, formState, getValues } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -83,13 +208,28 @@ export const Onboarding: React.FC = () => {
     );
   };
 
+  const toggleMarketInterest = (interest: MarketInterest) => {
+    setPreferences((current) => ({
+      ...current,
+      marketInterests: current.marketInterests.includes(interest)
+        ? current.marketInterests.filter((item) => item !== interest)
+        : [...current.marketInterests, interest],
+    }));
+  };
+
+  const togglePreference = (key: NotificationPreferenceToggle) => {
+    setPreferences((current) => ({ ...current, [key]: !current[key] }));
+  };
+
   const handleAddCustomSymbol = () => {
     const clean = searchQuery.trim().toUpperCase();
     if (!clean) return;
 
     if (!selectedSymbols.includes(clean)) {
       setSelectedSymbols((prev) => [...prev, clean]);
-      const exists = SUGGESTED_SYMBOLS.some((s) => s.symbol === clean) || customSymbols.some((s) => s.symbol === clean);
+      const exists =
+        SUGGESTED_SYMBOLS.some((s) => s.symbol === clean) ||
+        customSymbols.some((s) => s.symbol === clean);
       if (!exists) {
         setCustomSymbols((prev) => [
           ...prev,
@@ -113,7 +253,10 @@ export const Onboarding: React.FC = () => {
 
       const onboardingToken = sessionStorage.getItem("onboarding_token");
       const displayNameValue =
-        getValues("displayName")?.trim() || user?.displayName || storedGoogleName || "Trader";
+        getValues("displayName")?.trim() ||
+        user?.displayName ||
+        storedGoogleName ||
+        "Trader";
 
       if (storedGoogleName) {
         sessionStorage.removeItem("onboarding_display_name");
@@ -133,7 +276,10 @@ export const Onboarding: React.FC = () => {
         sessionStorage.removeItem("onboarding_token");
       }
 
-      // 2. Seed starter watchlist in database
+      // 2. Persist notification and market preferences for this account.
+      await notificationService.updatePreferences(preferences);
+
+      // 3. Seed starter watchlist in database
       const tickersToSeed = skipWatchlist ? [] : selectedSymbols;
       if (tickersToSeed.length > 0) {
         await Promise.all(
@@ -143,12 +289,15 @@ export const Onboarding: React.FC = () => {
         );
       }
 
-      // 3. Update auth state and navigate to live terminal
+      // 4. Update auth state and navigate to live terminal
       await refreshMe();
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       console.error("Onboarding error:", err);
-      setError(err.response?.data?.message || "Failed to complete setup. Please try again.");
+      setError(
+        err.response?.data?.message ||
+          "Failed to complete setup. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -162,7 +311,9 @@ export const Onboarding: React.FC = () => {
   const filteredSymbols =
     selectedCategory === "all"
       ? allAvailableSymbols
-      : allAvailableSymbols.filter((item) => item.category === selectedCategory);
+      : allAvailableSymbols.filter(
+          (item) => item.category === selectedCategory,
+        );
 
   return (
     <div className="min-h-screen bg-[#07090e] text-white flex flex-col justify-between relative overflow-hidden selection:bg-cyan-500/30">
@@ -204,7 +355,8 @@ export const Onboarding: React.FC = () => {
               Initialize Your Terminal
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Set your trader identity and select starter tickers to activate live AI forecasts and market feeds.
+              Set your trader identity and select starter tickers to activate
+              live AI forecasts and market feeds.
             </p>
           </div>
 
@@ -248,11 +400,15 @@ export const Onboarding: React.FC = () => {
                     Seed Starter Watchlist
                   </label>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tickers will be added to your database watchlist for live AI prediction.
+                    Tickers will be added to your database watchlist for live AI
+                    prediction.
                   </p>
                 </div>
                 <span className="text-xs text-slate-400">
-                  Selected: <strong className="text-emerald-400 font-mono">{selectedSymbols.length}</strong>
+                  Selected:{" "}
+                  <strong className="text-emerald-400 font-mono">
+                    {selectedSymbols.length}
+                  </strong>
                 </span>
               </div>
 
@@ -282,7 +438,9 @@ export const Onboarding: React.FC = () => {
                     type="text"
                     placeholder="Search any ticker (e.g. AMD, PLTR, GOOGL)..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setSearchQuery(e.target.value.toUpperCase())
+                    }
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -320,14 +478,18 @@ export const Onboarding: React.FC = () => {
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-sm text-white">{item.symbol}</span>
+                          <span className="font-mono font-bold text-sm text-white">
+                            {item.symbol}
+                          </span>
                           {item.hasAiForecast && (
                             <span className="rounded px-1 py-0.2 bg-cyan-500/10 border border-cyan-500/30 text-[8px] font-mono text-cyan-300 font-bold">
                               AI
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                          {item.name}
+                        </p>
                       </div>
 
                       <div
@@ -337,7 +499,11 @@ export const Onboarding: React.FC = () => {
                             : "border border-slate-700 text-slate-500 hover:border-slate-500"
                         }`}
                       >
-                        {active ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {active ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Plus className="w-3 h-3" />
+                        )}
                       </div>
                     </button>
                   );
@@ -348,8 +514,103 @@ export const Onboarding: React.FC = () => {
               <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 flex items-center gap-3">
                 <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
                 <p className="text-xs text-cyan-200/90 leading-relaxed">
-                  StockPros will automatically trigger neural baseline predictions and technical signals for your selected {selectedSymbols.length} tickers upon launch.
+                  StockPros will automatically trigger neural baseline
+                  predictions and technical signals for your selected{" "}
+                  {selectedSymbols.length} tickers upon launch.
                 </p>
+              </div>
+            </div>
+
+            <div className="space-y-5 pt-2 border-t border-slate-800/80">
+              <div className="pt-5 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    Market Sectors & Themes
+                  </h2>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    Personalize the market interests saved to your account.
+                  </p>
+                </div>
+                <span className="text-xs text-slate-400">
+                  Selected:{" "}
+                  <strong className="text-cyan-300">
+                    {preferences.marketInterests.length}
+                  </strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {MARKET_TOPICS.map((topic) => {
+                  const active = preferences.marketInterests.includes(topic.id);
+                  const Icon = topic.icon;
+                  return (
+                    <button
+                      key={topic.id}
+                      type="button"
+                      onClick={() => toggleMarketInterest(topic.id)}
+                      className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${
+                        active
+                          ? "border-cyan-400 bg-cyan-500/10 text-cyan-100 ring-1 ring-cyan-500/30"
+                          : "border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-700"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Icon className="w-4 h-4 shrink-0 text-cyan-300" />
+                        <span className="text-xs font-semibold truncate">
+                          {topic.name}
+                        </span>
+                      </span>
+                      {active && (
+                        <Check className="w-3.5 h-3.5 shrink-0 text-cyan-300" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                  Alert Channels
+                </h2>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Choose how StockPros delivers watchlist alerts and your daily
+                  briefing.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {ALERT_CHANNEL_OPTIONS.map((option) => {
+                  const key = option.key;
+                  const Icon = option.icon;
+                  const active = preferences[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => togglePreference(key)}
+                      className={`p-3 rounded-xl border text-left transition ${
+                        active
+                          ? "border-cyan-400 bg-cyan-500/10"
+                          : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Icon className="w-4 h-4 text-cyan-300" />
+                        <span
+                          className={`w-4 h-4 rounded flex items-center justify-center ${active ? "bg-cyan-400 text-slate-950" : "border border-slate-600"}`}
+                        >
+                          {active && <Check className="w-3 h-3" />}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-xs font-bold text-white">
+                        {option.title}
+                      </p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+                        {option.description}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -367,7 +628,9 @@ export const Onboarding: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <span>Launch Terminal ({selectedSymbols.length} Tickers)</span>
+                    <span>
+                      Launch Terminal ({selectedSymbols.length} Tickers)
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -389,15 +652,24 @@ export const Onboarding: React.FC = () => {
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer className="relative z-10 w-full max-w-5xl mx-auto px-6 py-4 space-y-2 border-t border-slate-900/80 text-[11px] text-slate-500">
         <div className="flex items-center justify-between gap-3">
-          <span>&copy; {new Date().getFullYear()} StockPros. All rights reserved.</span>
+          <span>
+            &copy; {new Date().getFullYear()} StockPros. All rights reserved.
+          </span>
           <div className="flex items-center gap-4">
-            <span className="hover:text-slate-400 transition cursor-pointer">Security</span>
-            <span className="hover:text-slate-400 transition cursor-pointer">Terms</span>
-            <span className="hover:text-slate-400 transition cursor-pointer">Privacy</span>
+            <span className="hover:text-slate-400 transition cursor-pointer">
+              Security
+            </span>
+            <span className="hover:text-slate-400 transition cursor-pointer">
+              Terms
+            </span>
+            <span className="hover:text-slate-400 transition cursor-pointer">
+              Privacy
+            </span>
           </div>
         </div>
         <p className="text-slate-500 leading-relaxed">
-          StockPros outputs are informational and educational only. They are not personalized financial, legal, tax, or fiduciary advice.
+          StockPros outputs are informational and educational only. They are not
+          personalized financial, legal, tax, or fiduciary advice.
         </p>
       </footer>
     </div>

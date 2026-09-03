@@ -139,7 +139,12 @@ export const sendPremarketDigestToUser = async (
 ): Promise<{ success: boolean; message: string }> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, displayName: true },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      inAppAlertsEnabled: true,
+    },
   })
 
   if (!user) {
@@ -168,29 +173,31 @@ export const sendPremarketDigestToUser = async (
     logger.error(`[DigestService] Failed to send email to ${user.email}:`, err)
   }
 
-  // 2. Create in-app notification
-  try {
-    const notification = await prisma.notification.create({
-      data: {
-        userId,
-        title: 'Daily Pre-Market Digest Ready',
-        body: `Your morning intelligence scan for ${digestData.watchlistItems.length} watchlist symbols is ready.`,
-      },
-    })
-
-    // 3. Emit real-time WebSocket event
-    const socketServer = SocketServer.getInstance()
-    if (socketServer) {
-      socketServer.io.to(`user:${userId}`).emit('notification', {
-        ...notification,
-        read: false,
+  // 2. Create an in-app notification only when the user has enabled it.
+  if (user.inAppAlertsEnabled) {
+    try {
+      const notification = await prisma.notification.create({
+        data: {
+          userId,
+          title: 'Daily Pre-Market Digest Ready',
+          body: `Your morning intelligence scan for ${digestData.watchlistItems.length} watchlist symbols is ready.`,
+        },
       })
+
+      // 3. Emit real-time WebSocket event
+      const socketServer = SocketServer.getInstance()
+      if (socketServer) {
+        socketServer.io.to(`user:${userId}`).emit('notification', {
+          ...notification,
+          read: false,
+        })
+      }
+    } catch (err) {
+      logger.error(
+        `[DigestService] Failed to create in-app notification for user ${userId}:`,
+        err,
+      )
     }
-  } catch (err) {
-    logger.error(
-      `[DigestService] Failed to create in-app notification for user ${userId}:`,
-      err,
-    )
   }
 
   return {
