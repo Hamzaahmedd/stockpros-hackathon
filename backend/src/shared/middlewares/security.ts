@@ -3,20 +3,18 @@ import cors from 'cors'
 import { Application, Request } from 'express'
 import rateLimit, { MemoryStore } from 'express-rate-limit'
 import helmet from 'helmet'
-import { RedisStore } from 'rate-limit-redis'
+import { RedisSlidingWindowStore } from '../infrastructure/redis-sliding-window-store'
 import { getRawRedisClient } from '../infrastructure/cache'
 
 /**
- * Creates a rate limit store backed by Redis when available,
+ * Creates a rate limit store backed by Redis (sliding window log) when available,
  * falling back gracefully to in-memory store if Redis is unconfigured or offline.
  */
 function createRateLimitStore(prefix: string) {
   const client = getRawRedisClient()
   if (client) {
-    return new RedisStore({
-      // @ts-expect-error ioredis sendCommand signature aligns with rate-limit-redis expectations
-      sendCommand: (...args: string[]) =>
-        client.call(args[0], ...args.slice(1)),
+    return new RedisSlidingWindowStore({
+      client,
       prefix,
     })
   }
