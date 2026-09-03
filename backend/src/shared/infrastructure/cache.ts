@@ -57,6 +57,10 @@ export async function closeRedis(): Promise<void> {
   }
 }
 
+export function getRawRedisClient(): Redis | null {
+  return redisClient
+}
+
 export function getRedisClient(): RedisConnectionOptions | undefined {
   if (redisClient) {
     return {

@@ -3966,7 +3966,7 @@
 				"operationId": "Refresh",
 				"responses": {
 					"200": {
-						"description": "Tokens refreshed",
+						"description": "Tokens refreshed and rotated",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3976,7 +3976,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or expired refresh token",
+						"description": "Missing, expired, or invalid refresh token",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3986,7 +3986,7 @@
 						}
 					}
 				},
-				"description": "Rotate session — exchange a valid refresh_token cookie for a new access token.",
+				"description": "Rotate session — exchange a valid refresh_token cookie for a new access token and rotated refresh token cookie.",
 				"tags": [
 					"Authentication"
 				],
