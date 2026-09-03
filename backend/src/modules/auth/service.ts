@@ -16,6 +16,7 @@ import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
   convertToMilliseconds,
+  hashToken,
   signToken,
   verifyRefreshToken,
 } from '../../shared/utils'
@@ -64,19 +65,72 @@ export async function generateTokens(userId: string): Promise<AuthTokens> {
   return { accessToken, refreshToken, jti: refreshJti }
 }
 
+const REFRESH_GRACE_WINDOW_MS = 30 * 1000 // 30 seconds multi-tab grace leeway
+
 export async function refreshAccessToken(refreshToken: string) {
   try {
     // Step 1: Basic JWT verification
     const payload = verifyRefreshToken(refreshToken, REFRESH_TOKEN_SECRET)
+    const tokenHash = hashToken(payload.jti)
 
-    // Step 2: Check session in DB
-    const session = await prisma.userSession.findUnique({
-      where: { jti: payload.jti },
+    // Step 2: Check session in DB by hashed token (or previous hashed token during grace window)
+    const now = new Date()
+    let session = await prisma.userSession.findUnique({
+      where: { jti: tokenHash },
       include: { user: true },
     })
 
-    // Step 3: Enforce force logout & reuse protection
-    if (!session || session.isRevoked || new Date() > session.expiresAt) {
+    // Fallback: check unhashed jti in case legacy unhashed session exists
+    if (!session) {
+      session = await prisma.userSession.findUnique({
+        where: { jti: payload.jti },
+        include: { user: true },
+      })
+    }
+
+    // Step 3: Multi-tab grace period handling & reuse breach detection
+    if (!session) {
+      // Check if this token was recently rotated within the 30s grace window
+      const recentRotatedSession = await prisma.userSession.findFirst({
+        where: {
+          userAgent: tokenHash, // stored previous hash marker during grace window
+          updatedAt: { gte: new Date(now.getTime() - REFRESH_GRACE_WINDOW_MS) },
+          isRevoked: false,
+        },
+        include: { user: true },
+      })
+
+      if (
+        recentRotatedSession &&
+        recentRotatedSession.user.status === UserStatus.ACTIVE
+      ) {
+        // Tab race condition handled: issue a fresh access token for this concurrent tab
+        const { accessToken } = await generateTokens(
+          recentRotatedSession.user.id,
+        )
+        return {
+          accessToken,
+          refreshToken, // client continues with active session
+        }
+      }
+
+      // If token is invalid or outside grace window, trigger breach detection:
+      // If we can decode sub, revoke all active sessions to protect account against token replay theft
+      if (payload.sub) {
+        logger.warn(
+          `[Security Alert] Refresh token reuse detected for userId=${payload.sub}. Revoking all sessions.`,
+        )
+        await prisma.userSession.updateMany({
+          where: { userId: payload.sub, isRevoked: false },
+          data: { isRevoked: true },
+        })
+      }
+
+      throw new UnauthorizedError('Refresh token expired or invalid')
+    }
+
+    // Step 4: Enforce force logout & user status checks
+    if (session.isRevoked || now > session.expiresAt) {
       throw new UnauthorizedError('Refresh token expired or invalid')
     }
 
@@ -84,23 +138,25 @@ export async function refreshAccessToken(refreshToken: string) {
       throw new UnauthorizedError('Account is inactive or suspended')
     }
 
-    // Step 4: Issue new access token and rotated refresh token with fresh jti
+    // Step 5: Issue new access token and rotated refresh token with fresh jti
     const {
       accessToken,
       refreshToken: newRefreshToken,
       jti: newJti,
     } = await generateTokens(session.user.id)
 
+    const newHashedJti = hashToken(newJti)
     const refreshTokenExpiryMs =
       convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
-    // Step 5: Rotate the session jti in the database atomically
+    // Step 6: Rotate the session jti in DB atomically, recording previous hash for grace leeway
     await prisma.userSession.update({
       where: { id: session.id },
       data: {
-        jti: newJti,
+        jti: newHashedJti,
+        userAgent: tokenHash, // store previous token hash for 30s multi-tab grace checks
         expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
-        updatedAt: new Date(),
+        updatedAt: now,
       },
     })
 
@@ -126,15 +182,22 @@ export async function logoutUser(refreshToken?: string) {
       return null
     }
 
+    const hashedJti = hashToken(decoded.jti)
+
     // Find the user session before deleting it
-    const session = await prisma.userSession.findUnique({
-      where: { jti: decoded.jti },
-      select: { userId: true },
-    })
+    const session =
+      (await prisma.userSession.findUnique({
+        where: { jti: hashedJti },
+        select: { userId: true },
+      })) ||
+      (await prisma.userSession.findUnique({
+        where: { jti: decoded.jti },
+        select: { userId: true },
+      }))
 
     // Delete the session
     await prisma.userSession.deleteMany({
-      where: { jti: decoded.jti },
+      where: { jti: { in: [hashedJti, decoded.jti] } },
     })
 
     if (!session) {
@@ -477,11 +540,11 @@ export async function verifyMagicLink(
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
-  // Create active session in database
+  // Create active session in database with hashed token
   await prisma.userSession.create({
     data: {
       userId: user.id,
-      jti,
+      jti: hashToken(jti),
       ipAddress: ip,
       userAgent,
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
@@ -553,7 +616,7 @@ export async function completeOnboarding(
   await prisma.userSession.create({
     data: {
       userId: user.id,
-      jti,
+      jti: hashToken(jti),
       ipAddress: ip,
       userAgent,
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
@@ -791,7 +854,7 @@ export async function googleLogin(
   await prisma.userSession.create({
     data: {
       userId: user.id,
-      jti,
+      jti: hashToken(jti),
       ipAddress: ip,
       userAgent,
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
