@@ -25,6 +25,7 @@ export const readSecrets = (): {
   twelveDataApiKey: string
   axiomToken: string
   groqApiKey: string
+  groqModel: string
 } => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
@@ -40,6 +41,7 @@ export const readSecrets = (): {
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
   axiomToken: process.env.AXIOM_TOKEN || '',
   groqApiKey: process.env.GROQ_API_KEY || '',
+  groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -134,6 +136,7 @@ export const buildConfig = (
   }
   groq: {
     apiKey: string
+    model: string
   }
   features: {
     enableNewsCron: boolean
@@ -211,6 +214,7 @@ export const buildConfig = (
   },
   groq: {
     apiKey: secrets.groqApiKey,
+    model: secrets.groqModel,
   },
   features: env.features,
   audit: {

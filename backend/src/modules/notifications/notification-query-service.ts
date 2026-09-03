@@ -3,9 +3,37 @@ import { AppError } from '../../shared/errors'
 import type { GetNotificationsQuery } from './validation'
 import type {
   NotificationItem,
+  NotificationPreferences,
   PaginatedNotifications,
   NotificationSummary,
 } from './types'
+
+// ─── Notification Preferences ────────────────────────────────────────────────
+
+export const getNotificationPreferences = async (
+  userId: string,
+): Promise<NotificationPreferences> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { dailyDigestEnabled: true },
+  })
+  if (!user) throw new AppError('User not found', 404)
+
+  return { dailyDigestEnabled: user.dailyDigestEnabled }
+}
+
+export const updateNotificationPreferences = async (
+  userId: string,
+  preferences: NotificationPreferences,
+): Promise<NotificationPreferences> => {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { dailyDigestEnabled: preferences.dailyDigestEnabled },
+    select: { dailyDigestEnabled: true },
+  })
+
+  return { dailyDigestEnabled: user.dailyDigestEnabled }
+}
 
 // ─── Get Notifications (cursor-based) ────────────────────────────────────────
 

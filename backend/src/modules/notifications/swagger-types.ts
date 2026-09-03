@@ -2,12 +2,14 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Route,
   Tags,
   Security,
   Path,
   Query,
+  Body,
   SuccessResponse,
   Response,
 } from 'tsoa'
@@ -25,6 +27,10 @@ export interface Notification {
   body: string
   read: boolean
   createdAt: string
+}
+
+export interface NotificationPreferences {
+  dailyDigestEnabled: boolean
 }
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
@@ -52,6 +58,24 @@ export class NotificationsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Unread count returned')
   async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Get the authenticated user's notification preferences. */
+  @Get('preferences')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Notification preferences returned')
+  async getPreferences(): Promise<ApiResponse<NotificationPreferences>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Update the authenticated user's notification preferences. */
+  @Patch('preferences')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Notification preferences updated')
+  async updatePreferences(
+    @Body() preferences: NotificationPreferences,
+  ): Promise<ApiResponse<NotificationPreferences>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -94,16 +118,6 @@ export class NotificationsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'All notifications cleared')
   async clearAll(): Promise<ApiResponse<{ deleted: number }>> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Send an immediate pre-market digest to the authenticated user.
-   */
-  @Post('digest/send')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'Digest sent')
-  async sendDigest(): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 }

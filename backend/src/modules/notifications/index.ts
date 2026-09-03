@@ -7,9 +7,3 @@ export const notificationsModule = defineModule({
   router,
 })
 export { dispatchNotification } from './notification-dispatcher'
-export {
-  sendDailyDigestsToAllSubscribers,
-  sendPremarketDigestToUser,
-  generateDigestDataForUser,
-} from './digest-service'
-

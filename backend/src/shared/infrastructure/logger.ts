@@ -63,7 +63,7 @@ if (config.axiom.token && config.axiom.dataset) {
       logRecordProcessorOptions: {
         exporterOptions: {
           protocol: 'http/protobuf',
-          url: 'https://api.axiom.co/v1/traces', // Axiom's OTLP ingest endpoint
+          url: 'https://api.axiom.co/v1/logs', // Axiom's OTLP ingest endpoint
           headers: {
             Authorization: `Bearer ${config.axiom.token}`,
             'X-Axiom-Dataset': config.axiom.dataset,

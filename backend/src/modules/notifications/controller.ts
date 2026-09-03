@@ -2,12 +2,11 @@ import { validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import {
   getNotificationsValidator,
+  notificationPreferencesValidator,
   notificationIdsValidator,
 } from './validation'
 import type { Request, Response, NextFunction } from 'express'
 import * as NotificationService from './notification-query-service'
-import { sendPremarketDigestToUser } from './digest-service'
-
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -49,6 +48,47 @@ export const getNotificationSummary = async (
     sendSuccess(res, {
       message: 'Notification summary retrieved successfully',
       data: summary,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export const getPreferences = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const preferences = await NotificationService.getNotificationPreferences(
+      getUserId(req),
+    )
+    sendSuccess(res, {
+      message: 'Notification preferences retrieved successfully',
+      data: preferences,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export const updatePreferences = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const preferences = validateOrThrow(
+      notificationPreferencesValidator,
+      req.body,
+    )
+    const updated = await NotificationService.updateNotificationPreferences(
+      getUserId(req),
+      preferences,
+    )
+    sendSuccess(res, {
+      message: 'Notification preferences updated successfully',
+      data: updated,
     })
   } catch (err) {
     next(err)
@@ -146,25 +186,3 @@ export const deleteNotification = async (
     next(err)
   }
 }
-
-/**
- * POST /notifications/digest/send
- * Trigger an immediate dispatch of the pre-market digest to the authenticated user.
- */
-export const sendTestDigest = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const userId = getUserId(req)
-    const result = await sendPremarketDigestToUser(userId)
-    sendSuccess(res, {
-      message: result.message,
-      data: result,
-    })
-  } catch (err) {
-    next(err)
-  }
-}
-

@@ -12,6 +12,9 @@ import { logger } from '../../../shared/infrastructure/logger'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import type { JobDefinition } from './types'
 
+const US_EASTERN_TIME_ZONE = 'America/New_York'
+const PREMARKET_DIGEST_CRON = '30 8 * * 1-5'
+
 // ─── Job Definitions ──────────────────────────────────────────────────────────
 
 const JOB_DEFINITIONS: JobDefinition[] = [
@@ -48,7 +51,8 @@ const JOB_DEFINITIONS: JobDefinition[] = [
   {
     name: 'watchlist-premarket-digest',
     handler: sendDailyDigestsToAllSubscribers,
-    pattern: '30 13 * * 1-5', // daily at 13:30 UTC (8:30 AM EST before market open)
+    pattern: PREMARKET_DIGEST_CRON,
+    timeZone: US_EASTERN_TIME_ZONE,
   },
 ]
 
@@ -83,7 +87,10 @@ export const startCronScheduler = async (): Promise<void> => {
       job.name,
       {},
       {
-        repeat: { pattern: job.pattern },
+        repeat: {
+          pattern: job.pattern,
+          ...(job.timeZone ? { tz: job.timeZone } : {}),
+        },
         attempts: 3,
         backoff: { type: 'exponential', delay: 5_000 },
       },
@@ -108,7 +115,9 @@ export const startCronScheduler = async (): Promise<void> => {
     )
 
     workers.push(worker)
-    logger.info(`[CronScheduler] Registered: ${job.name} (${job.pattern})`)
+    logger.info(
+      `[CronScheduler] Registered: ${job.name} (${job.pattern}${job.timeZone ? `, ${job.timeZone}` : ''})`,
+    )
   }
 
   logger.info('[CronScheduler] All jobs registered')
