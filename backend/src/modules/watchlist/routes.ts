@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import * as WatchlistController from './controller'
-import { authTokenMiddleware as authenticate } from '../auth'
 import { Action, rbacMiddleware, Resource } from '../access-control'
+import { authTokenMiddleware as authenticate } from '../auth'
+import * as WatchlistController from './controller'
 
 const router = Router()
 

@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { authTokenMiddleware } from '../auth'
 import { Action, rbacMiddleware, Resource } from '../access-control'
+import { authTokenMiddleware } from '../auth'
 import * as DashboardController from './controller'
 
 const router = Router()

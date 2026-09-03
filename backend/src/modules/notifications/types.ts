@@ -1,7 +1,4 @@
-import type { NewsSentiment } from '@prisma/client'
-
-export type AlertType = string
-
+import type { NewsSentiment, AlertType } from '@prisma/client'
 export interface RawNewsInput {
   symbol: string
   headline: string

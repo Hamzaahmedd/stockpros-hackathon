@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { exportForecastPdf, getStockForecast } from './controller'
-import { authTokenMiddleware } from '../auth'
 import { Action, rbacMiddleware, Resource } from '../access-control'
+import { authTokenMiddleware } from '../auth'
+import { exportForecastPdf, getStockForecast } from './controller'
 
 const router = Router()
 
