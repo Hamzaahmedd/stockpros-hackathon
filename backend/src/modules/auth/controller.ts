@@ -1,22 +1,22 @@
 import config from '@/config'
 import { NextFunction, Request, Response } from 'express'
 import {
-    NotFoundError,
-    UnauthorizedError,
-    validateOrThrow,
-    ValidationError,
+  NotFoundError,
+  UnauthorizedError,
+  validateOrThrow,
+  ValidationError,
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
 import { convertToMilliseconds, getUserId } from '../../shared/utils'
 import {
-    completeOnboardingFlow,
-    deleteAccount as deleteAccountService,
-    fetchMe,
-    generateMagicLink,
-    googleLogin as googleLoginService,
-    logoutUser,
-    refreshAccessToken,
-    verifyMagicLink,
+  completeOnboardingFlow,
+  deleteAccount as deleteAccountService,
+  fetchMe,
+  generateMagicLink,
+  googleLogin as googleLoginService,
+  logoutUser,
+  refreshAccessToken,
+  verifyMagicLink,
 } from './service'
 import { AuthenticatedRequest } from './types'
 import { emailValidator, googleLoginValidator } from './validation'
@@ -46,18 +46,30 @@ export const refreshToken = async (
   next: NextFunction,
 ) => {
   try {
-    const refreshToken = req.cookies.refresh_token
-    if (!refreshToken) {
+    const incomingRefreshToken =
+      req.cookies?.refresh_token || req.body?.refresh_token
+    if (!incomingRefreshToken) {
       throw new UnauthorizedError('No refresh token provided')
     }
 
-    const accessToken = await refreshAccessToken(refreshToken)
+    const { accessToken, refreshToken: newRefreshToken } =
+      await refreshAccessToken(incomingRefreshToken)
 
-    return res.status(200).json({
-      success: true,
-      message: 'Access token refreshed successfully',
-      accessToken,
-    })
+    const REFRESH_TOKEN_EXPIRY = convertToMilliseconds(
+      config.auth.refreshTokenExpiry,
+    )
+
+    return res
+      .status(200)
+      .cookie('refresh_token', newRefreshToken, {
+        ...defaultCookieOptions,
+        maxAge: REFRESH_TOKEN_EXPIRY,
+      })
+      .json({
+        success: true,
+        message: 'Tokens refreshed successfully',
+        accessToken,
+      })
   } catch (error) {
     next(error)
   }

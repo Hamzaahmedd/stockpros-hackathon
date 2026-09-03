@@ -132,12 +132,12 @@ export class AuthSwaggerController extends Controller {
   }
 
   /**
-   * Rotate session — exchange a valid refresh_token cookie for a new access token.
+   * Rotate session — exchange a valid refresh_token cookie for a new access token and rotated refresh token cookie.
    */
   @Post('refresh-token')
   @Security('cookieAuth')
-  @SuccessResponse(200, 'Tokens refreshed')
-  @Response<ApiErrorResponse>(401, 'Missing or expired refresh token')
+  @SuccessResponse(200, 'Tokens refreshed and rotated')
+  @Response<ApiErrorResponse>(401, 'Missing, expired, or invalid refresh token')
   async refresh(): Promise<ApiResponse<{ accessToken: string }>> {
     throw new Error('tsoa spec-only')
   }

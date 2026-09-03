@@ -75,15 +75,39 @@ export async function refreshAccessToken(refreshToken: string) {
       include: { user: true },
     })
 
-    // Step 3: Enforce force logout
+    // Step 3: Enforce force logout & reuse protection
     if (!session || session.isRevoked || new Date() > session.expiresAt) {
       throw new UnauthorizedError('Refresh token expired or invalid')
     }
 
-    // Step 4: Issue new access token
-    const { accessToken } = await generateTokens(session.user.id)
+    if (session.user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedError('Account is inactive or suspended')
+    }
 
-    return accessToken
+    // Step 4: Issue new access token and rotated refresh token with fresh jti
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      jti: newJti,
+    } = await generateTokens(session.user.id)
+
+    const refreshTokenExpiryMs =
+      convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
+
+    // Step 5: Rotate the session jti in the database atomically
+    await prisma.userSession.update({
+      where: { id: session.id },
+      data: {
+        jti: newJti,
+        expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
+        updatedAt: new Date(),
+      },
+    })
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    }
   } catch (err: unknown) {
     if (!(err instanceof UnauthorizedError)) {
       logger.warn(`[Auth] refreshAccessToken failed: ${String(err)}`)
