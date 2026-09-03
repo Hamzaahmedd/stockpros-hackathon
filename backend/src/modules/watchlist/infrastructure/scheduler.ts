@@ -7,6 +7,7 @@ import {
   runSecFilingJob,
   runAiZoneRecomputeJob,
 } from './watchlist-job'
+import { sendDailyDigestsToAllSubscribers } from '../../notifications/public'
 import { logger } from '../../../shared/infrastructure/logger'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import type { JobDefinition } from './types'
@@ -43,6 +44,11 @@ const JOB_DEFINITIONS: JobDefinition[] = [
     name: 'watchlist-news-alert',
     handler: runNewsAlertJob,
     pattern: '*/15 * * * *', // every 15 minutes
+  },
+  {
+    name: 'watchlist-premarket-digest',
+    handler: sendDailyDigestsToAllSubscribers,
+    pattern: '30 13 * * 1-5', // daily at 13:30 UTC (8:30 AM EST before market open)
   },
 ]
 

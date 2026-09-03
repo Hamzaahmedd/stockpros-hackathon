@@ -6,6 +6,8 @@ import {
 } from './validation'
 import type { Request, Response, NextFunction } from 'express'
 import * as NotificationService from './notification-query-service'
+import { sendPremarketDigestToUser } from './digest-service'
+
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -144,3 +146,25 @@ export const deleteNotification = async (
     next(err)
   }
 }
+
+/**
+ * POST /notifications/digest/send
+ * Trigger an immediate dispatch of the pre-market digest to the authenticated user.
+ */
+export const sendTestDigest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const userId = getUserId(req)
+    const result = await sendPremarketDigestToUser(userId)
+    sendSuccess(res, {
+      message: result.message,
+      data: result,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
