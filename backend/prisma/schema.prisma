@@ -8,15 +8,18 @@ generator client {
 }
 
 model User {
-  id                  String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  displayName         String     @map("display_name")
-  email               String     @unique
-  status              UserStatus @default(ACTIVE)
-  dailyDigestEnabled  Boolean    @default(true) @map("daily_digest_enabled")
-  deletedAt           DateTime?  @map("deleted_at") @db.Timestamptz(6)
-  deletionScheduledAt DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
-  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  displayName                  String     @map("display_name")
+  email                        String     @unique
+  status                       UserStatus @default(ACTIVE)
+  marketInterests              String[]   @default([]) @map("market_interests")
+  inAppAlertsEnabled           Boolean    @default(true) @map("in_app_alerts_enabled")
+  emailVolatilityAlertsEnabled Boolean    @default(true) @map("email_volatility_alerts_enabled")
+  dailyDigestEnabled           Boolean    @default(true) @map("daily_digest_enabled")
+  deletedAt                    DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  deletionScheduledAt          DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
+  createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   userSessions      UserSession[]
   portfolios        Portfolio[]

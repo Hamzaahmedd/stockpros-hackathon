@@ -92,6 +92,16 @@ export const dispatchNotification = async (
   currentPrice: number,
   threshold?: number | null,
 ): Promise<void> => {
+  const preferences = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      inAppAlertsEnabled: true,
+      emailVolatilityAlertsEnabled: true,
+    },
+  })
+  if (!preferences) return
+
   const { title, body } = formatNotification(
     symbol,
     alertType,
@@ -99,39 +109,34 @@ export const dispatchNotification = async (
     threshold,
   )
 
-  // Step 1: Write in-app notification row
-  const notification = await prisma.notification.create({
-    data: { userId, title, body },
-  })
+  if (preferences.inAppAlertsEnabled) {
+    const notification = await prisma.notification.create({
+      data: { userId, title, body },
+    })
 
-  // Step 2: Emit direct Socket event for real-time frontend update
-  try {
-    const socketServer = SocketServer.getInstance()
-    if (socketServer) {
-      socketServer.io.to(`user:${userId}`).emit('notification', {
-        ...notification,
-        read: false,
-      })
+    try {
+      const socketServer = SocketServer.getInstance()
+      if (socketServer) {
+        socketServer.io.to(`user:${userId}`).emit('notification', {
+          ...notification,
+          read: false,
+        })
+      }
+    } catch (err) {
+      logger.error(
+        `[NotificationService] Unexpected error during Socket emission`,
+        err,
+      )
     }
-  } catch (err) {
-    logger.error(
-      `[NotificationService] Unexpected error during Socket emission`,
-      err,
-    )
   }
 
   // Step 3: Enqueue email — fetch the user's email address, then add to queue.
   // Fire-and-forget — a failed email enqueue must never block or throw here,
   // as this function is called from the tick pipeline and cron jobs.
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    })
-
-    if (user?.email) {
+    if (preferences.emailVolatilityAlertsEnabled) {
       await enqueueEmail({
-        to: user.email,
+        to: preferences.email,
         symbol,
         alertType,
         title,

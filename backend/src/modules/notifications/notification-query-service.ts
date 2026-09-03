@@ -15,11 +15,16 @@ export const getNotificationPreferences = async (
 ): Promise<NotificationPreferences> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { dailyDigestEnabled: true },
+    select: {
+      marketInterests: true,
+      inAppAlertsEnabled: true,
+      emailVolatilityAlertsEnabled: true,
+      dailyDigestEnabled: true,
+    },
   })
   if (!user) throw new AppError('User not found', 404)
 
-  return { dailyDigestEnabled: user.dailyDigestEnabled }
+  return user
 }
 
 export const updateNotificationPreferences = async (
@@ -28,11 +33,16 @@ export const updateNotificationPreferences = async (
 ): Promise<NotificationPreferences> => {
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { dailyDigestEnabled: preferences.dailyDigestEnabled },
-    select: { dailyDigestEnabled: true },
+    data: preferences,
+    select: {
+      marketInterests: true,
+      inAppAlertsEnabled: true,
+      emailVolatilityAlertsEnabled: true,
+      dailyDigestEnabled: true,
+    },
   })
 
-  return { dailyDigestEnabled: user.dailyDigestEnabled }
+  return user
 }
 
 // ─── Get Notifications (cursor-based) ────────────────────────────────────────

@@ -43,5 +43,8 @@ export interface NotificationSummary {
 }
 
 export interface NotificationPreferences {
+  marketInterests: string[]
+  inAppAlertsEnabled: boolean
+  emailVolatilityAlertsEnabled: boolean
   dailyDigestEnabled: boolean
 }
