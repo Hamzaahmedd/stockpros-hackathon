@@ -9,11 +9,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { z } from "zod";
 import { AuthLayout } from "../components/AuthLayout";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { googleLogin } from "../services";
+import { loginSchema, type LoginFormValues } from "../validation";
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
 declare global {
@@ -32,16 +32,6 @@ declare global {
   }
 }
 
-const schema = z.object({
-  email: z
-    .email("Please enter a valid email address")
-    .min(1, "Email is required")
-    .trim()
-    .toLowerCase(),
-});
-
-type Form = z.infer<typeof schema>;
-
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { loading, user, can, refreshMe } = useAuth();
@@ -52,8 +42,8 @@ export const Login: React.FC = () => {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, handleSubmit, formState } = useForm<Form>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, formState } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
     },
@@ -95,7 +85,7 @@ export const Login: React.FC = () => {
     }
   };
 
-  const onSubmit = async (data: Form) => {
+  const onSubmit = async (data: LoginFormValues) => {
     await sendLoginLink(data.email);
   };
 

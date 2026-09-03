@@ -33,3 +33,18 @@ export type AuthContextValue = {
   can: (resource: string, action: keyof ScreenPermissions) => boolean;
   refreshMe: () => Promise<void>;
 };
+
+export type { LoginFormValues, OnboardingFormValues } from "./validation";
+
+export interface SuggestedSymbol {
+  symbol: string;
+  name: string;
+  sector: string;
+  category: "all" | "tech" | "growth" | "consumer" | "index";
+  hasAiForecast: boolean;
+}
+
+export type NotificationPreferenceToggle =
+  | "inAppAlertsEnabled"
+  | "emailVolatilityAlertsEnabled"
+  | "dailyDigestEnabled";

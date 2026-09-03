@@ -37,3 +37,32 @@ export interface ForecastResponse {
     estimated_ready_at?: number
   }
 }
+
+export interface TechnicalBaselines {
+  atr: number
+  ema: number
+  swingLow: number | null
+  resistance: number | null
+}
+
+export interface ForecastDataPayload {
+  symbol: string
+  period: string
+  currentPrice?: number
+  predictions?: Array<{
+    date: string
+    base: number
+    bull?: number
+    bear?: number
+  }>
+  historicalData?: Array<{ date: string; close?: number; price?: number }>
+  targetRange?: {
+    bull: number
+    base: number
+    bear: number
+    atr: number
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  }
+  status?: string
+  estimated_ready_at?: number
+}

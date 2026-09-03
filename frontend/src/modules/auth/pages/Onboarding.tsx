@@ -3,21 +3,14 @@ import { setAccessToken } from "@/shared/utils/token";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowRight,
-  Bell,
   Check,
-  Cpu,
-  FileText,
-  Landmark,
-  Mail,
   Plus,
   Search,
-  ShoppingBag,
   Sparkles,
 } from "lucide-react";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { z } from "zod";
 import api from "../../../shared/api/axios";
 import { notificationService } from "../../notifications/services";
 import type {
@@ -27,148 +20,19 @@ import type {
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
-
-const schema = z.object({
-  displayName: z
-    .string()
-    .trim()
-    .min(2, "Display name must be at least 2 characters"),
-});
-
-type Form = z.infer<typeof schema>;
-
-interface SuggestedSymbol {
-  symbol: string;
-  name: string;
-  sector: string;
-  category: "all" | "tech" | "growth" | "consumer" | "index";
-  hasAiForecast: boolean;
-}
-
-const SUGGESTED_SYMBOLS: SuggestedSymbol[] = [
-  {
-    symbol: "NVDA",
-    name: "NVIDIA Corp.",
-    sector: "Semiconductors",
-    category: "tech",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    sector: "Consumer Tech",
-    category: "tech",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "MSFT",
-    name: "Microsoft Corp.",
-    sector: "Cloud & AI",
-    category: "tech",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "TSLA",
-    name: "Tesla Inc.",
-    sector: "EV & AI",
-    category: "growth",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "AMZN",
-    name: "Amazon.com Inc.",
-    sector: "E-Commerce & Cloud",
-    category: "consumer",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "META",
-    name: "Meta Platforms",
-    sector: "Digital Media & AI",
-    category: "growth",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "NFLX",
-    name: "Netflix Inc.",
-    sector: "Streaming Media",
-    category: "consumer",
-    hasAiForecast: false,
-  },
-  {
-    symbol: "SPY",
-    name: "SPDR S&P 500 ETF",
-    sector: "Index ETF",
-    category: "index",
-    hasAiForecast: true,
-  },
-  {
-    symbol: "QQQ",
-    name: "Invesco QQQ Trust",
-    sector: "Nasdaq-100 ETF",
-    category: "index",
-    hasAiForecast: true,
-  },
-];
-
-const SECTOR_TABS = [
-  { id: "all", label: "All Sectors" },
-  { id: "tech", label: "AI & Tech" },
-  { id: "growth", label: "Growth" },
-  { id: "consumer", label: "Consumer" },
-  { id: "index", label: "Index ETFs" },
-] as const;
-
-const MARKET_TOPICS: {
-  id: MarketInterest;
-  name: string;
-  icon: React.ElementType;
-}[] = [
-  { id: "ai_tech", name: "AI & Tech", icon: Cpu },
-  { id: "energy", name: "Energy", icon: Sparkles },
-  { id: "finance", name: "Finance", icon: Landmark },
-  { id: "healthcare", name: "Healthcare", icon: Bell },
-  { id: "growth", name: "Growth Stocks", icon: ArrowRight },
-  { id: "crypto", name: "Crypto & Web3", icon: Sparkles },
-  { id: "consumer", name: "Consumer", icon: ShoppingBag },
-  { id: "value", name: "Value Stocks", icon: FileText },
-];
-
-const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  marketInterests: ["ai_tech", "growth"],
-  inAppAlertsEnabled: true,
-  emailVolatilityAlertsEnabled: true,
-  dailyDigestEnabled: true,
-};
-
-type NotificationPreferenceToggle =
-  "inAppAlertsEnabled" | "emailVolatilityAlertsEnabled" | "dailyDigestEnabled";
-
-const ALERT_CHANNEL_OPTIONS: {
-  key: NotificationPreferenceToggle;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-}[] = [
-  {
-    key: "inAppAlertsEnabled",
-    title: "In-App Real-Time Alerts",
-    description: "Live notifications for watchlist triggers.",
-    icon: Bell,
-  },
-  {
-    key: "emailVolatilityAlertsEnabled",
-    title: "Email Volatility Alerts",
-    description: "Email for watchlist alert events.",
-    icon: Mail,
-  },
-  {
-    key: "dailyDigestEnabled",
-    title: "Daily Pre-Market Digest",
-    description: "Weekday email briefing at 8:30 AM New York time.",
-    icon: FileText,
-  },
-];
+import {
+  ALERT_CHANNEL_OPTIONS,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  MARKET_TOPICS,
+  SECTOR_TABS,
+  SUGGESTED_SYMBOLS,
+} from "../constants";
+import type {
+  NotificationPreferenceToggle,
+  OnboardingFormValues,
+  SuggestedSymbol,
+} from "../types";
+import { onboardingSchema } from "../validation";
 
 export const Onboarding: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -195,8 +59,8 @@ export const Onboarding: React.FC = () => {
       ? sessionStorage.getItem("onboarding_display_name")
       : null;
 
-  const { register, handleSubmit, formState, getValues } = useForm<Form>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, formState, getValues } = useForm<OnboardingFormValues>({
+    resolver: zodResolver(onboardingSchema),
     defaultValues: { displayName: user?.displayName || storedGoogleName || "" },
   });
 

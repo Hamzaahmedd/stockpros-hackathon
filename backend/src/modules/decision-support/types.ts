@@ -122,3 +122,89 @@ export type PortfolioRiskMetrics = {
   }[]
   sectorConcentration: { sector: string; weight: number }[]
 }
+
+export interface TradePlanData {
+  symbol: string
+  sector?: string
+  currentPrice: number
+  atr?: number
+  recommendation: string
+  confidence: number
+  timeHorizon?: string
+  entryRange?: { low: number; high: number }
+  bullTarget?: number
+  stopLoss?: number
+  riskFlags?: string[]
+  sizing?: {
+    capital: number
+    shares: number
+    totalRisk: number
+    potentialGain: number
+    riskRewardRatio: number
+    percentOfCapital: number
+  }
+}
+
+export interface PortfolioPdfPayload {
+  portfolioData: {
+    positions?: Array<{
+      symbol: string
+      sector?: string
+      quantity: number
+      avg_entry_price: number
+      currentPrice: number
+      currentValue: number
+      unrealizedPnL: number
+      unrealizedPnLPercent: number
+    }>
+    summary: {
+      totalMarketValue: number
+      totalUnrealizedPnL: number
+      totalUnrealizedPnLPercent: number
+      totalPositions: number
+    }
+  }
+  detailedPositions?: Array<{
+    symbol: string
+    sector?: string
+    marketDecision?: string
+    portfolioDecision?: string
+    confidence?: number | null
+    riskLevel?: string
+    beta?: number | null
+    sharpe?: number | null
+    volatilityAnnualized?: number | null
+    reasoning?: {
+      summary?: string
+      details?: string[]
+    }
+    exposure?: {
+      positionPercent?: number | null
+      sectorPercent?: number | null
+      isOverExposed?: boolean
+    }
+    actionGuidance?: {
+      positionStrategy?: {
+        add: boolean
+        hold: boolean
+        trim: boolean
+        exit: boolean
+      } | null
+      holdDuration?: string
+      takeProfitZone?: string
+      stopLossZone?: string
+      watchFor?: string[]
+    }
+  }>
+  riskMetrics?: {
+    weightedBeta: number
+    portfolioSharpe: number
+    perSymbol?: Array<{
+      symbol: string
+      beta?: number | null
+      sharpe?: number | null
+      volatilityAnnualized?: number | null
+    }>
+  } | null
+}
+

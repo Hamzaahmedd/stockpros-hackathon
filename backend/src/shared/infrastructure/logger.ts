@@ -85,11 +85,11 @@ if (config.axiom.token && config.axiom.dataset) {
 
 const pinoLogger = pino(
   {
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: config.server.logLevel,
   },
   pino.transport({
     targets: transports,
-  })
+  }),
 )
 
 export const logger = {

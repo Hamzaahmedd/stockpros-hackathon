@@ -1,16 +1,14 @@
 import mlClient from '../../shared/infrastructure/clients/ml-client'
 import { logger } from '../../shared/infrastructure/logger'
 import { getTechnicalBaselines } from '../watchlist'
-import { ForecastResponse, MlRawPrediction, Prediction } from './types'
+import {
+  ForecastResponse,
+  MlRawPrediction,
+  Prediction,
+  TechnicalBaselines,
+} from './types'
 
 const ATR_MULT = 1.5
-
-interface TechnicalBaselines {
-  atr: number
-  ema: number
-  swingLow: number | null
-  resistance: number | null
-}
 
 function computeSummaryTargets(
   basePrices: number[],
