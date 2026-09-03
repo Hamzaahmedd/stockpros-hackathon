@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { Options, Store, ClientRateLimitInfo } from 'express-rate-limit'
 import type Redis from 'ioredis'
 
@@ -78,7 +79,7 @@ export class RedisSlidingWindowStore implements Store {
     const now = Date.now()
     // Append a counter to now so multiple requests within the same millisecond don't overwrite each other
     counter = (counter + 1) % 1000000
-    const memberId = `${now}:${counter}:${Math.random().toString(36).substring(2, 7)}`
+    const memberId = `${now}:${counter}:${randomUUID()}`
 
     try {
       const result = (await this.client.eval(
