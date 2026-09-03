@@ -1,7 +1,9 @@
 # Repository Guidelines for AI Agents
 
 ## Core Principles & Engineering Standards
-- **Strict Type Safety & Runtime Validation:** Avoid using `any`, implicit coercions, or unsafe casts. Enforce explicit TypeScript types across all layers and require Zod schemas for validating incoming API payloads, route parameters, and environment variables.
+**Strict Type Safety & Runtime Validation:** Avoid using untyped data, implicit coercions, or unsafe casts. Enforce explicit static types across all layers and require schema validation for incoming API payloads, route parameters, and environment variables.
+- **Explicit Enums & Domain Constants:** Use language-native enums, strict value objects, or schema-enforced enumerations for any fixed set of options, states, roles, or event types. Magic strings or bare numbers for conditional logic are strictly prohibited.
+- **API Specification Consistency:** When creating, updating, or modifying API endpoints, continuously update the corresponding OpenAPI/Swagger documentation specs to prevent contract drift.
 - **API Specification Consistency:** When creating, updating, or modifying API endpoints, continuously update the corresponding OpenAPI/Swagger documentation specs to prevent contract drift.
 - **SonarQube Quality Standards:** Maintain Clean Code attributes (Intentional, Consistent, Adaptable, Responsible). Zero tolerance for security vulnerabilities, bugs, cognitive complexity smells, or duplicated code blocks.
 - **Formatting & Style:** Enforce automated formatting (e.g., Prettier) on all modified files. Keep code styles, naming conventions, and file structures completely consistent across the repository.

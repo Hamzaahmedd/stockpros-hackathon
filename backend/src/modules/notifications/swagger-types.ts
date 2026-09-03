@@ -96,4 +96,14 @@ export class NotificationsSwaggerController extends Controller {
   async clearAll(): Promise<ApiResponse<{ deleted: number }>> {
     throw new Error('tsoa spec-only')
   }
+
+  /**
+   * Send an immediate pre-market digest to the authenticated user.
+   */
+  @Post('digest/send')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Digest sent')
+  async sendDigest(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
 }

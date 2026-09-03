@@ -24,6 +24,7 @@ export const readSecrets = (): {
   polygonApiKey: string
   twelveDataApiKey: string
   axiomToken: string
+  groqApiKey: string
 } => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
@@ -38,6 +39,7 @@ export const readSecrets = (): {
   polygonApiKey: process.env.POLYGON_API_KEY || '',
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
   axiomToken: process.env.AXIOM_TOKEN || '',
+  groqApiKey: process.env.GROQ_API_KEY || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -130,6 +132,9 @@ export const buildConfig = (
     token: string
     dataset: string
   }
+  groq: {
+    apiKey: string
+  }
   features: {
     enableNewsCron: boolean
     enableWatchlistCron: boolean
@@ -203,6 +208,9 @@ export const buildConfig = (
   axiom: {
     token: secrets.axiomToken,
     dataset: env.axiom.dataset,
+  },
+  groq: {
+    apiKey: secrets.groqApiKey,
   },
   features: env.features,
   audit: {

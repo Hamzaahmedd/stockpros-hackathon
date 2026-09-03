@@ -1,4 +1,5 @@
 import { prisma } from '../../shared/infrastructure/database'
+import { NewsSentiment, UserStatus } from '@prisma/client'
 import { logger } from '../../shared/infrastructure/logger'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
 import { transporter } from '../../shared/infrastructure/config/email'
@@ -8,8 +9,8 @@ import {
   buildPremarketDigestText,
   type PremarketDigestData,
   type WatchlistDigestItem,
-  type DigestNewsItem,
 } from './email-templates'
+import { enrichNewsWithGroq } from './groq-enricher'
 
 /**
  * Compile pre-market briefing data for a given user.
@@ -57,7 +58,7 @@ export const generateDigestDataForUser = async (
     }
   }
 
-  // 3. Fetch recent news for these symbols with pre-extracted summary bullets
+  // 3. Fetch recent news for these symbols — use stored bullets as both content and fallback
   const rawArticles =
     symbols.length > 0
       ? await prisma.newsArticle.findMany({
@@ -75,26 +76,33 @@ export const generateDigestDataForUser = async (
         })
       : []
 
-  const topNews: DigestNewsItem[] = rawArticles.map((article) => {
+  // Map articles to the enricher input shape, carrying fallback bullets
+  const enricherInput = rawArticles.map((article) => {
     const matchedSymbol =
       symbols.find((s) => article.relatedSymbols.includes(s)) ??
       article.relatedSymbols[0] ??
       'MARKET'
 
-    let mappedSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | null = null
-    if (article.sentiment === 'BULLISH') mappedSentiment = 'BULLISH'
-    else if (article.sentiment === 'BEARISH') mappedSentiment = 'BEARISH'
-    else if (article.sentiment === 'NEUTRAL') mappedSentiment = 'NEUTRAL'
+    const mappedSentiment: NewsSentiment | null = article.sentiment
+
+    // Reconstruct a text body from stored bullets since raw article text is not persisted.
+    // Groq will re-distil these into higher-quality, more investment-specific bullets.
+    const reconstructedBody = article.summaryBullets.join('. ')
 
     return {
       symbol: matchedSymbol,
       headline: article.headline,
-      bullets: article.summaryBullets || [],
+      rawSummary: reconstructedBody,
       sentiment: mappedSentiment,
-      source: article.source,
-      url: article.url,
+      source: article.source ?? undefined,
+      url: article.url ?? undefined,
     }
   })
+
+  const fallbackBullets = rawArticles.map((a) => a.summaryBullets ?? [])
+
+  // Attempt Groq enrichment; falls back to stored summaryBullets automatically
+  const topNews = await enrichNewsWithGroq(enricherInput, fallbackBullets)
 
   const dateFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -188,7 +196,7 @@ export const sendDailyDigestsToAllSubscribers = async (): Promise<void> => {
   try {
     const eligibleUsers = await prisma.user.findMany({
       where: {
-        status: 'ACTIVE',
+        status: UserStatus.ACTIVE,
         watchlistItems: { some: {} },
       },
       select: { id: true, email: true },

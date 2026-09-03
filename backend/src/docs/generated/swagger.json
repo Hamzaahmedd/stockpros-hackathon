@@ -2767,6 +2767,33 @@
 				]
 			}
 		},
+		"/api/notifications/digest/send": {
+			"post": {
+				"operationId": "SendDigest",
+				"responses": {
+					"200": {
+						"description": "Digest sent",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Send an immediate pre-market digest to the authenticated user.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/api/news": {
 			"get": {
 				"operationId": "GetNews",
