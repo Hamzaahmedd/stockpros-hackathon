@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { authTokenMiddleware } from '../auth'
 import { Action, rbacMiddleware, Resource } from '../access-control'
+import { authTokenMiddleware } from '../auth'
 import * as NewsController from './controller'
 
 const router = Router()

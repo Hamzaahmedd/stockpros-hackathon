@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import * as DecisionController from './controller'
-import { authTokenMiddleware as authenticate } from '../auth'
-import { Action, Resource, rbacMiddleware } from '../access-control'
 import { upload } from '../../shared/middlewares'
+import { Action, rbacMiddleware, Resource } from '../access-control'
+import { authTokenMiddleware as authenticate } from '../auth'
+import * as DecisionController from './controller'
 
 const router = Router()
 
