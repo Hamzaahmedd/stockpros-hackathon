@@ -1,4 +1,15 @@
+import type { NewsSentiment } from '@prisma/client'
+
 export type AlertType = string
+
+export interface RawNewsInput {
+  symbol: string
+  headline: string
+  rawSummary: string
+  sentiment: NewsSentiment | null
+  source?: string
+  url?: string
+}
 
 export interface EmailJobPayload {
   to: string

@@ -2,9 +2,9 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { useTheme } from "@/shared/hooks/useTheme";
+import api from "@/shared/api/axios";
 import {
   Activity,
-  AlertTriangle,
   Bell,
   Check,
   Cpu,
@@ -15,7 +15,6 @@ import {
   ShoppingBag,
   Sparkles,
   TrendingUp,
-  User,
   Zap,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -33,24 +32,36 @@ const MARKET_TOPICS = [
   { id: "value", name: "Value Stocks", icon: Gem, description: "Dividend aristocrats & leaders" },
 ];
 
-const ALERT_OPTIONS = [
+interface AlertOption {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  disabled?: boolean;
+  badge?: string;
+}
+
+const ALERT_OPTIONS: AlertOption[] = [
   {
     id: "in_app",
     title: "In-App Real-Time Alerts",
     description: "Instant pop-up triggers when prices cross key levels or AI signals fire.",
     icon: Bell,
+    badge: "Active",
   },
   {
     id: "email_alerts",
     title: "Email Volatility Alerts",
     description: "Direct email notifications for critical stop-loss or take-profit breaches.",
     icon: Mail,
+    badge: "Active",
   },
   {
     id: "daily_digest",
     title: "Daily Pre-Market Digest",
-    description: "Curated AI summary of news, sector trends, and your watchlist before market open.",
+    description: "Curated morning briefing of overnight news, watchlist movers, and intelligence before market open.",
     icon: FileText,
+    badge: "8:30 AM EST",
   },
 ];
 
@@ -63,11 +74,24 @@ const Settings: React.FC = () => {
   // Market & Alert preferences state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
+  const [isSendingDigest, setIsSendingDigest] = useState(false);
 
   // Account deletion state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhrase, setDeletePhrase] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSendTestDigest = async () => {
+    try {
+      setIsSendingDigest(true);
+      const res = await api.post("/api/v1/notifications/digest/send");
+      toast.success(res.data?.message || "Pre-market digest dispatched to your email!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to trigger pre-market digest.");
+    } finally {
+      setIsSendingDigest(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -77,10 +101,10 @@ const Settings: React.FC = () => {
 
       const savedAlerts = localStorage.getItem("stockpros_alert_preferences");
       if (savedAlerts) setSelectedAlerts(JSON.parse(savedAlerts));
-      else setSelectedAlerts(["in_app", "daily_digest"]);
+      else setSelectedAlerts(["in_app", "email_alerts"]);
     } catch {
       setSelectedTopics(["AI & Tech", "Growth Stocks"]);
-      setSelectedAlerts(["in_app", "daily_digest"]);
+      setSelectedAlerts(["in_app", "email_alerts"]);
     }
   }, []);
 
@@ -91,6 +115,8 @@ const Settings: React.FC = () => {
   };
 
   const toggleAlert = (alertId: string) => {
+    const opt = ALERT_OPTIONS.find((o) => o.id === alertId);
+    if (opt?.disabled) return;
     setSelectedAlerts((prev) =>
       prev.includes(alertId) ? prev.filter((a) => a !== alertId) : [...prev, alertId]
     );
@@ -344,13 +370,17 @@ const Settings: React.FC = () => {
                         {ALERT_OPTIONS.map((opt) => {
                           const active = selectedAlerts.includes(opt.id);
                           const Icon = opt.icon;
+                          const isDisabled = opt.disabled;
                           return (
                             <button
                               key={opt.id}
                               type="button"
                               onClick={() => toggleAlert(opt.id)}
+                              disabled={isDisabled}
                               className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between gap-3 ${
-                                active
+                                isDisabled
+                                  ? "opacity-50 cursor-not-allowed border-border/50 bg-muted/10 text-muted-foreground"
+                                  : active
                                   ? "border-cyan-500 bg-cyan-500/10 text-cyan-200 ring-1 ring-cyan-500/30"
                                   : "border-border bg-muted/20 text-muted-foreground hover:border-border"
                               }`}
@@ -358,17 +388,38 @@ const Settings: React.FC = () => {
                               <div className="flex items-center justify-between w-full">
                                 <div
                                   className={`p-2 rounded-lg ${
-                                    active ? "bg-cyan-500/20 text-cyan-300" : "bg-muted text-muted-foreground"
+                                    isDisabled
+                                      ? "bg-muted/40 text-muted-foreground"
+                                      : active
+                                      ? "bg-cyan-500/20 text-cyan-300"
+                                      : "bg-muted text-muted-foreground"
                                   }`}
                                 >
                                   <Icon className="w-4 h-4" />
                                 </div>
-                                <div
-                                  className={`w-5 h-5 rounded flex items-center justify-center transition ${
-                                    active ? "bg-cyan-500 text-black font-bold" : "border border-border"
-                                  }`}
-                                >
-                                  {active && <Check className="w-3.5 h-3.5" />}
+                                <div className="flex items-center gap-2">
+                                  {opt.badge && (
+                                    <span
+                                      className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                                        isDisabled
+                                          ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                          : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
+                                      }`}
+                                    >
+                                      {opt.badge}
+                                    </span>
+                                  )}
+                                  <div
+                                    className={`w-5 h-5 rounded flex items-center justify-center transition ${
+                                      isDisabled
+                                        ? "border border-border/40 text-transparent"
+                                        : active
+                                        ? "bg-cyan-500 text-black font-bold"
+                                        : "border border-border"
+                                    }`}
+                                  >
+                                    {active && !isDisabled && <Check className="w-3.5 h-3.5" />}
+                                  </div>
                                 </div>
                               </div>
                               <div>
@@ -380,6 +431,33 @@ const Settings: React.FC = () => {
                             </button>
                           );
                         })}
+                      </div>
+
+                      {/* Daily Digest On-Demand Test Action */}
+                      <div className="mt-4 p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                            <Sparkles className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              Test Pre-Market Digest Dispatch
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Generate and deliver an instant morning intelligence brief for your active watchlist to your email.
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={handleSendTestDigest}
+                          disabled={isSendingDigest}
+                          variant="outline"
+                          className="h-9 px-4 text-xs font-semibold border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 shrink-0"
+                        >
+                          {isSendingDigest ? "Generating & Sending..." : "Send Test Digest to Email"}
+                        </Button>
                       </div>
                     </div>
 

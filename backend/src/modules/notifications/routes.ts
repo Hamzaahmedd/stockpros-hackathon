@@ -15,4 +15,6 @@ router.patch('/read-multiple', NotificationController.markMultipleAsRead)
 router.patch('/:id/read', NotificationController.markAsRead)
 router.delete('/:id', NotificationController.deleteNotification)
 
+router.post('/digest/send', NotificationController.sendTestDigest)
+
 export default router
