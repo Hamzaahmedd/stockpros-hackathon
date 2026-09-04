@@ -244,31 +244,28 @@ export const Onboarding: React.FC = () => {
             <React.Fragment key={s.num}>
               {idx > 0 && (
                 <div
-                  className={`w-4 sm:w-6 h-0.5 transition-colors ${
-                    step >= s.num ? "bg-primary" : "bg-muted"
-                  }`}
+                  className={`w-4 sm:w-6 h-0.5 transition-colors ${step >= s.num ? "bg-primary" : "bg-muted"
+                    }`}
                 />
               )}
               <div className="flex items-center gap-1.5">
                 <span
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    step === s.num
-                      ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                      : step > s.num
-                        ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
-                        : "bg-muted/40 border border-border text-muted-foreground"
-                  }`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === s.num
+                    ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                    : step > s.num
+                      ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
+                      : "bg-muted/40 border border-border text-muted-foreground"
+                    }`}
                 >
                   {step > s.num ? <Check className="w-3 h-3 stroke-[2.5]" /> : s.num}
                 </span>
                 <span
-                  className={`hidden sm:inline text-xs font-semibold ${
-                    step === s.num
-                      ? "text-primary"
-                      : step > s.num
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                  }`}
+                  className={`hidden sm:inline text-xs font-semibold ${step === s.num
+                    ? "text-primary"
+                    : step > s.num
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                    }`}
                 >
                   {s.label}
                 </span>
@@ -352,11 +349,10 @@ export const Onboarding: React.FC = () => {
                         key={topic.id}
                         type="button"
                         onClick={() => toggleMarketInterest(topic.id)}
-                        className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${
-                          active
-                            ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
-                            : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
-                        }`}
+                        className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${active
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
                       >
                         <span className="flex items-center gap-2.5 min-w-0">
                           <Icon className="w-4 h-4 shrink-0 text-primary" />
@@ -455,11 +451,10 @@ export const Onboarding: React.FC = () => {
                         key={item.symbol}
                         type="button"
                         onClick={() => toggleSymbol(item.symbol)}
-                        className={`p-3 rounded-xl border text-left transition-all duration-200 flex items-center justify-between ${
-                          active
-                            ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
-                            : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
-                        }`}
+                        className={`p-3 rounded-xl border text-left transition-all duration-200 flex items-center justify-between ${active
+                          ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
                       >
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-1.5">
@@ -478,11 +473,10 @@ export const Onboarding: React.FC = () => {
                         </div>
 
                         <div
-                          className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center transition-all ${
-                            active
-                              ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
-                              : "border border-border text-muted-foreground hover:border-muted-foreground"
-                          }`}
+                          className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center transition-all ${active
+                            ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                            : "border border-border text-muted-foreground hover:border-muted-foreground"
+                            }`}
                         >
                           {active ? (
                             <Check className="w-3 h-3 stroke-[2.5]" />
@@ -573,20 +567,18 @@ export const Onboarding: React.FC = () => {
                         key={key}
                         type="button"
                         onClick={() => togglePreference(key)}
-                        className={`p-4 rounded-xl border text-left transition duration-200 ${
-                          active
-                            ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
-                            : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
-                        }`}
+                        className={`p-4 rounded-xl border text-left transition duration-200 ${active
+                          ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <Icon className="w-4 h-4 text-primary" />
                           <span
-                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                              active
-                                ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
-                                : "border border-border text-muted-foreground hover:border-muted-foreground"
-                            }`}
+                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${active
+                              ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                              : "border border-border text-muted-foreground hover:border-muted-foreground"
+                              }`}
                           >
                             {active && <Check className="w-3 h-3 stroke-[2.5]" />}
                           </span>
