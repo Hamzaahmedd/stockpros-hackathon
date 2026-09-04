@@ -346,6 +346,15 @@ export const Dashboard: React.FC = () => {
 
     const { briefing, portfolio, impactNews, smartTriggers, sectorHeatmap } = data;
 
+    const handleTriggerClick = (trigger: { type: string; symbol: string }) => {
+        const symbolParam = encodeURIComponent(trigger.symbol.trim().toUpperCase());
+        if (trigger.type.includes('STOP')) {
+            navigate(`/watchlist?symbol=${symbolParam}`);
+        } else {
+            navigate(`/decision-support/market-analysis?symbol=${symbolParam}`);
+        }
+    };
+
     return (
         <div className="h-screen bg-background text-foreground flex overflow-hidden">
             <Sidebar />
@@ -525,7 +534,7 @@ export const Dashboard: React.FC = () => {
                                     {(smartTriggers?.items || []).slice(0, 4).map((trigger, idx) => (
                                         <div 
                                             key={idx} 
-                                            onClick={() => navigate('/market')}
+                                            onClick={() => handleTriggerClick(trigger)}
                                             className={`p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${trigger.urgency === 'HIGH' ? 'border-destructive/30 bg-destructive/5' : 'bg-card'}`}
                                         >
                                             <div className="flex items-start gap-4">

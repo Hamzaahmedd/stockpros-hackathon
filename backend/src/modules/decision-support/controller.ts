@@ -9,6 +9,7 @@ import {
   getOpportunityRadar,
   getPortfolioDecisionResponse,
   getPortfolioRiskMetrics,
+  removePortfoliosForUser,
   uploadPortfolio,
 } from './service'
 import {
@@ -134,6 +135,28 @@ export const getLatestPortfolio = async (
     sendSuccess(res, {
       message: 'Latest portfolio retrieved successfully.',
       data: portfolio,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const removePortfolios = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const removedCount = await removePortfoliosForUser(userId)
+
+    logger.info(
+      `[AUDIT] Portfolio data removed: userId=${userId}, portfolioCount=${removedCount}`,
+    )
+
+    sendSuccess(res, {
+      message: 'Portfolio removed successfully.',
+      data: { removedCount },
     })
   } catch (error) {
     next(error)

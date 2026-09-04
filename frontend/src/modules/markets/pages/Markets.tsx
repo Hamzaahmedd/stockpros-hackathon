@@ -21,8 +21,8 @@ const DEFAULT_SYMBOLS = ["BINANCE:BTCUSDT", "AAPL", "TSLA"];
 
 const fmtPrice = (v: number) =>
   `$${v.toLocaleString(undefined, {
-    minimumFractionDigits: v < 100 ? 2 : 0,
-    maximumFractionDigits: v < 100 ? 4 : 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: v < 1 ? 4 : 2,
   })}`;
 
 const fmtTime = (unixSeconds: number) =>
