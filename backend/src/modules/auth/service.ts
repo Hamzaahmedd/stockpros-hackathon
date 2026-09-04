@@ -239,43 +239,51 @@ export async function deleteAccount(userId: string): Promise<void> {
     data: { isRevoked: true },
   })
 
-  // Step 3: Purge all user-owned data in a single transaction
-  await prisma.$transaction(async (tx) => {
-    // Watchlist alerts first (FK child of Watchlist)
-    await tx.watchlistAlert.deleteMany({ where: { userId } })
-    // Watchlists (cascades AlertLog via WatchlistAlert -> AlertLog)
-    await tx.watchlist.deleteMany({ where: { userId } })
-    // Notifications
-    await tx.notification.deleteMany({ where: { userId } })
-    // News read states & saved articles
-    await tx.newsReadState.deleteMany({ where: { userId } })
-    await tx.newsSavedArticle.deleteMany({ where: { userId } })
-    // Decision runs (cascades DecisionResult)
-    await tx.decisionRun.deleteMany({ where: { userId } })
-    // Portfolios (cascades Position)
-    await tx.portfolio.deleteMany({ where: { userId } })
-    // Roles & permissions
-    await tx.userRole.deleteMany({ where: { userId } })
-    await tx.userPermission.deleteMany({ where: { userId } })
-    // Magic link tokens (keyed by email, not userId)
-    await tx.magicLinkToken.deleteMany({ where: { email: user.email } })
+  const now = new Date()
+  const purgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
-    // Step 4: Soft-delete the user — keeps the row for audit/fraud purposes
-    const now = new Date()
-    const purgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
+  // Step 3: Purge user data in an interactive transaction with extended timeout options
+  await prisma.$transaction(
+    async (tx) => {
+      await Promise.all([
+        // Watchlist alerts first (FK child of Watchlist)
+        tx.watchlistAlert.deleteMany({ where: { userId } }),
+        // Watchlists (cascades AlertLog via WatchlistAlert -> AlertLog)
+        tx.watchlist.deleteMany({ where: { userId } }),
+        // Notifications
+        tx.notification.deleteMany({ where: { userId } }),
+        // News read states & saved articles
+        tx.newsReadState.deleteMany({ where: { userId } }),
+        tx.newsSavedArticle.deleteMany({ where: { userId } }),
+        // Decision runs (cascades DecisionResult)
+        tx.decisionRun.deleteMany({ where: { userId } }),
+        // Portfolios (cascades Position)
+        tx.portfolio.deleteMany({ where: { userId } }),
+        // Roles & permissions
+        tx.userRole.deleteMany({ where: { userId } }),
+        tx.userPermission.deleteMany({ where: { userId } }),
+        // Magic link tokens (keyed by email, not userId)
+        tx.magicLinkToken.deleteMany({ where: { email: user.email } }),
 
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        status: UserStatus.DELETED,
-        deletedAt: now,
-        deletionScheduledAt: purgeAt,
-        // Anonymise PII immediately
-        displayName: '[deleted]',
-        email: `deleted+${userId}@stockpros.invalid`,
-      },
-    })
-  })
+        // Step 4: Soft-delete the user
+        tx.user.update({
+          where: { id: userId },
+          data: {
+            status: UserStatus.DELETED,
+            deletedAt: now,
+            deletionScheduledAt: purgeAt,
+            // Anonymise PII immediately
+            displayName: '[deleted]',
+            email: `deleted+${userId}@stockpros.invalid`,
+          },
+        }),
+      ])
+    },
+    {
+      maxWait: 5000, // Wait up to 5 seconds to acquire connection
+      timeout: 30000, // Extend transaction execution timeout to 30 seconds
+    },
+  )
 
   logger.info(`[Auth] Account deleted for userId=${userId}`)
 }

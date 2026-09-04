@@ -661,6 +661,13 @@ export async function getLatestPortfolioForUser(userId: string) {
   return getPortfolioSnapshot(latestPortfolio.id)
 }
 
+export const removePortfoliosForUser = async (
+  userId: string,
+): Promise<number> => {
+  const result = await prisma.portfolio.deleteMany({ where: { userId } })
+  return result.count
+}
+
 export const uploadPortfolio = async (
   fileType: string | undefined,
   buffer: Buffer | undefined,

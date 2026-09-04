@@ -618,11 +618,21 @@ const Watchlist: React.FC = () => {
               }
 
               try {
-                await api.post("/api/v1/watchlist", data);
-                toast.success(`${data.symbol} added to watchlist`);
+                const response = await api.post<{
+                  success: boolean;
+                  data: WatchlistItem;
+                }>("/api/v1/watchlist", data);
+                const addedItem = response.data.data;
+                setWatchlist((currentWatchlist) => [
+                  addedItem,
+                  ...currentWatchlist.filter(
+                    (item) => item.symbol !== addedItem.symbol,
+                  ),
+                ]);
+                preloader.invalidate("/api/v1/watchlist");
+                toast.success(`${addedItem.symbol} added to watchlist`);
                 setShowAddModal(false);
                 setNewTickerSymbol("");
-                fetchWatchlist();
               } catch (err: any) {
                 toast.error(err.response?.data?.message || "Failed to add symbol");
               }

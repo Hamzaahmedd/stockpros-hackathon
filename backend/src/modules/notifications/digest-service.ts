@@ -12,9 +12,12 @@ import {
 } from './email-templates'
 import { enrichNewsWithGroq } from './groq-enricher'
 import config from '@/config'
+import {
+  formatPakistanTimestamp,
+  getPakistanGreeting,
+} from '../../shared/utils'
 
-const DIGEST_TIME_ZONE = 'Asia/Karachi'
-const DASHBOARD_PATH = '/dashboard'
+const NEWS_WATCHLIST_PATH = '/news?filter=watchlist'
 
 /**
  * Compile pre-market briefing data for a given user.
@@ -111,21 +114,12 @@ const generateDigestDataForUser = async (
   const topNews = await enrichNewsWithGroq(enricherInput, fallbackBullets)
 
   const generatedAt = new Date()
-  const issuedAtFormatted = generatedAt.toLocaleString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: DIGEST_TIME_ZONE,
-    timeZoneName: 'short',
-  })
 
   return {
     userName: user.displayName || 'Trader',
-    issuedAtFormatted,
-    dashboardUrl: `${config.server.frontendUrl}${DASHBOARD_PATH}`,
+    greeting: getPakistanGreeting(generatedAt),
+    issuedAtFormatted: formatPakistanTimestamp(generatedAt),
+    dashboardUrl: `${config.server.frontendUrl}${NEWS_WATCHLIST_PATH}`,
     watchlistItems,
     topNews,
   }

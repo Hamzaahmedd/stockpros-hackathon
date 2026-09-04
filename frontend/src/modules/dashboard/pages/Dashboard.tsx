@@ -6,7 +6,6 @@ import { Button } from "@/shared/components/ui/button";
 import { CardContent, CardHeader, CardTitle, Card as ShadcnCard } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useSocket } from "@/shared/hooks/useSocket";
-import { useTheme } from "@/shared/hooks/useTheme";
 import healthService from "@/shared/services/healthService";
 import { ResponsiveHeatMap } from "@nivo/heatmap";
 import React, { useEffect, useState } from "react";
@@ -19,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
-import { DashboardData } from "../types";
+import { DashboardData, SectorHeatmapCell } from "../types";
 
 // --- SUB-COMPONENTS ---
 
@@ -69,8 +68,56 @@ function CustomCard({ title, actions, children, className = "" }: {
   );
 }
 
+class ChartErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+          Heatmap unavailable
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function buildHeatmapSeries(
+  sectors: SectorHeatmapCell[] | undefined,
+  timeframe: "1d" | "5d" | "1m",
+) {
+  const rows = [
+    { id: "Growth", slice: sectors?.slice(0, 4) ?? [] },
+    { id: "Industrial", slice: sectors?.slice(4, 8) ?? [] },
+    { id: "Utility", slice: sectors?.slice(8, 12) ?? [] },
+  ];
+
+  return rows
+    .filter((row) => row.slice.length > 0)
+    .map((row) => ({
+      id: row.id,
+      data: row.slice.map((s) => ({
+        x: s.name,
+        y: s.performance?.[timeframe] ?? 0,
+        full: s.name,
+        exp: s.userExposurePct,
+        syms: s.userSymbols,
+      })),
+    }));
+}
+
 const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
-  const isPositive = stock.changePercent >= 0;
+  const changePercent = Number(stock.changePercent);
+  const price = Number(stock.price);
+  const isPositive = Number.isFinite(changePercent) ? changePercent >= 0 : true;
   
   const chartData = stock.sparkline?.map((price: number, idx: number) => ({
     name: idx,
@@ -94,13 +141,15 @@ const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
           </div>
         </div>
         <div className="text-right font-mono">
-          <div className="text-base font-bold tracking-tight tabular-nums text-foreground">${stock.price.toFixed(2)}</div>
+          <div className="text-base font-bold tracking-tight tabular-nums text-foreground">
+            {Number.isFinite(price) ? `$${price.toFixed(2)}` : "—"}
+          </div>
           <div className={`text-[11px] font-semibold tabular-nums inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded ${
             isPositive
               ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
               : "text-rose-400 bg-rose-500/10 border border-rose-500/20"
           }`}>
-            {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
+            {Number.isFinite(changePercent) ? `${isPositive ? "+" : ""}${changePercent.toFixed(2)}%` : "—"}
           </div>
         </div>
       </div>
@@ -153,9 +202,7 @@ export const Dashboard: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [heatmapTimeframe, setHeatmapTimeframe] = useState<'1d' | '5d' | '1m'>('1d');
     const [showHealthBreakdown, setShowHealthBreakdown] = useState(false);
-    const { getTradeMap } = useSocket(true);
-    const tradeMap = getTradeMap();
-    const { theme } = useTheme();
+    useSocket(true);
 
     const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
     const hidePortfolio = !can("PORTFOLIO", "canRead");
@@ -187,7 +234,7 @@ export const Dashboard: React.FC = () => {
         getDashboard();
     }, []);
 
-    if (isLoading || !data) {
+    if (isLoading) {
         return (
             <div className="h-screen bg-background text-foreground flex overflow-hidden">
                 <Sidebar />
@@ -344,7 +391,35 @@ export const Dashboard: React.FC = () => {
         );
     }
 
+    if (error || !data) {
+        return (
+            <div className="h-screen bg-background text-foreground flex overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 flex items-center justify-center p-8">
+                    <div className="text-center space-y-2 max-w-md">
+                        <h1 className="text-xl font-semibold">Dashboard unavailable</h1>
+                        <p className="text-sm text-muted-foreground">
+                            {error || "No dashboard data was returned."}
+                        </p>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     const { briefing, portfolio, impactNews, smartTriggers, sectorHeatmap } = data;
+    const portfolioHealth = portfolio?.healthScore;
+    const showPortfolio = Boolean(!hidePortfolio && portfolio?.available && portfolioHealth);
+    const heatmapSeries = buildHeatmapSeries(sectorHeatmap?.sectors, heatmapTimeframe);
+
+    const handleTriggerClick = (trigger: { type: string; symbol: string }) => {
+        const symbolParam = encodeURIComponent(trigger.symbol.trim().toUpperCase());
+        if (trigger.type.includes('STOP')) {
+            navigate(`/watchlist?symbol=${symbolParam}`);
+        } else {
+            navigate(`/decision-support/market-analysis?symbol=${symbolParam}`);
+        }
+    };
 
     return (
         <div className="h-screen bg-background text-foreground flex overflow-hidden">
@@ -454,21 +529,14 @@ export const Dashboard: React.FC = () => {
                             >
                                 <div className="h-[300px] w-full mt-2 overflow-x-auto">
                                     <div className="min-w-[600px] lg:min-w-[0px] h-full">
+                                    {heatmapSeries.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                                            Sector heatmap data is not available yet.
+                                        </div>
+                                    ) : (
+                                    <ChartErrorBoundary>
                                     <ResponsiveHeatMap
-                                        data={[
-                                            {
-                                                id: "Growth",
-                                                data: sectorHeatmap.sectors.slice(0, 4).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
-                                            },
-                                            {
-                                                id: "Industrial",
-                                                data: sectorHeatmap.sectors.slice(4, 8).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
-                                            },
-                                            {
-                                                id: "Utility",
-                                                data: sectorHeatmap.sectors.slice(8, 12).map(s => ({ x: s.name.split(' ')[0], y: s.performance[heatmapTimeframe], full: s.name, exp: s.userExposurePct, syms: s.userSymbols }))
-                                            }
-                                        ]}
+                                        data={heatmapSeries}
                                         margin={{ top: 30, right: 30, bottom: 30, left: 80 }}
                                         valueFormat=">-.2f"
                                         axisTop={null}
@@ -512,10 +580,14 @@ export const Dashboard: React.FC = () => {
                                             </div>
                                         )}
                                     />
+                                    </ChartErrorBoundary>
+                                    )}
                                     </div>
                                 </div>
                                 <div className="mt-4 text-xs text-muted-foreground text-right">
-                                    Last updated {Math.floor((new Date().getTime() - new Date(sectorHeatmap.cachedAt).getTime()) / 60000)}m ago
+                                    Last updated {sectorHeatmap?.cachedAt
+                                        ? `${Math.max(0, Math.floor((Date.now() - new Date(sectorHeatmap.cachedAt).getTime()) / 60000))}m ago`
+                                        : "just now"}
                                 </div>
                             </CustomCard>
 
@@ -525,7 +597,7 @@ export const Dashboard: React.FC = () => {
                                     {(smartTriggers?.items || []).slice(0, 4).map((trigger, idx) => (
                                         <div 
                                             key={idx} 
-                                            onClick={() => navigate('/market')}
+                                            onClick={() => handleTriggerClick(trigger)}
                                             className={`p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${trigger.urgency === 'HIGH' ? 'border-destructive/30 bg-destructive/5' : 'bg-card'}`}
                                         >
                                             <div className="flex items-start gap-4">
@@ -554,7 +626,7 @@ export const Dashboard: React.FC = () => {
 
                         {/* RIGHT COLUMN: PORTFOLIO & NEWS */}
                         <aside className="lg:col-span-4 md:space-y-8 space-y-6">
-                            {!hidePortfolio && (
+                            {showPortfolio && portfolioHealth && (
                                 <ShadcnCard className="relative overflow-hidden">
                                     <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5 space-y-0">
                                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portfolio Health</CardTitle>

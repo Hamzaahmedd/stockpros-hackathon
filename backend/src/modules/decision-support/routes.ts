@@ -53,6 +53,12 @@ router.get(
   DecisionController.getLatestPortfolio,
 )
 
+router.delete(
+  '/portfolio',
+  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
+  DecisionController.removePortfolios,
+)
+
 // ─── PDF Exports ─────────────────────────────────────────────────────────────
 router.post(
   '/trade-plan/pdf',

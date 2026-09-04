@@ -99,9 +99,7 @@ export const MARKET_TOPICS: {
   { id: "finance", name: "Finance", icon: Landmark },
   { id: "healthcare", name: "Healthcare", icon: Bell },
   { id: "growth", name: "Growth Stocks", icon: ArrowRight },
-  { id: "crypto", name: "Crypto & Web3", icon: Sparkles },
   { id: "consumer", name: "Consumer", icon: ShoppingBag },
-  { id: "value", name: "Value Stocks", icon: FileText },
 ];
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {

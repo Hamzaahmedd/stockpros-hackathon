@@ -1,11 +1,12 @@
 import api from "@/shared/api/axios";
+import { ConfirmationModal } from "@/shared/components/ConfirmationModal";
 import { ReportDownloadButton } from "@/shared/components/ReportDownloadButton";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FiActivity,
   FiAlertCircle,
@@ -13,11 +14,13 @@ import {
   FiCheckCircle,
   FiChevronDown,
   FiChevronUp,
+  FiDownload,
   FiGrid,
   FiList,
   FiPieChart,
   FiShield,
   FiTarget,
+  FiTrash2,
   FiTrendingUp,
   FiUpload,
   FiX,
@@ -179,15 +182,17 @@ interface EmptyStateProps {
   readonly icon: React.ReactNode;
   readonly title: string;
   readonly sub: string;
+  readonly action?: React.ReactNode;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, sub }) => (
+const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, sub, action }) => (
   <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-border rounded-lg bg-card/50">
     <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-6">
       {icon}
     </div>
     <h3 className="text-xl font-bold mb-2">{title}</h3>
     <p className="text-muted-foreground max-w-sm text-center text-sm">{sub}</p>
+    {action && <div className="mt-6">{action}</div>}
   </div>
 );
 
@@ -252,6 +257,27 @@ const Pulse: React.FC<PulseProps> = ({ text }) => (
     <span className="text-xs text-muted-foreground font-medium italic">
       {text}
     </span>
+  </div>
+);
+
+const PortfolioUploadOverlay: React.FC = () => (
+  <div
+    className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+    role="status"
+    aria-live="polite"
+  >
+    <div className="w-full max-w-[360px] rounded-[28px] border border-white/5 bg-[#111318] p-8 text-center text-white shadow-2xl">
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <FiActivity className="animate-spin" size={28} />
+      </div>
+      <h2 className="text-[22px] font-bold tracking-tight">
+        Analyzing your portfolio…
+      </h2>
+      <p className="mt-3 text-[15px] leading-relaxed text-gray-400">
+        Uploading your positions and calculating your portfolio health. This may
+        take a moment.
+      </p>
+    </div>
   </div>
 );
 
@@ -860,6 +886,7 @@ interface MainPortfolioContentProps {
   readonly detailLoading: boolean;
   readonly onToggleExpansion: (symbol: string) => void;
   readonly onCloseDetail: () => void;
+  readonly onUploadRequest: () => void;
 }
 
 const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
@@ -877,6 +904,7 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
   detailLoading,
   onToggleExpansion,
   onCloseDetail,
+  onUploadRequest,
 }) => {
   if (pageLoading) {
     return (
@@ -906,6 +934,25 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
         icon={<FiBriefcase size={40} />}
         title="No Portfolio Active"
         sub="Upload your equity portfolio (CSV/Excel) to receive real-time health analysis and AI trade recommendations."
+        action={
+          <div className="flex flex-col items-center gap-3">
+            <Button onClick={onUploadRequest} className="gap-2">
+              <FiUpload />
+              Upload Portfolio to Continue
+            </Button>
+            <a
+              href="/portfolio-template.xlsx"
+              download="portfolio-template.xlsx"
+              className="flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+            >
+              <FiDownload />
+              Download Excel template
+            </a>
+            <p className="text-xs text-muted-foreground">
+              Required columns: symbol, quantity, avg_entry_price
+            </p>
+          </div>
+        }
       />
     );
   }
@@ -1082,6 +1129,10 @@ export const PortfolioHealth: React.FC = () => {
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [showRemovePortfolioModal, setShowRemovePortfolioModal] =
+    useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [riskMetrics, setRiskMetrics] = useState<PortfolioRiskMetrics | null>(
@@ -1206,6 +1257,23 @@ export const PortfolioHealth: React.FC = () => {
     }
   };
 
+  const handleRemovePortfolio = async () => {
+    try {
+      setRemoving(true);
+      await api.delete("/api/v1/decision-support/portfolio");
+      setPortfolioData(null);
+      setRiskMetrics(null);
+      setOverviewDecisions([]);
+      setDetailedData({});
+      setExpandedSymbol(null);
+      toast.success("Portfolio removed successfully");
+    } catch {
+      toast.error("Failed to remove portfolio");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const handleDownloadReport = async (format: "csv" | "pdf") => {
     if (!portfolioData) return;
     try {
@@ -1289,36 +1357,36 @@ export const PortfolioHealth: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               {portfolioData && (
-                <ReportDownloadButton
-                  onDownload={handleDownloadReport}
-                  loading={reportLoading}
-                  disabled={!portfolioData}
-                  title="Download the portfolio health report"
-                />
+                <>
+                  <ReportDownloadButton
+                    onDownload={handleDownloadReport}
+                    loading={reportLoading}
+                    disabled={!portfolioData}
+                    title="Download the portfolio health report"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 text-destructive hover:text-destructive"
+                    onClick={() => setShowRemovePortfolioModal(true)}
+                    disabled={removing}
+                  >
+                    <FiTrash2 />
+                    {removing ? "Removing..." : "Remove Portfolio"}
+                  </Button>
+                </>
               )}
-              <label
-                className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer font-bold text-xs transition-all duration-200 ${
-                  uploading
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
-              >
-                {uploading ? (
-                  <Skeleton className="w-4 h-4 rounded-full" />
-                ) : (
-                  <FiUpload />
-                )}
-                {uploading ? "Processing..." : "Upload Portfolio"}
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={handleUpload}
-                  disabled={uploading}
-                  accept=".csv,.xlsx,.xls"
-                />
-              </label>
             </div>
           </div>
+
+          <input
+            type="file"
+            className="hidden"
+            ref={uploadInputRef}
+            onChange={handleUpload}
+            disabled={uploading}
+            accept=".csv,.xlsx,.xls"
+          />
 
           <MainPortfolioContent
             pageLoading={pageLoading}
@@ -1335,9 +1403,21 @@ export const PortfolioHealth: React.FC = () => {
             detailLoading={detailLoading}
             onToggleExpansion={toggleRowExpansion}
             onCloseDetail={() => setExpandedSymbol(null)}
+            onUploadRequest={() => uploadInputRef.current?.click()}
           />
         </div>
       </main>
+      <ConfirmationModal
+        isOpen={showRemovePortfolioModal}
+        onConfirm={handleRemovePortfolio}
+        onCancel={() => setShowRemovePortfolioModal(false)}
+        title="Remove Portfolio?"
+        message="Are you sure you want to remove your uploaded portfolio? This cannot be undone and will clear its saved analysis."
+        confirmText="Remove Now"
+        cancelText="Cancel"
+        variant="danger"
+      />
+      {uploading && <PortfolioUploadOverlay />}
     </div>
   );
 };

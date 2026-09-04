@@ -1,5 +1,6 @@
 // src/pages/News.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FiSearch, FiCalendar, FiX } from "react-icons/fi";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { NewsArticleItem } from "@/modules/news/components/NewsArticleItem";
@@ -28,10 +29,26 @@ const TABS = [
   { label: 'Saved', value: 'saved' },
 ] as const;
 
+type NewsTab = (typeof TABS)[number]['value'];
+
+const isNewsTab = (value: string | null): value is NewsTab =>
+  TABS.some((tab) => tab.value === value);
+
 export default function News() {
   const { theme } = useTheme();
-  
-  const [activeTab, setActiveTab] = useState<typeof TABS[number]['value']>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterParam = searchParams.get('filter');
+  const activeTab: NewsTab = isNewsTab(filterParam) ? filterParam : 'all';
+
+  const setActiveTab = (tab: NewsTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'all') {
+      next.delete('filter');
+    } else {
+      next.set('filter', tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
   const [activeCategory, setActiveCategory] = useState<NewsCategory | 'ALL'>('ALL');
   const [activeSymbol, setActiveSymbol] = useState("");
   const [searchQuery, setSearchQuery] = useState("");

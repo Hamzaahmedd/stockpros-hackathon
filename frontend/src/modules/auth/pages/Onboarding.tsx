@@ -2,13 +2,14 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { setAccessToken } from "@/shared/utils/token";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Plus,
   Search,
   Sparkles,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import api from "../../../shared/api/axios";
@@ -24,7 +25,6 @@ import {
   ALERT_CHANNEL_OPTIONS,
   DEFAULT_NOTIFICATION_PREFERENCES,
   MARKET_TOPICS,
-  SECTOR_TABS,
   SUGGESTED_SYMBOLS,
 } from "../constants";
 import type {
@@ -34,7 +34,10 @@ import type {
 } from "../types";
 import { onboardingSchema } from "../validation";
 
+type OnboardingStep = 1 | 2 | 3;
+
 export const Onboarding: React.FC = () => {
+  const [step, setStep] = useState<OnboardingStep>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +47,6 @@ export const Onboarding: React.FC = () => {
     "AAPL",
     "MSFT",
   ]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [customSymbols, setCustomSymbols] = useState<SuggestedSymbol[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>(
@@ -59,7 +61,7 @@ export const Onboarding: React.FC = () => {
       ? sessionStorage.getItem("onboarding_display_name")
       : null;
 
-  const { register, handleSubmit, formState, getValues } = useForm<OnboardingFormValues>({
+  const { register, trigger, formState, getValues } = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: { displayName: user?.displayName || storedGoogleName || "" },
   });
@@ -108,6 +110,51 @@ export const Onboarding: React.FC = () => {
       }
     }
     setSearchQuery("");
+  };
+
+  // Pre-filter / tailor suggested tickers in Step 2 based on Step 1 chosen market interests
+  const filteredSymbols = useMemo(() => {
+    const allAvailable = [...SUGGESTED_SYMBOLS, ...customSymbols];
+    const interests = preferences.marketInterests;
+
+    // Map market interest IDs to symbol categories
+    const matchingCategories = new Set<string>();
+    if (interests.includes("ai_tech")) matchingCategories.add("tech");
+    if (interests.includes("growth")) matchingCategories.add("growth");
+    if (interests.includes("consumer")) matchingCategories.add("consumer");
+    if (
+      interests.includes("finance") ||
+      interests.includes("energy") ||
+      interests.includes("healthcare")
+    ) {
+      matchingCategories.add("index");
+    }
+
+    if (matchingCategories.size === 0) {
+      return allAvailable;
+    }
+
+    const tailored = allAvailable.filter(
+      (item) =>
+        item.category === "all" ||
+        matchingCategories.has(item.category) ||
+        selectedSymbols.includes(item.symbol),
+    );
+
+    return tailored.length > 0 ? tailored : allAvailable;
+  }, [customSymbols, preferences.marketInterests, selectedSymbols]);
+
+  const handleNextFromStep1 = async () => {
+    const valid = await trigger("displayName");
+    if (valid) {
+      setError(null);
+      setStep(2);
+    }
+  };
+
+  const handleNextFromStep2 = () => {
+    setError(null);
+    setStep(3);
   };
 
   const executeLaunch = async (skipWatchlist = false) => {
@@ -160,378 +207,450 @@ export const Onboarding: React.FC = () => {
       console.error("Onboarding error:", err);
       setError(
         err.response?.data?.message ||
-          "Failed to complete setup. Please try again.",
+        "Failed to complete setup. Please try again.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmit = () => {
-    executeLaunch(false);
-  };
-
-  const allAvailableSymbols = [...SUGGESTED_SYMBOLS, ...customSymbols];
-  const filteredSymbols =
-    selectedCategory === "all"
-      ? allAvailableSymbols
-      : allAvailableSymbols.filter(
-          (item) => item.category === selectedCategory,
-        );
-
   return (
-    <div className="min-h-screen bg-[#07090e] text-white flex flex-col justify-between relative overflow-hidden selection:bg-cyan-500/30">
-      {/* Dynamic Ambient Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-cyan-600/15 via-blue-600/10 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 right-10 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-40 left-10 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between relative overflow-hidden selection:bg-primary/30">
+      {/* Ambient Terminal Background Glows consistent with app */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-primary/10 via-primary/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 right-10 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 left-10 w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* ── Top Header ──────────────────────────────────────────────────────── */}
-      <header className="relative z-10 w-full max-w-5xl mx-auto px-6 py-6 flex items-center justify-between border-b border-slate-800/60">
+      <header className="relative z-10 w-full max-w-5xl mx-auto px-6 py-5 flex items-center justify-between border-b border-border/80">
         <div className="flex items-center gap-3">
           <img
             src="/stockpros-logo.png"
             alt="StockPros Logo"
             className="w-9 h-9 object-contain"
           />
-          <span className="text-xl font-extrabold tracking-tight text-white">
-            Stock<span className="text-cyan-400">Pros</span>
-          </span>
-          <span className="ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-            Terminal Quickstart
+          <span className="text-xl font-black tracking-tight text-foreground">
+            Stock<span className="text-primary">Pros</span>
           </span>
         </div>
 
+        {/* Phase Indicator Steps */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Estimated setup:</span>
-          <span className="px-2 py-0.5 rounded bg-slate-800 text-xs font-mono font-bold text-slate-300 border border-slate-700">
-            15 sec
-          </span>
+          {[
+            { num: 1, label: "Identity" },
+            { num: 2, label: "Watchlist" },
+            { num: 3, label: "Launch" },
+          ].map((s, idx) => (
+            <React.Fragment key={s.num}>
+              {idx > 0 && (
+                <div
+                  className={`w-4 sm:w-6 h-0.5 transition-colors ${step >= s.num ? "bg-primary" : "bg-muted"
+                    }`}
+                />
+              )}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === s.num
+                    ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                    : step > s.num
+                      ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
+                      : "bg-muted/40 border border-border text-muted-foreground"
+                    }`}
+                >
+                  {step > s.num ? <Check className="w-3 h-3 stroke-[2.5]" /> : s.num}
+                </span>
+                <span
+                  className={`hidden sm:inline text-xs font-semibold ${step === s.num
+                    ? "text-primary"
+                    : step > s.num
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                    }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       </header>
 
       {/* ── Main Content Card ───────────────────────────────────────────────── */}
       <main className="relative z-10 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8 flex-1 flex flex-col justify-center">
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 sm:p-10 shadow-2xl shadow-black/80">
-          {/* Header & Title */}
-          <div className="text-center max-w-xl mx-auto mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Initialize Your Terminal
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Set your trader identity and select starter tickers to activate
-              live AI forecasts and market feeds.
-            </p>
-          </div>
-
+        <div className="bg-card/95 border border-border rounded-2xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
           {error && (
-            <div className="mb-6 text-xs text-red-400 bg-red-900/20 border border-red-800/50 rounded-xl p-3 text-center">
+            <div className="mb-6 text-xs font-medium text-destructive bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-center">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* ── Field 1: Display Name ─────────────────────────────────────── */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label
-                  htmlFor="displayName"
-                  className="block text-xs font-semibold uppercase tracking-wider text-slate-300"
-                >
-                  Terminal Display Name <span className="text-cyan-400">*</span>
-                </label>
-                <span className="text-[11px] text-slate-400">
-                  Used for trade plans & terminal desk
-                </span>
-              </div>
-              <Input
-                id="displayName"
-                type="text"
-                placeholder="e.g. Alex Morgan"
-                error={formState.errors.displayName?.message}
-                registration={register("displayName")}
-                autoComplete="name"
-                label=""
-                className="bg-slate-950/80 border-slate-700/70 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 h-12 transition-all w-full rounded-xl text-sm px-4"
-              />
-            </div>
-
-            {/* ── Field 2: Starter Watchlist Picker ──────────────────────────── */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    Seed Starter Watchlist
-                  </label>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tickers will be added to your database watchlist for live AI
-                    prediction.
-                  </p>
-                </div>
-                <span className="text-xs text-slate-400">
-                  Selected:{" "}
-                  <strong className="text-emerald-400 font-mono">
-                    {selectedSymbols.length}
-                  </strong>
-                </span>
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* STEP 1: IDENTITY & INTERESTS                                        */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {step === 1 && (
+            <div className="space-y-6">
+              {/* Header & Title */}
+              <div className="text-center max-w-xl mx-auto mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Identity &amp; Interests
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground font-medium">
+                  Pick topics you care about to tailor your market feed
+                </p>
               </div>
 
-              {/* Quick Sector Filter Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                {SECTOR_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setSelectedCategory(tab.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                      selectedCategory === tab.id
-                        ? "bg-cyan-500/20 border border-cyan-400/40 text-cyan-200"
-                        : "bg-slate-950/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
-                    }`}
+              {/* Display Name Input */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="displayName"
+                    className="block text-xs font-bold uppercase tracking-wider text-muted-foreground"
                   >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Symbol Search Bar */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search any ticker (e.g. AMD, PLTR, GOOGL)..."
-                    value={searchQuery}
-                    onChange={(e) =>
-                      setSearchQuery(e.target.value.toUpperCase())
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddCustomSymbol();
-                      }
-                    }}
-                    className="w-full h-11 pl-10 pr-4 bg-slate-950/80 border border-slate-700/70 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
-                  />
+                    Display Name <span className="text-primary">*</span>
+                  </label>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddCustomSymbol}
-                  disabled={!searchQuery.trim()}
-                  className="h-11 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add</span>
-                </button>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="e.g. Alex Morgan"
+                  error={formState.errors.displayName?.message}
+                  registration={register("displayName")}
+                  autoComplete="name"
+                  label=""
+                  className="bg-muted/30 border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 h-12 transition-all w-full rounded-xl text-sm px-4"
+                />
               </div>
 
-              {/* Curated Ticker Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
-                {filteredSymbols.map((item) => {
-                  const active = selectedSymbols.includes(item.symbol);
-                  return (
-                    <button
-                      key={item.symbol}
-                      type="button"
-                      onClick={() => toggleSymbol(item.symbol)}
-                      className={`p-3 rounded-xl border text-left transition-all duration-200 flex items-center justify-between ${
-                        active
-                          ? "border-emerald-400 bg-emerald-950/30 text-emerald-100 shadow-[0_0_12px_rgba(52,211,153,0.12)] ring-1 ring-emerald-400/30"
-                          : "border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60"
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-sm text-white">
-                            {item.symbol}
+              {/* Market Sectors & Themes */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Market Sectors &amp; Themes
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Select interests to pre-filter your starter tickers in the next step.
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Selected:{" "}
+                    <strong className="text-primary font-mono">
+                      {preferences.marketInterests.length}
+                    </strong>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {MARKET_TOPICS.map((topic) => {
+                    const active = preferences.marketInterests.includes(topic.id);
+                    const Icon = topic.icon;
+                    return (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        onClick={() => toggleMarketInterest(topic.id)}
+                        className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${active
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
+                      >
+                        <span className="flex items-center gap-2.5 min-w-0">
+                          <Icon className="w-4 h-4 shrink-0 text-primary" />
+                          <span className="text-xs font-semibold truncate">
+                            {topic.name}
                           </span>
-                          {item.hasAiForecast && (
-                            <span className="rounded px-1 py-0.2 bg-cyan-500/10 border border-cyan-500/30 text-[8px] font-mono text-cyan-300 font-bold">
-                              AI
+                        </span>
+                        {active && (
+                          <Check className="w-3.5 h-3.5 shrink-0 text-primary stroke-[2.5]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 1 Actions */}
+              <div className="space-y-3 pt-6 border-t border-border">
+                <Button
+                  type="button"
+                  onClick={handleNextFromStep1}
+                  className="w-full h-12 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/40 border border-cyan-400/40 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Continue to Starter Watchlist</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* STEP 2: STARTER WATCHLIST (DEDICATED SCREEN)                       */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {step === 2 && (
+            <div className="space-y-6">
+              {/* Header & Title */}
+              <div className="text-center max-w-xl mx-auto mb-4">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Starter Watchlist
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground font-medium">
+                  Select tickers to generate immediate AI forecasts
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Showing tailored tickers based on your interests
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Selected:{" "}
+                    <strong className="text-primary font-mono font-bold">
+                      {selectedSymbols.length}
+                    </strong>
+                  </span>
+                </div>
+
+                {/* Custom Symbol Search Bar */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search any ticker (e.g. AMD, PLTR, GOOGL)..."
+                      value={searchQuery}
+                      onChange={(e) =>
+                        setSearchQuery(e.target.value.toUpperCase())
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomSymbol();
+                        }
+                      }}
+                      className="w-full h-11 pl-10 pr-4 bg-muted/30 border border-input rounded-xl text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomSymbol}
+                    disabled={!searchQuery.trim()}
+                    className="h-11 px-4 bg-secondary hover:bg-secondary/80 border border-border disabled:opacity-40 text-secondary-foreground rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </button>
+                </div>
+
+                {/* Curated Ticker Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {filteredSymbols.map((item) => {
+                    const active = selectedSymbols.includes(item.symbol);
+                    return (
+                      <button
+                        key={item.symbol}
+                        type="button"
+                        onClick={() => toggleSymbol(item.symbol)}
+                        className={`p-3 rounded-xl border text-left transition-all duration-200 flex items-center justify-between ${active
+                          ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-sm text-foreground">
+                              {item.symbol}
                             </span>
+                            {item.hasAiForecast && (
+                              <span className="rounded px-1.5 py-0.5 bg-primary/15 border border-primary/30 text-[9px] font-mono text-primary font-bold">
+                                AI
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5 font-medium">
+                            {item.name}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center transition-all ${active
+                            ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                            : "border border-border text-muted-foreground hover:border-muted-foreground"
+                            }`}
+                        >
+                          {active ? (
+                            <Check className="w-3 h-3 stroke-[2.5]" />
+                          ) : (
+                            <Plus className="w-3 h-3" />
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                          {item.name}
-                        </p>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                      <div
-                        className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center transition-all ${
-                          active
-                            ? "bg-emerald-500 text-black font-bold"
-                            : "border border-slate-700 text-slate-500 hover:border-slate-500"
-                        }`}
-                      >
-                        {active ? (
-                          <Check className="w-3 h-3" />
-                        ) : (
-                          <Plus className="w-3 h-3" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* AI Real-Time Forecast Banner */}
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-                <p className="text-xs text-cyan-200/90 leading-relaxed">
-                  StockPros will automatically trigger neural baseline
-                  predictions and technical signals for your selected{" "}
-                  {selectedSymbols.length} tickers upon launch.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-5 pt-2 border-t border-slate-800/80">
-              <div className="pt-5 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    Market Sectors & Themes
-                  </h2>
-                  <p className="mt-0.5 text-[11px] text-slate-400">
-                    Personalize the market interests saved to your account.
+                {/* AI Real-Time Forecast Banner */}
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    AI predictions and technical signals will automatically generate for your selected tickers.
                   </p>
                 </div>
-                <span className="text-xs text-slate-400">
-                  Selected:{" "}
-                  <strong className="text-cyan-300">
-                    {preferences.marketInterests.length}
-                  </strong>
-                </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {MARKET_TOPICS.map((topic) => {
-                  const active = preferences.marketInterests.includes(topic.id);
-                  const Icon = topic.icon;
-                  return (
-                    <button
-                      key={topic.id}
-                      type="button"
-                      onClick={() => toggleMarketInterest(topic.id)}
-                      className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${
-                        active
-                          ? "border-cyan-400 bg-cyan-500/10 text-cyan-100 ring-1 ring-cyan-500/30"
-                          : "border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-700"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <Icon className="w-4 h-4 shrink-0 text-cyan-300" />
-                        <span className="text-xs font-semibold truncate">
-                          {topic.name}
-                        </span>
-                      </span>
-                      {active && (
-                        <Check className="w-3.5 h-3.5 shrink-0 text-cyan-300" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Step 2 Actions */}
+              <div className="space-y-3 pt-6 border-t border-border">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="h-12 px-4 rounded-xl border border-border hover:border-border bg-muted/30 text-muted-foreground hover:text-foreground transition text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Back</span>
+                  </button>
+                  <Button
+                    type="button"
+                    onClick={handleNextFromStep2}
+                    className="flex-1 h-12 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/40 border border-cyan-400/40 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Continue to Alert Preferences</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
 
-              <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Alert Channels
-                </h2>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  Choose how StockPros delivers watchlist alerts and your daily
-                  briefing.
+                <button
+                  type="button"
+                  onClick={() => executeLaunch(true)}
+                  disabled={loading}
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition py-1 cursor-pointer"
+                >
+                  Skip starter watchlist and go straight to dashboard
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* STEP 3: ALERT PREFERENCES & LAUNCH                                 */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {step === 3 && (
+            <div className="space-y-6">
+              {/* Header & Title */}
+              <div className="text-center max-w-xl mx-auto mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Alert Preferences &amp; Launch
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground font-medium">
+                  Configure real-time notifications
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {ALERT_CHANNEL_OPTIONS.map((option) => {
-                  const key = option.key;
-                  const Icon = option.icon;
-                  const active = preferences[key];
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => togglePreference(key)}
-                      className={`p-3 rounded-xl border text-left transition ${
-                        active
-                          ? "border-cyan-400 bg-cyan-500/10"
-                          : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <Icon className="w-4 h-4 text-cyan-300" />
-                        <span
-                          className={`w-4 h-4 rounded flex items-center justify-center ${active ? "bg-cyan-400 text-slate-950" : "border border-slate-600"}`}
-                        >
-                          {active && <Check className="w-3 h-3" />}
-                        </span>
+              {/* Alert Channels Selection */}
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Alert Channels
+                  </h2>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    How would you like to receive updates?
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {ALERT_CHANNEL_OPTIONS.map((option) => {
+                    const key = option.key;
+                    const Icon = option.icon;
+                    const active = preferences[key];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => togglePreference(key)}
+                        className={`p-4 rounded-xl border text-left transition duration-200 ${active
+                          ? "border-primary bg-primary/10 text-foreground shadow-[0_0_12px_rgba(6,182,212,0.15)] ring-1 ring-primary/30"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/30"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <Icon className="w-4 h-4 text-primary" />
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${active
+                              ? "bg-primary text-primary-foreground font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                              : "border border-border text-muted-foreground hover:border-muted-foreground"
+                              }`}
+                          >
+                            {active && <Check className="w-3 h-3 stroke-[2.5]" />}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-xs font-bold text-foreground">
+                          {option.title}
+                        </p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground font-medium">
+                          {option.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 3 Actions */}
+              <div className="space-y-3 pt-6 border-t border-border">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    disabled={loading}
+                    className="h-12 px-4 rounded-xl border border-border hover:border-border bg-muted/30 text-muted-foreground hover:text-foreground transition text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Back</span>
+                  </button>
+                  <Button
+                    type="button"
+                    onClick={() => executeLaunch(false)}
+                    disabled={loading}
+                    className="flex-1 h-12 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/40 border border-cyan-400/40 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="w-4 h-4 rounded-full bg-white/30" />
+                        <span>Seeding Watchlist &amp; Launching...</span>
                       </div>
-                      <p className="mt-3 text-xs font-bold text-white">
-                        {option.title}
-                      </p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                        {option.description}
-                      </p>
-                    </button>
-                  );
-                })}
+                    ) : (
+                      <>
+                        <span>
+                          Launch Dashboard ({selectedSymbols.length} Tickers)
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => executeLaunch(true)}
+                  disabled={loading}
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition py-1 cursor-pointer"
+                >
+                  Skip starter watchlist and go straight to dashboard
+                </button>
               </div>
             </div>
-
-            {/* ── Action Buttons ────────────────────────────────────────────── */}
-            <div className="space-y-3 pt-4 border-t border-slate-800/80">
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-12 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/50 border border-cyan-400/40 rounded-xl transition-all flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="w-4 h-4 rounded-full bg-white/30" />
-                    <span>Seeding Watchlist & Launching...</span>
-                  </div>
-                ) : (
-                  <>
-                    <span>
-                      Launch Terminal ({selectedSymbols.length} Tickers)
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => executeLaunch(true)}
-                disabled={loading}
-                className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition py-1"
-              >
-                Skip starter watchlist and go straight to terminal
-              </button>
-            </div>
-          </form>
+          )}
         </div>
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 w-full max-w-5xl mx-auto px-6 py-4 space-y-2 border-t border-slate-900/80 text-[11px] text-slate-500">
+      <footer className="relative z-10 w-full max-w-5xl mx-auto px-6 py-4 space-y-2 border-t border-border/80 text-[11px] text-muted-foreground font-medium">
         <div className="flex items-center justify-between gap-3">
           <span>
             &copy; {new Date().getFullYear()} StockPros. All rights reserved.
           </span>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Security
-            </span>
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Terms
-            </span>
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Privacy
-            </span>
-          </div>
         </div>
-        <p className="text-slate-500 leading-relaxed">
+        <p className="text-muted-foreground leading-relaxed">
           StockPros outputs are informational and educational only. They are not
           personalized financial, legal, tax, or fiduciary advice.
         </p>
