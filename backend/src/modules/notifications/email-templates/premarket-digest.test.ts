@@ -5,8 +5,9 @@ import {
 
 const digestData: PremarketDigestData = {
   userName: 'Hamza <Trader>',
+  greeting: 'Good Morning',
   issuedAtFormatted: 'Wed, Sep 3, 2026, 10:30 AM PKT',
-  dashboardUrl: 'https://example.stockpros.test/dashboard',
+  dashboardUrl: 'https://example.stockpros.test/news?filter=watchlist',
   watchlistItems: [
     { symbol: '<TSLA>', currentPrice: 350, changePercent: 1.25 },
   ],
@@ -30,7 +31,8 @@ describe('buildPremarketDigestHtml', () => {
       'Headline &lt;strong&gt;must remain visible&lt;/strong&gt;',
     )
     expect(html).toContain('Bullet &lt;em&gt;must remain visible&lt;/em&gt;')
+    expect(html).toContain('Good Morning, Hamza &lt;Trader&gt;')
     expect(html).toContain('Wed, Sep 3, 2026, 10:30 AM PKT')
-    expect(html).toContain('https://example.stockpros.test/dashboard')
+    expect(html).toContain('https://example.stockpros.test/news?filter=watchlist')
   })
 })

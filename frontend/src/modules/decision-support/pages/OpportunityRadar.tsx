@@ -359,9 +359,6 @@ export const OpportunityRadar: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm">
-                  <FiRadio className="text-xl animate-pulse" />
-                </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     AI Opportunity Radar

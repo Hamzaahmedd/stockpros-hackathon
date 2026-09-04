@@ -15,6 +15,7 @@ export interface DigestNewsItem {
 
 export interface PremarketDigestData {
   userName: string
+  greeting: string
   issuedAtFormatted: string
   dashboardUrl: string
   watchlistItems: WatchlistDigestItem[]
@@ -52,7 +53,7 @@ export const buildPremarketDigestText = (data: PremarketDigestData): string => {
   return `
 StockPros Pre-Market Digest — ${data.issuedAtFormatted}
 
-Good morning ${data.userName},
+${data.greeting} ${data.userName},
 
 Here is your daily pre-market briefing and intelligence scan for your tracked watchlist.
 
@@ -174,7 +175,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
       <tr>
         <td style="padding: 28px;">
           <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #ffffff;">
-            Good Morning, ${escapeHtml(data.userName)}
+            ${escapeHtml(data.greeting)}, ${escapeHtml(data.userName)}
           </h2>
           <p style="margin: 0 0 24px 0; font-size: 14px; color: #94a3b8; line-height: 1.5;">
             Here is your daily pre-market digest with overnight moves and key news highlights for your watched tickers.
@@ -210,7 +211,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
           <!-- Terminal CTA Button -->
           <div style="text-align: center; margin: 32px 0 16px 0;">
             <a href="${escapeHtml(data.dashboardUrl)}" style="background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(6, 182, 212, 0.4);">
-              Launch Terminal Dashboard &rarr;
+              Explore Watchlist News Feed;
             </a>
           </div>
         </td>

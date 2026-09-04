@@ -11,14 +11,14 @@ export interface DashboardBriefing {
       positionsAtRisk: number;
       lastRunAt: string;
     };
-    headline: string;
+    headline: string | null;
   };
   portfolioAlert: {
     overexposedSectors: string[];
     stopLossBreaches: number;
     entryZonesActive: number;
     headline: string;
-  };
+  } | null;
 }
 
 export interface PortfolioHealth {
@@ -36,20 +36,21 @@ export interface PortfolioHealth {
 
 export interface PortfolioSnapshot {
   available: boolean;
-  totalValue: number;
-  totalUnrealizedPnL: number;
-  totalUnrealizedPnLPct: number;
-  todayGainLoss: number;
-  todayGainLossPct: number;
-  bestPerformer: {
+  reason?: string;
+  totalValue?: number;
+  totalUnrealizedPnL?: number;
+  totalUnrealizedPnLPct?: number;
+  todayGainLoss?: number;
+  todayGainLossPct?: number;
+  bestPerformer?: {
     symbol: string;
     changePercent: number;
-  };
-  worstPerformer: {
+  } | null;
+  worstPerformer?: {
     symbol: string;
     changePercent: number;
-  };
-  healthScore: PortfolioHealth;
+  } | null;
+  healthScore?: PortfolioHealth;
 }
 
 export interface ImpactNewsItem {

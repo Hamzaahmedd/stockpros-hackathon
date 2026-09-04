@@ -4,7 +4,12 @@
  * Strategy (Black-Box): We inject controlled Date objects and assert on the
  * numeric output. No internal Intl.DateTimeFormat calls are mocked.
  */
-import { getPakistanHour, getPakistanMonth } from '../../shared/utils/timezone'
+import {
+  formatPakistanTimestamp,
+  getPakistanGreeting,
+  getPakistanHour,
+  getPakistanMonth,
+} from '../../shared/utils/timezone'
 
 describe('getPakistanHour', () => {
   it('returns a number in the range [0, 23]', () => {
@@ -30,6 +35,39 @@ describe('getPakistanHour', () => {
     // 2024-01-01T23:00:00Z → 04:00 PKT next day
     const utcLateNight = new Date('2024-01-01T23:00:00Z')
     expect(getPakistanHour(utcLateNight)).toBe(4)
+  })
+})
+
+describe('getPakistanGreeting', () => {
+  it('returns Good Morning before noon PKT', () => {
+    // 04:00 UTC → 09:00 PKT
+    expect(getPakistanGreeting(new Date('2024-01-01T04:00:00Z'))).toBe(
+      'Good Morning',
+    )
+  })
+
+  it('returns Good Afternoon from noon through 16:59 PKT', () => {
+    // 07:00 UTC → 12:00 PKT
+    expect(getPakistanGreeting(new Date('2024-01-01T07:00:00Z'))).toBe(
+      'Good Afternoon',
+    )
+  })
+
+  it('returns Good Evening from 17:00 PKT onward', () => {
+    // 12:00 UTC → 17:00 PKT
+    expect(getPakistanGreeting(new Date('2024-01-01T12:00:00Z'))).toBe(
+      'Good Evening',
+    )
+  })
+})
+
+describe('formatPakistanTimestamp', () => {
+  it('appends PKT and never GMT+5', () => {
+    const formatted = formatPakistanTimestamp(
+      new Date('2026-09-04T12:30:00Z'),
+    )
+    expect(formatted).toMatch(/PKT$/)
+    expect(formatted).not.toContain('GMT')
   })
 })
 
