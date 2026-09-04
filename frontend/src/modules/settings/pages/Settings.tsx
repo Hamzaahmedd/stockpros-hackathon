@@ -201,8 +201,14 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleCancelDelete = () => {
+    if (isDeleting) return;
+    setShowDeleteConfirm(false);
+    setDeletePhrase("");
+  };
+
   const handleDeleteAccount = async () => {
-    if (deletePhrase.trim() !== CONFIRMATION_PHRASE) return;
+    if (deletePhrase.trim() !== CONFIRMATION_PHRASE || isDeleting) return;
     setIsDeleting(true);
     try {
       const { deleteAccount } = await import("@/modules/auth/services");
@@ -686,39 +692,59 @@ const Settings: React.FC = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <label
-                              htmlFor="delete-confirmation-input"
-                              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-                            >
-                              To confirm, type{" "}
-                              <span className="text-red-400 font-bold font-mono">
-                                {CONFIRMATION_PHRASE}
-                              </span>{" "}
-                              below:
-                            </label>
-                            <input
-                              id="delete-confirmation-input"
-                              type="text"
-                              value={deletePhrase}
-                              onChange={(e) => setDeletePhrase(e.target.value)}
-                              placeholder={CONFIRMATION_PHRASE}
-                              autoComplete="off"
-                              spellCheck={false}
-                              className={`w-full h-11 rounded-lg border px-4 text-sm font-mono bg-background/60 outline-none transition-all duration-200 placeholder:text-muted-foreground/40 ${
-                                deletePhrase.length > 0 && !phraseMatches
-                                  ? "border-red-500/60 focus:border-red-500 text-red-300"
-                                  : phraseMatches
-                                    ? "border-green-500/60 focus:border-green-500 text-green-300"
-                                    : "border-border focus:border-red-500/60"
-                              }`}
-                            />
-                            {deletePhrase.length > 0 && !phraseMatches && (
-                              <p className="text-[11px] text-red-400/80">
-                                Phrase doesn't match — type it exactly as shown
-                                above.
-                              </p>
-                            )}
-                          </div>
+  <label
+    htmlFor="delete-confirmation-input"
+    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+  >
+    To confirm, type{" "}
+    <span className="text-red-400 font-bold font-mono">
+      {CONFIRMATION_PHRASE}
+    </span>{" "}
+    below:
+  </label>
+  <input
+    id="delete-confirmation-input"
+    type="text"
+    value={deletePhrase}
+    onChange={(e) => setDeletePhrase(e.target.value)}
+    placeholder={CONFIRMATION_PHRASE}
+    autoComplete="off"
+    spellCheck={false}
+    className={`w-full h-11 rounded-lg border px-4 text-sm font-mono bg-background/60 outline-none transition-all duration-200 placeholder:text-muted-foreground/40 ${
+      deletePhrase.length > 0 && !phraseMatches
+        ? "border-red-500/60 focus:border-red-500 text-red-300"
+        : phraseMatches
+          ? "border-green-500/60 focus:border-green-500 text-green-300"
+          : "border-border focus:border-red-500/60"
+    }`}
+  />
+  {deletePhrase.length > 0 && !phraseMatches && (
+    <p className="text-[11px] text-red-400/80">
+      Phrase doesn't match — type it exactly as shown above.
+    </p>
+  )}
+</div>
+
+{/* ADD THIS BUTTON CONTAINER RIGHT AFTER THE INPUT BLOCK */}
+<div className="flex items-center justify-end gap-3 pt-2">
+  <Button
+    type="button"
+    variant="ghost"
+    onClick={handleCancelDelete}
+    disabled={isDeleting}
+    className="h-10 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+  >
+    Cancel
+  </Button>
+  <Button
+    type="button"
+    onClick={handleDeleteAccount}
+    disabled={!phraseMatches || isDeleting}
+    className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {isDeleting ? "Deleting..." : "Permanently Delete Account"}
+  </Button>
+</div>
                         </div>
                       )}
                     </div>

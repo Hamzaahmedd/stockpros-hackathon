@@ -197,16 +197,6 @@ export const Onboarding: React.FC = () => {
           <span className="text-xl font-extrabold tracking-tight text-white">
             Stock<span className="text-cyan-400">Pros</span>
           </span>
-          <span className="ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-            Terminal Quickstart
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Estimated setup:</span>
-          <span className="px-2 py-0.5 rounded bg-slate-800 text-xs font-mono font-bold text-slate-300 border border-slate-700">
-            15 sec
-          </span>
         </div>
       </header>
 
@@ -519,17 +509,6 @@ export const Onboarding: React.FC = () => {
           <span>
             &copy; {new Date().getFullYear()} StockPros. All rights reserved.
           </span>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Security
-            </span>
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Terms
-            </span>
-            <span className="hover:text-slate-400 transition cursor-pointer">
-              Privacy
-            </span>
-          </div>
         </div>
         <p className="text-slate-500 leading-relaxed">
           StockPros outputs are informational and educational only. They are not
