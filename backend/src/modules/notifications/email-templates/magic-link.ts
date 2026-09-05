@@ -50,6 +50,7 @@ Important Security Information:
 export const buildMagicLinkEmailHtml = (
   link: string,
   expiryMinutes = 10,
+  logoSrc = 'cid:logo',
 ): string => {
   const antiTrimmingToken = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
 
@@ -66,7 +67,7 @@ export const buildMagicLinkEmailHtml = (
 
       <!-- Header -->
       <div style="text-align: left; margin-bottom: 28px;">
-        <img src="cid:logo" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
+        <img src="${logoSrc}" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
         <span style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; vertical-align: middle; display: inline-block;">
           Stock<span style="color: #06b6d4;">Pros</span>
         </span>
@@ -107,8 +108,12 @@ export const buildMagicLinkEmailHtml = (
 }
 
 // All-in-one export object for Nodemailer / Resend
-export const buildMagicLinkEmail = (link: string, expiryMinutes = 10) => ({
+export const buildMagicLinkEmail = (
+  link: string,
+  expiryMinutes = 10,
+  logoSrc = 'cid:logo',
+) => ({
   subject: buildMagicLinkSubject(),
-  html: buildMagicLinkEmailHtml(link, expiryMinutes),
+  html: buildMagicLinkEmailHtml(link, expiryMinutes, logoSrc),
   text: buildMagicLinkEmailText(link, expiryMinutes),
 })

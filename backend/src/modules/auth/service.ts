@@ -81,12 +81,10 @@ export async function refreshAccessToken(refreshToken: string) {
     })
 
     // Fallback: check unhashed jti in case legacy unhashed session exists
-    if (!session) {
-      session = await prisma.userSession.findUnique({
+    session ??= await prisma.userSession.findUnique({
         where: { jti: payload.jti },
         include: { user: true },
-      })
-    }
+      });
 
     // Step 3: Multi-tab grace period handling & reuse breach detection
     if (!session) {
@@ -101,8 +99,7 @@ export async function refreshAccessToken(refreshToken: string) {
       })
 
       if (
-        recentRotatedSession &&
-        recentRotatedSession.user.status === UserStatus.ACTIVE
+        recentRotatedSession?.user.status === UserStatus.ACTIVE
       ) {
         // Tab race condition handled: issue a fresh access token for this concurrent tab
         const { accessToken } = await generateTokens(

@@ -1,6 +1,10 @@
 import { AppError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import type { EnrichedArticle, NewsArticleRow } from './types'
+import {
+  INTEREST_TO_CATEGORIES,
+  MarketInterest,
+} from '../notifications/preferences'
 
 export const enrichArticles = async (
   userId: string,
@@ -57,7 +61,17 @@ export const rankArticles = (
   portfolioSymbols: Set<string>,
   watchlistSymbols: Set<string>,
   portfolioSectors: Set<string>,
+  marketInterests: MarketInterest[] = [],
 ): NewsArticleRow[] => {
+  const interestCategories = new Set(
+    marketInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i]?.categories ?? []),
+  )
+  const interestSectors = new Set(
+    marketInterests
+      .flatMap((i) => INTEREST_TO_CATEGORIES[i]?.sectors ?? [])
+      .map((s) => s.toLowerCase()),
+  )
+
   const withRank = articles.map((article) => {
     const syms = article.relatedSymbols
 
@@ -71,6 +85,11 @@ export const rankArticles = (
       portfolioSectors.has(article.sector)
     )
       return { ...article, _rank: 3 }
+    if (
+      interestCategories.has(article.category) ||
+      (article.sector && interestSectors.has(article.sector.toLowerCase()))
+    )
+      return { ...article, _rank: 3.5 }
 
     return { ...article, _rank: 4 }
   })

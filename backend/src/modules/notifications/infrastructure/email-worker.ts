@@ -1,6 +1,6 @@
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
-import { transporter } from '../../../shared/infrastructure/config/email'
+import { transporter, getLogoSrc } from '../../../shared/infrastructure/config/email'
 import { logger } from '../../../shared/infrastructure/logger'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
 import type { EmailJobPayload } from '../types'
@@ -52,7 +52,7 @@ export const startEmailWorker = (): void => {
         to,
         subject: title,
         text: body,
-        html: buildAlertEmail(title, body, symbol),
+        html: buildAlertEmail(title, body, symbol, getLogoSrc()),
       })
 
       logger.info(`[EmailWorker] Sent "${title}" to ${to}`)
