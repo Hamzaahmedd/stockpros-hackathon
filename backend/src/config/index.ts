@@ -60,6 +60,8 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       ? ['http://localhost:5173', 'http://127.0.0.1:5173']
       : []
 
+  const frontendUrl = corsOrigins[0] || 'http://localhost:5173'
+
   return {
     server: {
       port: Number(process.env.PORT) || env.server.port,
@@ -67,6 +69,7 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       logLevel: env.server.logLevel,
       trustProxy: env.server.trustProxy,
       corsOrigins,
+      frontendUrl,
     },
     database: {
       url: secrets.databaseUrl,
