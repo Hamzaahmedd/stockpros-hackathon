@@ -90,6 +90,19 @@ const smtpTransporter =
     ? nodemailer.createTransport(smtpTransportOptions)
     : null
 
+/**
+ * Returns the correct logo src string for use in email HTML templates.
+ * - SMTP (Nodemailer): returns `'cid:logo'` — logo is sent as an inline CID attachment.
+ * - Resend: returns the public logo URL — Resend does not support CID inline attachments.
+ * - Fallback (dev / no transport): returns `'cid:logo'` as a safe default.
+ */
+export const getLogoSrc = (): string => {
+  if (resend && !smtpTransporter) {
+    return logoPublicUrl ?? 'cid:logo'
+  }
+  return 'cid:logo'
+}
+
 interface MailOptions {
   from?: string
   to: string

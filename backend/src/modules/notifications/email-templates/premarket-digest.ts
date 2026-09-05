@@ -21,6 +21,8 @@ export interface PremarketDigestData {
   watchlistItems: WatchlistDigestItem[]
   topNews: DigestNewsItem[]
   macroNote?: string
+  /** Resolved by the caller — `cid:logo` for SMTP, public URL for Resend. */
+  logoSrc?: string
 }
 
 const escapeHtml = (value: string): string =>
@@ -68,6 +70,7 @@ View live terminal: ${data.dashboardUrl}
 }
 
 export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
+  const logoSrc = data.logoSrc ?? 'cid:logo'
   const watchlistRows = data.watchlistItems
     .map((item) => {
       const isPositive = (item.changePercent ?? 0) >= 0
@@ -156,7 +159,7 @@ export const buildPremarketDigestHtml = (data: PremarketDigestData): string => {
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td>
-                <img src="cid:logo" alt="StockPros" style="width: 36px; height: 36px; vertical-align: middle; margin-right: 10px;" />
+                <img src="${logoSrc}" alt="StockPros" style="width: 36px; height: 36px; vertical-align: middle; margin-right: 10px;" />
                 <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px; vertical-align: middle;">
                   Stock<span style="color: #22d3ee;">Pros</span>
                 </span>

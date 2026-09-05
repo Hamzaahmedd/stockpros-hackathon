@@ -2,12 +2,13 @@ export const buildAlertEmail = (
   title: string,
   body: string,
   symbol: string,
+  logoSrc = 'cid:logo',
 ): string => `
 <!DOCTYPE html>
 <html>
   <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
     <div style="text-align: left; margin-bottom: 24px; display: flex; align-items: center;">
-      <img src="cid:logo" alt="StockPros Logo" style="width: 48px; height: 48px; margin-right: 12px; vertical-align: middle;" />
+      <img src="${logoSrc}" alt="StockPros Logo" style="width: 48px; height: 48px; margin-right: 12px; vertical-align: middle;" />
       <span style="font-size: 28px; font-weight: 900; color: #111827; letter-spacing: -0.5px;">
         Stock<span style="color: #06b6d4;">Pros</span>
       </span>
@@ -22,3 +23,4 @@ export const buildAlertEmail = (
   </body>
 </html>
 `
+

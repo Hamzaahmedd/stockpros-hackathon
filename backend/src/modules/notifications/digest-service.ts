@@ -2,7 +2,7 @@ import { prisma } from '../../shared/infrastructure/database'
 import { NewsSentiment, UserStatus } from '@prisma/client'
 import { logger } from '../../shared/infrastructure/logger'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
-import { transporter } from '../../shared/infrastructure/config/email'
+import { transporter, getLogoSrc } from '../../shared/infrastructure/config/email'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import {
   buildPremarketDigestHtml,
@@ -152,7 +152,7 @@ export const sendPremarketDigestToUser = async (
 
   const subject = `StockPros Pre-Market Briefing [${digestData.issuedAtFormatted}]`
   const textContent = buildPremarketDigestText(digestData)
-  const htmlContent = buildPremarketDigestHtml(digestData)
+  const htmlContent = buildPremarketDigestHtml({ ...digestData, logoSrc: getLogoSrc() })
 
   // 1. Deliver Email via configured transport (Gmail SMTP / Resend / Dev Fallback)
   try {

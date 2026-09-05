@@ -1,6 +1,6 @@
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
-import { transporter } from '../../../shared/infrastructure/config/email'
+import { transporter, getLogoSrc } from '../../../shared/infrastructure/config/email'
 import { logger } from '../../../shared/infrastructure/logger'
 import { buildMagicLinkEmail } from '../email-templates/index'
 import type { AuthEmailJobPayload } from '../types'
@@ -49,7 +49,7 @@ export const startAuthEmailWorker = (): void => {
     AUTH_EMAIL_QUEUE_NAME,
     async (job) => {
       const { to, loginLink, expiryMinutes } = job.data
-      const emailContent = buildMagicLinkEmail(loginLink, expiryMinutes)
+      const emailContent = buildMagicLinkEmail(loginLink, expiryMinutes, getLogoSrc())
 
       await transporter.sendMail({ to, ...emailContent })
 
