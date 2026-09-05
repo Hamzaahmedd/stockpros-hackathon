@@ -16,6 +16,7 @@ import type {
   NewsSearchQuery,
   NewsSavedQuery,
 } from './validation'
+import type { MarketInterest } from '../notifications/preferences'
 
 export const feedCacheKey = (params: {
   category?: string
@@ -77,13 +78,19 @@ export const getNewsFeed = async (
 ): Promise<PaginatedNews> => {
   const { cursor, limit, category, filter, symbol, from, to } = query
 
-  const [portfolios, watchlistItems] = await Promise.all([
+  const [portfolios, watchlistItems, user] = await Promise.all([
     prisma.portfolio.findMany({
       where: { userId },
       include: { positions: { select: { symbol: true, sector: true } } },
     }),
     prisma.watchlist.findMany({ where: { userId }, select: { symbol: true } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { marketInterests: true },
+    }),
   ])
+
+  const userInterests = (user?.marketInterests ?? []) as MarketInterest[]
 
   const portfolioSymbols = new Set(
     portfolios.flatMap((p) => p.positions.map((pos) => pos.symbol)),
@@ -162,6 +169,7 @@ export const getNewsFeed = async (
           portfolioSymbols,
           watchlistSymbols,
           portfolioSectors,
+          userInterests,
         )
       : pageRows
   const enriched = await enrichArticles(userId, ranked)
