@@ -50,21 +50,30 @@ const getSentimentTextColor = (sentiment: string): string => {
   return '';
 };
 
-const buildHeatmapSeries = (sectors: SectorHeatmapCell[] | undefined, timeframe: '1d' | '5d' | '1m') => {
-  if (!sectors) return [];
-  return sectors.map((sector) => ({
-    id: sector.name,
-    data: [
-      {
-        x: 'Perf',
-        y: sector.performance[timeframe] || 0,
-        full: sector.name,
-        exp: sector.userExposurePct || 0,
-        syms: sector.userSymbols || [],
-      },
-    ],
-  }));
-};
+function buildHeatmapSeries(
+  sectors: SectorHeatmapCell[] | undefined,
+  timeframe: "1d" | "5d" | "1m",
+) {
+  const rows = [
+    { id: "Growth", slice: sectors?.slice(0, 4) ?? [] },
+    { id: "Industrial", slice: sectors?.slice(4, 8) ?? [] },
+    { id: "Utility", slice: sectors?.slice(8, 12) ?? [] },
+  ];
+
+  return rows
+    .filter((row) => row.slice.length > 0)
+    .map((row) => ({
+      id: row.id,
+      data: row.slice.map((s) => ({
+        x: s.name.split(' ')[0],
+        y: s.performance?.[timeframe] ?? 0,
+        full: s.name,
+        exp: s.userExposurePct,
+        syms: s.userSymbols,
+      })),
+    }));
+}
+
 
 
 // --- MAIN DASHBOARD ---

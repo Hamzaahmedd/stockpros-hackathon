@@ -28,7 +28,7 @@ import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { getPakistanHour } from '../../shared/utils'
 import { getLatestDecisionRun } from '../decision-support'
 import type { RankedStockRow } from '../market'
-import { getCurrentPrice, getRankedTopStocks } from '../market'
+import { getCurrentPrice, getCompanySectors, getRankedTopStocks } from '../market'
 
 /** Shape of a pre-fetched watchlist price entry passed between dashboard builders. */
 type WatchlistPriceMap = Map<string, { price: number; changePercent: number }>
@@ -737,6 +737,105 @@ const SECTOR_ETF_MAP: Record<string, string> = {
   'Communication Services': 'XLC',
 }
 
+export const normalizeSectorName = (sector: string | null | undefined): string => {
+  if (!sector) return 'Unknown'
+  const s = sector.trim().toLowerCase()
+
+  if (
+    s.includes('tech') ||
+    s.includes('software') ||
+    s.includes('semiconductor') ||
+    s.includes('hardware') ||
+    s.includes('it services')
+  ) {
+    return 'Information Technology'
+  }
+  if (
+    s.includes('health') ||
+    s.includes('biotech') ||
+    s.includes('pharma') ||
+    s.includes('drug') ||
+    s.includes('medical') ||
+    s.includes('life science')
+  ) {
+    return 'Health Care'
+  }
+  if (
+    s.includes('financ') ||
+    s.includes('bank') ||
+    s.includes('insurance') ||
+    s.includes('capital market')
+  ) {
+    return 'Financials'
+  }
+  if (
+    s.includes('consumer cycl') ||
+    s.includes('discretionary') ||
+    s.includes('auto') ||
+    s.includes('retail') ||
+    s.includes('apparel') ||
+    s.includes('leisure')
+  ) {
+    return 'Consumer Discretionary'
+  }
+  if (
+    s.includes('consumer def') ||
+    s.includes('staple') ||
+    s.includes('food') ||
+    s.includes('beverage') ||
+    s.includes('tobacco') ||
+    s.includes('household')
+  ) {
+    return 'Consumer Staples'
+  }
+  if (
+    s.includes('energy') ||
+    s.includes('oil') ||
+    s.includes('gas') ||
+    s.includes('fuel')
+  ) {
+    return 'Energy'
+  }
+  if (
+    s.includes('industrial') ||
+    s.includes('aerospace') ||
+    s.includes('defense') ||
+    s.includes('machinery') ||
+    s.includes('transport') ||
+    s.includes('airline')
+  ) {
+    return 'Industrials'
+  }
+  if (
+    s.includes('material') ||
+    s.includes('chemical') ||
+    s.includes('metal') ||
+    s.includes('mining')
+  ) {
+    return 'Materials'
+  }
+  if (s.includes('real estate') || s.includes('reit')) {
+    return 'Real Estate'
+  }
+  if (s.includes('utilit') || s.includes('electric') || s.includes('water')) {
+    return 'Utilities'
+  }
+  if (
+    s.includes('communication') ||
+    s.includes('telecom') ||
+    s.includes('media') ||
+    s.includes('entertainment') ||
+    s.includes('interactive')
+  ) {
+    return 'Communication Services'
+  }
+
+  const exact = Object.keys(SECTOR_ETF_MAP).find(
+    (k) => k.toLowerCase() === s,
+  )
+  return exact ?? sector
+}
+
 export const buildSectorHeatmap = async (userId: string) => {
   // 1. Check for global sector performance cache
   const cached = await getCache<{ cachedAt: string; rawPerformance: any }>(
@@ -796,7 +895,7 @@ export const buildSectorHeatmap = async (userId: string) => {
     )
   }
 
-  // 2. Calculate User Exposure (Stays the same)
+  // 2. Calculate User Exposure
   const portfolios = await prisma.portfolio.findMany({
     where: { userId },
     include: {
@@ -816,10 +915,28 @@ export const buildSectorHeatmap = async (userId: string) => {
     (sum, p) => sum + p.quantity * p.avgEntryPrice,
     0,
   )
+
+  // Live-fetch sectors for any position that has a missing/unknown sector in the DB.
+  // getCompanySectors is backed by Redis cache so this is cheap on repeat calls.
+  const missingSymbols = [
+    ...new Set(
+      positions
+        .filter((p) => !p.sector || p.sector === 'Unknown')
+        .map((p) => p.symbol),
+    ),
+  ]
+  const liveSectorMap: Record<string, string> =
+    missingSymbols.length > 0 ? await getCompanySectors(missingSymbols) : {}
+
   const sectorValueMap = new Map<string, { value: number; symbols: string[] }>()
 
   positions.forEach((p) => {
-    const sector = p.sector ?? 'Unknown'
+    // Prefer the DB-stored sector; fall back to the live-fetched value.
+    const rawSector =
+      p.sector && p.sector !== 'Unknown'
+        ? p.sector
+        : (liveSectorMap[p.symbol] ?? 'Unknown')
+    const sector = normalizeSectorName(rawSector)
     const val = p.quantity * p.avgEntryPrice
     const entry = sectorValueMap.get(sector) ?? { value: 0, symbols: [] }
     entry.value += val
