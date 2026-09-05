@@ -77,12 +77,21 @@ export default function News() {
   const fetchArticles = async (isInitial = false) => {
     setLoading(true);
     try {
+      const fromDate = dateRange.startDate
+        ? new Date(`${dateRange.startDate}T00:00:00.000Z`).toISOString()
+        : undefined;
+      const toDate = dateRange.endDate
+        ? new Date(`${dateRange.endDate}T23:59:59.999Z`).toISOString()
+        : undefined;
+
       const params: NewsFeedParams = {
         filter: activeTab,
         category: activeCategory === 'ALL' ? undefined : activeCategory,
         symbol: activeSymbol || undefined,
         limit: 20,
-        cursor: isInitial ? undefined : nextCursor || undefined
+        cursor: isInitial ? undefined : nextCursor || undefined,
+        from: fromDate,
+        to: toDate,
       };
 
       let response;
@@ -91,7 +100,9 @@ export default function News() {
               ...params,
               q: searchQuery,
               startDate: dateRange.startDate,
-              endDate: dateRange.endDate
+              endDate: dateRange.endDate,
+              from: fromDate,
+              to: toDate,
           });
       } else {
           response = await newsService.getFeed(params);

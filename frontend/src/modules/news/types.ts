@@ -64,10 +64,14 @@ export interface NewsFeedParams {
   symbol?: string;
   limit?: number;
   cursor?: string;
+  from?: string;
+  to?: string;
 }
 
 export interface NewsSearchParams extends NewsFeedParams {
   q: string;
   startDate?: string;
   endDate?: string;
+  from?: string;
+  to?: string;
 }

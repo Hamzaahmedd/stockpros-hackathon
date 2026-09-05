@@ -74,9 +74,9 @@ export const getNewsFeed = async (
   userId: string,
   query: NewsFeedQuery,
 ): Promise<PaginatedNews> => {
-  const { cursor, limit, category, filter, symbol } = query
+  const { cursor, limit, category, filter, symbol, from, to } = query
 
-  if (filter === 'all' && !symbol) {
+  if (filter === 'all' && !symbol && !from && !to) {
     const key = feedCacheKey({ category, cursor, limit })
     const cached = await getCache<PaginatedNews>(key)
     if (cached) return cached
@@ -117,6 +117,8 @@ export const getNewsFeed = async (
     where: {
       ...(category && { category }),
       ...(symbolFilter && { relatedSymbols: { hasSome: symbolFilter } }),
+      ...(from && { publishedAt: { gte: new Date(from) } }),
+      ...(to && { publishedAt: { lte: new Date(to) } }),
       ...(cursorDate && cursorWhere(cursorDate, cursor!)),
     },
     orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],

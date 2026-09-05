@@ -15,6 +15,18 @@ export const newsFeedValidator = z.object({
     .transform((s) => s.toUpperCase())
     .optional(),
   filter: z.enum(['portfolio', 'watchlist', 'all']).default('all'),
+  from: z
+    .string()
+    .refine((val) => !Number.isNaN(Date.parse(val)), {
+      message: 'Invalid date format for from parameter',
+    })
+    .optional(),
+  to: z
+    .string()
+    .refine((val) => !Number.isNaN(Date.parse(val)), {
+      message: 'Invalid date format for to parameter',
+    })
+    .optional(),
 })
 
 export const newsSymbolValidator = z.object({
@@ -30,8 +42,18 @@ export const newsSearchValidator = z.object({
     .transform((s) => s.toUpperCase())
     .optional(),
   category: categorySchema,
-  from: z.string().datetime({ offset: true }).optional(),
-  to: z.string().datetime({ offset: true }).optional(),
+  from: z
+    .string()
+    .refine((val) => !Number.isNaN(Date.parse(val)), {
+      message: 'Invalid date format for from parameter',
+    })
+    .optional(),
+  to: z
+    .string()
+    .refine((val) => !Number.isNaN(Date.parse(val)), {
+      message: 'Invalid date format for to parameter',
+    })
+    .optional(),
   cursor: cursorSchema,
   limit: limitSchema,
 })
