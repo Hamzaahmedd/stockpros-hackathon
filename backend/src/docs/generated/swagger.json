@@ -583,9 +583,7 @@
 								"finance",
 								"healthcare",
 								"growth",
-								"crypto",
-								"consumer",
-								"value"
+								"consumer"
 							]
 						},
 						"type": "array"
@@ -2353,7 +2351,7 @@
 						}
 					}
 				},
-				"description": "Trigger AI suggestion calculation for a watchlist symbol.\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
+				"description": "Trigger AI suggestion calculation for a watchlist symbol.\r\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2433,7 +2431,7 @@
 						}
 					}
 				},
-				"description": "Create a new alert for a watchlist symbol.\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
+				"description": "Create a new alert for a watchlist symbol.\r\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2575,7 +2573,7 @@
 						}
 					}
 				},
-				"description": "Search for stock symbols or company names (autocomplete).\nPowered by Finnhub symbol search with US exchange filter by default.",
+				"description": "Search for stock symbols or company names (autocomplete).\r\nPowered by Finnhub symbol search with US exchange filter by default.",
 				"tags": [
 					"Search"
 				],
@@ -2900,7 +2898,7 @@
 						}
 					}
 				},
-				"description": "Fetch a paginated list of financial news articles.\nSupports filtering by symbol, sentiment, category, and full-text search.",
+				"description": "Fetch a paginated list of financial news articles.\r\nSupports filtering by symbol, sentiment, category, and full-text search.",
 				"tags": [
 					"News"
 				],
@@ -3192,7 +3190,7 @@
 						}
 					}
 				},
-				"description": "Get ranked top US stocks ordered by a composite score (volume, momentum, market cap).\nResults are cached for performance.",
+				"description": "Get ranked top US stocks ordered by a composite score (volume, momentum, market cap).\r\nResults are cached for performance.",
 				"tags": [
 					"Market Data"
 				],
@@ -3240,7 +3238,7 @@
 						}
 					}
 				},
-				"description": "Fetch live quote snapshots for a batch of symbols.\nPulls from the in-memory PriceCache (updated via Finnhub WebSocket) with Yahoo Finance fallback.",
+				"description": "Fetch live quote snapshots for a batch of symbols.\r\nPulls from the in-memory PriceCache (updated via Finnhub WebSocket) with Yahoo Finance fallback.",
 				"tags": [
 					"Market Data"
 				],
@@ -3382,7 +3380,7 @@
 						}
 					}
 				},
-				"description": "Generate a GRU-based time-series stock price forecast.\nDelegates to the Python AI Service which trains/loads a GRU model on Tiingo OHLCV data.\nResults are cached in Redis to avoid redundant inference.",
+				"description": "Generate a GRU-based time-series stock price forecast.\r\nDelegates to the Python AI Service which trains/loads a GRU model on Tiingo OHLCV data.\r\nResults are cached in Redis to avoid redundant inference.",
 				"tags": [
 					"AI Forecast"
 				],
@@ -3550,7 +3548,7 @@
 						}
 					}
 				},
-				"description": "Run the full multi-factor decision engine for a user's portfolio.\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\nearnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.",
+				"description": "Run the full multi-factor decision engine for a user's portfolio.\r\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\r\nearnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3597,7 +3595,7 @@
 						}
 					}
 				},
-				"description": "Upload a portfolio CSV or XLSX file for batch position import.\nAccepted columns: symbol, quantity, avgEntryPrice, sector.",
+				"description": "Upload a portfolio CSV or XLSX file for batch position import.\r\nAccepted columns: symbol, quantity, avgEntryPrice, sector.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3760,7 +3758,7 @@
 						}
 					}
 				},
-				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\nCombines data from multiple modules for a single-request page load.",
+				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\r\nCombines data from multiple modules for a single-request page load.",
 				"tags": [
 					"Dashboard"
 				],

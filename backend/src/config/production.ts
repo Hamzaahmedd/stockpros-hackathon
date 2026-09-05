@@ -43,7 +43,7 @@ export const productionConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
-    enableSwaggerDocs: process.env.ENABLE_SWAGGER_DOCS !== 'false',
+    enableSwaggerDocs: false,
   },
   audit: {
     retentionDays: 30, // change 30d to 7 year in paid plan

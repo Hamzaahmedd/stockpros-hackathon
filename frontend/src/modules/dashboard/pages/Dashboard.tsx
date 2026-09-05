@@ -17,78 +17,38 @@ import {
     FiZap
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { DashboardData, SectorHeatmapCell } from "../types";
+
+import { ChartErrorBoundary } from "../components/ChartErrorBoundary";
+import { CircularProgress } from "../components/CircularProgress";
+import { CustomCard } from "../components/CustomCard";
+import { TrendingStockCard } from "../components/TrendingStockCard";
 
 // --- SUB-COMPONENTS ---
 
-const CircularProgress: React.FC<{ value: number; size?: number; strokeWidth?: number; color?: string; band?: string }> = ({ 
-  value, 
-  size = 120, 
-  strokeWidth = 10, 
-  color = "#22c55e",
-  band = "Fair"
-}) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (value / 100) * circumference;
-
-  return (
-    <div className="flex flex-col items-center justify-center relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-muted/50" />
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold">{value}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{band}</span>
-      </div>
-    </div>
-  );
+const getMetricTextColor = (val: number): string => {
+  if (val > 70) return 'text-green-600';
+  if (val > 40) return 'text-yellow-600';
+  return 'text-red-600';
 };
 
-function CustomCard({ title, actions, children, className = "" }: { 
-  title?: string; 
-  actions?: React.ReactNode; 
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <ShadcnCard className={className}>
-      {(title || actions) && (
-        <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5 space-y-0">
-          {title && <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</CardTitle>}
-          {actions && <div>{actions}</div>}
-        </CardHeader>
-      )}
-      <CardContent className={(!title && !actions) ? "p-5" : "px-5 pb-5 pt-3"}>
-        {children}
-      </CardContent>
-    </ShadcnCard>
-  );
-}
+const getMetricBgColor = (val: number): string => {
+  if (val > 70) return 'bg-green-500';
+  if (val > 40) return 'bg-yellow-500';
+  return 'bg-red-500';
+};
 
-class ChartErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
-  state = { hasError: false };
+const getHealthScoreColor = (score: number): string => {
+  if (score > 70) return '#16a34a';
+  if (score > 40) return '#eab308';
+  return '#dc2626';
+};
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-          Heatmap unavailable
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+const getSentimentTextColor = (sentiment: string): string => {
+  if (sentiment === 'BULLISH') return 'text-green-600';
+  if (sentiment === 'BEARISH') return 'text-red-600';
+  return '';
+};
 
 function buildHeatmapSeries(
   sectors: SectorHeatmapCell[] | undefined,
@@ -105,7 +65,7 @@ function buildHeatmapSeries(
     .map((row) => ({
       id: row.id,
       data: row.slice.map((s) => ({
-        x: s.name,
+        x: s.name.split(' ')[0],
         y: s.performance?.[timeframe] ?? 0,
         full: s.name,
         exp: s.userExposurePct,
@@ -114,83 +74,7 @@ function buildHeatmapSeries(
     }));
 }
 
-const TrendingStockCard: React.FC<{ stock: any }> = ({ stock }) => {
-  const changePercent = Number(stock.changePercent);
-  const price = Number(stock.price);
-  const isPositive = Number.isFinite(changePercent) ? changePercent >= 0 : true;
-  
-  const chartData = stock.sparkline?.map((price: number, idx: number) => ({
-    name: idx,
-    value: price,
-  })) || [];
 
-  return (
-    <div className="rounded-xl border border-border/70 terminal-glass transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 flex flex-col justify-between overflow-hidden group">
-      <div className="p-4 flex justify-between items-start">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg border border-border/80 bg-muted/40 flex items-center justify-center p-1.5 shrink-0">
-             {stock.logoUrl ? (
-                <img src={stock.logoUrl} alt={stock.symbol} className="w-full h-full object-contain" />
-             ) : (
-                <div className="text-xs font-mono font-bold text-primary">{stock.symbol.slice(0, 2)}</div>
-             )}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-mono font-bold tracking-wider text-foreground truncate">{stock.symbol}</div>
-            <div className="text-[11px] text-muted-foreground font-medium truncate max-w-[130px]">{stock.companyName}</div>
-          </div>
-        </div>
-        <div className="text-right font-mono">
-          <div className="text-base font-bold tracking-tight tabular-nums text-foreground">
-            {Number.isFinite(price) ? `$${price.toFixed(2)}` : "—"}
-          </div>
-          <div className={`text-[11px] font-semibold tabular-nums inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded ${
-            isPositive
-              ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-              : "text-rose-400 bg-rose-500/10 border border-rose-500/20"
-          }`}>
-            {Number.isFinite(changePercent) ? `${isPositive ? "+" : ""}${changePercent.toFixed(2)}%` : "—"}
-          </div>
-        </div>
-      </div>
-
-      <div className="h-16 w-full -mb-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={`grad-${stock.symbol}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.35}/>
-                <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.0}/>
-              </linearGradient>
-            </defs>
-            <Tooltip 
-              content={({ active, payload }: any) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="bg-popover text-popover-foreground border border-border px-2.5 py-1.5 rounded-lg shadow-xl text-xs font-mono">
-                      <div className="text-muted-foreground text-[10px]">Price</div>
-                      <div className="font-bold tabular-nums">${Number(payload[0].value).toFixed(2)}</div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
-            <Area 
-               type="monotone" 
-               dataKey="value" 
-               stroke={isPositive ? '#10b981' : '#f43f5e'} 
-               fill={`url(#grad-${stock.symbol})`} 
-               strokeWidth={1.75}
-               isAnimationActive={true}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-};
 
 // --- MAIN DASHBOARD ---
 
@@ -594,10 +478,18 @@ export const Dashboard: React.FC = () => {
                             {/* SMART TRIGGERS */}
                             <CustomCard title="Priority Triggers" className="h-fit">
                                 <div className="grid md:grid-cols-2 gap-4">
-                                    {(smartTriggers?.items || []).slice(0, 4).map((trigger, idx) => (
+                                    {(smartTriggers?.items || []).slice(0, 4).map((trigger) => (
                                         <div 
-                                            key={idx} 
+                                            key={`${trigger.symbol}-${trigger.type}`} 
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={() => handleTriggerClick(trigger)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleTriggerClick(trigger);
+                                                }
+                                            }}
                                             className={`p-4 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${trigger.urgency === 'HIGH' ? 'border-destructive/30 bg-destructive/5' : 'bg-card'}`}
                                         >
                                             <div className="flex items-start gap-4">
@@ -651,22 +543,20 @@ export const Dashboard: React.FC = () => {
                                                 
                                                 <div className="space-y-4">
                                                     {[
-                                                        { label: "Diversification", value: portfolio.healthScore.breakdown.diversification },
-                                                        { label: "Risk/Reward", value: portfolio.healthScore.breakdown.riskReward },
-                                                        { label: "Volatility", value: portfolio.healthScore.breakdown.volatility },
-                                                        { label: "Alert Health", value: portfolio.healthScore.breakdown.alertHealth },
-                                                        { label: "Watchlist Discipline", value: portfolio.healthScore.breakdown.watchlistDiscipline }
+                                                        { label: "Diversification", value: portfolioHealth.breakdown.diversification },
+                                                        { label: "Risk/Reward", value: portfolioHealth.breakdown.riskReward },
+                                                        { label: "Volatility", value: portfolioHealth.breakdown.volatility },
+                                                        { label: "Alert Health", value: portfolioHealth.breakdown.alertHealth },
+                                                        { label: "Watchlist Discipline", value: portfolioHealth.breakdown.watchlistDiscipline }
                                                     ].map((item) => (
                                                         <div key={item.label}>
                                                             <div className="flex justify-between text-xs font-medium mb-1.5">
                                                                 <span className="text-muted-foreground">{item.label}</span>
-                                                                <span className={item.value > 70 ? 'text-green-600' : item.value > 40 ? 'text-yellow-600' : 'text-red-600'}>{item.value}%</span>
+                                                                <span className={getMetricTextColor(item.value)}>{item.value}%</span>
                                                             </div>
                                                             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                                                                 <div 
-                                                                    className={`h-full transition-all duration-1000 ease-out rounded-full ${
-                                                                        item.value > 70 ? 'bg-green-500' : item.value > 40 ? 'bg-yellow-500' : 'bg-red-500'
-                                                                    }`}
+                                                                    className={`h-full transition-all duration-1000 ease-out rounded-full ${getMetricBgColor(item.value)}`}
                                                                     style={{ width: `${item.value}%` }} 
                                                                 />
                                                             </div>
@@ -679,22 +569,22 @@ export const Dashboard: React.FC = () => {
 
                                     <div className="flex flex-col items-center">
                                         <CircularProgress 
-                                            value={portfolio.healthScore.score} 
-                                            band={portfolio.healthScore.band}
-                                            color={portfolio.healthScore.score > 70 ? '#16a34a' : portfolio.healthScore.score > 40 ? '#eab308' : '#dc2626'}
+                                            value={portfolioHealth.score} 
+                                            band={portfolioHealth.band}
+                                            color={getHealthScoreColor(portfolioHealth.score)}
                                         />
                                         <div className="text-center mt-4">
-                                            <div className="text-sm font-medium text-muted-foreground">{portfolio.healthScore.label}</div>
+                                            <div className="text-sm font-medium text-muted-foreground">{portfolioHealth.label}</div>
                                         </div>
                                         <div className="w-full flex justify-between gap-6 mt-8 pt-6 border-t">
                                             <div className="min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total Value</div>
-                                                <div className="text-2xl font-bold tracking-tight">${portfolio.totalValue.toLocaleString()}</div>
+                                                <div className="text-2xl font-bold tracking-tight">${(portfolio?.totalValue ?? 0).toLocaleString()}</div>
                                             </div>
                                             <div className="text-right min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total P&L</div>
-                                                <div className={`text-2xl font-bold tracking-tight ${portfolio.totalUnrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {portfolio.totalUnrealizedPnL >= 0 ? '+' : ''}${Math.abs(portfolio.totalUnrealizedPnL).toLocaleString()}
+                                                <div className={`text-2xl font-bold tracking-tight ${(portfolio?.totalUnrealizedPnL ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {(portfolio?.totalUnrealizedPnL ?? 0) >= 0 ? '+' : ''}${Math.abs(portfolio?.totalUnrealizedPnL ?? 0).toLocaleString()}
                                                 </div>
                                             </div>
                                         </div>
@@ -704,8 +594,8 @@ export const Dashboard: React.FC = () => {
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span className="text-sm font-medium">Today's Performance</span>
                                             </div>
-                                            <div className={`text-sm font-bold ${portfolio.todayGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {portfolio.todayGainLoss >= 0 ? '+' : ''}{portfolio.todayGainLossPct}%
+                                            <div className={`text-sm font-bold ${(portfolio?.todayGainLoss ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {(portfolio?.todayGainLoss ?? 0) >= 0 ? '+' : ''}{portfolio?.todayGainLossPct ?? 0}%
                                             </div>
                                         </div>
 
@@ -754,7 +644,7 @@ export const Dashboard: React.FC = () => {
                                             </a>
                                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                                                 <span>{news.source}</span>
-                                                <span className={`font-medium ${news.sentiment === 'BULLISH' ? 'text-green-600' : news.sentiment === 'BEARISH' ? 'text-red-600' : ''}`}>{news.sentiment}</span>
+                                                <span className={`font-medium ${getSentimentTextColor(news.sentiment)}`}>{news.sentiment}</span>
                                             </div>
                                         </div>
                                     ))}

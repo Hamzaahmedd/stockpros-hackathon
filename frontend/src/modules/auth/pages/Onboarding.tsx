@@ -5,9 +5,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Info,
   Plus,
   Search,
-  Sparkles,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -240,38 +240,50 @@ export const Onboarding: React.FC = () => {
             { num: 1, label: "Identity" },
             { num: 2, label: "Watchlist" },
             { num: 3, label: "Launch" },
-          ].map((s, idx) => (
-            <React.Fragment key={s.num}>
-              {idx > 0 && (
-                <div
-                  className={`w-4 sm:w-6 h-0.5 transition-colors ${step >= s.num ? "bg-primary" : "bg-muted"
-                    }`}
-                />
-              )}
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === s.num
-                    ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                    : step > s.num
-                      ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
-                      : "bg-muted/40 border border-border text-muted-foreground"
-                    }`}
-                >
-                  {step > s.num ? <Check className="w-3 h-3 stroke-[2.5]" /> : s.num}
-                </span>
-                <span
-                  className={`hidden sm:inline text-xs font-semibold ${step === s.num
-                    ? "text-primary"
-                    : step > s.num
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                    }`}
-                >
-                  {s.label}
-                </span>
-              </div>
-            </React.Fragment>
-          ))}
+          ].map((s, idx) => {
+            const getBadgeClass = () => {
+              if (step === s.num) {
+                return "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(6,182,212,0.4)]";
+              }
+              if (step > s.num) {
+                return "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400";
+              }
+              return "bg-muted/40 border border-border text-muted-foreground";
+            };
+
+            const getLabelClass = () => {
+              if (step === s.num) {
+                return "text-primary";
+              }
+              if (step > s.num) {
+                return "text-foreground";
+              }
+              return "text-muted-foreground";
+            };
+
+            return (
+              <React.Fragment key={s.num}>
+                {idx > 0 && (
+                  <div
+                    className={`w-4 sm:w-6 h-0.5 transition-colors ${step >= s.num ? "bg-primary" : "bg-muted"
+                      }`}
+                  />
+                )}
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${getBadgeClass()}`}
+                  >
+                    {step > s.num ? <Check className="w-3 h-3 stroke-[2.5]" /> : s.num}
+                  </span>
+                  <span
+                    className={`hidden sm:inline text-xs font-semibold ${getLabelClass()}`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </header>
 
@@ -491,7 +503,7 @@ export const Onboarding: React.FC = () => {
 
                 {/* AI Real-Time Forecast Banner */}
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
-                  <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                  <Info className="w-4 h-4 text-primary shrink-0" />
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     AI predictions and technical signals will automatically generate for your selected tickers.
                   </p>

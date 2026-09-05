@@ -8,6 +8,8 @@ import type {
   NotificationSummary,
 } from './types'
 
+import { MARKET_INTERESTS } from './preferences'
+
 // ─── Notification Preferences ────────────────────────────────────────────────
 
 export const getNotificationPreferences = async (
@@ -24,7 +26,12 @@ export const getNotificationPreferences = async (
   })
   if (!user) throw new AppError('User not found', 404)
 
-  return user
+  return {
+    ...user,
+    marketInterests: user.marketInterests.filter((interest) =>
+      (MARKET_INTERESTS as readonly string[]).includes(interest),
+    ),
+  }
 }
 
 export const updateNotificationPreferences = async (
