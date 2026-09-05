@@ -1,5 +1,5 @@
 import { prisma } from '../../shared/infrastructure/database'
-import { NewsSentiment, UserStatus } from '@prisma/client'
+import { NewsCategory, NewsSentiment, UserStatus } from '@prisma/client'
 import { logger } from '../../shared/infrastructure/logger'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
 import { transporter, getLogoSrc } from '../../shared/infrastructure/config/email'
@@ -11,6 +11,7 @@ import {
   type WatchlistDigestItem,
 } from './email-templates'
 import { enrichNewsWithGroq } from './groq-enricher'
+import { INTEREST_TO_CATEGORIES, type MarketInterest } from './preferences'
 import config from '@/config'
 import {
   formatPakistanTimestamp,
@@ -27,7 +28,7 @@ const generateDigestDataForUser = async (
 ): Promise<PremarketDigestData | null> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, displayName: true, email: true },
+    select: { id: true, displayName: true, email: true, marketInterests: true },
   })
 
   if (!user) return null
@@ -67,13 +68,15 @@ const generateDigestDataForUser = async (
     }
   }
 
-  // 3. Fetch recent news for these symbols — use stored bullets as both content and fallback
-  const rawArticles =
+  const NEWS_CAP = 4
+
+  // 3a. Primary: articles related to the user's watched symbols
+  const watchlistArticles =
     symbols.length > 0
       ? await prisma.newsArticle.findMany({
           where: { relatedSymbols: { hasSome: symbols } },
           orderBy: { publishedAt: 'desc' },
-          take: 4,
+          take: NEWS_CAP,
           select: {
             headline: true,
             summaryBullets: true,
@@ -84,6 +87,61 @@ const generateDigestDataForUser = async (
           },
         })
       : []
+
+  // 3b. Supplementary: fill remaining slots with interest-matched articles
+  //     only when the user has market interests and watchlist articles alone
+  //     don't fill the cap.
+  const remainingSlots = NEWS_CAP - watchlistArticles.length
+  const validInterests = (user.marketInterests ?? []).filter(
+    (i): i is MarketInterest => i in INTEREST_TO_CATEGORIES,
+  )
+
+  const supplementaryArticles =
+    remainingSlots > 0 && validInterests.length > 0
+      ? await (async () => {
+          const matchedCategories = Array.from(
+            new Set(
+              validInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i].categories),
+            ),
+          ) as NewsCategory[]
+          const matchedSectors = Array.from(
+            new Set(validInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i].sectors)),
+          )
+
+          // Exclude articles already included via watchlist to avoid duplicates
+          const excludedUrls = new Set(watchlistArticles.map((a) => a.url))
+
+          const candidates = await prisma.newsArticle.findMany({
+            where: {
+              OR: [
+                { category: { in: matchedCategories } },
+                {
+                  sector: {
+                    in: matchedSectors,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            },
+            orderBy: { publishedAt: 'desc' },
+            take: remainingSlots * 2, // over-fetch so we can de-duplicate below
+            select: {
+              headline: true,
+              summaryBullets: true,
+              sentiment: true,
+              relatedSymbols: true,
+              source: true,
+              url: true,
+            },
+          })
+
+          return candidates
+            .filter((a) => !excludedUrls.has(a.url))
+            .slice(0, remainingSlots)
+        })()
+      : []
+
+  const rawArticles = [...watchlistArticles, ...supplementaryArticles]
 
   // Map articles to the enricher input shape, carrying fallback bullets
   const enricherInput = rawArticles.map((article) => {
