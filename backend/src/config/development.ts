@@ -1,12 +1,9 @@
-// Non-sensitive settings for local development.
-
 export const developmentConfig = {
   env: 'development' as const,
   server: {
     port: 3000,
     logLevel: 'debug' as const,
     trustProxy: true,
-    frontendUrl: 'http://localhost:5173',
   },
   auth: {
     accessTokenExpiry: '7d',

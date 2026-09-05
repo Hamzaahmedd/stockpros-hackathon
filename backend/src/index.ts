@@ -33,7 +33,6 @@ import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 
 export const httpServer = http.createServer(createApp())
 
-// Infrastructure adapters are started once, at the edge of the monolith.
 export const socketServer = new SocketServer(httpServer)
 
 const shutdown = async () => {
@@ -53,14 +52,12 @@ process.on('SIGINT', shutdown)
 
 const startServer = async () => {
   try {
-    // 1. Bind port immediately
     httpServer.listen(config.server.port, '0.0.0.0', () => {
       logger.info(
         `Server listening on port ${config.server.port} in ${config.server.nodeEnv} mode`,
       )
     })
 
-    // 2. Initialize background infrastructure non-blockingly
     connectPrismaWithRetry()
 
     connectRedis()

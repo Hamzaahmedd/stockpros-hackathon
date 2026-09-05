@@ -1,6 +1,7 @@
 import os
 from typing import Final
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,14 +17,28 @@ class Settings(BaseSettings):
     TIINGO_API_KEY: str = ""
     APP_ENV: str = "development"
     CACHE_ENABLED: bool = True
-    TTL_MULTIPLIER: float = 1.0
+    TTL_MULTIPLIER: float = float(1.0)
     GITHUB_TOKEN: str = ""
+
+    # Comma-separated string or fallback list defaults
+    CORS_ORIGINS: str = (
+        "https://stockpros-platform.vercel.app,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parses comma-separated CORS_ORIGINS string into a list of clean strings."""
+        if not self.CORS_ORIGINS:
+            return []
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     @property
     def DOCS_ENABLED(self) -> bool:
@@ -35,4 +50,4 @@ class Settings(BaseSettings):
         return raw != "false"
 
 
-settings: Final[Settings] = Settings()
+settings: Final[Settings] = Settings()

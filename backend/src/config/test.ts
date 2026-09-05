@@ -1,12 +1,9 @@
-// Non-sensitive settings for the automated test suite.
-
 export const testConfig = {
   env: 'test' as const,
   server: {
     port: 0,
     logLevel: 'error' as const,
     trustProxy: false,
-    frontendUrl: 'http://localhost:5173',
   },
   auth: {
     accessTokenExpiry: '1h',
