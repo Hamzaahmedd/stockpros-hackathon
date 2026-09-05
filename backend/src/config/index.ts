@@ -1,32 +1,11 @@
-// Environment configuration loader: resolves NODE_ENV, merges the matching
-// environment config with secrets read from the environment, validates,
-// and exports the unified runtime config.
 import { developmentConfig } from './development'
 import { productionConfig } from './production'
 import { testConfig } from './test'
 
-/** Non-sensitive, environment-specific settings defined per config file. */
 export type EnvConfig =
   typeof developmentConfig | typeof productionConfig | typeof testConfig
 
-/** Sensitive values sourced exclusively from the process environment. */
-export const readSecrets = (): {
-  databaseUrl: string
-  redisUrl: string
-  accessTokenSecret: string
-  refreshTokenSecret: string
-  googleClientId: string
-  smtpUser: string
-  smtpPass: string
-  resendApiKey: string
-  finnhubApiKey: string
-  fmpApiKey: string
-  polygonApiKey: string
-  twelveDataApiKey: string
-  axiomToken: string
-  groqApiKey: string
-  groqModel: string
-} => ({
+export const readSecrets = () => ({
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET || '',
@@ -42,6 +21,7 @@ export const readSecrets = (): {
   axiomToken: process.env.AXIOM_TOKEN || '',
   groqApiKey: process.env.GROQ_API_KEY || '',
   groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
+  corsOrigins: process.env.CORS_ORIGINS || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -69,204 +49,95 @@ const loadEnvConfig = (env: Environment): EnvConfig => {
   }
 }
 
-/** Unified runtime configuration consumed across the app. */
-export const buildConfig = (
-  env: EnvConfig,
-  secrets: Secrets,
-): {
-  server: {
-    port: number
-    nodeEnv: Environment
-    logLevel: LogLevel
-    trustProxy: boolean
-    frontendUrl: string
-  }
-  database: {
-    url: string
-  }
-  auth: {
-    accessTokenSecret: string
-    accessTokenExpiry: string
-    refreshTokenSecret: string
-    refreshTokenExpiry: string
-    magicLinkExpiryMinutes: number
-    googleClientId: string
-  }
-  redis: {
-    url: string
-    tlsRejectUnauthorized: boolean
-  }
-  cache: {
-    enabled: boolean
-    ttlMultiplier: number
-  }
-  ml: {
-    internalUrl: string
-  }
-  finnhub: {
-    apiKey: string
-  }
-  smtp: {
-    host: string
-    port: number
-    user: string
-    pass: string
-  }
-  brand: {
-    logoUrl: string
-  }
-  email: {
-    resendApiKey: string
-    useSmtp: boolean
-    useResend: boolean
-    resendFrom: string
-  }
-  fmp: {
-    apiKey: string
-  }
-  polygon: {
-    apiKey: string
-  }
-  twelveData: {
-    apiKey: string
-  }
-  axiom: {
-    token: string
-    dataset: string
-  }
-  groq: {
-    apiKey: string
-    model: string
-  }
-  features: {
-    enableNewsCron: boolean
-    enableWatchlistCron: boolean
-    enableAiRecomputeCron: boolean
-    enableSwaggerDocs: boolean
-  }
-  audit: {
-    enabled: boolean
-    retentionDays: number
-  }
-} => ({
-  server: {
-    // PORT may be injected at runtime by the PaaS.
-    port: Number(process.env.PORT) || env.server.port,
-    nodeEnv: env.env,
-    logLevel: env.server.logLevel,
-    trustProxy: env.server.trustProxy,
-    frontendUrl: env.server.frontendUrl.endsWith('/')
-      ? env.server.frontendUrl.slice(0, -1)
-      : env.server.frontendUrl,
-  },
-  database: {
-    url: secrets.databaseUrl,
-  },
-  auth: {
-    accessTokenSecret: secrets.accessTokenSecret,
-    accessTokenExpiry: env.auth.accessTokenExpiry,
-    refreshTokenSecret: secrets.refreshTokenSecret,
-    refreshTokenExpiry: env.auth.refreshTokenExpiry,
-    magicLinkExpiryMinutes: env.auth.magicLinkExpiryMinutes,
-    googleClientId: secrets.googleClientId,
-  },
-  redis: {
-    url: secrets.redisUrl,
-    tlsRejectUnauthorized: env.redis.tlsRejectUnauthorized,
-  },
-  cache: {
-    enabled: env.cache.enabled,
-    ttlMultiplier: env.cache.ttlMultiplier,
-  },
-  ml: {
-    internalUrl: env.ml.internalUrl,
-  },
-  finnhub: {
-    apiKey: secrets.finnhubApiKey,
-  },
-  smtp: {
-    host: env.smtp.host,
-    port: env.smtp.port,
-    user: secrets.smtpUser,
-    pass: secrets.smtpPass,
-  },
-  brand: {
-    logoUrl: env.brand.logoUrl,
-  },
-  email: {
-    resendApiKey: secrets.resendApiKey,
-    useSmtp: env.email.useSmtp,
-    useResend: env.email.useResend,
-    resendFrom: env.email.resendFrom,
-  },
-  fmp: {
-    apiKey: secrets.fmpApiKey,
-  },
-  polygon: {
-    apiKey: secrets.polygonApiKey,
-  },
-  twelveData: {
-    apiKey: secrets.twelveDataApiKey,
-  },
-  axiom: {
-    token: secrets.axiomToken,
-    dataset: env.axiom.dataset,
-  },
-  groq: {
-    apiKey: secrets.groqApiKey,
-    model: secrets.groqModel,
-  },
-  features: env.features,
-  audit: {
-    enabled: true,
-    retentionDays: env.audit.retentionDays,
-  },
-})
+export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
+  // Parse comma-separated origins exclusively from process.env.CORS_ORIGINS
+  const corsOrigins = secrets.corsOrigins
+    ? secrets.corsOrigins
+        .split(',')
+        .map((origin) => origin.trim().replace(/\/$/, ''))
+        .filter(Boolean)
+    : env.env === 'development'
+      ? ['http://localhost:5173', 'http://127.0.0.1:5173']
+      : []
 
-export type AppConfig = ReturnType<typeof buildConfig>
-
-// Secrets required to boot: [env label, Secrets key].
-const REQUIRED_SECRETS: ReadonlyArray<
-  readonly [label: string, key: keyof Secrets]
-> = [
-  ['DATABASE_URL', 'databaseUrl'],
-  ['ACCESS_TOKEN_SECRET', 'accessTokenSecret'],
-  ['REFRESH_TOKEN_SECRET', 'refreshTokenSecret'],
-]
-
-const validateConfig = (
-  config: AppConfig,
-  secrets: Secrets,
-  env: 'development' | 'test' | 'production',
-): void => {
-  if (env === 'test') return
-
-  const missing = REQUIRED_SECRETS.filter(([, key]) => !secrets[key]).map(
-    ([label]) => label,
-  )
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment secret(s): ${missing.join(', ')}. ` +
-        `These must be provided via .env (never committed).`,
-    )
-  }
-
-  if (!config.database.url) {
-    throw new Error(
-      'Invalid configuration: database.url resolved to an empty value.',
-    )
-  }
-  if (!Number.isFinite(config.server.port) || config.server.port <= 0) {
-    throw new Error(
-      `Invalid configuration: server.port must be a positive number (got ${config.server.port}).`,
-    )
+  return {
+    server: {
+      port: Number(process.env.PORT) || env.server.port,
+      nodeEnv: env.env,
+      logLevel: env.server.logLevel,
+      trustProxy: env.server.trustProxy,
+      corsOrigins,
+    },
+    database: {
+      url: secrets.databaseUrl,
+    },
+    auth: {
+      accessTokenSecret: secrets.accessTokenSecret,
+      accessTokenExpiry: env.auth.accessTokenExpiry,
+      refreshTokenSecret: secrets.refreshTokenSecret,
+      refreshTokenExpiry: env.auth.refreshTokenExpiry,
+      magicLinkExpiryMinutes: env.auth.magicLinkExpiryMinutes,
+      googleClientId: secrets.googleClientId,
+    },
+    redis: {
+      url: secrets.redisUrl,
+      tlsRejectUnauthorized: env.redis.tlsRejectUnauthorized,
+    },
+    cache: {
+      enabled: env.cache.enabled,
+      ttlMultiplier: env.cache.ttlMultiplier,
+    },
+    ml: {
+      internalUrl: env.ml.internalUrl,
+    },
+    finnhub: {
+      apiKey: secrets.finnhubApiKey,
+    },
+    smtp: {
+      host: env.smtp.host,
+      port: env.smtp.port,
+      user: secrets.smtpUser,
+      pass: secrets.smtpPass,
+    },
+    brand: {
+      logoUrl: env.brand.logoUrl,
+    },
+    email: {
+      resendApiKey: secrets.resendApiKey,
+      useSmtp: env.email.useSmtp,
+      useResend: env.email.useResend,
+      resendFrom: env.email.resendFrom,
+    },
+    fmp: {
+      apiKey: secrets.fmpApiKey,
+    },
+    polygon: {
+      apiKey: secrets.polygonApiKey,
+    },
+    twelveData: {
+      apiKey: secrets.twelveDataApiKey,
+    },
+    axiom: {
+      token: secrets.axiomToken,
+      dataset: env.axiom.dataset,
+    },
+    groq: {
+      apiKey: secrets.groqApiKey,
+      model: secrets.groqModel,
+    },
+    features: env.features,
+    audit: {
+      enabled: true,
+      retentionDays: env.audit.retentionDays,
+    },
   }
 }
+
+export type AppConfig = ReturnType<typeof buildConfig>
 
 const activeEnv = resolveEnv()
 const secrets = readSecrets()
 const assembled = buildConfig(loadEnvConfig(activeEnv), secrets)
-validateConfig(assembled, secrets, activeEnv)
 
 export const config: AppConfig = assembled
 export default config

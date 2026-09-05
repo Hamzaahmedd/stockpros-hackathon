@@ -1,12 +1,9 @@
-// Non-sensitive settings for production.
-
 export const productionConfig = {
   env: 'production' as const,
   server: {
     port: 8081,
     logLevel: 'info' as const,
     trustProxy: true,
-    frontendUrl: 'https://stockpros-platform.vercel.app',
   },
   auth: {
     accessTokenExpiry: '15m',
@@ -46,6 +43,6 @@ export const productionConfig = {
     enableSwaggerDocs: false,
   },
   audit: {
-    retentionDays: 30, // change 30d to 7 year in paid plan
+    retentionDays: 30,
   },
 }

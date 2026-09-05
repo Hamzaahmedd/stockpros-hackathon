@@ -71,18 +71,20 @@ export const securityMiddleware = (app: Application): void => {
   // Helmet setup: Secure HTTP headers
   app.use(helmet())
 
-  // CORS setup: allow the single configured frontend origin.
+  // CORS setup: allow origins listed in config.server.corsOrigins
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server calls)
         if (!origin) return callback(null, true)
 
-        if (config.server.frontendUrl === origin) {
+        const normalizedOrigin = origin.replace(/\/$/, '')
+
+        if (config.server.corsOrigins.includes(normalizedOrigin)) {
           return callback(null, true)
         }
 
-        // Development keeps local browser testing convenient.
+        // Allow localhost/127.0.0.1 origins in development
         if (
           config.server.nodeEnv !== 'production' ||
           /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
