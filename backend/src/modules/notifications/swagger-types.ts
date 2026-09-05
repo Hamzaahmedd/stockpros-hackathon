@@ -31,14 +31,7 @@ export interface Notification {
 
 export interface NotificationPreferences {
   marketInterests: (
-    | 'ai_tech'
-    | 'energy'
-    | 'finance'
-    | 'healthcare'
-    | 'growth'
-    | 'crypto'
-    | 'consumer'
-    | 'value'
+    'ai_tech' | 'energy' | 'finance' | 'healthcare' | 'growth' | 'consumer'
   )[]
   inAppAlertsEnabled: boolean
   emailVolatilityAlertsEnabled: boolean

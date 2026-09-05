@@ -9,18 +9,19 @@ import {
 import { Sidebar } from "@/shared/components/Sidebar";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { notificationService } from "@/modules/notifications/services";
-import type { MarketInterest } from "@/modules/notifications/types";
+import {
+  MARKET_INTEREST_OPTIONS,
+  type MarketInterest,
+} from "@/modules/notifications/types";
 import {
   Activity,
   Bell,
   Check,
   Cpu,
   FileText,
-  Gem,
   Landmark,
   Mail,
   ShoppingBag,
-  Sparkles,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -72,22 +73,10 @@ const MARKET_TOPICS: {
     description: "High-momentum tech & SaaS",
   },
   {
-    id: "crypto",
-    name: "Crypto & Web3",
-    icon: Sparkles,
-    description: "Digital assets & blockchain",
-  },
-  {
     id: "consumer",
     name: "Consumer",
     icon: ShoppingBag,
     description: "Retail, e-commerce, staples",
-  },
-  {
-    id: "value",
-    name: "Value Stocks",
-    icon: Gem,
-    description: "Dividend aristocrats & leaders",
   },
 ];
 
@@ -144,7 +133,11 @@ const Settings: React.FC = () => {
     const loadNotificationPreferences = async () => {
       try {
         const preferences = await notificationService.getPreferences();
-        setSelectedTopics(preferences.marketInterests);
+        setSelectedTopics(
+          preferences.marketInterests.filter((t) =>
+            (MARKET_INTEREST_OPTIONS as readonly string[]).includes(t),
+          ),
+        );
         setSelectedAlerts([
           ...(preferences.inAppAlertsEnabled ? ["in_app"] : []),
           ...(preferences.emailVolatilityAlertsEnabled ? ["email_alerts"] : []),
@@ -437,7 +430,7 @@ const Settings: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {MARKET_TOPICS.map((topic) => {
                           const active = selectedTopics.includes(topic.id);
                           const Icon = topic.icon;

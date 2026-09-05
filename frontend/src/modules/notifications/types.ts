@@ -12,9 +12,7 @@ export const MARKET_INTEREST_OPTIONS = [
   "finance",
   "healthcare",
   "growth",
-  "crypto",
   "consumer",
-  "value",
 ] as const;
 
 export type MarketInterest = (typeof MARKET_INTEREST_OPTIONS)[number];
