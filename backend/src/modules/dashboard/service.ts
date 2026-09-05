@@ -7,7 +7,6 @@ import {
   DASHBOARD_SECTOR_CACHE_KEY,
   DASHBOARD_SECTOR_CACHE_TTL,
   DASHBOARD_SMART_TRIGGER_LIMIT,
-  DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS,
   HEALTH_SCORE_WEIGHTS,
   OVEREXPOSURE_THRESHOLD,
 } from './constants'
@@ -68,73 +67,61 @@ const fetchWatchlistPriceMap = async (
 
 // ─── Briefing ─────────────────────────────────────────────────────────────────
 
-const buildBriefing = async (
-  userId: string,
-  displayName: string,
-  priceMap: WatchlistPriceMap,
-): Promise<DashboardBriefing> => {
+const getGreeting = (name: string): string => {
   const hour = getPakistanHour()
-  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
-  const greeting = `Good ${timeOfDay}, ${displayName}`
+  if (hour < 12) return `Good morning, ${name}`
+  if (hour < 17) return `Good afternoon, ${name}`
+  return `Good evening, ${name}`
+}
 
-  const [lastRun, watchlistItems] = await Promise.all([
-    getLatestDecisionRun(userId),
-    prisma.watchlist.findMany({
-      where: { userId },
-      select: { symbol: true, targetEntryPrice: true, stopLoss: true },
-    }),
-  ])
-
-  // Decision support section
-  let decisionSupport: DashboardBriefing['decisionSupport']
-
+const buildDecisionSupport = (
+  lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
+): DashboardBriefing['decisionSupport'] => {
   if (!lastRun) {
-    decisionSupport = {
+    return {
       available: false,
       reason: 'NO_DECISION_RUN',
       summary: null,
       headline: null,
     }
-  } else {
-    const results = lastRun.results
-    const buySignals = results.filter(
-      (r) => r.portfolioDecision === 'ADD' || r.marketDecision === 'BUY',
-    ).length
-    const holdSignals = results.filter(
-      (r) => r.portfolioDecision === 'HOLD',
-    ).length
-    const trimSignals = results.filter(
-      (r) => r.portfolioDecision === 'TRIM' || r.portfolioDecision === 'EXIT',
-    ).length
-    const positionsAtRisk = results.filter((r) => r.riskLevel === 'HIGH').length
-
-    const headline =
-      [
-        buySignals > 0
-          ? `${buySignals} position${buySignals > 1 ? 's have' : ' has'} a BUY signal`
-          : null,
-        positionsAtRisk > 0
-          ? `${positionsAtRisk} position${positionsAtRisk > 1 ? 's' : ''} need${positionsAtRisk === 1 ? 's' : ''} attention`
-          : null,
-      ]
-        .filter(Boolean)
-        .join('. ') || 'Your portfolio is stable'
-
-    decisionSupport = {
-      available: true,
-      reason: null,
-      summary: {
-        buySignals,
-        holdSignals,
-        trimSignals,
-        positionsAtRisk,
-        lastRunAt: lastRun.runAt,
-      },
-      headline,
-    }
   }
 
-  // Portfolio alert section — uses pre-fetched priceMap (no extra API calls)
+  const results = lastRun.results
+  const buySignals = results.filter(
+    (r) => r.portfolioDecision === 'ADD' || r.marketDecision === 'BUY',
+  ).length
+  const holdSignals = results.filter((r) => r.portfolioDecision === 'HOLD').length
+  const trimSignals = results.filter(
+    (r) => r.portfolioDecision === 'TRIM' || r.portfolioDecision === 'EXIT',
+  ).length
+  const positionsAtRisk = results.filter((r) => r.riskLevel === 'HIGH').length
+
+  const parts: string[] = []
+  if (buySignals === 1) parts.push('1 position has a BUY signal')
+  else if (buySignals > 1) parts.push(`${buySignals} positions have a BUY signal`)
+
+  if (positionsAtRisk === 1) parts.push('1 position needs attention')
+  else if (positionsAtRisk > 1) parts.push(`${positionsAtRisk} positions need attention`)
+
+  return {
+    available: true,
+    reason: null,
+    summary: {
+      buySignals,
+      holdSignals,
+      trimSignals,
+      positionsAtRisk,
+      lastRunAt: lastRun.runAt,
+    },
+    headline: parts.join('. ') || 'Your portfolio is stable',
+  }
+}
+
+const buildPortfolioAlert = (
+  watchlistItems: { symbol: string; targetEntryPrice: number | null; stopLoss: number | null }[],
+  priceMap: WatchlistPriceMap,
+  lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
+) => {
   const symbolsWithPrice = watchlistItems.map((item) => ({
     ...item,
     currentPrice: priceMap.get(item.symbol)?.price ?? null,
@@ -154,7 +141,6 @@ const buildBriefing = async (
       item.currentPrice <= item.targetEntryPrice * 1.02,
   ).length
 
-  // Overexposed sectors from latest decision run
   const overexposedSectors: string[] = []
   if (lastRun) {
     const sectorMap = new Map<string, number>()
@@ -167,36 +153,105 @@ const buildBriefing = async (
     })
   }
 
-  const portfolioAlertParts: string[] = []
+  const parts: string[] = []
   if (overexposedSectors.length > 0)
-    portfolioAlertParts.push(
-      `Your portfolio is heavily overexposed to ${overexposedSectors.join(', ')}`,
-    )
+    parts.push(`Your portfolio is heavily overexposed to ${overexposedSectors.join(', ')}`)
   if (stopLossBreaches > 0)
-    portfolioAlertParts.push(
-      `${stopLossBreaches} stop loss${stopLossBreaches > 1 ? 'es' : ''} breached`,
-    )
+    parts.push(`${stopLossBreaches} stop loss${stopLossBreaches > 1 ? 'es' : ''} breached`)
   if (entryZonesActive > 0)
-    portfolioAlertParts.push(
-      `${entryZonesActive} symbol${entryZonesActive > 1 ? 's are' : ' is'} in entry zone`,
-    )
+    parts.push(`${entryZonesActive} symbol${entryZonesActive > 1 ? 's are' : ' is'} in entry zone`)
 
-  const portfolioAlert = {
+  return {
     overexposedSectors,
     stopLossBreaches,
     entryZonesActive,
-    headline: portfolioAlertParts.join('. ') || 'No immediate portfolio alerts',
+    headline: parts.join('. ') || 'No immediate portfolio alerts',
   }
+}
+
+const buildBriefing = async (
+  userId: string,
+  displayName: string,
+  priceMap: WatchlistPriceMap,
+): Promise<DashboardBriefing> => {
+  const [lastRun, watchlistItems] = await Promise.all([
+    getLatestDecisionRun(userId),
+    prisma.watchlist.findMany({
+      where: { userId },
+      select: { symbol: true, targetEntryPrice: true, stopLoss: true },
+    }),
+  ])
 
   return {
-    greeting,
+    greeting: getGreeting(displayName),
     generatedAt: new Date().toISOString(),
-    decisionSupport,
-    portfolioAlert,
+    decisionSupport: buildDecisionSupport(lastRun),
+    portfolioAlert: buildPortfolioAlert(watchlistItems, priceMap, lastRun),
   }
 }
 
 // ─── Portfolio Snapshot ───────────────────────────────────────────────────────
+
+const calculateDiversificationScore = (
+  positions: Array<{ sector: string | null; avgEntryPrice: number; quantity: number }>,
+  totalValue: number,
+): number => {
+  const sectorMap = new Map<string, number>()
+  positions.forEach((p) => {
+    const sector = p.sector ?? 'Unknown'
+    const val = p.quantity * p.avgEntryPrice
+    sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + val)
+  })
+  const maxSectorPct =
+    totalValue > 0
+      ? Math.max(...Array.from(sectorMap.values()).map((v) => (v / totalValue) * 100))
+      : 0
+  return maxSectorPct > 30 ? Math.max(0, 100 - (maxSectorPct - 30) * 2) : 100
+}
+
+const calculateRiskScores = (lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>) => {
+  if (!lastRun?.results.length) return { riskRewardScore: 70, volatilityScore: 70 }
+  const positiveDecisions = lastRun.results.filter(
+    (r) => r.portfolioDecision === 'ADD' || r.portfolioDecision === 'HOLD',
+  ).length
+  const highRiskCount = lastRun.results.filter((r) => r.riskLevel === 'HIGH').length
+  return {
+    riskRewardScore: Math.round((positiveDecisions / lastRun.results.length) * 100),
+    volatilityScore: Math.max(0, 100 - (highRiskCount / lastRun.results.length) * 100),
+  }
+}
+
+const calculateAlertHealthScore = (
+  watchlistItems: { symbol: string; stopLoss: number | null }[],
+  priceMap: WatchlistPriceMap,
+): number => {
+  const breachCount = watchlistItems.filter((item) => {
+    if (!item.stopLoss) return false
+    const priceData = priceMap.get(item.symbol)
+    return priceData !== undefined && priceData.price <= item.stopLoss
+  }).length
+  return Math.max(0, 100 - breachCount * 20)
+}
+
+const calculateWatchlistDisciplineScore = (
+  watchlistItems: { targetEntryPrice: number | null; stopLoss: number | null }[],
+): number => {
+  const disciplinedCount = watchlistItems.filter(
+    (item) => item.targetEntryPrice !== null && item.stopLoss !== null,
+  ).length
+  return watchlistItems.length > 0
+    ? Math.round((disciplinedCount / watchlistItems.length) * 100)
+    : 100
+}
+
+const getHealthClassification = (
+  s: number,
+): { band: HealthScore['band']; label: string } => {
+  if (s >= 80) return { band: 'Excellent', label: 'Your portfolio is well-structured' }
+  if (s >= 60) return { band: 'Good', label: 'Minor optimizations available' }
+  if (s >= 40) return { band: 'Fair', label: 'Some risks need attention' }
+  return { band: 'Poor', label: 'Significant portfolio risks detected' }
+}
 
 const computeHealthScore = async (
   userId: string,
@@ -210,67 +265,16 @@ const computeHealthScore = async (
   totalValue: number,
   priceMap: WatchlistPriceMap,
 ): Promise<HealthScore> => {
-  // Diversification — penalty for any sector > 30%
-  const sectorMap = new Map<string, number>()
-  positions.forEach((p) => {
-    const sector = p.sector ?? 'Unknown'
-    const val = p.quantity * p.avgEntryPrice
-    sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + val)
-  })
-  const maxSectorPct =
-    totalValue > 0
-      ? Math.max(
-          ...Array.from(sectorMap.values()).map((v) => (v / totalValue) * 100),
-        )
-      : 0
-  const diversificationScore =
-    maxSectorPct > 30 ? Math.max(0, 100 - (maxSectorPct - 30) * 2) : 100
+  const diversificationScore = calculateDiversificationScore(positions, totalValue)
+  const { riskRewardScore, volatilityScore } = calculateRiskScores(lastRun)
 
-  // Risk/reward — % of positions with positive P&L
-  const positivePnLCount = positions.filter((p) => {
-    const priceData = null // will be enriched below
-    return true
-  }).length
-  // Use decision run results for riskReward if available
-  let riskRewardScore = 70
-  let volatilityScore = 70
-  if (lastRun?.results.length) {
-    const positiveDecisions = lastRun.results.filter(
-      (r) => r.portfolioDecision === 'ADD' || r.portfolioDecision === 'HOLD',
-    ).length
-    riskRewardScore = Math.round(
-      (positiveDecisions / lastRun.results.length) * 100,
-    )
-    const highRiskCount = lastRun.results.filter(
-      (r) => r.riskLevel === 'HIGH',
-    ).length
-    volatilityScore = Math.max(
-      0,
-      100 - (highRiskCount / lastRun.results.length) * 100,
-    )
-  }
-
-  // Alert health — penalty for stop loss breaches (uses pre-fetched priceMap)
   const watchlistItems = await prisma.watchlist.findMany({
     where: { userId },
     select: { symbol: true, stopLoss: true, targetEntryPrice: true },
   })
-  const breachCount = watchlistItems.filter((item) => {
-    if (!item.stopLoss) return false
-    const priceData = priceMap.get(item.symbol)
-    return priceData !== undefined && priceData.price <= item.stopLoss
-  }).length
 
-  const alertHealthScore = Math.max(0, 100 - breachCount * 20)
-
-  // Watchlist discipline — % of items with both entry + stop loss set
-  const disciplinedCount = watchlistItems.filter(
-    (item) => item.targetEntryPrice !== null && item.stopLoss !== null,
-  ).length
-  const watchlistDisciplineScore =
-    watchlistItems.length > 0
-      ? Math.round((disciplinedCount / watchlistItems.length) * 100)
-      : 100
+  const alertHealthScore = calculateAlertHealthScore(watchlistItems, priceMap)
+  const watchlistDisciplineScore = calculateWatchlistDisciplineScore(watchlistItems)
 
   const score = Math.round(
     diversificationScore * HEALTH_SCORE_WEIGHTS.diversification +
@@ -280,22 +284,7 @@ const computeHealthScore = async (
       watchlistDisciplineScore * HEALTH_SCORE_WEIGHTS.watchlistDiscipline,
   )
 
-  const band =
-    score >= 80
-      ? 'Excellent'
-      : score >= 60
-        ? 'Good'
-        : score >= 40
-          ? 'Fair'
-          : 'Poor'
-  const label =
-    score >= 80
-      ? 'Your portfolio is well-structured'
-      : score >= 60
-        ? 'Minor optimizations available'
-        : score >= 40
-          ? 'Some risks need attention'
-          : 'Significant portfolio risks detected'
+  const { band, label } = getHealthClassification(score)
 
   return {
     score,
@@ -510,47 +499,19 @@ const buildImpactNews = async (
 
 // ─── Smart Triggers ───────────────────────────────────────────────────────────
 
-const buildSmartTriggers = async (
-  userId: string,
+const buildPriceTriggers = (
+  watchlistItems: Array<{
+    symbol: string
+    targetEntryPrice: number | null
+    stopLoss: number | null
+    aiSuggestedEntry: number | null
+    aiConfidence: string | null
+  }>,
   priceMap: WatchlistPriceMap,
-): Promise<{ items: SmartTrigger[]; totalCount: number }> => {
-  const [watchlistItems, portfolios] = await Promise.all([
-    prisma.watchlist.findMany({
-      where: { userId },
-      select: {
-        symbol: true,
-        targetEntryPrice: true,
-        stopLoss: true,
-        aiSuggestedEntry: true,
-        aiConfidence: true,
-      },
-    }),
-    prisma.portfolio.findMany({
-      where: { userId },
-      include: {
-        positions: {
-          select: { symbol: true, quantity: true, avgEntryPrice: true },
-        },
-      },
-    }),
-  ])
-
-  const positionMap = new Map<
-    string,
-    { quantity: number; avgEntryPrice: number }
-  >()
-  portfolios
-    .flatMap((p) => p.positions)
-    .forEach((pos) =>
-      positionMap.set(pos.symbol, {
-        quantity: pos.quantity,
-        avgEntryPrice: pos.avgEntryPrice,
-      }),
-    )
-
+  positionMap: Map<string, { quantity: number; avgEntryPrice: number }>,
+): SmartTrigger[] => {
   const triggers: SmartTrigger[] = []
 
-  // Price-based triggers — uses pre-fetched priceMap (no extra API calls)
   for (const item of watchlistItems) {
     const priceData = priceMap.get(item.symbol)
     if (!priceData) continue
@@ -558,13 +519,9 @@ const buildSmartTriggers = async (
     const { price, changePercent } = priceData
     const position = positionMap.get(item.symbol)
 
-    // Stop loss breached
     if (item.stopLoss && price <= item.stopLoss) {
       const pnlPct = position
-        ? (
-            ((price - position.avgEntryPrice) / position.avgEntryPrice) *
-            100
-          ).toFixed(1)
+        ? (((price - position.avgEntryPrice) / position.avgEntryPrice) * 100).toFixed(1)
         : null
       triggers.push({
         type: 'STOP_LOSS_BREACHED',
@@ -578,7 +535,6 @@ const buildSmartTriggers = async (
       })
     }
 
-    // Entry zone
     if (item.targetEntryPrice && price <= item.targetEntryPrice * 1.02) {
       triggers.push({
         type: 'ENTRY_ZONE',
@@ -592,7 +548,6 @@ const buildSmartTriggers = async (
       })
     }
 
-    // Strong daily move
     if (changePercent <= -5) {
       triggers.push({
         type: 'PCT_CHANGE_DOWN',
@@ -614,7 +569,15 @@ const buildSmartTriggers = async (
     }
   }
 
-  // Event-based triggers from alert logs (fired in last 24h by cron jobs)
+  return triggers
+}
+
+const buildEventTriggers = async (
+  userId: string,
+  priceMap: WatchlistPriceMap,
+  positionMap: Map<string, { quantity: number; avgEntryPrice: number }>,
+): Promise<SmartTrigger[]> => {
+  const triggers: SmartTrigger[] = []
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const recentAlertLogs = await prisma.alertLog.findMany({
     where: { firedAt: { gte: since }, alert: { userId } },
@@ -674,8 +637,7 @@ const buildSmartTriggers = async (
       const priceData = priceMap.get(symbol)
       if (priceData) {
         const pnlPct = (
-          ((priceData.price - position.avgEntryPrice) /
-            position.avgEntryPrice) *
+          ((priceData.price - position.avgEntryPrice) / position.avgEntryPrice) *
           100
         ).toFixed(1)
         context = `You are currently ${Number(pnlPct) >= 0 ? 'up' : 'down'} ${Math.abs(Number(pnlPct))}% on this position`
@@ -691,6 +653,52 @@ const buildSmartTriggers = async (
       action: template.action,
     })
   }
+
+  return triggers
+}
+
+const buildSmartTriggers = async (
+  userId: string,
+  priceMap: WatchlistPriceMap,
+): Promise<{ items: SmartTrigger[]; totalCount: number }> => {
+  const [watchlistItems, portfolios] = await Promise.all([
+    prisma.watchlist.findMany({
+      where: { userId },
+      select: {
+        symbol: true,
+        targetEntryPrice: true,
+        stopLoss: true,
+        aiSuggestedEntry: true,
+        aiConfidence: true,
+      },
+    }),
+    prisma.portfolio.findMany({
+      where: { userId },
+      include: {
+        positions: {
+          select: { symbol: true, quantity: true, avgEntryPrice: true },
+        },
+      },
+    }),
+  ])
+
+  const positionMap = new Map<
+    string,
+    { quantity: number; avgEntryPrice: number }
+  >()
+  portfolios
+    .flatMap((p) => p.positions)
+    .forEach((pos) =>
+      positionMap.set(pos.symbol, {
+        quantity: pos.quantity,
+        avgEntryPrice: pos.avgEntryPrice,
+      }),
+    )
+
+  const triggers: SmartTrigger[] = [
+    ...buildPriceTriggers(watchlistItems, priceMap, positionMap),
+    ...(await buildEventTriggers(userId, priceMap, positionMap)),
+  ]
 
   // Sort by urgency: HIGH → MEDIUM → LOW
   const urgencyOrder: Record<TriggerUrgency, number> = {
@@ -758,9 +766,9 @@ export const buildSectorHeatmap = async (userId: string) => {
         const quotes = history.quotes.filter((q) => q.close !== null)
 
         if (quotes.length > 20) {
-          const current = quotes[quotes.length - 1].close!
-          const prev1d = quotes[quotes.length - 2].close!
-          const prev5d = quotes[quotes.length - 6].close!
+          const current = quotes.at(-1)!.close!
+          const prev1d = quotes.at(-2)!.close!
+          const prev5d = quotes.at(-6)!.close!
           const prev1m = quotes[0].close!
 
           const toPct = (now: number, then: number) =>
@@ -821,7 +829,7 @@ export const buildSectorHeatmap = async (userId: string) => {
 
   const parsePercent = (str: string): number => {
     if (!str) return 0
-    return parseFloat(str.replace('%', '')) || 0
+    return Number.parseFloat(str.replace('%', '')) || 0
   }
 
   const sectors: SectorHeatmapItem[] = Object.entries(SECTOR_ETF_MAP).map(

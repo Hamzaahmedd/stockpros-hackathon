@@ -300,7 +300,7 @@ export const generateTradePlanPdfBuffer = async (
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       doc.setTextColor(...NEGATIVE_RED)
-      doc.text(`• ${flag.replace(/_/g, ' ')}`, PAGE_MARGIN + 10, cursorY)
+      doc.text(`• ${flag.replaceAll('_', ' ')}`, PAGE_MARGIN + 10, cursorY)
       cursorY += 14
     })
 
@@ -438,14 +438,13 @@ export const generatePortfolioReportPdfBuffer = async (
   const ratio = detailedPositions.length
     ? highCount / detailedPositions.length
     : 0
-  const riskLabel =
-    detailedPositions.length === 0
-      ? 'Not Assessed'
-      : ratio >= 0.6
-        ? 'Aggressive'
-        : ratio >= 0.3
-          ? 'Moderate'
-          : 'Conservative'
+  const getRiskLabel = (len: number, r: number): string => {
+    if (len === 0) return 'Not Assessed'
+    if (r >= 0.6) return 'Aggressive'
+    if (r >= 0.3) return 'Moderate'
+    return 'Conservative'
+  }
+  const riskLabel = getRiskLabel(detailedPositions.length, ratio)
 
   const fields = [
     {
