@@ -5,9 +5,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Info,
   Plus,
   Search,
-  Sparkles,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -491,7 +491,7 @@ export const Onboarding: React.FC = () => {
 
                 {/* AI Real-Time Forecast Banner */}
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
-                  <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                  <Info className="w-4 h-4 text-primary shrink-0" />
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     AI predictions and technical signals will automatically generate for your selected tickers.
                   </p>
