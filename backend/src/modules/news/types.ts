@@ -37,6 +37,12 @@ export interface NormalisedArticle {
 
 export interface NewsArticleResponse extends EnrichedArticle {}
 
+export interface PaginatedNewsRaw {
+  data: NewsArticleRow[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
 export interface PaginatedNews {
   data: NewsArticleResponse[]
   nextCursor: string | null

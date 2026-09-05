@@ -5,6 +5,7 @@ import type { NewsSentiment } from '@prisma/client'
 import type {
   NewsArticleResponse,
   PaginatedNews,
+  PaginatedNewsRaw,
   NewsSummaryResponse,
 } from './types'
 import { prisma } from '../../shared/infrastructure/database'
@@ -76,15 +77,6 @@ export const getNewsFeed = async (
 ): Promise<PaginatedNews> => {
   const { cursor, limit, category, filter, symbol, from, to } = query
 
-  if (filter === 'all' && !symbol && !from && !to) {
-    const key = feedCacheKey({ category, cursor, limit })
-    const cached = await getCache<PaginatedNews>(key)
-    if (cached) return cached
-  }
-
-  let cursorDate: Date | undefined
-  if (cursor) cursorDate = await resolveCursor(cursor)
-
   const [portfolios, watchlistItems] = await Promise.all([
     prisma.portfolio.findMany({
       where: { userId },
@@ -103,32 +95,65 @@ export const getNewsFeed = async (
       .filter((s): s is string => s !== null),
   )
 
-  const symbolFilter = resolveFilterSymbols(
-    filter,
-    symbol,
-    portfolioSymbols,
-    watchlistSymbols,
-  )
-  if (symbolFilter?.length === 0) {
-    return { data: [], nextCursor: null, hasMore: false }
+  // If 'all' feed with no symbol or date filter, we can leverage the raw page cache
+  const canUseCache = filter === 'all' && !symbol && !from && !to
+  const cacheKey = canUseCache ? feedCacheKey({ category, cursor, limit }) : null
+
+  let pageRows: typeof articleSelect extends any ? any : any
+  let hasMore = false
+  let nextCursor: string | null = null
+
+  if (cacheKey) {
+    const cached = await getCache<PaginatedNewsRaw>(cacheKey)
+    if (cached) {
+      pageRows = cached.data.map((r) => ({
+        ...r,
+        publishedAt: new Date(r.publishedAt),
+      }))
+      hasMore = cached.hasMore
+      nextCursor = cached.nextCursor
+    }
   }
 
-  const rows = await prisma.newsArticle.findMany({
-    where: {
-      ...(category && { category }),
-      ...(symbolFilter && { relatedSymbols: { hasSome: symbolFilter } }),
-      ...(from && { publishedAt: { gte: new Date(from) } }),
-      ...(to && { publishedAt: { lte: new Date(to) } }),
-      ...(cursorDate && cursorWhere(cursorDate, cursor!)),
-    },
-    orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-    take: limit + 1,
-    select: articleSelect,
-  })
+  if (!pageRows) {
+    let cursorDate: Date | undefined
+    if (cursor) cursorDate = await resolveCursor(cursor)
 
-  const hasMore = rows.length > limit
-  const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
+    const symbolFilter = resolveFilterSymbols(
+      filter,
+      symbol,
+      portfolioSymbols,
+      watchlistSymbols,
+    )
+    if (symbolFilter?.length === 0) {
+      return { data: [], nextCursor: null, hasMore: false }
+    }
+
+    const rows = await prisma.newsArticle.findMany({
+      where: {
+        ...(category && { category }),
+        ...(symbolFilter && { relatedSymbols: { hasSome: symbolFilter } }),
+        ...(from && { publishedAt: { gte: new Date(from) } }),
+        ...(to && { publishedAt: { lte: new Date(to) } }),
+        ...(cursorDate && cursorWhere(cursorDate, cursor!)),
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      select: articleSelect,
+    })
+
+    hasMore = rows.length > limit
+    pageRows = hasMore ? rows.slice(0, limit) : rows
+    nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
+
+    if (cacheKey) {
+      await setCache(
+        cacheKey,
+        { data: pageRows, nextCursor, hasMore },
+        NEWS_CACHE_TTL_SECONDS,
+      )
+    }
+  }
 
   const ranked =
     filter === 'all'
@@ -140,17 +165,7 @@ export const getNewsFeed = async (
         )
       : pageRows
   const enriched = await enrichArticles(userId, ranked)
-  const result = { data: enriched, nextCursor, hasMore }
-
-  if (filter === 'all') {
-    await setCache(
-      feedCacheKey({ category, cursor, limit }),
-      result,
-      NEWS_CACHE_TTL_SECONDS,
-    )
-  }
-
-  return result
+  return { data: enriched, nextCursor, hasMore }
 }
 
 export const getNewsBySymbol = async (
@@ -160,30 +175,45 @@ export const getNewsBySymbol = async (
 ): Promise<PaginatedNews> => {
   const { cursor, limit } = query
   const key = symbolCacheKey({ symbol, cursor, limit })
-  const cached = await getCache<PaginatedNews>(key)
-  if (cached) return cached
+  let pageRows: typeof articleSelect extends any ? any : any
+  let hasMore = false
+  let nextCursor: string | null = null
 
-  let cursorDate: Date | undefined
-  if (cursor) cursorDate = await resolveCursor(cursor)
+  const cached = await getCache<PaginatedNewsRaw>(key)
+  if (cached) {
+    pageRows = cached.data.map((r) => ({
+      ...r,
+      publishedAt: new Date(r.publishedAt),
+    }))
+    hasMore = cached.hasMore
+    nextCursor = cached.nextCursor
+  } else {
+    let cursorDate: Date | undefined
+    if (cursor) cursorDate = await resolveCursor(cursor)
 
-  const rows = await prisma.newsArticle.findMany({
-    where: {
-      relatedSymbols: { has: symbol },
-      ...(cursorDate && cursorWhere(cursorDate, cursor!)),
-    },
-    orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-    take: limit + 1,
-    select: articleSelect,
-  })
+    const rows = await prisma.newsArticle.findMany({
+      where: {
+        relatedSymbols: { has: symbol },
+        ...(cursorDate && cursorWhere(cursorDate, cursor!)),
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      select: articleSelect,
+    })
 
-  const hasMore = rows.length > limit
-  const pageRows = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
+    hasMore = rows.length > limit
+    pageRows = hasMore ? rows.slice(0, limit) : rows
+    nextCursor = hasMore ? (pageRows.at(-1)?.id ?? null) : null
+
+    await setCache(
+      key,
+      { data: pageRows, nextCursor, hasMore },
+      NEWS_CACHE_TTL_SECONDS,
+    )
+  }
+
   const enriched = await enrichArticles(userId, pageRows)
-  const result = { data: enriched, nextCursor, hasMore }
-
-  await setCache(key, result, NEWS_CACHE_TTL_SECONDS)
-  return result
+  return { data: enriched, nextCursor, hasMore }
 }
 
 export const searchNews = async (
