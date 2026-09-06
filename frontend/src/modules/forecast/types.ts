@@ -38,6 +38,11 @@ export interface ForecastData {
     emaBaseline: number;
     containmentRate: string;
   };
+  earningsOverlay?: {
+    earningsWarning: true;
+    earningsDate: string;
+    daysUntilEarnings: number;
+  };
 }
 
 export interface ForecastResponse {

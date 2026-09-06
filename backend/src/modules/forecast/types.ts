@@ -40,6 +40,11 @@ export interface ForecastResponse {
       emaBaseline: number
       containmentRate: string
     }
+    earningsOverlay?: {
+      earningsWarning: true
+      earningsDate: string
+      daysUntilEarnings: number
+    }
     status?: string
     estimated_ready_at?: number
   }
@@ -50,6 +55,7 @@ export interface TechnicalBaselines {
   ema: number
   swingLow: number | null
   resistance: number | null
+  currentPrice?: number
 }
 
 export interface ForecastDataPayload {
