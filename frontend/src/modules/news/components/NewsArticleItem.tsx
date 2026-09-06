@@ -50,7 +50,7 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
 
   const handleOpen = () => {
     if (!article.isRead) {
-      newsService.markRead(article.id).catch(() => {});
+      newsService.markRead(article.id).catch(() => { });
       onUpdate({ ...article, isRead: true });
     }
     if (onClick) onClick();
@@ -58,22 +58,21 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
   };
 
   return (
-    <div 
+    <div
       onClick={handleOpen}
       className="group relative border border-border rounded-lg overflow-hidden transition-all duration-300 cursor-pointer bg-card hover:border-border/80 hover:shadow-md"
     >
       <div className="flex flex-col md:flex-row gap-6 p-5">
         {/* image */}
         <div className="w-full md:w-56 h-40 shrink-0 rounded-xl overflow-hidden relative">
-          <img 
-            src={article.imageUrl} 
-            alt={article.headline} 
+          <img
+            src={article.imageUrl}
+            alt={article.headline}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
           {/* Category Chip */}
-          <div className={`absolute top-2 left-2 px-2 py-1 backdrop-blur-md rounded-lg text-[10px] font-bold border ${
-            theme === 'dark' ? 'bg-black/60 text-white border-white/10' : 'bg-white/80 text-gray-900 border-gray-200'
-          }`}>
+          <div className={`absolute top-2 left-2 px-2 py-1 backdrop-blur-md rounded-lg text-[10px] font-bold border ${theme === 'dark' ? 'bg-black/60 text-white border-white/10' : 'bg-white/80 text-gray-900 border-gray-200'
+            }`}>
             {article.category}
           </div>
         </div>
@@ -84,13 +83,12 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
             <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">
               {article.headline}
             </h3>
-            <button 
+            <button
               onClick={handleToggleSave}
-              className={`p-2 rounded-md border transition-all ${
-                article.isSaved 
-                  ? "bg-primary/10 border-primary/50 text-primary" 
+              className={`p-2 rounded-md border transition-all ${article.isSaved
+                  ? "bg-primary/10 border-primary/50 text-primary"
                   : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <FiBookmark className={article.isSaved ? "fill-primary" : ""} />
             </button>
@@ -105,7 +103,7 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
               {formatTimeAgo(article.publishedAt)}
             </div>
             <div className="text-[11px] text-muted-foreground font-bold ml-2">
-              SOURCE: {article.source.toUpperCase()}
+              {article.source}
             </div>
             {article.isRead && (
               <span className="px-2 py-0.5 text-[10px] font-bold rounded-md ml-auto bg-muted text-muted-foreground/50">READ</span>
@@ -116,12 +114,12 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
           <div className="flex gap-2 mb-4">
             {article.userContext.inPortfolio && (
               <span className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded-md border border-blue-500/20">
-                IN PORTFOLIO
+                In Portfolio
               </span>
             )}
             {article.userContext.inWatchlist && (
               <span className="px-2 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded-md border border-amber-500/20">
-                IN WATCHLIST
+                In Watchlist
               </span>
             )}
           </div>
@@ -138,14 +136,14 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
 
           {/* Footer */}
           <div className="flex items-center gap-3 pt-4 border-t border-border overflow-hidden">
-             {article.relatedSymbols.slice(0, 5).map(sym => (
-                <div key={sym} className="px-2 py-1 border border-border rounded-md text-xs font-bold bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                 {sym}
-               </div>
-             ))}
-             {article.relatedSymbols.length > 5 && (
-               <span className="text-[10px] text-muted-foreground font-bold">+{article.relatedSymbols.length - 5} MORE</span>
-             )}
+            {article.relatedSymbols.slice(0, 5).map(sym => (
+              <div key={sym} className="px-2 py-1 border border-border rounded-md text-xs font-bold bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                {sym}
+              </div>
+            ))}
+            {article.relatedSymbols.length > 5 && (
+              <span className="text-[10px] text-muted-foreground font-bold">+{article.relatedSymbols.length - 5} MORE</span>
+            )}
           </div>
         </div>
       </div>
