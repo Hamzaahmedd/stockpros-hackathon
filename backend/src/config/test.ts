@@ -23,6 +23,7 @@ export const testConfig = {
   smtp: {
     host: 'localhost',
     port: 1025,
+    secure: false,
   },
   brand: {
     logoUrl: '',

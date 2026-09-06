@@ -99,6 +99,7 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
     smtp: {
       host: env.smtp.host,
       port: env.smtp.port,
+      secure: env.smtp.secure,
       user: secrets.smtpUser,
       pass: secrets.smtpPass,
     },
