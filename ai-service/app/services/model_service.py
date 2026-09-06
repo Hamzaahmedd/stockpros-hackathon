@@ -185,6 +185,26 @@ def _prepare_multivariate(
 
     return np.array(X), np.array(y), scaler
 
+def _directional_penalty_loss(y_true: Any, y_pred: Any) -> Any:
+    """Hybrid loss function that penalizes directional (sign) errors:
+    Loss = MSE + lambda * (1 - sign(delta_y_pred * delta_y_true))
+    Prevents the GRU from collapsing into an over-smoothed mean-reverting trajectory.
+    """
+    import tensorflow as tf_loss
+    mse = tf_loss.reduce_mean(tf_loss.square(y_true - y_pred), axis=-1)
+
+    # Compute step-to-step delta along the prediction horizon
+    d_true = y_true[:, 1:] - y_true[:, :-1]
+    d_pred = y_pred[:, 1:] - y_pred[:, :-1]
+
+    # Product of directions: positive when same sign, negative when opposite sign
+    direction_product = d_true * d_pred
+    sign_mismatch = 1.0 - tf_loss.sign(direction_product)
+    directional_penalty = tf_loss.reduce_mean(tf_loss.maximum(0.0, sign_mismatch), axis=-1)
+
+    lambda_penalty = 0.1
+    return mse + (lambda_penalty * directional_penalty)
+
 def _build_gru_model_multivariate(lookback: int, n_features: int, steps_ahead: int = 5) -> Any:
     if APP_ENV == "production":
         raise RuntimeError("Cannot build/train models in production environment.")
@@ -196,7 +216,7 @@ def _build_gru_model_multivariate(lookback: int, n_features: int, steps_ahead: i
     model.add(gru_layer(64, return_sequences=False))
     model.add(dropout_layer(0.2))
     model.add(dense_layer(steps_ahead))
-    model.compile(optimizer="adam", loss="mean_squared_error")
+    model.compile(optimizer="adam", loss=_directional_penalty_loss)
     return model
 
 def _ensure_model_dir() -> None:

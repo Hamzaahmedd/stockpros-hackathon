@@ -33,6 +33,13 @@ export interface ForecastResponse {
       atr: number
       confidence: 'HIGH' | 'MEDIUM' | 'LOW'
     }
+    directionalBias?: {
+      signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+      posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD'
+      reasoning: string
+      emaBaseline: number
+      containmentRate: string
+    }
     status?: string
     estimated_ready_at?: number
   }
@@ -62,6 +69,13 @@ export interface ForecastDataPayload {
     bear: number
     atr: number
     confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  }
+  directionalBias?: {
+    signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+    posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD'
+    reasoning: string
+    emaBaseline: number
+    containmentRate: string
   }
   status?: string
   estimated_ready_at?: number

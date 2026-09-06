@@ -31,6 +31,13 @@ export interface ForecastData {
     atr: number;
     confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   };
+  directionalBias?: {
+    signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD';
+    reasoning: string;
+    emaBaseline: number;
+    containmentRate: string;
+  };
 }
 
 export interface ForecastResponse {

@@ -1,7 +1,5 @@
 // components/PriceTargetRange.tsx
 import React from 'react';
-import { TrendingUp, TrendingDown, Target, Activity, Shield } from 'lucide-react';
-import { useTheme } from '@/shared/hooks/useTheme';
 
 interface TargetRange {
   bull: number;
@@ -11,15 +9,28 @@ interface TargetRange {
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+interface DirectionalBias {
+  signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD';
+  reasoning: string;
+  emaBaseline: number;
+  containmentRate: string;
+}
+
 interface PriceTargetRangeProps {
   targetRange: TargetRange | undefined;
+  directionalBias?: DirectionalBias;
   symbol: string;
   period: string;
 }
 
-const PriceTargetRange: React.FC<PriceTargetRangeProps> = ({ targetRange, symbol, period }) => {
-  const { theme } = useTheme();
+const getSignalBadgeClass = (signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'): string => {
+  if (signal === 'BULLISH') return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+  if (signal === 'BEARISH') return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+  return 'text-muted-foreground bg-muted border-border';
+};
 
+const PriceTargetRange: React.FC<PriceTargetRangeProps> = ({ targetRange, directionalBias, symbol, period }) => {
   if (!targetRange) {
     return null;
   }
@@ -31,197 +42,91 @@ const PriceTargetRange: React.FC<PriceTargetRangeProps> = ({ targetRange, symbol
 
   // Position of base within the range bar (0-100%)
   const basePosition = spread > 0 ? ((base - bear) / spread) * 100 : 50;
-
   const periodLabel = period === '1d' ? '1 Day' : '1 Week';
 
-  const confidenceConfig = {
-    HIGH: {
-      label: 'High Confidence',
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-500/30',
-      barColor: 'bg-emerald-500',
-      width: 'w-full',
-    },
-    MEDIUM: {
-      label: 'Medium Confidence',
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/20',
-      border: 'border-amber-500/30',
-      barColor: 'bg-amber-500',
-      width: 'w-2/3',
-    },
-    LOW: {
-      label: 'Low Confidence',
-      color: 'text-red-400',
-      bg: 'bg-red-500/20',
-      border: 'border-red-500/30',
-      barColor: 'bg-red-500',
-      width: 'w-1/3',
-    },
-  };
-
-  const conf = confidenceConfig[confidence];
+  const confidenceBadge = {
+    HIGH: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    MEDIUM: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+    LOW: 'text-rose-500 bg-rose-500/10 border-rose-500/20',
+  }[confidence];
 
   return (
-    <div className={`border rounded-2xl p-6 transition-all duration-300 relative overflow-hidden ${
-      theme === 'dark'
-        ? 'bg-[#0f1115] border-white/5 hover:border-white/10 shadow-xl shadow-cyan-500/5'
-        : 'bg-white border-gray-200 shadow-sm'
-    }`}>
-      {/* Subtle gradient accent */}
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-emerald-500/0 via-cyan-500/50 to-emerald-500/0" />
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            theme === 'dark' ? 'bg-cyan-500/10' : 'bg-cyan-50'
-          }`}>
-            <Target size={20} className="text-cyan-400" />
-          </div>
-          <div>
-            <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-              Price Target Range
-            </h2>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-              {symbol} • {periodLabel} Outlook • ATR: ${atr.toFixed(2)}
-            </p>
-          </div>
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">
+            Expected Price Range
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {symbol} • {periodLabel} target range based on price momentum and market volatility (±${atr.toFixed(2)})
+          </p>
         </div>
 
-        {/* Confidence Badge */}
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${conf.bg} ${conf.border}`}>
-          <Shield size={14} className={conf.color} />
-          <span className={`text-xs font-semibold ${conf.color}`}>{conf.label}</span>
+        <div className="flex items-center gap-2">
+          {directionalBias && (
+            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wide border ${getSignalBadgeClass(directionalBias.signal)}`}>
+              {directionalBias.signal}
+            </span>
+          )}
+          <span className={`px-2.5 py-0.5 rounded text-xs font-semibold border ${confidenceBadge}`}>
+            {confidence} Confidence
+          </span>
         </div>
       </div>
 
       {/* Range Visualization Bar */}
-      <div className="mb-6">
-        <div className={`relative h-3 rounded-full overflow-hidden ${
-          theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'
-        }`}>
-          {/* Gradient fill */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500/60 via-cyan-500/60 to-emerald-500/60" />
-
-          {/* Base marker */}
+      <div className="space-y-2">
+        <div className="relative h-2.5 rounded-full overflow-hidden bg-muted/60 border border-border/50">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-rose-500/40 via-primary/30 to-emerald-500/40" />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white shadow-lg shadow-cyan-500/50 z-10 transition-all"
-            style={{ left: `calc(${basePosition}% - 8px)` }}
+            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-foreground border-2 border-background shadow-md z-10 transition-all duration-300"
+            style={{ left: `calc(${Math.min(96, Math.max(4, basePosition))}% - 7px)` }}
           />
         </div>
-
-        {/* Range Labels */}
-        <div className="flex justify-between mt-2">
-          <span className="text-xs text-red-400 font-medium">${bear.toFixed(2)}</span>
-          <span className="text-xs text-emerald-400 font-medium">${bull.toFixed(2)}</span>
+        <div className="flex justify-between text-xs font-mono font-medium">
+          <span className="text-rose-400">Low: ${bear.toFixed(2)}</span>
+          <span className="text-muted-foreground text-[11px]">Midpoint: ${base.toFixed(2)}</span>
+          <span className="text-emerald-400">High: ${bull.toFixed(2)}</span>
         </div>
       </div>
 
-      {/* Three Scenario Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Target Scenario Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Bull Case */}
-        <div className={`group relative rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] ${
-          theme === 'dark'
-            ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-500/10'
-            : 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
-        }`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <TrendingUp size={14} className="text-emerald-400" />
-            </div>
-            <span className={`text-xs font-bold uppercase tracking-wider ${
-              theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
-            }`}>
-              Target High ({periodLabel})
+        <div className="p-4 rounded-lg border border-border/80 bg-muted/20 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-400">
+              Bull Target
             </span>
+            <span className="text-xs font-mono font-semibold text-emerald-400">+{bullPct}%</span>
           </div>
-          <div className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            ${bull.toFixed(2)}
-          </div>
-          <div className="text-emerald-400 text-xs font-semibold mb-2">+{bullPct}% from base</div>
-          <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            If momentum holds, price could reach this level.
-          </p>
+          <div className="text-2xl font-bold font-mono text-foreground">${bull.toFixed(2)}</div>
         </div>
 
         {/* Base Case */}
-        <div className={`group relative rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] ${
-          theme === 'dark'
-            ? 'bg-cyan-500/5 border-cyan-500/10 hover:border-cyan-500/30 hover:bg-cyan-500/10'
-            : 'bg-blue-50 border-blue-200 hover:border-blue-300'
-        }`}>
-          {/* "AI Predicted" accent */}
-          <div className="absolute top-0 right-0">
-            <div className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-bl-lg rounded-tr-xl ${
-              theme === 'dark' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-blue-100 text-blue-600'
-            }`}>
-              GRU Model
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-              <Activity size={14} className="text-cyan-400" />
-            </div>
-            <span className={`text-xs font-bold uppercase tracking-wider ${
-              theme === 'dark' ? 'text-cyan-400' : 'text-blue-600'
-            }`}>
-              Base Case
+        <div className="p-4 rounded-lg border border-border/80 bg-muted/20 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-primary">
+              Base Forecast
+            </span>
+            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">
+              AI Midpoint
             </span>
           </div>
-          <div className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            ${base.toFixed(2)}
-          </div>
-          <div className={`text-xs font-semibold mb-2 ${theme === 'dark' ? 'text-cyan-400' : 'text-blue-500'}`}>
-            AI Terminal Prediction
-          </div>
-          <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            Current trajectory continues, price settles near this level.
-          </p>
+          <div className="text-2xl font-bold font-mono text-foreground">${base.toFixed(2)}</div>
         </div>
 
         {/* Bear Case */}
-        <div className={`group relative rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] ${
-          theme === 'dark'
-            ? 'bg-red-500/5 border-red-500/10 hover:border-red-500/30 hover:bg-red-500/10'
-            : 'bg-red-50 border-red-200 hover:border-red-300'
-        }`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-red-500/20 flex items-center justify-center">
-              <TrendingDown size={14} className="text-red-400" />
-            </div>
-            <span className={`text-xs font-bold uppercase tracking-wider ${
-              theme === 'dark' ? 'text-red-400' : 'text-red-600'
-            }`}>
-              Target Low ({periodLabel})
+        <div className="p-4 rounded-lg border border-border/80 bg-muted/20 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-400">
+              Bear Target
             </span>
+            <span className="text-xs font-mono font-semibold text-rose-400">{bearPct}%</span>
           </div>
-          <div className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            ${bear.toFixed(2)}
-          </div>
-          <div className="text-red-400 text-xs font-semibold mb-2">{bearPct}% from base</div>
-          <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            If sentiment deteriorates, support at this level.
-          </p>
+          <div className="text-2xl font-bold font-mono text-foreground">${bear.toFixed(2)}</div>
         </div>
-      </div>
-
-      {/* Confidence Bar */}
-      <div className="mt-5 pt-4 border-t border-white/5">
-        <div className="flex items-center justify-between mb-2">
-          <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-            Signal Agreement
-          </span>
-          <span className={`text-xs font-semibold ${conf.color}`}>{conf.label}</span>
-        </div>
-        <div className={`h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
-          <div className={`h-full rounded-full transition-all duration-700 ${conf.barColor} ${conf.width}`} />
-        </div>
-        <p className={`text-[10px] mt-2 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-          Based on EMA/swing-low support agreement. ATR volatility band: ±${atr.toFixed(2)}
-        </p>
       </div>
     </div>
   );

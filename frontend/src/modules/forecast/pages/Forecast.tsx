@@ -239,17 +239,18 @@ const Forecast: React.FC = () => {
           </div>
         </Card>
 
-        {/* Price Target Range */}
+        {/* Expected Price Range */}
         {forecastData.targetRange && (
           <PriceTargetRange
             targetRange={forecastData.targetRange}
+            directionalBias={forecastData.directionalBias}
             symbol={symbol}
             period={period}
           />
         )}
 
         {/* Forecast Table */}
-        <Card title="Detailed Forecast">
+        <Card title="Daily Breakdown">
           <div className="mt-6">
             <ForecastTable data={forecastData} />
           </div>
