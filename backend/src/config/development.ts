@@ -21,8 +21,9 @@ export const developmentConfig = {
     internalUrl: 'http://localhost:8000',
   },
   smtp: {
-    host: 'smtp.gmail.com',
-    port: 587,
+    host: 'smtp.zoho.com',
+    port: 465,
+    secure: true,
   },
   brand: {
     logoUrl:

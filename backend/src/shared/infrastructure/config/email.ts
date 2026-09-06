@@ -77,11 +77,11 @@ const getLogoBase64 = (): Promise<string | undefined> => {
 // Initialise Resend only when enabled for this environment and an API key is provided.
 const resend = useResend && RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
-// Gmail SMTP transporter — created only when SMTP is enabled and credentials are present.
+// SMTP transporter — created only when SMTP is enabled and credentials are present.
 const smtpTransportOptions = {
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  host: config.smtp.host,
+  port: config.smtp.port,
+  secure: config.smtp.secure,
   auth: { user: SMTP_USER, pass: SMTP_PASS },
 }
 
@@ -111,32 +111,27 @@ interface MailOptions {
   html?: string
 }
 
-const buildLogoAttachment = (logoBase64: string | undefined) =>
-  logoBase64
-    ? [
-        {
-          filename: 'logo.png',
-          content: Buffer.from(logoBase64, 'base64'),
-          cid: 'logo',
-        },
-      ]
-    : undefined
-
-const deliverViaSmtp = async (
-  opts: MailOptions,
-  logoBase64: string | undefined,
-): Promise<void> => {
+const deliverViaSmtp = async (opts: MailOptions): Promise<void> => {
   if (!smtpTransporter) return
+  const logoBase64 = await getLogoBase64()
   const info = await smtpTransporter.sendMail({
     from: opts.from || `"StockPros" <${SMTP_USER}>`,
     to: opts.to,
     subject: opts.subject,
     text: opts.text || '',
     html: opts.html || opts.text || '',
-    attachments: buildLogoAttachment(logoBase64),
+    attachments: logoBase64
+      ? [
+          {
+            filename: 'stockpros-logo.png',
+            content: Buffer.from(logoBase64, 'base64'),
+            cid: 'logo',
+          },
+        ]
+      : undefined,
   })
   logger.info(
-    `[Email] Live email sent to ${opts.to} via Gmail SMTP (ID: ${info.messageId})`,
+    `[Email] Live email sent to ${opts.to} via SMTP (ID: ${info.messageId})`,
   )
 }
 
@@ -166,15 +161,13 @@ const logDevFallback = (opts: MailOptions): void => {
 
 export const transporter = {
   sendMail: async (opts: MailOptions) => {
-    const logoBase64 = await getLogoBase64()
-
     // SMTP delivery (enabled per environment)
     if (smtpTransporter) {
       try {
-        await deliverViaSmtp(opts, logoBase64)
+        await deliverViaSmtp(opts)
         return
       } catch (err: unknown) {
-        logger.warn(`[Email] Gmail SMTP delivery failed: ${errorMessage(err)}`)
+        logger.warn(`[Email] SMTP delivery failed: ${errorMessage(err)}`)
         if (!resend && !isDev) {
           throw new Error(
             'Email delivery failed: SMTP failed and no fallback transport is enabled',

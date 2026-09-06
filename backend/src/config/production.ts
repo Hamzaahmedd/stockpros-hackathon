@@ -23,6 +23,7 @@ export const productionConfig = {
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
+    secure: false,
   },
   brand: {
     logoUrl:
