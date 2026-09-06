@@ -15,7 +15,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 const TODAY = new Date().toISOString().split('T')[0];
 
 const CATEGORIES: { label: string; value: NewsCategory }[] = [
-  { label: 'General', value: 'GENERAL' }, 
+  { label: 'General', value: 'GENERAL' },
   { label: 'Earnings', value: 'EARNINGS' },
   { label: 'Analyst', value: 'ANALYST' },
   { label: 'Filing', value: 'FILING' },
@@ -58,10 +58,10 @@ export default function News() {
   const [loading, setLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const [dateRange, setDateRange] = useState({
-     startDate: '2026-01-01',
-     endDate: TODAY
+    startDate: '2026-01-01',
+    endDate: TODAY
   });
 
   const fromDateRef = useRef<HTMLInputElement>(null);
@@ -101,28 +101,28 @@ export default function News() {
 
       let response;
       if (searchQuery.length >= 2) {
-          response = await newsService.search({
-              ...params,
-              q: searchQuery,
-              startDate: dateRange.startDate,
-              endDate: dateRange.endDate,
-              from: fromDate,
-              to: toDate,
-          });
+        response = await newsService.search({
+          ...params,
+          q: searchQuery,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          from: fromDate,
+          to: toDate,
+        });
       } else {
-          response = await newsService.getFeed(params);
+        response = await newsService.getFeed(params);
       }
 
       if (isInitial) {
         setArticles(response.data);
       } else {
         setArticles(prev => {
-            const existingIds = new Set(prev.map(a => a.id));
-            const newArticles = response.data.filter(a => !existingIds.has(a.id));
-            return [...prev, ...newArticles];
+          const existingIds = new Set(prev.map(a => a.id));
+          const newArticles = response.data.filter(a => !existingIds.has(a.id));
+          return [...prev, ...newArticles];
         });
       }
-      
+
       setNextCursor(response.nextCursor);
       setHasMore(response.hasMore);
     } catch (err) {
@@ -175,7 +175,7 @@ export default function News() {
       <Sidebar />
       <main className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -183,54 +183,53 @@ export default function News() {
               </h1>
               <p className="text-sm text-muted-foreground mt-1 font-medium">Live news from top financial sources</p>
             </div>
-            
-             <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <FiSearch className="group-focus-within:text-primary transition-colors" />
-                  </div>
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search headlines..."
-                    className="w-full bg-transparent pl-11 pr-12 py-3 text-sm font-medium outline-none"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <FiX size={16} />
-                    </button>
-                  )}
+
+            <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+              <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <FiSearch className="group-focus-within:text-primary transition-colors" />
                 </div>
-               
-               <SmartSearch 
-                  onSubmit={(sym) => setActiveSymbol(sym)}
-                  initialValue={activeSymbol}
-                  placeholder="Filter by symbol..."
-                  className="w-full md:w-80"
-               />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search headlines..."
+                  className="w-full bg-transparent pl-11 pr-12 py-3 text-sm font-medium outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </div>
+
+              <SmartSearch
+                onSubmit={(sym) => setActiveSymbol(sym)}
+                initialValue={activeSymbol}
+                placeholder="Filter by symbol..."
+                className="w-full md:w-80"
+              />
             </div>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
               <div className="flex p-1 rounded-lg w-max sm:w-fit border border-border bg-secondary/50">
-              {TABS.map(tab => (
-                <button
-                   key={tab.value}
-                   onClick={() => setActiveTab(tab.value)}
-                   className={`px-5 py-2 rounded-md text-xs font-bold transition-all duration-200 ${
-                     activeTab === tab.value 
-                       ? "bg-primary text-primary-foreground shadow-sm" 
-                       : "text-muted-foreground hover:text-foreground"
-                   }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                {TABS.map(tab => (
+                  <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={`px-5 py-2 rounded-md text-xs font-bold transition-all duration-200 ${activeTab === tab.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -279,25 +278,25 @@ export default function News() {
           </div>
 
           <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
-             <Button
-               variant={activeCategory === 'ALL' ? "default" : "outline"}
-               size="sm"
-               onClick={() => setActiveCategory('ALL')}
-               className="rounded-full text-[10px] font-black uppercase tracking-widest"
-             >
-               All Categories
-             </Button>
-             {CATEGORIES.map(cat => (
-               <Button
-                 key={cat.value}
-                 variant={activeCategory === cat.value ? "default" : "outline"}
-                 size="sm"
-                 onClick={() => setActiveCategory(cat.value)}
-                 className="rounded-full text-[10px] font-black uppercase tracking-widest"
-               >
-                 {cat.label}
-               </Button>
-             ))}
+            <Button
+              variant={activeCategory === 'ALL' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveCategory('ALL')}
+              className="rounded-full text-[10px] font-black uppercase tracking-widest"
+            >
+              All Categories
+            </Button>
+            {CATEGORIES.map(cat => (
+              <Button
+                key={cat.value}
+                variant={activeCategory === cat.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveCategory(cat.value)}
+                className="rounded-full text-[10px] font-black uppercase tracking-widest"
+              >
+                {cat.label}
+              </Button>
+            ))}
           </div>
 
           <div className="space-y-6">
@@ -325,11 +324,10 @@ export default function News() {
                 ))}
               </div>
             ) : articles.length === 0 && !loading ? (
-              <div className={`py-20 text-center rounded-3xl border border-dashed ${
-                theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-gray-100 border-gray-300'
-              }`}>
+              <div className={`py-20 text-center rounded-3xl border border-dashed ${theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-gray-100 border-gray-300'
+                }`}>
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">No articles found matching your criteria</p>
-                <Button 
+                <Button
                   variant="link"
                   onClick={() => { setActiveTab('all'); setActiveCategory('ALL'); setSearchQuery(""); }}
                   className="mt-4 text-cyan-600 dark:text-cyan-400 text-xs font-black underline underline-offset-4 decoration-cyan-500/30"
@@ -340,9 +338,9 @@ export default function News() {
             ) : (
               <div className="space-y-6">
                 {articles.map((article) => (
-                  <NewsArticleItem 
-                    key={article.id} 
-                    article={article} 
+                  <NewsArticleItem
+                    key={article.id}
+                    article={article}
                     onUpdate={handleUpdateArticle}
                   />
                 ))}
@@ -371,9 +369,9 @@ export default function News() {
               )}
               {!hasMore && articles.length > 0 && (
                 <div className="flex items-center justify-center gap-4 text-muted-foreground py-6">
-                   <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">End of Feed</p>
-                   <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
+                  <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">End of Feed</p>
+                  <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
                 </div>
               )}
             </div>

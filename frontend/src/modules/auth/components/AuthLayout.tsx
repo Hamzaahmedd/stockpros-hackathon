@@ -8,11 +8,11 @@ interface AuthLayoutProps {
   loading?: boolean;
 }
 
-export const AuthLayout: React.FC<AuthLayoutProps> = ({ 
-  children, 
-  title, 
-  subtitle, 
-  loading 
+export const AuthLayout: React.FC<AuthLayoutProps> = ({
+  children,
+  title,
+  subtitle,
+  loading
 }) => {
   if (loading) {
     return (
@@ -29,13 +29,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     <div className="min-h-screen flex flex-col md:flex-row bg-black text-white selection:bg-cyan-500/30">
       {/* Left Panel: Hero & Branding */}
       <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-gray-900 flex-col justify-center">
-        <img 
-          src="/stock_bg.png" 
-          alt="Market Background" 
+        <img
+          src="/stock_bg.png"
+          alt="Market Background"
           className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-luminosity"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black"></div>
-        
+
         {/* Decorative Blur Backgrounds */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-cyan-600/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-40 right-20 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl"></div>
@@ -43,11 +43,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="relative z-10 flex flex-col justify-center px-10 lg:px-16 max-w-2xl mx-auto w-full">
           {/* Main Group: Icon on Left, Title & Aligned Description on Right */}
           <div className="flex items-start gap-4 lg:gap-5">
-            <img 
-  src="/stockpros-logo.png"
-  alt="StockPros Logo" 
-  className="w-16 h-16 lg:w-28 lg:h-28 object-contain shrink-0 mt-1" 
-/>
+            <img
+              src="/stockpros-logo.png"
+              alt="StockPros Logo"
+              className="w-16 h-16 lg:w-28 lg:h-28 object-contain shrink-0 mt-1"
+            />
             <div className="flex flex-col">
               <h1 className="text-5xl lg:text-7xl font-extrabold leading-none tracking-tight text-white">
                 Stock<span className="text-cyan-500">Pros</span>
