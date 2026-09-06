@@ -33,6 +33,18 @@ export interface ForecastResponse {
       atr: number
       confidence: 'HIGH' | 'MEDIUM' | 'LOW'
     }
+    directionalBias?: {
+      signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+      posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD'
+      reasoning: string
+      emaBaseline: number
+      containmentRate: string
+    }
+    earningsOverlay?: {
+      earningsWarning: true
+      earningsDate: string
+      daysUntilEarnings: number
+    }
     status?: string
     estimated_ready_at?: number
   }
@@ -43,6 +55,7 @@ export interface TechnicalBaselines {
   ema: number
   swingLow: number | null
   resistance: number | null
+  currentPrice?: number
 }
 
 export interface ForecastDataPayload {
@@ -62,6 +75,13 @@ export interface ForecastDataPayload {
     bear: number
     atr: number
     confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+  }
+  directionalBias?: {
+    signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+    posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD'
+    reasoning: string
+    emaBaseline: number
+    containmentRate: string
   }
   status?: string
   estimated_ready_at?: number

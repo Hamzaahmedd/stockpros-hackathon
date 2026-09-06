@@ -248,7 +248,7 @@ export const generateTradePlanPdfBuffer = async (
           'Budget Capital',
           'Calculated Shares',
           'Max Capital Risk ($)',
-          'Potential Upside ($)',
+          'Expected Profit ($)',
           'Risk / Reward Ratio',
           '% Capital Allocated',
         ],

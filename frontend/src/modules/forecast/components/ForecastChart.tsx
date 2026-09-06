@@ -8,22 +8,18 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  ReferenceLine,
   TooltipProps
 } from 'recharts';
 import { ForecastData } from '../types';
-import { TrendingUp, Calendar, DollarSign, Eye, LineChart as LineChartIcon } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, LineChart as LineChartIcon } from 'lucide-react';
 
 interface ForecastChartProps {
   data: ForecastData | null;
   period: string;
-}
-
-interface ChartDataPoint {
-  date: string;
-  price: number;
-  type: 'historical' | 'forecast';
+  highlightedDate?: string | null;
+  onHoverDate?: (date: string | null) => void;
 }
 
 const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
@@ -34,6 +30,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
       scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
     }
   }, [data, period]);
+
   if (!data || !data.predictions || data.predictions.length === 0) {
     const isTraining = data?.status === 'training';
     return (
@@ -52,7 +49,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
           {isTraining ? 'AI Model Training in Progress' : 'No forecast data available'}
         </p>
         <p className="text-xs text-gray-500 mt-2 max-w-xs text-center px-4">
-          {isTraining 
+          {isTraining
             ? (data.message || 'The AI is learning historical patterns for this symbol. This usually takes about 2 minutes.')
             : 'Select a stock symbol to view predictions'
           }
@@ -83,28 +80,40 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
     });
   }
 
-  // Create connection point to avoid gaps in chart
+  // Connection point: bridge historical to forecast without a gap
   if (chartData.length > 0) {
-    chartData[chartData.length - 1].forecastPrice = chartData[chartData.length - 1].historicalPrice;
+    const lastHistPrice = chartData[chartData.length - 1].historicalPrice;
+    chartData[chartData.length - 1].forecastPrice = lastHistPrice;
+    chartData[chartData.length - 1].bull = lastHistPrice;
+    chartData[chartData.length - 1].bear = lastHistPrice;
   }
+
+  // Find the index where forecast starts (for the reference line)
+  const forecastStartIndex = chartData.length - 1;
 
   data.predictions.forEach((pred, idx) => {
     chartData.push({
       date: pred.date,
       historicalPrice: null,
       forecastPrice: pred.base,
-      bull: pred.bull || null,
-      bear: pred.bear || null,
+      bull: pred.bull ?? null,
+      bear: pred.bear ?? null,
       type: 'forecast',
       isCurrentPrice: idx === 0
     });
   });
 
-  // Calculate min and max for Y-axis with padding
-  const allPrices = chartData.flatMap(d => [d.historicalPrice, d.forecastPrice, d.bull, d.bear]).filter((p): p is number => p !== null && p !== undefined);
+  const allPrices = chartData.flatMap(d => [
+    d.historicalPrice,
+    d.forecastPrice,
+    d.bull,
+    d.bear
+  ]).filter((p): p is number => p !== null && p !== undefined);
   const minPrice = Math.min(...allPrices);
   const maxPrice = Math.max(...allPrices);
-  const pricePadding = (maxPrice - minPrice) * 0.1;
+  const pricePadding = (maxPrice - minPrice) * 0.12;
+
+  const forecastStartDate = forecastStartIndex >= 0 ? chartData[forecastStartIndex]?.date : null;
 
   const formatDate = (date: string): string => {
     const d = new Date(date);
@@ -115,8 +124,8 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
     });
   };
 
-  const getPeriodLabel = (period: string): string => {
-    switch (period) {
+  const getPeriodLabel = (p: string): string => {
+    switch (p) {
       case '1d': return '1 Day Forecast';
       case '1w': return '1 Week Forecast';
       default: return 'Forecast';
@@ -128,53 +137,40 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
       const dataPoint = payload[0].payload;
       const isForecast = dataPoint.type === 'forecast';
       const displayValue = dataPoint.forecastPrice !== null && dataPoint.historicalPrice === null
-        ? dataPoint.forecastPrice 
+        ? dataPoint.forecastPrice
         : (dataPoint.historicalPrice || dataPoint.forecastPrice);
-      
+
       const date = new Date(label);
       const fullDate = date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
+        weekday: 'short',
         month: 'long',
         day: 'numeric'
       });
 
       return (
-        <div className="bg-[#1A1F2E] p-4 border border-white/10 rounded-xl shadow-2xl backdrop-blur-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar size={14} className="text-[#22d3ee]" />
-            <p className="text-sm font-medium text-white">{fullDate}</p>
+        <div className="bg-[#13161f] p-3 border border-white/10 rounded-xl shadow-2xl min-w-[180px]">
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+            <Calendar size={12} className="text-[#22d3ee]" />
+            <p className="text-xs font-medium text-white">{fullDate}</p>
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isForecast ? 'bg-[#22d3ee]' : 'bg-[#64748b]'}`}></div>
-                <span className="text-xs text-gray-400">
-                 {isForecast ? (dataPoint.isCurrentPrice ? 'Current Price' : 'AI Forecast') : 'Historical'}                </span>
-              </div>
-              <span className="text-sm font-semibold text-white ml-4">
-                ${displayValue?.toFixed(2)}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-6">
+              <span className="text-[11px] text-gray-400">
+                {isForecast ? (dataPoint.isCurrentPrice ? 'Current' : 'Forecast') : 'Close'}
               </span>
+              <span className="text-xs font-semibold text-white">${displayValue?.toFixed(2)}</span>
             </div>
-            
             {isForecast && dataPoint.bull !== null && dataPoint.bear !== null && (
-              <div className="pt-2 mt-2 border-t border-white/5 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#10b981]"></div>
-                    <span className="text-gray-400">Bull Target</span>
-                  </div>
-                  <span className="text-white ml-4">${dataPoint.bull?.toFixed(2)}</span>
+              <>
+                <div className="flex items-center justify-between gap-6">
+                  <span className="text-[11px] text-emerald-400">Bull Target</span>
+                  <span className="text-xs font-medium text-emerald-400">${dataPoint.bull?.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#ef4444]"></div>
-                    <span className="text-gray-400">Bear Target</span>
-                  </div>
-                  <span className="text-white ml-4">${dataPoint.bear?.toFixed(2)}</span>
+                <div className="flex items-center justify-between gap-6">
+                  <span className="text-[11px] text-rose-400">Bear Target</span>
+                  <span className="text-xs font-medium text-rose-400">${dataPoint.bear?.toFixed(2)}</span>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -186,11 +182,11 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
   const yAxisProps = {
     stroke: "#9CA3AF",
     domain: [minPrice - pricePadding, maxPrice + pricePadding],
-    tickFormatter: (value: number) => `$${value.toFixed(2)}`,
+    tickFormatter: (value: number) => `$${value.toFixed(0)}`,
     fontSize: 11,
-    tick: { fill: '#9CA3AF' },
-    axisLine: { stroke: '#4B5563' },
-    tickLine: { stroke: '#4B5563' },
+    tick: { fill: '#6B7280' },
+    axisLine: { stroke: '#374151' },
+    tickLine: { stroke: '#374151' },
     width: 60,
   };
 
@@ -198,211 +194,199 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
 
   return (
     <div className="h-80 flex flex-col">
-      {/* Chart Header */}
+      {/* Legend */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <TrendingUp size={18} className="text-[#22d3ee]" />
-          <span className="text-sm font-medium text-white">{getPeriodLabel(period)}</span>
+          <TrendingUp size={16} className="text-[#22d3ee]" />
+          <span className="text-sm font-semibold text-white">{getPeriodLabel(period)}</span>
         </div>
-        <div className="hidden sm:flex items-center gap-3 text-xs text-gray-400">
+        <div className="hidden sm:flex items-center gap-4 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-0.5 bg-[#64748b]"></div>
+            <div className="w-5 h-0.5 bg-[#475569] rounded"></div>
             <span>Historical</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-0.5 bg-[#22d3ee]"></div>
-            <span className="text-[#22d3ee]">AI Forecast</span>
+            <div className="w-5 h-0.5 bg-[#22d3ee] rounded"></div>
+            <span className="text-[#22d3ee]">Forecast</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-0.5 bg-[#10b981]" style={{ borderStyle: 'dashed' }}></div>
-            <span className="text-[#10b981]">Bull</span>
+            <div className="w-5 h-0.5 bg-[#10b981] rounded" style={{ borderTop: '1px dashed #10b981' }}></div>
+            <span className="text-[#10b981]">Bull Target</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-0.5 bg-[#ef4444]" style={{ borderStyle: 'dashed' }}></div>
-            <span className="text-[#ef4444]">Bear</span>
+            <div className="w-5 h-0.5 bg-[#ef4444] rounded" style={{ borderTop: '1px dashed #ef4444' }}></div>
+            <span className="text-[#ef4444]">Bear Target</span>
           </div>
         </div>
       </div>
 
-      {/* Main Chart Area */}
+      {/* Chart */}
       <div className="flex-1 w-full relative">
-        
-        {/* Fixed Y-Axis Overlay */}
+
+        {/* Fixed Y-Axis */}
         <div className="absolute top-0 left-0 bottom-0 w-[60px] z-10 pointer-events-none bg-white dark:bg-[#0f1115] border-r border-gray-200 dark:border-white/5 pb-[14px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
-              data={chartData.slice(0,1)}
-              margin={{ top: 10, right: 0, left: 0, bottom: 10 }}
+              data={chartData.slice(0, 1)}
+              margin={{ top: 8, right: 0, left: 0, bottom: 10 }}
             >
-              <YAxis 
-                {...yAxisProps}
-                label={{ value: 'Price (USD)', angle: -90, position: 'insideLeft', fill: '#9CA3AF', fontSize: 11, fontWeight: 500, offset: 10 }}
-              />
-              <XAxis dataKey="date" tick={false} axisLine={{ stroke: '#4B5563' }} tickLine={false} height={xAxisHeight} />
+              <YAxis {...yAxisProps} />
+              <XAxis dataKey="date" tick={false} axisLine={{ stroke: '#374151' }} tickLine={false} height={xAxisHeight} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
 
         {/* Scrollable Chart */}
-        <div 
-          className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar pl-[60px]" 
+        <div
+          className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar pl-[60px]"
           ref={scrollContainerRef}
         >
           <div style={{ width: `${Math.max(100, chartData.length * 40)}px`, minWidth: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                margin={{ top: 8, right: 24, left: 0, bottom: 10 }}
               >
                 <defs>
-                  <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  {/* Glow filter for forecast line */}
+                  <filter id="forecastGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="2.5" result="blur" />
                     <feMerge>
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
                     </feMerge>
                   </filter>
+                  {/* Shaded area under forecast midline */}
+                  <linearGradient id="forecastAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.0} />
+                  </linearGradient>
                 </defs>
 
-          <CartesianGrid 
-            strokeDasharray="3 3" 
-            stroke="#2D3748" 
-            opacity={0.3}
-            horizontal={true}
-            vertical={false}
-          />
-          
-          <Line
-            type="monotone"
-            dataKey="bull"
-            stroke="#10b981"
-            strokeWidth={1.5}
-            strokeDasharray="5 5"
-            dot={false}
-            activeDot={false}
-            name="Bull Target"
-            connectNulls={true}
-          />
-          
-          <Line
-            type="monotone"
-            dataKey="bear"
-            stroke="#ef4444"
-            strokeWidth={1.5}
-            strokeDasharray="5 5"
-            dot={false}
-            activeDot={false}
-            name="Bear Target"
-            connectNulls={true}
-          />
-          
-          {/* X-Axis with date labels */}
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            stroke="#9CA3AF"
-            fontSize={11}
-            tick={{ fill: '#9CA3AF' }}
-            axisLine={{ stroke: '#4B5563' }}
-            tickLine={{ stroke: '#4B5563' }}
-            padding={{ left: 10, right: 10 }}
-            height={xAxisHeight}
-            label={{
-              value: 'Date',
-              position: 'insideBottom',
-              offset: -5,
-              fill: '#9CA3AF',
-              fontSize: 11,
-              fontWeight: 500
-            }}
-          />
-          
-          {/* Y-Axis with price labels (hidden, used for scale alignment) */}
-          <YAxis
-            {...yAxisProps}
-            hide={true}
-          />
-          
-          <Tooltip 
-            content={<CustomTooltip />}
-            cursor={{ 
-              stroke: '#4B5563',
-              strokeWidth: 1,
-              strokeDasharray: '3 3'
-            }}
-          />
-          
-          <Legend 
-            wrapperStyle={{ 
-              paddingTop: '10px',
-              fontSize: '11px',
-              color: '#9CA3AF'
-            }}
-            formatter={(value) => (
-              <span className="text-xs text-gray-400">{value}</span>
-            )}
-          />
-          
-          {/* Historical Data Line */}
-          <Line
-            type="monotone"
-            dataKey="historicalPrice"
-            stroke="#64748b"
-            strokeWidth={2}
-            dot={{ 
-              r: 3,
-              fill: '#64748b',
-              stroke: '#475569',
-              strokeWidth: 1
-            }}
-            activeDot={{ 
-              r: 6,
-              fill: '#64748b',
-              stroke: '#475569',
-              strokeWidth: 2
-            }}
-            name="Historical Price"
-            connectNulls={true}
-          />
-          
-          {/* Forecast Data Line */}
-          <Line
-            type="monotone"
-            dataKey="forecastPrice"
-            stroke="#22d3ee"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ 
-              r: 6,
-              fill: '#22d3ee',
-              stroke: '#ffffff',
-              strokeWidth: 2
-            }}
-            name="AI Forecast"
-            connectNulls={true}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-      </div>
-      </div>
+                <CartesianGrid
+                  strokeDasharray="2 4"
+                  stroke="#1F2937"
+                  opacity={0.8}
+                  horizontal={true}
+                  vertical={false}
+                />
+
+                {/* Divider line between historical and forecast */}
+                {forecastStartDate && (
+                  <ReferenceLine
+                    x={forecastStartDate}
+                    stroke="#374151"
+                    strokeWidth={1}
+                    strokeDasharray="4 3"
+                    label={{ value: 'Today', position: 'insideTopRight', fill: '#6B7280', fontSize: 10 }}
+                  />
+                )}
+
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  stroke="#374151"
+                  fontSize={11}
+                  tick={{ fill: '#6B7280' }}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={false}
+                  padding={{ left: 10, right: 10 }}
+                  height={xAxisHeight}
+                />
+
+                <YAxis {...yAxisProps} hide={true} />
+
+                <Tooltip
+                  content={<CustomTooltip />}
+                  cursor={{
+                    stroke: '#374151',
+                    strokeWidth: 1,
+                    strokeDasharray: '3 3'
+                  }}
+                />
+
+                {/* Shaded fill under forecast midline */}
+                <Area
+                  type="monotone"
+                  dataKey="forecastPrice"
+                  stroke="none"
+                  fill="url(#forecastAreaGrad)"
+                  connectNulls={true}
+                  legendType="none"
+                  dot={false}
+                  activeDot={false}
+                />
+
+                {/* Bull (upside) band edge */}
+                <Line
+                  type="monotone"
+                  dataKey="bull"
+                  stroke="#10b981"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                  connectNulls={true}
+                  legendType="none"
+                />
+
+                {/* Bear (downside) band edge */}
+                <Line
+                  type="monotone"
+                  dataKey="bear"
+                  stroke="#ef4444"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }}
+                  connectNulls={true}
+                  legendType="none"
+                />
+
+                {/* Historical price line */}
+                <Line
+                  type="monotone"
+                  dataKey="historicalPrice"
+                  stroke="#475569"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#64748b', strokeWidth: 0 }}
+                  connectNulls={true}
+                  legendType="none"
+                />
+
+                {/* AI Forecast midline — brightest element */}
+                <Line
+                  type="monotone"
+                  dataKey="forecastPrice"
+                  stroke="#22d3ee"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 6, fill: '#22d3ee', stroke: '#fff', strokeWidth: 1.5 }}
+                  connectNulls={true}
+                  legendType="none"
+                  style={{ filter: 'url(#forecastGlow)' }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      {/* Chart Footer */}
-      <div className="mt-4 pt-3 border-t border-white/5">
+      {/* Footer */}
+      <div className="mt-3 pt-3 border-t border-white/5">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <DollarSign size={12} className="text-cyan-400" />
-              <span>Current: ${data.predictions[0]?.base.toFixed(2)}</span>
+              <DollarSign size={11} className="text-cyan-400" />
+              <span>Now: <span className="text-gray-300 font-medium">${data.predictions[0]?.base.toFixed(2)}</span></span>
             </div>
             <div className="flex items-center gap-1.5">
-              <TrendingUp size={12} className="text-blue-400" />
-              <span>Peak: ${maxPrice.toFixed(2)}</span>
+              <TrendingUp size={11} className="text-emerald-400" />
+              <span>Peak: <span className="text-gray-300 font-medium">${maxPrice.toFixed(2)}</span></span>
             </div>
           </div>
-          <div className="text-gray-400">
-            {chartData.length} data points • {data.predictions.length} predictions
-          </div>
+          <span>{data.predictions.length} day{data.predictions.length !== 1 ? 's' : ''} forecasted</span>
         </div>
       </div>
     </div>

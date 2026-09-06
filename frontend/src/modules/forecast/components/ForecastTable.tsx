@@ -1,7 +1,7 @@
-// components/ForecastTable.tsx - Card Design
+// components/ForecastTable.tsx - Forecast Only
 import React from 'react';
 import { ForecastData } from '../types';
-import { TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, Activity } from 'lucide-react';
+import { Calendar, BarChart3, Activity } from 'lucide-react';
 
 interface ForecastTableProps {
   data: ForecastData | null;
@@ -23,7 +23,7 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
           {isTraining ? 'AI Model Training' : 'No forecast data available'}
         </p>
         <p className="text-xs text-gray-500 mt-2 text-center max-w-xs px-4">
-          {isTraining 
+          {isTraining
             ? 'The GRU neural network is analyzing historical volatility and trends. Detailed metrics will appear here once complete.'
             : 'Select a stock symbol to view predictions'
           }
@@ -32,16 +32,11 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
     );
   }
 
-  const formatCurrency = (value: number): string => {
-    return `$${value.toFixed(2)}`;
-  };
+  const formatCurrency = (value: number): string => `$${value.toFixed(2)}`;
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const calculateChange = (current: number, previous: number | null): number => {
@@ -55,78 +50,44 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
     return Math.max(70, Math.round(baseConfidence - decay));
   };
 
-  const combinedData: Array<{ date: string; price: number; type: 'historical' | 'forecast'; indexInType: number }> = [];
-  
-  if (data.historicalData && data.historicalData.length > 0) {
-    data.historicalData.forEach((h, i) => {
-      combinedData.push({
-        date: h.date,
-        price: h.price,
-        type: 'historical',
-        indexInType: i,
-      });
-    });
-  }
-  
-  if (data.predictions && data.predictions.length > 0) {
-    data.predictions.forEach((p, i) => {
-      combinedData.push({
-        date: p.date,
-        price: p.base,
-        type: 'forecast',
-        indexInType: i,
-      });
-    });
-  }
-
   return (
     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-      {combinedData.map((item, index) => {
-        const previousPrice = index > 0 ? combinedData[index - 1].price : null;
-        const change = calculateChange(item.price, previousPrice);
-        const isHistorical = item.type === 'historical';
-        const confidence = isHistorical ? 100 : calculateConfidence(item.indexInType, data.predictions.length);
+      {data.predictions.map((pred, index) => {
+        const previousPrice = index > 0 ? data.predictions[index - 1].base : null;
+        const change = calculateChange(pred.base, previousPrice);
+        const confidence = calculateConfidence(index, data.predictions.length);
         const isPositive = change >= 0;
         const isHighConfidence = confidence >= 80;
         const isMediumConfidence = confidence >= 70 && confidence < 80;
 
         return (
           <div
-            key={`${item.date}-${index}`}
-            className={`border rounded-xl p-4 transition-all hover:scale-[1.005] ${
-              isHistorical
-                ? 'bg-blue-900/10 hover:bg-blue-900/20 border-blue-500/20 hover:border-blue-500/40'
-                : 'bg-[#1A1F2E] hover:bg-[#1a1a1a] border-cyan-500/20 hover:border-cyan-500/40'
-            }`}
+            key={`${pred.date}-${index}`}
+            className="border border-border/70 rounded-lg p-3.5 bg-muted/15 hover:bg-muted/30 transition-colors"
           >
             <div className="flex items-center justify-between">
               {/* Date & Icon */}
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  isHistorical ? 'bg-blue-500/20' : 'bg-cyan-500/20'
-                }`}>
-                  <Calendar size={16} className={isHistorical ? 'text-blue-400' : 'text-cyan-400'} />
+                <div className="w-8 h-8 rounded-md flex items-center justify-center border bg-primary/10 text-primary border-primary/20">
+                  <Calendar size={14} />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-white">
-                    {formatDate(item.date)}
+                  <div className="text-xs font-mono font-semibold text-foreground">
+                    {formatDate(pred.date)}
                   </div>
-                  <div className={`text-xs mt-0.5 ${isHistorical ? 'text-blue-300' : 'text-cyan-300'}`}>
-                    {isHistorical ? 'Historical' : `Forecast Day ${item.indexInType + 1}`}
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    Day {index + 1}
                   </div>
                 </div>
               </div>
 
               {/* Price */}
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-2 text-sm font-medium text-white">
-                  <DollarSign size={14} className="text-gray-400" />
-                  {formatCurrency(item.price)}
+              <div className="text-right font-mono">
+                <div className="text-sm font-bold text-foreground">
+                  {formatCurrency(pred.base)}
                 </div>
                 {previousPrice !== null && (
-                  <div className={`text-xs mt-1 ${
-                    isPositive ? 'text-green-400' : 'text-red-400'
-                  }`}>
+                  <div className={`text-[11px] font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {isPositive ? '+' : ''}{change.toFixed(2)}%
                   </div>
                 )}
@@ -134,71 +95,50 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
             </div>
 
             {/* Confidence Bar */}
-            {!isHistorical && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                  <span>Model Confidence</span>
-                  <span className={`font-medium ${
-                    isHighConfidence 
-                      ? 'text-cyan-400' 
-                      : isMediumConfidence
-                      ? 'text-yellow-400' 
-                      : 'text-red-400'
-                  }`}>
-                    {confidence}%
-                  </span>
-                </div>
-                <div className="h-1.5 bg-[#0a0a0a] rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      isHighConfidence 
-                        ? 'bg-cyan-500' // Changed to cyan to match forecast color
-                        : isMediumConfidence
-                        ? 'bg-yellow-500' 
-                        : 'bg-red-500'
-                    }`}
-                    style={{ width: `${confidence}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Trend Indicator */}
-            {previousPrice !== null && (
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                <div className={`flex items-center gap-1.5 text-xs ${
-                  isPositive ? 'text-green-400' : 'text-red-400'
+            <div className="mt-2.5 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground mb-1">
+                <span>Confidence</span>
+                <span className={`font-semibold ${
+                  isHighConfidence
+                    ? 'text-emerald-400'
+                    : isMediumConfidence
+                    ? 'text-amber-400'
+                    : 'text-rose-400'
                 }`}>
-                  {isPositive ? (
-                    <TrendingUp size={12} />
-                  ) : (
-                    <TrendingDown size={12} />
-                  )}
-                  <span>{isPositive ? 'Bullish' : 'Bearish'} trend</span>
-                </div>
-                <div className="text-xs text-gray-400">
-                  vs previous day
-                </div>
+                  {confidence}%
+                </span>
               </div>
-            )}
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${
+                    isHighConfidence
+                      ? 'bg-emerald-500'
+                      : isMediumConfidence
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                  }`}
+                  style={{ width: `${confidence}%` }}
+                />
+              </div>
+            </div>
           </div>
         );
-      }).reverse()}
+      })}
 
       {/* Summary Footer */}
-      <div className="mt-4 p-3 bg-[#1A1F2E] border border-white/5 rounded-xl">
-        <div className="flex items-center justify-between text-xs">
-          <div className="text-gray-400">
-            <span className="font-medium text-gray-300">{data.predictions.length}</span> predictions generated
+      <div className="mt-4 p-3 bg-muted/20 border border-border/60 rounded-lg">
+        <div className="flex items-center justify-between text-xs font-mono">
+          <div className="text-muted-foreground">
+            <span className="font-semibold text-foreground">{data.predictions.length}</span> days forecasted
           </div>
-          <div className="flex items-center gap-4 text-gray-500">
-            <span className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600/20"></div>
-              <span>High confidence</span>
+          <div className="flex items-center gap-4 text-muted-foreground text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+              <span>High (≥80%)</span>
             </span>
-            <span className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/20"></div>
-              <span>Medium confidence</span>
+            <span className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+              <span>Medium (70–79%)</span>
             </span>
           </div>
         </div>
