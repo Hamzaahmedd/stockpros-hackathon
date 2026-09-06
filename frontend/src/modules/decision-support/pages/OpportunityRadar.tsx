@@ -145,7 +145,7 @@ const RadarContentGrid: React.FC<RadarContentGridProps> = ({
 
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Bull Target (+2 ATR):
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Target Price (Upside):
                 </span>
                 <span className="font-bold text-emerald-500">
                   ${card.bullTarget.toFixed(2)}
@@ -154,7 +154,7 @@ const RadarContentGrid: React.FC<RadarContentGridProps> = ({
 
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Stop-Loss (-1.5 ATR):
+                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Safety Stop-Loss (Downside):
                 </span>
                 <span className="font-bold text-rose-500">
                   ${card.stopLoss.toFixed(2)}
@@ -364,7 +364,7 @@ export const OpportunityRadar: React.FC = () => {
                     AI Opportunity Radar
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1 font-medium">
-                    Live Algorithmic Market Scanner &amp; Quantitative Setup Detector
+                    Real-time market scanner highlighting high-confidence trading setups
                   </p>
                 </div>
               </div>

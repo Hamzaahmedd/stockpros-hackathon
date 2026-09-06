@@ -417,14 +417,14 @@ const MarketAnalysis: React.FC = () => {
                             </div>
 
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-[10px] font-bold text-emerald-500 uppercase">Bull Target (+2 ATR)</span>
+                              <span className="text-[10px] font-bold text-emerald-500 uppercase">Target Price (Upside)</span>
                               <span className="font-bold font-mono text-emerald-500">
                                 ${data.priceTargets.bullTarget.toFixed(2)}
                               </span>
                             </div>
 
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-[10px] font-bold text-rose-500 uppercase">Stop-Loss (-1.5 ATR)</span>
+                              <span className="text-[10px] font-bold text-rose-500 uppercase">Safety Stop-Loss (Downside)</span>
                               <span className="font-bold font-mono text-rose-500">
                                 ${data.priceTargets.stopLoss.toFixed(2)}
                               </span>
