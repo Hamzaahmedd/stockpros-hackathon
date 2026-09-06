@@ -473,11 +473,6 @@ export const Onboarding: React.FC = () => {
                             <span className="font-mono font-bold text-sm text-foreground">
                               {item.symbol}
                             </span>
-                            {item.hasAiForecast && (
-                              <span className="rounded px-1.5 py-0.5 bg-primary/15 border border-primary/30 text-[9px] font-mono text-primary font-bold">
-                                AI
-                              </span>
-                            )}
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate mt-0.5 font-medium">
                             {item.name}

@@ -105,7 +105,7 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
               {formatTimeAgo(article.publishedAt)}
             </div>
             <div className="text-[11px] text-muted-foreground font-bold ml-2">
-              SOURCE: {article.source.toUpperCase()}
+              {article.source}
             </div>
             {article.isRead && (
               <span className="px-2 py-0.5 text-[10px] font-bold rounded-md ml-auto bg-muted text-muted-foreground/50">READ</span>
@@ -116,12 +116,12 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
           <div className="flex gap-2 mb-4">
             {article.userContext.inPortfolio && (
               <span className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded-md border border-blue-500/20">
-                IN PORTFOLIO
+                In Portfolio
               </span>
             )}
             {article.userContext.inWatchlist && (
               <span className="px-2 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded-md border border-amber-500/20">
-                IN WATCHLIST
+                In Watchlist
               </span>
             )}
           </div>

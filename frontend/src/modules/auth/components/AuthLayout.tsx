@@ -61,12 +61,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       </div>
 
       {/* Right Panel: Auth Form */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-24 bg-[#0a0a0a] relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-between px-6 py-12 lg:px-24 bg-[#0a0a0a] relative overflow-hidden">
         {/* Floating circles */}
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-900/20 rounded-full blur-[100px]"></div>
         <div className="absolute top-1/2 -left-24 w-64 h-64 bg-cyan-900/10 rounded-full blur-[100px]"></div>
 
-        <div className="relative z-10 w-full max-w-md mx-auto">
+        <div className="relative z-10 w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
           {/* Logo for mobile screens */}
           <div className="md:hidden mb-12 flex flex-col items-center gap-4 text-center">
             <img src="/stockpros-logo.png" alt="Logo" className="w-20 h-20 object-contain" />
@@ -84,6 +84,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
           {children}
         </div>
+
+        {/* Footer */}
+        <footer className="relative z-10 w-full max-w-md mx-auto pt-6 mt-6 border-t border-white/10 text-[11px] text-gray-500 font-medium space-y-1">
+          <div className="flex items-center justify-between gap-3">
+            <span>&copy; {new Date().getFullYear()} StockPros. All rights reserved.</span>
+          </div>
+          <p className="leading-relaxed">
+            StockPros outputs are informational and educational only. They are not personalized financial, legal, tax, or fiduciary advice.
+          </p>
+        </footer>
       </div>
     </div>
   );
