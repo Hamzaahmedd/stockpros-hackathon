@@ -7,7 +7,6 @@ import { NewsArticleItem } from "@/modules/news/components/NewsArticleItem";
 import { newsService } from "../services";
 import { NewsArticle, NewsFeedParams, NewsCategory } from "../types";
 import { toast } from "react-toastify";
-import { useTheme } from "@/shared/hooks/useTheme";
 import { SmartSearch } from "@/shared/components/SmartSearch";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -37,7 +36,6 @@ const isNewsTab = (value: string | null): value is NewsTab =>
   TABS.some((tab) => tab.value === value);
 
 export default function News() {
-  const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const filterParam = searchParams.get('filter');
   const activeTab: NewsTab = isNewsTab(filterParam) ? filterParam : 'all';
@@ -157,21 +155,12 @@ export default function News() {
   };
 
   return (
-    <div className={`h-screen flex ${theme === 'dark' ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-gray-900'} font-inter overflow-hidden`}>
-      <style>
-        {`
-          input[type="date"]::-webkit-calendar-picker-indicator {
-            display: none;
-          }
-          input[type="date"] {
-            -webkit-appearance: none;
-            appearance: none;
-          }
-          .date-field-btn:hover {
-            border-color: var(--primary) !important;
-          }
-        `}
-      </style>
+    <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+        input[type="date"] { -webkit-appearance: none; appearance: none; }
+        .date-field-btn:hover { border-color: var(--primary) !important; }
+      `}</style>
       <Sidebar />
       <main className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -324,8 +313,7 @@ export default function News() {
                 ))}
               </div>
             ) : articles.length === 0 && !loading ? (
-              <div className={`py-20 text-center rounded-3xl border border-dashed ${theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-gray-100 border-gray-300'
-                }`}>
+              <div className="py-20 text-center rounded-3xl border border-dashed border-border bg-muted/20">
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">No articles found matching your criteria</p>
                 <Button
                   variant="link"
@@ -369,9 +357,9 @@ export default function News() {
               )}
               {!hasMore && articles.length > 0 && (
                 <div className="flex items-center justify-center gap-4 text-muted-foreground py-6">
-                  <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
+                  <div className="h-px w-20 bg-border" />
                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">End of Feed</p>
-                  <div className={`h-px w-20 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />
+                  <div className="h-px w-20 bg-border" />
                 </div>
               )}
             </div>

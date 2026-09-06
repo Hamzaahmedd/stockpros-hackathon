@@ -120,7 +120,7 @@ export const Dashboard: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="h-screen bg-background text-foreground flex overflow-hidden">
+        <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
                 <Sidebar />
                 <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
                     <div className="max-w-[1400px] mx-auto space-y-8">
@@ -277,7 +277,7 @@ export const Dashboard: React.FC = () => {
 
     if (error || !data) {
         return (
-            <div className="h-screen bg-background text-foreground flex overflow-hidden">
+        <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
                 <Sidebar />
                 <main className="flex-1 flex items-center justify-center p-8">
                     <div className="text-center space-y-2 max-w-md">
@@ -306,7 +306,7 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="h-screen bg-background text-foreground flex overflow-hidden">
+        <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
             <Sidebar />
 
             <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
