@@ -31,7 +31,7 @@ export const productionConfig = {
   email: {
     useSmtp: false,
     useResend: true,
-    resendFrom: 'StockPros <onboarding@resend.dev>',
+    resendFrom: 'StockPros <support@stockpros.tech>',
   },
   axiom: {
     dataset: 'stockpros-audit-logs',
