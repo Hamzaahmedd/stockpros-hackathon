@@ -8,7 +8,7 @@ interface ForecastTableProps {
 }
 
 const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
-  if (!data || !data.predictions || data.predictions.length === 0) {
+  if (!data?.predictions?.length) {
     const isTraining = data?.status === 'training';
     return (
       <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
@@ -24,7 +24,7 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
         </p>
         <p className="text-xs text-gray-500 mt-2 text-center max-w-xs px-4">
           {isTraining
-            ? 'The GRU neural network is analyzing historical volatility and trends. Detailed metrics will appear here once complete.'
+            ? 'Our AI model is learning historical price trends and market movements. Detailed predictions will appear here shortly.'
             : 'Select a stock symbol to view predictions'
           }
         </p>
@@ -59,6 +59,18 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
         const isPositive = change >= 0;
         const isHighConfidence = confidence >= 80;
         const isMediumConfidence = confidence >= 70 && confidence < 80;
+
+        const getConfidenceTextColor = () => {
+          if (isHighConfidence) return 'text-emerald-400';
+          if (isMediumConfidence) return 'text-amber-400';
+          return 'text-rose-400';
+        };
+
+        const getConfidenceBarColor = () => {
+          if (isHighConfidence) return 'bg-emerald-500';
+          if (isMediumConfidence) return 'bg-amber-500';
+          return 'bg-rose-500';
+        };
 
         return (
           <div
@@ -98,25 +110,13 @@ const ForecastTable: React.FC<ForecastTableProps> = ({ data }) => {
             <div className="mt-2.5 pt-2 border-t border-border/40">
               <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground mb-1">
                 <span>Confidence</span>
-                <span className={`font-semibold ${
-                  isHighConfidence
-                    ? 'text-emerald-400'
-                    : isMediumConfidence
-                    ? 'text-amber-400'
-                    : 'text-rose-400'
-                }`}>
+                <span className={`font-semibold ${getConfidenceTextColor()}`}>
                   {confidence}%
                 </span>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${
-                    isHighConfidence
-                      ? 'bg-emerald-500'
-                      : isMediumConfidence
-                      ? 'bg-amber-500'
-                      : 'bg-rose-500'
-                  }`}
+                  className={`h-full rounded-full ${getConfidenceBarColor()}`}
                   style={{ width: `${confidence}%` }}
                 />
               </div>

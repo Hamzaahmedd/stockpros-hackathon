@@ -250,8 +250,8 @@ const Forecast: React.FC = () => {
                 {' '}({forecastData.earningsOverlay.earningsDate})
               </p>
               <p className="text-xs text-amber-400/80 mt-0.5">
-                Forecast bands have been widened (2.5× ATR) to account for earnings gap risk.
-                Confidence is rated Low — avoid tight stop-losses during this window.
+                Expected price boundaries have been widened to reflect earnings volatility.
+                Confidence is lower around report dates — consider keeping wider safety margins.
               </p>
             </div>
           </div>

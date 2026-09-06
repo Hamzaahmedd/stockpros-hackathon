@@ -89,20 +89,20 @@ function getBetaBadge(beta: number): { text: string; className: string } {
 }
 
 function getSharpeBadge(sharpe: number): { text: string; className: string } {
-  if (sharpe > 1.0) {
+  if (sharpe >= 1.0) {
     return {
-      text: "Superior Alpha",
+      text: "Optimal Return",
       className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
     };
   }
   if (sharpe > 0) {
     return {
-      text: "Positive Risk-Adj",
+      text: "Solid Return",
       className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
     };
   }
   return {
-    text: "Sub-Optimal",
+    text: "Low Return",
     className: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   };
 }
@@ -358,16 +358,15 @@ const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
           </div>
           <div>
             <h3 className="text-lg font-black tracking-tight">
-              Risk &amp; Volatility Audit
+              Risk &amp; Stability Check
             </h3>
             <p className="text-xs text-muted-foreground font-medium">
-              Portfolio-level systemic beta, Sharpe ratio efficiency, and sector
-              concentration audit
+              Overall portfolio sensitivity, risk-adjusted returns, and industry diversification
             </p>
           </div>
         </div>
         <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded bg-primary/10 text-primary border border-primary/20">
-          Persona B Metrics
+          Advanced Metrics
         </span>
       </div>
 
@@ -388,8 +387,7 @@ const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
             {riskMetrics.weightedBeta.toFixed(2)}
           </div>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            Weighted systemic sensitivity to broad market movements (1.0 =
-            S&amp;P 500 equivalent).
+            Market sensitivity score (1.0 moves in step with the broader market, lower means more stable).
           </p>
         </div>
 
@@ -397,7 +395,7 @@ const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
         <div className="p-5 rounded-xl border border-border bg-background space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Sharpe Ratio
+              Return Efficiency (Sharpe)
             </span>
             <span
               className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${sharpeBadge.className}`}
@@ -409,8 +407,7 @@ const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
             {riskMetrics.portfolioSharpe.toFixed(2)}
           </div>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            Risk-adjusted excess return per unit volatility over 5.25% US 3M
-            risk-free benchmark.
+            Measures profit earned relative to price swings (higher score means better returns per risk taken).
           </p>
         </div>
 
