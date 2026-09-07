@@ -1,5 +1,4 @@
 // src/main.tsx - DEBUG VERSION
-import "@/shared/utils/timezone"; // Enforce Pakistan Standard Time (PKT) for all displayed dates
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "@/app/App";

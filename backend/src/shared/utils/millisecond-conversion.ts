@@ -1,11 +1,13 @@
+const TIME_STRING_RE = /^(\d+)([smhd])$/
+
 export function convertToMilliseconds(timeString: string): number | undefined {
-  const match = timeString.match(/^(\d+)([smhd])$/)
+  const match = TIME_STRING_RE.exec(timeString)
 
   if (!match) {
     return undefined
   }
 
-  const value = parseInt(match[1], 10)
+  const value = Number.parseInt(match[1], 10)
   const unit = match[2]
 
   switch (unit) {

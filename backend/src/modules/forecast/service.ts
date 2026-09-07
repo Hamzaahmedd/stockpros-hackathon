@@ -45,7 +45,7 @@ function computeSummaryTargets(
   }
 
   // Earnings always force LOW confidence at the summary level
-  let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = hasEarnings ? 'LOW' : 'LOW'
+  let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW'
   if (!hasEarnings && swingLow !== null) {
     const divergence = Math.abs(ema - swingLow) / ema
     confidence = divergence <= 0.01 ? 'HIGH' : 'MEDIUM'

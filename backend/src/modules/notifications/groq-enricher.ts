@@ -20,8 +20,10 @@ const digestResponseValidator = z
   })
   .strict()
 
+const FENCED_JSON_RE = /```json\s*([\s\S]*?)\s*```/i
+
 function extractJsonObject(content: string): string {
-  const fencedJson = content.match(/```json\s*([\s\S]*?)\s*```/i)?.[1]
+  const fencedJson = FENCED_JSON_RE.exec(content)?.[1]
   if (fencedJson) return fencedJson
 
   const start = content.indexOf('{')

@@ -1,33 +1,52 @@
-// App-wide timezone enforcement: Pakistan Standard Time (PKT, UTC+5).
-//
-// Every user-visible date in the app is rendered through
-// Date.prototype.toLocaleString / toLocaleDateString / toLocaleTimeString,
-// so we inject `timeZone: 'Asia/Karachi'` as the default there.
-// Callers that explicitly pass their own `timeZone` keep full control,
-// and number formatting (Number.prototype.toLocaleString) is unaffected.
+/**
+ * Pakistan Standard Time (PKT, UTC+5) date formatting helpers.
+ *
+ * Instead of monkey-patching Date.prototype (which is a global side-effect),
+ * we expose three composable helpers that always output PKT dates.
+ * Callers that need a different timezone can pass their own `options.timeZone`.
+ */
 
 export const PKT_TIMEZONE = "Asia/Karachi";
 
-type LocalesArg = Intl.LocalesArgument;
-type OptionsArg = Intl.DateTimeFormatOptions;
+/**
+ * Format a date as a localised date string (e.g. "07/09/2026") in PKT.
+ * Accepts any value accepted by `new Date()`.
+ */
+export function formatDate(
+  date: Date | string | number,
+  locales: Intl.LocalesArgument = "en-PK",
+  options: Intl.DateTimeFormatOptions = {},
+): string {
+  return new Date(date).toLocaleDateString(locales, {
+    ...options,
+    timeZone: options.timeZone ?? PKT_TIMEZONE,
+  });
+}
 
-const withPKT = (options?: OptionsArg): OptionsArg => ({
-  ...(options ?? {}),
-  timeZone: options?.timeZone ?? PKT_TIMEZONE,
-});
+/**
+ * Format a date as a localised date-time string in PKT.
+ */
+export function formatDateTime(
+  date: Date | string | number,
+  locales: Intl.LocalesArgument = "en-PK",
+  options: Intl.DateTimeFormatOptions = {},
+): string {
+  return new Date(date).toLocaleString(locales, {
+    ...options,
+    timeZone: options.timeZone ?? PKT_TIMEZONE,
+  });
+}
 
-const originalToLocaleString = Date.prototype.toLocaleString;
-const originalToLocaleDateString = Date.prototype.toLocaleDateString;
-const originalToLocaleTimeString = Date.prototype.toLocaleTimeString;
-
-Date.prototype.toLocaleString = function (locales?: LocalesArg, options?: OptionsArg): string {
-  return originalToLocaleString.call(this, locales, withPKT(options));
-};
-
-Date.prototype.toLocaleDateString = function (locales?: LocalesArg, options?: OptionsArg): string {
-  return originalToLocaleDateString.call(this, locales, withPKT(options));
-};
-
-Date.prototype.toLocaleTimeString = function (locales?: LocalesArg, options?: OptionsArg): string {
-  return originalToLocaleTimeString.call(this, locales, withPKT(options));
-};
+/**
+ * Format a date as a localised time string in PKT.
+ */
+export function formatTime(
+  date: Date | string | number,
+  locales: Intl.LocalesArgument = "en-PK",
+  options: Intl.DateTimeFormatOptions = {},
+): string {
+  return new Date(date).toLocaleTimeString(locales, {
+    ...options,
+    timeZone: options.timeZone ?? PKT_TIMEZONE,
+  });
+}

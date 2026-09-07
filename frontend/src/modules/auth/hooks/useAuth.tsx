@@ -1,5 +1,5 @@
 import api from "@/shared/api/axios";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/utils/token";
 import type { AuthContextValue, ScreenPermissions, User } from "../types";
@@ -105,20 +105,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return !!screenPermissions[resource.toUpperCase()]?.[action];
   }, [screenPermissions]);
 
+  const contextValue = useMemo(
+    () => ({
+      user,
+      screenPermissions,
+      loading,
+      sendMagicLink,
+      login,
+      register,
+      logout,
+      can,
+      refreshMe: fetchMe,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, screenPermissions, loading, can, fetchMe]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        screenPermissions,
-        loading,
-        sendMagicLink,
-        login,
-        register,
-        logout,
-        can,
-        refreshMe: fetchMe
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
