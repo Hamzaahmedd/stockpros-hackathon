@@ -10,12 +10,16 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const getSystemTheme = (): Theme =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Check localStorage or system preference
-    const storedTheme = localStorage.getItem("theme") as Theme | null;
-    if (storedTheme) return storedTheme;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "dark"; // Default to dark as per existing app
+    // Honour an explicit user preference stored in localStorage; otherwise
+    // fall back to the OS / browser system preference.
+    const stored = localStorage.getItem("theme") as Theme | null;
+    if (stored === "light" || stored === "dark") return stored;
+    return getSystemTheme();
   });
 
   const setTheme = (newTheme: Theme) => {
@@ -24,16 +28,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  // Keep the <html> class and body styles in sync with the active theme.
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
     root.classList.add(theme);
-    
-    // Also update the body background for smoother transitions
+
     if (theme === "dark") {
       document.body.style.backgroundColor = "#0a0a0a";
       document.body.style.color = "#ffffff";
@@ -42,6 +45,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.body.style.color = "#0b1220";
     }
   }, [theme]);
+
+  // React to OS-level theme changes when the user has not set an explicit
+  // preference (i.e. nothing is stored in localStorage).
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem("theme")) {
+        setThemeState(e.matches ? "dark" : "light");
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
