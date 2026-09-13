@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 
-from app.core.config import settings
-from app.core.logger import logger
+from app.shared.config import settings
+from app.shared.logger import logger
 
 redis_client: redis.Redis | None = None
 
@@ -22,8 +22,8 @@ def load_ml_libraries() -> None:
 
     try:
         logger.info("Pre-loading heavy ML libraries in background...")
-        importlib.import_module("app.services.data_service")
-        importlib.import_module("app.services.model_service")
+        importlib.import_module("app.modules.forecast.services.data_service")
+        importlib.import_module("app.modules.forecast.services.model_service")
         logger.info("ML libraries loaded and ready in background.")
     except ImportError as e:
         logger.warning(f"Background ML library warm-up failed: {e}")

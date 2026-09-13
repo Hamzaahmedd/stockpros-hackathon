@@ -48,6 +48,32 @@ const fetchSector = async (symbol: string): Promise<string> => {
   }
 }
 
+// ─── Position Loading ─────────────────────────────────────────────────────────
+
+export type UserPosition = {
+  symbol: string
+  quantity: number
+  avgEntryPrice: number
+  sector: string | null
+}
+
+/**
+ * Loads all of a user's positions across all portfolios. Exposed so callers
+ * that need portfolio fit for many symbols at once (e.g. rendering a whole
+ * watchlist) can fetch this ONCE and pass it into every getPortfolioFit call,
+ * instead of each symbol's cache-miss re-querying the full portfolio from
+ * scratch.
+ */
+export const fetchUserPositions = async (
+  userId: string,
+): Promise<UserPosition[]> => {
+  const portfolios = await prisma.portfolio.findMany({
+    where: { userId },
+    include: { positions: true },
+  })
+  return portfolios.flatMap((p) => p.positions)
+}
+
 // ─── Core Computation ─────────────────────────────────────────────────────────
 
 /**
@@ -64,18 +90,10 @@ const fetchSector = async (symbol: string): Promise<string> => {
  *   6. Flag overexposure if projected sector exposure > 30%
  */
 const compute = async (
-  userId: string,
   symbol: string,
   currentPrice: number,
+  positions: UserPosition[],
 ): Promise<PortfolioFit> => {
-  // ── 1. Load positions ──────────────────────────────────────────────────────
-  const portfolios = await prisma.portfolio.findMany({
-    where: { userId },
-    include: { positions: true },
-  })
-
-  const positions = portfolios.flatMap((p) => p.positions)
-
   // ── 2. Fetch current prices for all held symbols ───────────────────────────
   const uniqueSymbols = [...new Set(positions.map((p) => p.symbol))]
 
@@ -153,12 +171,14 @@ export const getPortfolioFit = async (
   userId: string,
   symbol: string,
   currentPrice: number,
+  preFetchedPositions?: UserPosition[],
 ): Promise<PortfolioFit> => {
   if (!isStale(userId, symbol, currentPrice)) {
     return portfolioFitCache.get(`${userId}:${symbol}`)!.fit
   }
 
-  const fit = await compute(userId, symbol, currentPrice)
+  const positions = preFetchedPositions ?? (await fetchUserPositions(userId))
+  const fit = await compute(symbol, currentPrice, positions)
 
   portfolioFitCache.set(`${userId}:${symbol}`, {
     fit,

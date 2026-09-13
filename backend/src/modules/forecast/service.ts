@@ -3,7 +3,7 @@ import { logger } from '../../shared/infrastructure/logger'
 import { getTechnicalBaselines } from '../watchlist'
 import { getEarningsWithinWindow } from './earnings-checker'
 import {
-  ForecastResponse,
+  ForecastDataPayload,
   MlRawPrediction,
   Prediction,
   TechnicalBaselines,
@@ -19,7 +19,7 @@ function computeSummaryTargets(
   basePrices: number[],
   technicals: TechnicalBaselines,
   hasEarnings: boolean,
-): NonNullable<ForecastResponse['data']['targetRange']> {
+): NonNullable<ForecastDataPayload['targetRange']> {
   const { atr, ema, swingLow, resistance } = technicals
   const periodHigh = Math.max(...basePrices)
   const periodLow = Math.min(...basePrices)
@@ -106,7 +106,7 @@ function computeEnhancedPredictions(
 export async function getForecast(
   symbol: string,
   period: string,
-): Promise<ForecastResponse> {
+): Promise<ForecastDataPayload> {
   const params: Record<string, string> = { symbol, period }
 
   try {
@@ -127,9 +127,9 @@ export async function getForecast(
 
     const hasEarnings = earningsHit !== null
 
-    let targetRange: ForecastResponse['data']['targetRange'] = undefined
-    let directionalBias: ForecastResponse['data']['directionalBias'] = undefined
-    let earningsOverlay: ForecastResponse['data']['earningsOverlay'] = undefined
+    let targetRange: ForecastDataPayload['targetRange'] = undefined
+    let directionalBias: ForecastDataPayload['directionalBias'] = undefined
+    let earningsOverlay: ForecastDataPayload['earningsOverlay'] = undefined
 
     const rawPredictions: MlRawPrediction[] = mlResponse.data?.predictions || []
     let enhancedPredictions: Prediction[] = []

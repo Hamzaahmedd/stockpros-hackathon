@@ -1,4 +1,5 @@
 import type { DefaultJobOptions } from 'bullmq'
+import { CACHE_TTL } from '../../../shared/constants'
 
 // ─── Auth (magic-link) email queue configuration ──────────────────────────────
 
@@ -15,6 +16,6 @@ export const AUTH_EMAIL_QUEUE_OPTIONS = {
 export const AUTH_EMAIL_DEFAULT_JOB_OPTIONS: DefaultJobOptions = {
   attempts: 3,
   backoff: { type: 'exponential', delay: 2_000 },
-  removeOnComplete: { age: 60 * 60 },
-  removeOnFail: { age: 24 * 60 * 60 },
+  removeOnComplete: { age: CACHE_TTL.JOBS.AUTH_EMAIL_COMPLETED },
+  removeOnFail: { age: CACHE_TTL.JOBS.AUTH_EMAIL_FAILED },
 }

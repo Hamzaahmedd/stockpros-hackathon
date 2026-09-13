@@ -2,7 +2,7 @@ import { describe, it, expect } from '@jest/globals'
 import {
   generateTradePlanPdfBuffer,
   generatePortfolioReportPdfBuffer,
-} from './pdf-generator'
+} from '../pdf-generator'
 
 describe('Decision Support PDF Generators', () => {
   it('generates a valid Trade Plan PDF buffer', async () => {

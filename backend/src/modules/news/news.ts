@@ -1,5 +1,6 @@
 import { AppError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
+import { convertToMilliseconds } from '../../shared/utils'
 import type { EnrichedArticle, NewsArticleRow } from './types'
 import {
   INTEREST_TO_CATEGORIES,
@@ -110,5 +111,5 @@ export const toDateStr = (date: Date): string =>
   date.toISOString().split('T')[0]
 
 export const daysAgo = (n: number): Date => {
-  return new Date(Date.now() - n * 24 * 60 * 60 * 1000)
+  return new Date(Date.now() - (convertToMilliseconds(`${n}d`) ?? 0))
 }

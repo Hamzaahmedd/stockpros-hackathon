@@ -46,6 +46,7 @@ model UserSession {
   id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   jti       String   @unique
+  previousJti String? @map("previous_jti")
   ipAddress String?  @map("ip_address")
   userAgent String?  @map("user_agent")
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
@@ -250,6 +251,7 @@ model WatchlistAlert {
   type        AlertType
   threshold   Float?
   isActive    Boolean   @default(true) @map("is_active")
+  lastSeenValue String? @map("last_seen_value")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

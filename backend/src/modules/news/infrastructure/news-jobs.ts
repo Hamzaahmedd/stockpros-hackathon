@@ -8,6 +8,7 @@ import {
 import { toDateStr, daysAgo } from '../news'
 import { NEWS_RETENTION_DAYS, SYMBOL_FETCH_DAYS_BACK } from '../constants'
 import { logger } from '../../../shared/infrastructure/logger'
+import { CACHE_TTL } from '../../../shared/constants'
 
 const connection = getRedisClient()
 
@@ -90,8 +91,8 @@ export const startNewsCronJobs = async (): Promise<void> => {
         repeat: { pattern: job.pattern },
         attempts: 3,
         backoff: { type: 'exponential', delay: 10_000 },
-        removeOnComplete: { age: 24 * 60 * 60 },
-        removeOnFail: { age: 72 * 60 * 60 },
+        removeOnComplete: { age: CACHE_TTL.JOBS.NEWS_JOB_COMPLETED },
+        removeOnFail: { age: CACHE_TTL.JOBS.NEWS_JOB_FAILED },
       },
     )
 

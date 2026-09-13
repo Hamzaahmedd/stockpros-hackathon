@@ -22,7 +22,7 @@ import {
   computeTrend,
   generateReasoning,
   parseAnalystConsensus,
-} from '../../modules/decision-support/service'
+} from '../service'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // computeTrend

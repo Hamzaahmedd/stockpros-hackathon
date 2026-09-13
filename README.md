@@ -70,10 +70,10 @@ flowchart LR
 <br/>
 
 <p align="center">
-  <img src="architecture.svg" alt="StockPros Detailed System Architecture Diagram" width="100%" />
+  <img src="docs/architecture.svg" alt="StockPros Detailed System Architecture Diagram" width="100%" />
 </p>
 <p align="center">
-  <sub><i>Tip: Click <a href="architecture.svg" target="_blank">here for interactive full-res vector SVG</a> or view the <a href="architecture.png" target="_blank">4K PNG</a></i></sub>
+  <sub><i>Tip: Click <a href="docs/architecture.svg" target="_blank">here for interactive full-res vector SVG</a> or view the <a href="docs/architecture.png" target="_blank">4K PNG</a></i></sub>
 </p>
 
 #### Key Architectural Patterns

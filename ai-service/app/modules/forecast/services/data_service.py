@@ -1,4 +1,4 @@
-# app/services/data_service.py
+# app/modules/forecast/services/data_service.py
 from datetime import datetime, timedelta
 from typing import Any, cast
 
@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import requests
 
-from app.core.config import settings
-from app.utils.indicators import compute_macd, compute_rsi
+from app.shared.config import settings
+from app.modules.forecast.utils.indicators import compute_macd, compute_rsi
 
 
 def fetch_stock_data(symbol: str) -> pd.DataFrame:

@@ -1,4 +1,4 @@
-# app/core/logger.py
+# app/shared/logger.py
 import logging
 
 logger = logging.getLogger("ml_backend")

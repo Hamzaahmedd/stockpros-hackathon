@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { getStockProsLogoDataUri } from '../../shared/utils'
+import { getStockProsLogoDataUri, PKT_TIMEZONE } from '../../shared/utils'
 import type { ForecastDataPayload } from './types'
 export type { ForecastDataPayload } from './types'
 
@@ -31,14 +31,14 @@ const formatDate = (dateString: string): string =>
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'Asia/Karachi',
+    timeZone: PKT_TIMEZONE,
   })
 
 const formatGeneratedAt = (): string =>
   new Date().toLocaleString('en-US', {
     dateStyle: 'long',
     timeStyle: 'short',
-    timeZone: 'Asia/Karachi',
+    timeZone: PKT_TIMEZONE,
   })
 
 export const getForecastReportFileName = (data: {

@@ -42,8 +42,7 @@ export const exportForecastPdf = async (
         forecastQueryValidator,
         req.query,
       )
-      const forecastResponse = await getForecast(symbol, period)
-      forecastData = forecastResponse.data
+      forecastData = await getForecast(symbol, period)
     }
 
     const pdfBuffer = await generateForecastPdfBuffer(forecastData)

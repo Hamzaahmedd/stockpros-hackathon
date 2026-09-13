@@ -1,4 +1,5 @@
 # app/modules/forecast/service.py
+import asyncio
 import os
 import time
 from typing import Any, cast
@@ -7,11 +8,11 @@ import numpy as np
 import pandas as pd
 from fastapi import BackgroundTasks, HTTPException
 
-from app.core import cache as redis_service
-from app.core.logger import logger
+from app.shared import cache as redis_service
+from app.shared.logger import logger
 from app.modules.forecast.schemas import ForecastResponse, PricePoint
-from app.services.data_service import fetch_stock_data
-from app.services.model_service import (
+from app.modules.forecast.services.data_service import fetch_stock_data
+from app.modules.forecast.services.model_service import (
     APP_ENV,
     get_model_path,
     is_model_stale,
@@ -29,7 +30,13 @@ async def create_forecast(
     period: str,
 ) -> ForecastResponse:
     try:
-        df = fetch_stock_data(symbol)
+        # Both fetch_stock_data (a Tiingo HTTP call with a 60s timeout) and
+        # is_model_stale_in_supabase (a blocking Supabase storage list call)
+        # are synchronous I/O — running them directly here would freeze this
+        # worker's entire event loop, stalling every other concurrent
+        # request. Neither touches shared mutable state, so offloading them
+        # to a thread is a plain latency fix with no behavior change.
+        df = await asyncio.to_thread(fetch_stock_data, symbol)
         if df.empty:
             raise HTTPException(status_code=404, detail="No data available")
 
@@ -37,7 +44,7 @@ async def create_forecast(
         local_model_path = get_model_path(symbol_up)
         model_exists = os.path.exists(local_model_path)
         is_stale = (
-            is_model_stale_in_supabase(symbol_up)
+            await asyncio.to_thread(is_model_stale_in_supabase, symbol_up)
             if APP_ENV == "production"
             else model_exists and is_model_stale(local_model_path)
         )

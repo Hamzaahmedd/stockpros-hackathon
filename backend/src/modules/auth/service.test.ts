@@ -74,12 +74,12 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
     expect(decoded.sub).toBe(userId)
     expect(decoded.jti).not.toBe(oldJti)
 
-    // Ensure prisma.userSession.update was called with hashed jti and old hash in userAgent
+    // Ensure prisma.userSession.update was called with hashed jti and old hash in previousJti
     expect(prisma.userSession.update).toHaveBeenCalledWith({
       where: { id: mockSession.id },
       data: expect.objectContaining({
         jti: hashToken(decoded.jti),
-        userAgent: oldJtiHash,
+        previousJti: oldJtiHash,
         expiresAt: expect.any(Date),
         updatedAt: expect.any(Date),
       }),
@@ -101,7 +101,7 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
       id: 'session-id-1',
       userId,
       jti: 'already-rotated-hash',
-      userAgent: oldJtiHash,
+      previousJti: oldJtiHash,
       isRevoked: false,
       updatedAt: new Date(),
       user: {
@@ -112,12 +112,24 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
     ;(prisma.userSession.findFirst as jest.Mock).mockResolvedValue(
       recentSession,
     )
+    ;(prisma.userSession.update as jest.Mock).mockResolvedValue(recentSession)
 
     const result = await refreshAccessToken(validRefreshToken)
 
     expect(result).toHaveProperty('accessToken')
     expect(result).toHaveProperty('refreshToken')
-    expect(result.refreshToken).toBe(validRefreshToken)
+    // The racing tab must get a genuinely fresh refresh token, not a replay
+    // of the already-consumed one — replaying it would misfire the breach
+    // detector once this grace window has also elapsed.
+    expect(result.refreshToken).not.toBe(validRefreshToken)
+    expect(prisma.userSession.update).toHaveBeenCalledWith({
+      where: { id: recentSession.id },
+      data: expect.objectContaining({
+        previousJti: oldJtiHash,
+        expiresAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+      }),
+    })
   })
 
   it('revokes all user sessions when token reuse / breach is detected outside grace window', async () => {

@@ -4,11 +4,11 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.cache import lifespan, redis_client
-from app.core.config import settings
-from app.core.logger import logger
+from app.shared.cache import lifespan, redis_client
+from app.shared.config import settings
+from app.shared.logger import logger
 from app.modules.forecast.router import router as forecast_router
-from app.types import HealthResponse, MessageResponse
+from app.shared.types import HealthResponse, MessageResponse
 
 openapi_tags = [
     {

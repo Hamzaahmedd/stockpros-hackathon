@@ -83,6 +83,11 @@ export interface ForecastDataPayload {
     emaBaseline: number
     containmentRate: string
   }
+  earningsOverlay?: {
+    earningsWarning: true
+    earningsDate: string
+    daysUntilEarnings: number
+  }
   status?: string
   estimated_ready_at?: number
 }

@@ -11,6 +11,7 @@ import {
 import { invalidateAlertCache } from './caches/alert-rule-cache'
 import {
   evictPortfolioFitEntry,
+  fetchUserPositions,
   getPortfolioFit,
   invalidateUserPortfolioFitCache,
 } from './caches/portfolio-fit-cache'
@@ -28,19 +29,27 @@ import type {
 export const getWatchlist = async (
   userId: string,
 ): Promise<WatchlistItemResponse[]> => {
-  const entries = await prisma.watchlist.findMany({
-    where: { userId },
-    include: { alerts: true },
-    orderBy: { createdAt: 'desc' },
-  })
+  const [entries, positions] = await Promise.all([
+    prisma.watchlist.findMany({
+      where: { userId },
+      include: { alerts: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    fetchUserPositions(userId),
+  ])
 
   const items = await Promise.all(
     entries.map(async (entry) => {
       const item = formatWatchlistItem(entry)
 
-      item.logo = await getCompanyLogo(entry.symbol)
+      // Logo and price are independent lookups — fetch in parallel instead
+      // of paying the sum of their latencies per watchlist item.
+      const [logo, priceData] = await Promise.all([
+        getCompanyLogo(entry.symbol),
+        getCurrentPrice(entry.symbol),
+      ])
+      item.logo = logo
 
-      const priceData = await getCurrentPrice(entry.symbol)
       if (priceData) {
         item.currentPrice = priceData.price
         item.changePercent = priceData.changePercent
@@ -62,7 +71,12 @@ export const getWatchlist = async (
             ? ((price - entry.priceAtCreatedAt) / entry.priceAtCreatedAt) * 100
             : null
 
-        item.portfolioFit = await getPortfolioFit(userId, entry.symbol, price)
+        item.portfolioFit = await getPortfolioFit(
+          userId,
+          entry.symbol,
+          price,
+          positions,
+        )
       }
 
       return item

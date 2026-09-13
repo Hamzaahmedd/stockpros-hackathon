@@ -7,7 +7,7 @@ import {
   ValidationError,
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
-import { convertToMilliseconds, getUserId } from '../../shared/utils'
+import { convertToMilliseconds, getUserId, sendSuccess } from '../../shared/utils'
 import {
   completeOnboardingFlow,
   deleteAccount as deleteAccountService,
@@ -30,10 +30,9 @@ export const getMyInfo = async (
     const userId = getUserId(req)
     const myDetails = await fetchMe(userId)
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       message: 'My details fetched successfully',
-      user: myDetails,
+      extra: { user: myDetails },
     })
   } catch (error) {
     next(error)
@@ -59,17 +58,15 @@ export const refreshToken = async (
       config.auth.refreshTokenExpiry,
     )
 
-    return res
-      .status(200)
-      .cookie('refresh_token', newRefreshToken, {
-        ...defaultCookieOptions,
-        maxAge: REFRESH_TOKEN_EXPIRY,
-      })
-      .json({
-        success: true,
-        message: 'Tokens refreshed successfully',
-        accessToken,
-      })
+    res.cookie('refresh_token', newRefreshToken, {
+      ...defaultCookieOptions,
+      maxAge: REFRESH_TOKEN_EXPIRY,
+    })
+
+    return sendSuccess(res, {
+      message: 'Tokens refreshed successfully',
+      extra: { accessToken },
+    })
   } catch (error) {
     next(error)
   }
@@ -90,9 +87,7 @@ export const logout = async (
 
     res.clearCookie('refresh_token', defaultCookieOptions)
 
-    return res
-      .status(200)
-      .json({ success: true, message: 'Logged out successfully' })
+    return sendSuccess(res, { message: 'Logged out successfully' })
   } catch (error) {
     next(error)
   }
@@ -123,8 +118,7 @@ export const deleteAccount = async (
     // Clear the refresh-token cookie so the browser session dies immediately
     res.clearCookie('refresh_token', defaultCookieOptions)
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       message: 'Your account has been permanently deleted.',
     })
   } catch (error) {
@@ -146,8 +140,7 @@ export const requestMagicLink = async (
       (req.get('referer') ? new URL(req.get('referer')!).origin : undefined)
     await generateMagicLink(email, clientOrigin)
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       message:
         'If an account with that email exists or can be created, a magic link has been sent.',
     })
@@ -174,11 +167,12 @@ export const verifyMagicLinkToken = async (
     )
 
     if (loginResult.requiresOnboarding) {
-      return res.status(200).json({
-        success: true,
+      return sendSuccess(res, {
         message: 'Onboarding required to complete registration',
-        requiresOnboarding: true,
-        onboardingToken: loginResult.onboardingToken,
+        extra: {
+          requiresOnboarding: true,
+          onboardingToken: loginResult.onboardingToken,
+        },
       })
     }
 
@@ -186,19 +180,19 @@ export const verifyMagicLinkToken = async (
       config.auth.refreshTokenExpiry,
     )
 
-    return res
-      .status(200)
-      .cookie('refresh_token', loginResult.refreshToken, {
-        ...defaultCookieOptions,
-        maxAge: REFRESH_TOKEN_EXPIRY,
-      })
-      .json({
-        success: true,
-        message: 'Login successful via magic link',
+    res.cookie('refresh_token', loginResult.refreshToken, {
+      ...defaultCookieOptions,
+      maxAge: REFRESH_TOKEN_EXPIRY,
+    })
+
+    return sendSuccess(res, {
+      message: 'Login successful via magic link',
+      extra: {
         requiresOnboarding: false,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
-      })
+      },
+    })
   } catch (error) {
     next(error)
   }
@@ -223,10 +217,9 @@ export const completeOnboardingHandler = async (
 
     // Already-created user (authenticated via bearer token): confirm the update.
     if (result.kind === 'profileUpdated') {
-      return res.status(200).json({
-        success: true,
+      return sendSuccess(res, {
         message: 'Onboarding completed successfully',
-        user: result.user,
+        extra: { user: result.user },
       })
     }
 
@@ -235,18 +228,16 @@ export const completeOnboardingHandler = async (
       config.auth.refreshTokenExpiry,
     )
 
-    return res
-      .status(201)
-      .cookie('refresh_token', result.refreshToken, {
-        ...defaultCookieOptions,
-        maxAge: REFRESH_TOKEN_EXPIRY,
-      })
-      .json({
-        success: true,
-        message: 'Account created successfully',
-        user: result.user,
-        accessToken: result.accessToken,
-      })
+    res.cookie('refresh_token', result.refreshToken, {
+      ...defaultCookieOptions,
+      maxAge: REFRESH_TOKEN_EXPIRY,
+    })
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      message: 'Account created successfully',
+      extra: { user: result.user, accessToken: result.accessToken },
+    })
   } catch (error) {
     next(error)
   }
@@ -269,12 +260,13 @@ export const googleLogin = async (
     )
 
     if (loginResult.requiresOnboarding) {
-      return res.status(200).json({
-        success: true,
+      return sendSuccess(res, {
         message: 'Onboarding required to complete Google registration',
-        requiresOnboarding: true,
-        onboardingToken: loginResult.onboardingToken,
-        defaultDisplayName: loginResult.defaultDisplayName,
+        extra: {
+          requiresOnboarding: true,
+          onboardingToken: loginResult.onboardingToken,
+          defaultDisplayName: loginResult.defaultDisplayName,
+        },
       })
     }
 
@@ -282,19 +274,19 @@ export const googleLogin = async (
       config.auth.refreshTokenExpiry,
     )
 
-    return res
-      .status(200)
-      .cookie('refresh_token', loginResult.refreshToken, {
-        ...defaultCookieOptions,
-        maxAge: REFRESH_TOKEN_EXPIRY,
-      })
-      .json({
-        success: true,
-        message: 'Login successful via Google',
+    res.cookie('refresh_token', loginResult.refreshToken, {
+      ...defaultCookieOptions,
+      maxAge: REFRESH_TOKEN_EXPIRY,
+    })
+
+    return sendSuccess(res, {
+      message: 'Login successful via Google',
+      extra: {
         requiresOnboarding: false,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
-      })
+      },
+    })
   } catch (error) {
     next(error)
   }

@@ -86,12 +86,15 @@ export async function refreshAccessToken(refreshToken: string) {
         include: { user: true },
       });
 
+    const refreshTokenExpiryMs =
+      convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
+
     // Step 3: Multi-tab grace period handling & reuse breach detection
     if (!session) {
       // Check if this token was recently rotated within the 30s grace window
       const recentRotatedSession = await prisma.userSession.findFirst({
         where: {
-          userAgent: tokenHash, // stored previous hash marker during grace window
+          previousJti: tokenHash,
           updatedAt: { gte: new Date(now.getTime() - REFRESH_GRACE_WINDOW_MS) },
           isRevoked: false,
         },
@@ -101,13 +104,30 @@ export async function refreshAccessToken(refreshToken: string) {
       if (
         recentRotatedSession?.user.status === UserStatus.ACTIVE
       ) {
-        // Tab race condition handled: issue a fresh access token for this concurrent tab
-        const { accessToken } = await generateTokens(
-          recentRotatedSession.user.id,
-        )
+        // Tab race condition handled: rotate again and hand this tab a fresh
+        // pair too, instead of replaying the already-consumed refresh token —
+        // otherwise a later refresh with that stale token (once this race's
+        // window has also passed) gets misclassified as reuse/breach and logs
+        // the user out of every session.
+        const {
+          accessToken,
+          refreshToken: freshRefreshToken,
+          jti: freshJti,
+        } = await generateTokens(recentRotatedSession.user.id)
+
+        await prisma.userSession.update({
+          where: { id: recentRotatedSession.id },
+          data: {
+            jti: hashToken(freshJti),
+            previousJti: tokenHash,
+            expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
+            updatedAt: now,
+          },
+        })
+
         return {
           accessToken,
-          refreshToken, // client continues with active session
+          refreshToken: freshRefreshToken,
         }
       }
 
@@ -143,15 +163,14 @@ export async function refreshAccessToken(refreshToken: string) {
     } = await generateTokens(session.user.id)
 
     const newHashedJti = hashToken(newJti)
-    const refreshTokenExpiryMs =
-      convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
-    // Step 6: Rotate the session jti in DB atomically, recording previous hash for grace leeway
+    // Step 6: Rotate the session jti in DB atomically, recording the previous
+    // hash (in its own column, not userAgent) for the 30s multi-tab grace window
     await prisma.userSession.update({
       where: { id: session.id },
       data: {
         jti: newHashedJti,
-        userAgent: tokenHash, // store previous token hash for 30s multi-tab grace checks
+        previousJti: tokenHash,
         expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
         updatedAt: now,
       },
@@ -237,7 +256,7 @@ export async function deleteAccount(userId: string): Promise<void> {
   })
 
   const now = new Date()
-  const purgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
+  const purgeAt = new Date(now.getTime() + (convertToMilliseconds('30d') ?? 0)) // 30 days
 
   // Step 3: Purge user data in an interactive transaction with extended timeout options
   await prisma.$transaction(

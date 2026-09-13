@@ -2,6 +2,7 @@ import type { AlertType } from '@prisma/client'
 import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
 import { prisma } from '../../../shared/infrastructure/database'
 import { logger } from '../../../shared/infrastructure/logger'
+import { convertToMilliseconds } from '../../../shared/utils'
 import { dispatchNotification } from '../../notifications'
 import { computeAndStoreAiZones } from '../evaluators/ai-zone-calculator'
 
@@ -61,7 +62,7 @@ const fireEventAlert = async (
     where: { alertId: alert.id },
     orderBy: { firedAt: 'desc' },
   })
-  const COOLDOWN_MS = 60 * 60 * 1000
+  const COOLDOWN_MS = convertToMilliseconds('1h') ?? 0
   if (lastLog && Date.now() - lastLog.firedAt.getTime() < COOLDOWN_MS) return
 
   // Write log first, then dispatch
@@ -97,7 +98,7 @@ export const runEarningsAlertJob = async (): Promise<void> => {
     const entries = await getWatchedSymbolsWithUsers()
     const symbols = new Set(entries.map((e) => e.symbol))
     const now = new Date()
-    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+    const in3Days = new Date(now.getTime() + (convertToMilliseconds('3d') ?? 0))
     const from = now.toISOString().split('T')[0]
     const to = in3Days.toISOString().split('T')[0]
 
@@ -143,7 +144,7 @@ export const runDividendAlertJob = async (): Promise<void> => {
     const entries = await getWatchedSymbolsWithUsers()
     const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
     const now = new Date()
-    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+    const in3Days = new Date(now.getTime() + (convertToMilliseconds('3d') ?? 0))
 
     for (const symbol of symbols) {
       try {
@@ -187,17 +188,15 @@ export const runDividendAlertJob = async (): Promise<void> => {
 
 /**
  * Fetch analyst consensus recommendations per symbol.
- * Fires ANALYST_RATING_CHANGE when the most recent recommendation period
- * differs from the previous one stored in AlertLog (delta pattern).
- *
- * Snapshot approach: we record the last-seen `period` string in a
- * dedicated DB table would be ideal, but to avoid a schema change we
- * use AlertLog frequency — if no log exists for this symbol in the last
- * 24 hours, we treat the latest record as potentially new.
+ * Fires ANALYST_RATING_CHANGE when the most recent recommendation `period`
+ * differs from the last one this alert actually saw (a real cursor, stored
+ * on the alert row) — not a proxy for whether 24h have elapsed. This means a
+ * late or restarted job run neither double-fires nor silently misses a
+ * genuine new period.
  */
 const processAnalystRatingEntry = async (
   entry: { symbol: string; userId: string; watchlistId: string },
-  oneDayAgo: Date,
+  latestPeriod: string,
 ): Promise<void> => {
   if (!(await hasActiveAlert(entry.watchlistId, 'ANALYST_RATING_CHANGE'))) {
     return
@@ -210,12 +209,15 @@ const processAnalystRatingEntry = async (
     },
   })
   if (!alert) return
+  if (alert.lastSeenValue === latestPeriod) return // no new rating period
 
-  const recentLog = await prisma.alertLog.findFirst({
-    where: { alertId: alert.id, firedAt: { gte: oneDayAgo } },
-    orderBy: { firedAt: 'desc' },
+  await prisma.watchlistAlert.update({
+    where: { id: alert.id },
+    data: { lastSeenValue: latestPeriod },
   })
-  if (recentLog) return // already fired today
+
+  // Don't fire on the very first observation (nothing to compare against yet)
+  if (alert.lastSeenValue === null) return
 
   await fireEventAlert(
     entry.watchlistId,
@@ -231,7 +233,6 @@ export const runAnalystRatingJob = async (): Promise<void> => {
   try {
     const entries = await getWatchedSymbolsWithUsers()
     const symbols = Array.from(new Set(entries.map((e) => e.symbol)))
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
     for (const symbol of symbols) {
       try {
@@ -248,9 +249,10 @@ export const runAnalystRatingJob = async (): Promise<void> => {
 
         if (!data || data.length === 0) continue
 
+        const latestPeriod = data[0].period
         const symbolEntries = entries.filter((e) => e.symbol === symbol)
         for (const entry of symbolEntries) {
-          await processAnalystRatingEntry(entry, oneDayAgo)
+          await processAnalystRatingEntry(entry, latestPeriod)
         }
       } catch (err) {
         logger.error(
@@ -271,9 +273,10 @@ export const runAnalystRatingJob = async (): Promise<void> => {
  * Fires NEWS_PUBLISHED when a new article is found that wasn't seen
  * in the previous run.
  *
- * Delta pattern: records the last-seen news article `id` per symbol
- * using AlertLog notes is not ideal — instead we compare article
- * datetime against the last AlertLog firedAt for this alert type.
+ * Delta pattern: the last-seen article id is a real cursor stored on the
+ * alert row, compared directly against fetched article ids — not inferred
+ * from AlertLog timing. A late or restarted job run can neither double-fire
+ * on an already-seen article nor miss one that fell inside a gap.
  * Runs every 15-30 minutes (spec §11).
  */
 export const runNewsAlertJob = async (): Promise<void> => {
@@ -296,16 +299,30 @@ export const runNewsAlertJob = async (): Promise<void> => {
 
         if (!data || data.length === 0) continue
 
-        // Filter to articles published in the last 30 minutes
-        const recentArticles = data.filter(
-          (a) => a.datetime * 1000 >= from.getTime(),
-        )
-        if (recentArticles.length === 0) continue
-
+        const latestArticle = data.reduce((a, b) => (a.id > b.id ? a : b))
         const symbolEntries = entries.filter((e) => e.symbol === symbol)
+
         for (const entry of symbolEntries) {
           if (!(await hasActiveAlert(entry.watchlistId, 'NEWS_PUBLISHED')))
             continue
+
+          const alert = await prisma.watchlistAlert.findFirst({
+            where: { watchlistId: entry.watchlistId, type: 'NEWS_PUBLISHED' },
+          })
+          if (!alert) continue
+
+          const lastSeenId = alert.lastSeenValue
+            ? Number(alert.lastSeenValue)
+            : null
+          if (lastSeenId !== null && latestArticle.id <= lastSeenId) continue
+
+          await prisma.watchlistAlert.update({
+            where: { id: alert.id },
+            data: { lastSeenValue: String(latestArticle.id) },
+          })
+
+          if (lastSeenId === null) continue // first observation, nothing to diff against
+
           await fireEventAlert(
             entry.watchlistId,
             entry.userId,
@@ -348,7 +365,7 @@ export const runSecFilingJob = async (): Promise<void> => {
 
         const latestFiling = data.data[0]
         const filedDate = new Date(latestFiling.filedDate)
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const oneDayAgo = new Date(Date.now() - (convertToMilliseconds('1d') ?? 0))
 
         // Only fire if the most recent filing was within the last day
         if (filedDate < oneDayAgo) continue

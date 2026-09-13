@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable, { type UserOptions } from 'jspdf-autotable'
-import { getStockProsLogoDataUri } from '../../shared/utils'
+import { getStockProsLogoDataUri, PKT_TIMEZONE } from '../../shared/utils'
 import type { PortfolioPdfPayload, TradePlanData } from './types'
 export type { PortfolioPdfPayload, TradePlanData } from './types'
 
@@ -36,7 +36,7 @@ const formatGeneratedAt = (): string =>
   new Date().toLocaleString('en-US', {
     dateStyle: 'long',
     timeStyle: 'short',
-    timeZone: 'Asia/Karachi',
+    timeZone: PKT_TIMEZONE,
   })
 
 // ─── Trade Plan PDF ──────────────────────────────────────────────────────────

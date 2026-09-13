@@ -7,6 +7,23 @@ import { logger } from '../../../shared/infrastructure/logger'
 import { StockQuote } from '../types'
 import { FinnhubTradeMsg } from './finnhub-types'
 
+/**
+ * Single source of truth for recognizing a Finnhub rate-limit (429) signal,
+ * however it surfaces — an HTTP status, a socket error message, or a close
+ * reason. Centralized so a future wording/shape change from Finnhub only
+ * needs updating here, instead of silently going stale in one of several
+ * duplicated call sites.
+ */
+function isRateLimitSignal(input: {
+  statusCode?: number
+  code?: number
+  message?: string | null
+}): boolean {
+  if (input.statusCode === 429 || input.code === 429) return true
+  const text = input.message?.toString() ?? ''
+  return /rate limit|429/i.test(text)
+}
+
 export class FinnhubService extends EventEmitter {
   private ws?: WebSocket
   private readonly subscribed = new Set<string>()
@@ -28,7 +45,7 @@ export class FinnhubService extends EventEmitter {
 
     this.ws.on('unexpected-response', (req, res) => {
       logger.error(`[ERROR] Finnhub WS Unexpected Response: ${res.statusCode}`)
-      if (res.statusCode === 429) {
+      if (isRateLimitSignal({ statusCode: res.statusCode })) {
         this.lastCloseWas429 = true
       }
     })
@@ -55,7 +72,7 @@ export class FinnhubService extends EventEmitter {
           logger.warn(
             `Finnhub reported error: ${msg.msg || JSON.stringify(msg)}`,
           )
-          if (String(msg.msg).includes('Rate Limit')) {
+          if (isRateLimitSignal({ message: msg.msg })) {
             this.lastCloseWas429 = true
           }
         } else {
@@ -71,7 +88,7 @@ export class FinnhubService extends EventEmitter {
       this.stopHeartbeat()
 
       // Double check for 429 in the close reason
-      if (code === 429 || (reason?.toString().includes('429'))) {
+      if (isRateLimitSignal({ code, message: reason?.toString() })) {
         this.lastCloseWas429 = true
       }
 
@@ -82,7 +99,7 @@ export class FinnhubService extends EventEmitter {
     this.ws.on('error', (err: Error) => {
       // Prevents ECONNRESET from crashing the Node process
       logger.error(`Finnhub WS internal error: ${err.message}`)
-      if (err.message?.includes('429')) {
+      if (isRateLimitSignal({ message: err.message })) {
         this.lastCloseWas429 = true
       }
       this.emit('error', err)

@@ -1,4 +1,5 @@
 import type { DefaultJobOptions } from 'bullmq'
+import { CACHE_TTL } from '../../../shared/constants'
 
 // ─── Watchlist alert email queue configuration ────────────────────────────────
 
@@ -15,6 +16,6 @@ export const ALERT_EMAIL_QUEUE_OPTIONS = {
 export const ALERT_EMAIL_DEFAULT_JOB_OPTIONS: DefaultJobOptions = {
   attempts: 3,
   backoff: { type: 'exponential', delay: 10_000 },
-  removeOnComplete: { age: 24 * 60 * 60 },
-  removeOnFail: { age: 72 * 60 * 60 },
+  removeOnComplete: { age: CACHE_TTL.JOBS.ALERT_EMAIL_COMPLETED },
+  removeOnFail: { age: CACHE_TTL.JOBS.ALERT_EMAIL_FAILED },
 }

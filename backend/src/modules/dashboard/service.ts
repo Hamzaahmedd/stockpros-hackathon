@@ -1,3 +1,4 @@
+import type { AiConfidence } from '@prisma/client'
 import { NotFoundError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
@@ -25,7 +26,7 @@ import type {
 
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
-import { getPakistanHour } from '../../shared/utils'
+import { convertToMilliseconds, getPakistanHour } from '../../shared/utils'
 import { getLatestDecisionRun } from '../decision-support'
 import type { RankedStockRow } from '../market'
 import { getCurrentPrice, getCompanySectors, getRankedTopStocks } from '../market'
@@ -38,14 +39,38 @@ type WatchlistPriceMap = Map<string, { price: number; changePercent: number }>
  * pass, de-duplicating calls across buildBriefing / computeHealthScore /
  * buildSmartTriggers. Results are valid for DASHBOARD_WATCHLIST_PRICE_CACHE_TTL_MS.
  */
-const fetchWatchlistPriceMap = async (
+/** Superset of watchlist fields needed by any dashboard section builder. */
+type DashboardWatchlistRow = {
+  symbol: string
+  targetEntryPrice: number | null
+  stopLoss: number | null
+  aiSuggestedEntry: number | null
+  aiConfidence: AiConfidence | null
+}
+
+/**
+ * Fetches every watchlist row for a user exactly once per dashboard request —
+ * previously buildBriefing, computeHealthScore, and buildSmartTriggers each
+ * ran their own near-identical prisma.watchlist.findMany, quadrupling the
+ * query for one dashboard load.
+ */
+const fetchWatchlistRows = async (
   userId: string,
-): Promise<WatchlistPriceMap> => {
-  const watchlistItems = await prisma.watchlist.findMany({
+): Promise<DashboardWatchlistRow[]> =>
+  prisma.watchlist.findMany({
     where: { userId },
-    select: { symbol: true },
+    select: {
+      symbol: true,
+      targetEntryPrice: true,
+      stopLoss: true,
+      aiSuggestedEntry: true,
+      aiConfidence: true,
+    },
   })
 
+const fetchWatchlistPriceMap = async (
+  watchlistItems: DashboardWatchlistRow[],
+): Promise<WatchlistPriceMap> => {
   const priceMap: WatchlistPriceMap = new Map()
   const uniqueSymbols = [...new Set(watchlistItems.map((w) => w.symbol))]
 
@@ -173,15 +198,9 @@ const buildBriefing = async (
   userId: string,
   displayName: string,
   priceMap: WatchlistPriceMap,
+  watchlistItems: DashboardWatchlistRow[],
+  lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
 ): Promise<DashboardBriefing> => {
-  const [lastRun, watchlistItems] = await Promise.all([
-    getLatestDecisionRun(userId),
-    prisma.watchlist.findMany({
-      where: { userId },
-      select: { symbol: true, targetEntryPrice: true, stopLoss: true },
-    }),
-  ])
-
   return {
     greeting: getGreeting(displayName),
     generatedAt: new Date().toISOString(),
@@ -253,8 +272,7 @@ const getHealthClassification = (
   return { band: 'Poor', label: 'Significant portfolio risks detected' }
 }
 
-const computeHealthScore = async (
-  userId: string,
+const computeHealthScore = (
   positions: Array<{
     symbol: string
     sector: string | null
@@ -264,14 +282,10 @@ const computeHealthScore = async (
   lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
   totalValue: number,
   priceMap: WatchlistPriceMap,
-): Promise<HealthScore> => {
+  watchlistItems: DashboardWatchlistRow[],
+): HealthScore => {
   const diversificationScore = calculateDiversificationScore(positions, totalValue)
   const { riskRewardScore, volatilityScore } = calculateRiskScores(lastRun)
-
-  const watchlistItems = await prisma.watchlist.findMany({
-    where: { userId },
-    select: { symbol: true, stopLoss: true, targetEntryPrice: true },
-  })
 
   const alertHealthScore = calculateAlertHealthScore(watchlistItems, priceMap)
   const watchlistDisciplineScore = calculateWatchlistDisciplineScore(watchlistItems)
@@ -303,6 +317,7 @@ const computeHealthScore = async (
 const buildPortfolioSection = async (
   userId: string,
   lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
+  watchlistItems: DashboardWatchlistRow[],
 ): Promise<DashboardPortfolio> => {
   const portfolios = await prisma.portfolio.findMany({
     where: { userId },
@@ -365,12 +380,12 @@ const buildPortfolioSection = async (
   const todayGainLossPct =
     totalValue > 0 ? (todayGainLoss / totalValue) * 100 : 0
 
-  const healthScore = await computeHealthScore(
-    userId,
+  const healthScore = computeHealthScore(
     positions,
     lastRun,
     totalCost,
     new Map(), // positions use portfolio prices fetched above, not watchlist prices
+    watchlistItems,
   )
 
   return {
@@ -396,7 +411,8 @@ const buildImpactNews = async (
   userId: string,
 ): Promise<{ items: ImpactNewsItem[]; totalCount: number }> => {
   const since = new Date(
-    Date.now() - DASHBOARD_IMPACT_NEWS_HOURS * 60 * 60 * 1000,
+    Date.now() -
+      (convertToMilliseconds(`${DASHBOARD_IMPACT_NEWS_HOURS}h`) ?? 0),
   )
 
   const [portfolios, watchlistItems] = await Promise.all([
@@ -578,7 +594,7 @@ const buildEventTriggers = async (
   positionMap: Map<string, { quantity: number; avgEntryPrice: number }>,
 ): Promise<SmartTrigger[]> => {
   const triggers: SmartTrigger[] = []
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const since = new Date(Date.now() - (convertToMilliseconds('24h') ?? 0))
   const recentAlertLogs = await prisma.alertLog.findMany({
     where: { firedAt: { gte: since }, alert: { userId } },
     include: {
@@ -660,27 +676,16 @@ const buildEventTriggers = async (
 const buildSmartTriggers = async (
   userId: string,
   priceMap: WatchlistPriceMap,
+  watchlistItems: DashboardWatchlistRow[],
 ): Promise<{ items: SmartTrigger[]; totalCount: number }> => {
-  const [watchlistItems, portfolios] = await Promise.all([
-    prisma.watchlist.findMany({
-      where: { userId },
-      select: {
-        symbol: true,
-        targetEntryPrice: true,
-        stopLoss: true,
-        aiSuggestedEntry: true,
-        aiConfidence: true,
+  const portfolios = await prisma.portfolio.findMany({
+    where: { userId },
+    include: {
+      positions: {
+        select: { symbol: true, quantity: true, avgEntryPrice: true },
       },
-    }),
-    prisma.portfolio.findMany({
-      where: { userId },
-      include: {
-        positions: {
-          select: { symbol: true, quantity: true, avgEntryPrice: true },
-        },
-      },
-    }),
-  ])
+    },
+  })
 
   const positionMap = new Map<
     string,
@@ -833,7 +838,14 @@ export const normalizeSectorName = (sector: string | null | undefined): string =
   const exact = Object.keys(SECTOR_ETF_MAP).find(
     (k) => k.toLowerCase() === s,
   )
-  return exact ?? sector
+  if (!exact) {
+    // Unrecognized provider wording falls through uncategorized — log it so
+    // gaps in the substring rules above are visible instead of silently
+    // skewing sector-concentration numbers.
+    logger.warn(`[Dashboard] Unrecognized sector "${sector}" — leaving unnormalized`)
+    return sector
+  }
+  return exact
 }
 
 export const buildSectorHeatmap = async (userId: string) => {
@@ -858,7 +870,7 @@ export const buildSectorHeatmap = async (userId: string) => {
     for (const [sectorName, ticker] of sectorEntries) {
       try {
         const history = await yahoo.chart(ticker, {
-          period1: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+          period1: new Date(Date.now() - (convertToMilliseconds('40d') ?? 0)),
           interval: '1d',
         })
 
@@ -1000,7 +1012,7 @@ const buildTrendingStocks = async (): Promise<RankedStockRow[]> => {
       top.map(async (stock) => {
         try {
           const history = await yahoo.chart(stock.symbol, {
-            period1: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            period1: new Date(Date.now() - (convertToMilliseconds('14d') ?? 0)),
             interval: '1d',
           })
           const sparkline = history.quotes
@@ -1031,12 +1043,15 @@ export const getDashboard = async (
   })
   if (!user) throw new NotFoundError('User not found')
 
-  // Fetch all watchlist prices ONCE — shared by buildBriefing, computeHealthScore,
-  // and buildSmartTriggers to eliminate the N×3 duplicate Finnhub call pattern.
-  const [lastRun, watchlistPriceMap] = await Promise.all([
+  // Fetch watchlist rows and prices ONCE — shared by buildBriefing,
+  // computeHealthScore, and buildSmartTriggers, which previously each ran
+  // their own near-identical prisma.watchlist.findMany (and repeated the
+  // N×3 duplicate Finnhub call pattern for prices).
+  const [lastRun, watchlistItems] = await Promise.all([
     getLatestDecisionRun(userId),
-    fetchWatchlistPriceMap(userId),
+    fetchWatchlistRows(userId),
   ])
+  const watchlistPriceMap = await fetchWatchlistPriceMap(watchlistItems)
 
   const [
     briefing,
@@ -1046,10 +1061,10 @@ export const getDashboard = async (
     sectorHeatmap,
     trendingStocks,
   ] = await Promise.all([
-    buildBriefing(userId, user.displayName, watchlistPriceMap),
-    buildPortfolioSection(userId, lastRun),
+    buildBriefing(userId, user.displayName, watchlistPriceMap, watchlistItems, lastRun),
+    buildPortfolioSection(userId, lastRun, watchlistItems),
     buildImpactNews(userId),
-    buildSmartTriggers(userId, watchlistPriceMap),
+    buildSmartTriggers(userId, watchlistPriceMap, watchlistItems),
     buildSectorHeatmap(userId),
     buildTrendingStocks(),
   ])

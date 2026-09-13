@@ -1,4 +1,4 @@
-# app/utils/indicators.py
+# app/modules/forecast/utils/indicators.py
 from typing import Any, cast
 import numpy as np
 import pandas as pd

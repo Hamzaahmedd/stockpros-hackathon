@@ -1,12 +1,13 @@
 import type { WatchlistAlert } from '@prisma/client'
 import { prisma } from '../../../shared/infrastructure/database'
 import { logger } from '../../../shared/infrastructure/logger'
+import { convertToMilliseconds } from '../../../shared/utils'
 import { priceCache } from '../../market'
 import { dispatchNotification } from '../../notifications'
 import { getActiveAlertsForSymbol } from '../caches/alert-rule-cache'
 import type { WatchlistPriceLevels } from '../types'
 
-const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour per spec §9
+const COOLDOWN_MS = convertToMilliseconds('1h') ?? 0 // 1 hour per spec §9
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

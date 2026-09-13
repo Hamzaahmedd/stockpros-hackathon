@@ -2,6 +2,15 @@ import axios from 'axios'
 import pino from 'pino'
 import { config } from '../../config'
 
+const SENSITIVE_KEY_PATTERN =
+  /password|token|apikey|api_key|authorization|cookie|secret/i
+
+// Applied via JSON.stringify's replacer, so this reaches nested fields inside
+// arbitrary thrown objects too — pino's own `redact` option can't, since by
+// the time formatError's object gets there it's already a plain string.
+const redactingReplacer = (key: string, value: unknown): unknown =>
+  key && SENSITIVE_KEY_PATTERN.test(key) ? '[REDACTED]' : value
+
 const formatError = (err?: unknown): unknown => {
   if (!err) return ''
   if (axios.isAxiosError(err)) {
@@ -27,7 +36,7 @@ const formatError = (err?: unknown): unknown => {
   }
   if (typeof err === 'object') {
     try {
-      return JSON.stringify(err, null, 2)
+      return JSON.stringify(err, redactingReplacer, 2)
     } catch {
       return '[Unserializable Object]'
     }
@@ -86,6 +95,27 @@ if (config.axiom.token && config.axiom.dataset) {
 const pinoLogger = pino(
   {
     level: config.server.logLevel,
+    // Defense-in-depth: redact secrets/PII even if a future call site logs a
+    // raw object containing them (e.g. via formatError's generic
+    // JSON.stringify fallback) — don't rely solely on call-site discipline.
+    redact: {
+      paths: [
+        '*.password',
+        '*.token',
+        '*.accessToken',
+        '*.refreshToken',
+        '*.apiKey',
+        '*.api_key',
+        '*.authorization',
+        '*.Authorization',
+        '*.headers.authorization',
+        '*.headers.Authorization',
+        '*.headers["set-cookie"]',
+        '*.cookie',
+        '*.cookies',
+      ],
+      censor: '[REDACTED]',
+    },
   },
   pino.transport({
     targets: transports,

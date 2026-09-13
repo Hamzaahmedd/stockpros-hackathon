@@ -9,7 +9,7 @@ import polygonClient from '../../shared/infrastructure/clients/polygon-client'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
-import { getPakistanMonth } from '../../shared/utils'
+import { convertToMilliseconds, getPakistanMonth } from '../../shared/utils'
 import { getCompanySectors, getLivePrices, StockQuote } from '../market'
 import { mapPolygonCategory, mapPolygonSentiment } from '../news'
 import { persistDecisionRun } from './repository'
@@ -217,7 +217,9 @@ export const getHistoricalCloses = async (
     }
 
     const endDate = new Date()
-    const startDate = new Date(endDate.getTime() - 180 * 24 * 60 * 60 * 1000)
+    const startDate = new Date(
+      endDate.getTime() - (convertToMilliseconds('180d') ?? 0),
+    )
 
     const result = await yahoo.chart(symbol, {
       period1: startDate,
@@ -375,17 +377,22 @@ export const computeSentiment = (feed: any[], targetTicker: string) => {
   if (avgScore >= 0.15) trend = 'UP'
   else if (avgScore <= -0.15) trend = 'DOWN'
 
+  // Need at least 2 articles to split into a "recent" and "older" half;
+  // with fewer there's nothing to compare, so change48h is undefined (0).
   const midPoint = Math.floor(volume / 2)
-  const recentScore =
-    tickerScores.slice(0, midPoint).reduce((a, b) => a + b, 0) / midPoint
-  const olderScore =
-    tickerScores.slice(midPoint).reduce((a, b) => a + b, 0) /
-    (volume - midPoint)
+  let change48h = 0
+  if (midPoint > 0) {
+    const recentScore =
+      tickerScores.slice(0, midPoint).reduce((a, b) => a + b, 0) / midPoint
+    const olderScore =
+      tickerScores.slice(midPoint).reduce((a, b) => a + b, 0) /
+      (volume - midPoint)
 
-  const change48h =
-    olderScore !== 0
-      ? ((recentScore - olderScore) / Math.abs(olderScore)) * 100
-      : 0
+    change48h =
+      olderScore !== 0
+        ? ((recentScore - olderScore) / Math.abs(olderScore)) * 100
+        : 0
+  }
 
   return {
     score: Number(avgScore.toFixed(4)),

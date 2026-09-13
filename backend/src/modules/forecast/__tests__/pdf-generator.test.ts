@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals'
-import { generateForecastPdfBuffer } from './pdf-generator'
+import { generateForecastPdfBuffer } from '../pdf-generator'
 
 describe('Forecast PDF Generator', () => {
   it('generates a valid PDF buffer for forecast data', async () => {

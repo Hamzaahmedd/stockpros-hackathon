@@ -10,6 +10,7 @@ import {
   getCache,
   setCache,
 } from '../../shared/infrastructure/cache'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
 import {
   Action,
@@ -266,15 +267,6 @@ export async function revokePermissions(params: AssignPermissionsParams) {
   if (!role) throw new NotFoundError('Role not found')
   if (!grantor) throw new NotFoundError('Grantor user not found')
 
-  const assignedPermissions = await prisma.rolePermission.findMany({
-    where: { roleId },
-    select: {
-      permission: {
-        select: { action: true, resource: { select: { name: true } } },
-      },
-    },
-  })
-
   const revokedAuthorities = new Set(
     permissions.flatMap((permission) =>
       permission.actions.map(
@@ -282,53 +274,71 @@ export async function revokePermissions(params: AssignPermissionsParams) {
       ),
     ),
   )
-  const remainingActionsByResource = new Map<string, string[]>()
-  for (const assignment of assignedPermissions) {
-    const resourceName = assignment.permission.resource.name
-    const authority = `${resourceName}:${assignment.permission.action}`
-    if (revokedAuthorities.has(authority)) continue
 
-    const actions = remainingActionsByResource.get(resourceName) ?? []
-    actions.push(assignment.permission.action)
-    remainingActionsByResource.set(resourceName, actions)
-  }
-
-  for (const [resourceName, actions] of remainingActionsByResource) {
-    if (!hasReadForMutatingActions(actions)) {
-      throw new ValidationError(
-        `${resourceName} must retain read while write or delete is assigned`,
-      )
-    }
-  }
-
-  const rolePermissionWhereList: { roleId: string; permissionId: string }[] = []
-
-  for (const p of permissions) {
-    const resource = resourceMap[p.resourceName]
-    for (const action of p.actions) {
-      const permission = await prisma.permission.findUnique({
-        where: { action_resourceId: { action, resourceId: resource.id } },
-      })
-      if (permission) {
-        rolePermissionWhereList.push({ roleId, permissionId: permission.id })
-      }
-    }
-  }
-
-  if (rolePermissionWhereList.length === 0) {
-    return
-  }
-
-  await prisma.$transaction(async (tx: any) => {
-    for (const link of rolePermissionWhereList) {
-      await tx.rolePermission.deleteMany({
-        where: {
-          roleId: link.roleId,
-          permissionId: link.permissionId,
+  // The "must retain read" invariant check and the delete must be read and
+  // committed as one atomic unit — otherwise a concurrent assignPermissions
+  // call between the check and the delete can slip in and leave the role
+  // without a read permission it should have kept (a lost-update race).
+  // Serializable isolation makes Postgres abort one of the two transactions
+  // if they conflict, instead of silently interleaving them.
+  await prisma.$transaction(
+    async (tx) => {
+      const assignedPermissions = await tx.rolePermission.findMany({
+        where: { roleId },
+        select: {
+          permission: {
+            select: { action: true, resource: { select: { name: true } } },
+          },
         },
       })
-    }
-  })
+
+      const remainingActionsByResource = new Map<string, string[]>()
+      for (const assignment of assignedPermissions) {
+        const resourceName = assignment.permission.resource.name
+        const authority = `${resourceName}:${assignment.permission.action}`
+        if (revokedAuthorities.has(authority)) continue
+
+        const actions = remainingActionsByResource.get(resourceName) ?? []
+        actions.push(assignment.permission.action)
+        remainingActionsByResource.set(resourceName, actions)
+      }
+
+      for (const [resourceName, actions] of remainingActionsByResource) {
+        if (!hasReadForMutatingActions(actions)) {
+          throw new ValidationError(
+            `${resourceName} must retain read while write or delete is assigned`,
+          )
+        }
+      }
+
+      const rolePermissionWhereList: {
+        roleId: string
+        permissionId: string
+      }[] = []
+
+      for (const p of permissions) {
+        const resource = resourceMap[p.resourceName]
+        for (const action of p.actions) {
+          const permission = await tx.permission.findUnique({
+            where: { action_resourceId: { action, resourceId: resource.id } },
+          })
+          if (permission) {
+            rolePermissionWhereList.push({ roleId, permissionId: permission.id })
+          }
+        }
+      }
+
+      for (const link of rolePermissionWhereList) {
+        await tx.rolePermission.deleteMany({
+          where: {
+            roleId: link.roleId,
+            permissionId: link.permissionId,
+          },
+        })
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  )
 
   await invalidateRoleAssigneePermissionCaches(roleId)
 }

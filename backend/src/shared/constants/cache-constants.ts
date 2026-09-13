@@ -48,6 +48,16 @@ export const CACHE_TTL = {
   SEARCH: {
     SYMBOL_LOOKUP: 60 * 60 * 24, // 24 hours (86,400 seconds)
   },
+
+  /** BullMQ job retention ages (removeOnComplete/removeOnFail), in seconds */
+  JOBS: {
+    AUTH_EMAIL_COMPLETED: 60 * 60, // 1 hour
+    AUTH_EMAIL_FAILED: 24 * 60 * 60, // 24 hours
+    ALERT_EMAIL_COMPLETED: 24 * 60 * 60, // 24 hours
+    ALERT_EMAIL_FAILED: 72 * 60 * 60, // 72 hours
+    NEWS_JOB_COMPLETED: 24 * 60 * 60, // 24 hours
+    NEWS_JOB_FAILED: 72 * 60 * 60, // 72 hours
+  },
 } as const
 
 export type CacheDomain = keyof typeof CACHE_TTL

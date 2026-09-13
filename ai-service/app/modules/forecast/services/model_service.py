@@ -1,4 +1,4 @@
-# app/services/model_service.py
+# app/modules/forecast/services/model_service.py
 import asyncio
 import os
 from typing import Any, List, Tuple, cast
@@ -34,9 +34,9 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
-from app.core.config import settings
-from app.core.logger import logger
-from app.core.storage import BUCKET_NAME, supabase
+from app.shared.config import settings
+from app.shared.logger import logger
+from app.shared.storage import BUCKET_NAME, supabase
 
 def trigger_background_training(symbol: str) -> bool:
     """Triggers the GitHub Action to train the model in the background."""
@@ -82,25 +82,42 @@ def _download_and_save_model(remote_path: str, local_path: str) -> None:
     else:
         raise ValueError(f"Supabase returned non-byte response: {res}")
 
+# One lock per symbol so concurrent forecast requests for the SAME symbol
+# serialize around the download-and-write critical section below (the write
+# already runs off-thread via asyncio.to_thread, which frees the event loop
+# to run another concurrent request for that same symbol — without this lock,
+# that second request could read a partially-written .onnx file mid-download).
+# Different symbols still proceed fully in parallel. Safe to build lazily here
+# since nothing awaits between the dict lookup and insert on a given symbol.
+_symbol_locks: dict[str, asyncio.Lock] = {}
+
+def _get_symbol_lock(symbol: str) -> asyncio.Lock:
+    lock = _symbol_locks.get(symbol)
+    if lock is None:
+        lock = asyncio.Lock()
+        _symbol_locks[symbol] = lock
+    return lock
+
 async def sync_model_from_supabase(symbol: str) -> bool:
     """Downloads the ONNX model from Supabase to development Render disk if it exists."""
     remote_path = f"{symbol.upper()}.onnx"
     local_path = get_model_path(symbol, "onnx")
-    
-    try:
-        os.makedirs(settings.MODEL_DIR, exist_ok=True)
-        await asyncio.to_thread(_download_and_save_model, remote_path, local_path)
 
-        if symbol in MODEL_CACHE:
-            del MODEL_CACHE[symbol]
+    async with _get_symbol_lock(symbol.upper()):
+        try:
+            os.makedirs(settings.MODEL_DIR, exist_ok=True)
+            await asyncio.to_thread(_download_and_save_model, remote_path, local_path)
 
-        logger.info(f"Successfully synced {symbol} ONNX model from Supabase.")
-        return True
-    except Exception as e:
-        logger.warning(f"No existing ONNX model for {symbol} in Supabase: {e}")
-        if os.path.exists(local_path):
-            os.remove(local_path)
-        return False
+            if symbol in MODEL_CACHE:
+                del MODEL_CACHE[symbol]
+
+            logger.info(f"Successfully synced {symbol} ONNX model from Supabase.")
+            return True
+        except Exception as e:
+            logger.warning(f"No existing ONNX model for {symbol} in Supabase: {e}")
+            if os.path.exists(local_path):
+                os.remove(local_path)
+            return False
 
 def convert_to_onnx(model: Any, output_path: str) -> None:
     """Internal helper to convert a Keras model to ONNX."""

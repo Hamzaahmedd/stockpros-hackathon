@@ -39,12 +39,12 @@ export async function getEarningsWithinWindow(
   windowDays = 5,
 ): Promise<EarningsHit | null> {
   try {
-    const today = new Date()
-    const todayStr = formatDate(today)
-
-    const windowEnd = new Date(today)
-    windowEnd.setDate(windowEnd.getDate() + windowDays)
-    const windowEndStr = formatDate(windowEnd)
+    // Finnhub's earnings calendar dates are US trading-day dates (anchored to
+    // America/New_York), not UTC or the viewer's local time. All "today"/window
+    // arithmetic here must use that same calendar-date frame, or the day-count
+    // silently drifts near midnight for viewers in other timezones (e.g. PKT).
+    const todayStr = getEasternDateStr(new Date())
+    const windowEndStr = addDaysToDateStr(todayStr, windowDays)
 
     const response = await finnhubClient.get<{
       earningsCalendar: FinnhubEarningsEntry[]
@@ -65,10 +65,9 @@ export async function getEarningsWithinWindow(
     const nearest = sorted[0]
     if (!nearest) return null
 
-    const earningsDateObj = new Date(nearest.date)
-    const daysUntil = Math.ceil(
-      (earningsDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    )
+    // Both sides are plain YYYY-MM-DD calendar dates now, so the diff is an
+    // exact integer — no fractional days from mixing a date with an instant.
+    const daysUntil = diffDateStrs(todayStr, nearest.date)
 
     logger.info(
       `[EarningsChecker] ${symbol}: earnings on ${nearest.date} (${daysUntil}d away)`,
@@ -85,6 +84,29 @@ export async function getEarningsWithinWindow(
   }
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
+/** Formats `date` as a YYYY-MM-DD calendar date in America/New_York. */
+export function getEasternDateStr(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+function parseDateStr(dateStr: string): number {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return Date.UTC(year, month - 1, day)
+}
+
+export function addDaysToDateStr(dateStr: string, days: number): string {
+  const ms = parseDateStr(dateStr) + days * 24 * 60 * 60 * 1000
+  return new Date(ms).toISOString().split('T')[0]
+}
+
+/** Whole calendar days from `fromStr` to `toStr` (both YYYY-MM-DD). */
+export function diffDateStrs(fromStr: string, toStr: string): number {
+  return Math.round(
+    (parseDateStr(toStr) - parseDateStr(fromStr)) / (24 * 60 * 60 * 1000),
+  )
 }
