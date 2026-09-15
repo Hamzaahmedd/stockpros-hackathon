@@ -1,0 +1,56 @@
+name: Self-Healing README
+
+# Watches for code changes likely to make README.md stale (new/changed env
+# vars, setup commands, folder/service structure, tech stack) and auto-commits
+# a corrected README onto the same PR. See .github/scripts/self-heal-docs.mjs
+# for the drift-detection logic.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/src/**'
+      - 'backend/package.json'
+      - 'backend/prisma/schema.prisma'
+      - 'frontend/src/**'
+      - 'frontend/package.json'
+      - 'ai-service/app/**'
+      - 'ai-service/requirements.txt'
+      - '**/.env.example'
+      - '**/.env.template'
+
+# Cancel any in-flight run for this PR when new commits land, and never run
+# two self-heal jobs for the same PR concurrently (avoids racing commits).
+concurrency:
+  group: self-heal-docs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  self-heal-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Detect doc drift and rewrite README if needed
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/self-heal-docs.mjs
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'docs: auto-sync README with code changes [self-healing-docs]'
+          file_pattern: README.md
