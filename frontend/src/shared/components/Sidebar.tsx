@@ -1,4 +1,5 @@
 import { LogoutModal, useAuth } from "@/modules/auth";
+import { FeedbackWidget } from "@/modules/feedback";
 import { UnifiedNotifications } from "@/modules/notifications";
 import { preloader } from "@/shared/utils/preloader";
 import React, { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import {
   FiFileText,
   FiHome,
   FiLogOut,
+  FiMessageSquare,
   FiRadio,
   FiSettings,
   FiShield,
@@ -240,21 +242,21 @@ function AccessControlMenu({
 
           {isAdminOrRoleReader && (
             <Link
-              to="/access-control/overview"
+              to="/access-control/feedback"
               onMouseEnter={() =>
-                preloader.preloadRoute("/access-control/overview")
+                preloader.preloadRoute("/access-control/feedback")
               }
               onFocus={() =>
-                preloader.preloadRoute("/access-control/overview")
+                preloader.preloadRoute("/access-control/feedback")
               }
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition ${
-                pathname === "/access-control/overview"
+                pathname === "/access-control/feedback"
                   ? "bg-secondary/50 text-foreground font-medium"
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
               }`}
             >
-              <FiActivity className="text-xs" />
-              System Overview
+              <FiMessageSquare className="text-xs" />
+              Feedback
             </Link>
           )}
         </div>
@@ -404,6 +406,7 @@ export const Sidebar: React.FC = () => {
             }`}
           >
             <UnifiedNotifications />
+            <FeedbackWidget />
           </div>
         )}
 

@@ -172,8 +172,8 @@ class PreloaderService {
             this.preload('/api/v1/rbac/roles');
             this.preload('/api/v1/rbac/permissions');
             break;
-          case '/access-control/overview':
-            this.preload('/api/v1/rbac/resources');
+          case '/access-control/feedback':
+            this.preload('/api/v1/feedback');
             break;
           default:
             break;

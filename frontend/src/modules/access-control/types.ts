@@ -32,5 +32,6 @@ export interface AccessControlUser {
   displayName: string;
   email: string;
   status: string;
+  createdAt?: string;
   userRoles: { role: { name: string } }[];
 }

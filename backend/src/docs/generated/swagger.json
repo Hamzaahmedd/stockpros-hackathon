@@ -1292,6 +1292,140 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"FeedbackEntry": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"page": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"message",
+					"page",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_FeedbackEntry_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/FeedbackEntry"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SubmitFeedbackRequest": {
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Feedback message from the user"
+					},
+					"page": {
+						"type": "string",
+						"description": "The app page/route the user was on when they submitted feedback"
+					}
+				},
+				"required": [
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"FeedbackListRow": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"page": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"user": {
+						"properties": {
+							"email": {
+								"type": "string"
+							},
+							"displayName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"email",
+							"displayName",
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"message",
+					"page",
+					"createdAt",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_FeedbackListRow-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/FeedbackListRow"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"Record_string.unknown_": {
 				"properties": {},
 				"additionalProperties": {},
@@ -3523,6 +3657,88 @@
 				]
 			}
 		},
+		"/api/feedback": {
+			"post": {
+				"operationId": "CreateFeedback",
+				"responses": {
+					"201": {
+						"description": "Feedback recorded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_FeedbackEntry_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Submit user feedback (bug report, suggestion, general comment).",
+				"tags": [
+					"Feedback"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SubmitFeedbackRequest"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetAllFeedback",
+				"responses": {
+					"200": {
+						"description": "Feedback list returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_FeedbackListRow-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "List submitted feedback (admin only — requires ACCESS_CONTROL:READ + ROLE:READ).",
+				"tags": [
+					"Feedback"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Pagination cursor (last feedback id from the previous page)",
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Page size (1-100, default 20)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
 		"/api/decision-support/run": {
 			"post": {
 				"operationId": "RunDecision",
@@ -4389,6 +4605,10 @@
 		{
 			"name": "Watchlist",
 			"description": "Tracked symbols, AI baseline calculation, alerts, and position conversion"
+		},
+		{
+			"name": "Feedback",
+			"description": "User-submitted feedback, bug reports, and suggestions"
 		},
 		{
 			"name": "System",

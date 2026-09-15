@@ -175,10 +175,11 @@ const Users = () => {
             <div className="overflow-x-auto">
               <div className="min-w-[800px]">
                 {/* Table Header */}
-                <div className="grid grid-cols-[1.2fr_1.8fr_2fr_1fr] px-8 py-4 text-[10px] font-bold text-muted-foreground border-b border-border bg-muted/30 uppercase tracking-wider">
+                <div className="grid grid-cols-[1.2fr_1.8fr_1.6fr_1.2fr_1fr] px-8 py-4 text-[10px] font-bold text-muted-foreground border-b border-border bg-muted/30 uppercase tracking-wider">
                   <div>Name</div>
                   <div>Email</div>
                   <div>Roles</div>
+                  <div>Joined</div>
                   <div className="text-right">Actions</div>
                 </div>
 
@@ -194,7 +195,7 @@ const Users = () => {
                   users.map((user) => (
                     <div
                       key={user.id || user.email}
-                      className="grid grid-cols-[1.2fr_1.8fr_2fr_1fr] px-8 py-4 border-b border-border items-center transition-colors duration-200 hover:bg-muted/30"
+                      className="grid grid-cols-[1.2fr_1.8fr_1.6fr_1.2fr_1fr] px-8 py-4 border-b border-border items-center transition-colors duration-200 hover:bg-muted/30"
                     >
                       <div className="font-bold text-sm">
                         {user.displayName}
@@ -206,6 +207,14 @@ const Users = () => {
 
                       <div>
                         {getRoleBadges(user.userRoles)}
+                      </div>
+
+                      <div className="text-muted-foreground text-xs font-medium">
+                        {user.createdAt
+                          ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                              dateStyle: "medium",
+                            })
+                          : "—"}
                       </div>
 
                       <div className="text-right">

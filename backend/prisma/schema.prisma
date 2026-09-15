@@ -34,6 +34,7 @@ model User {
   newsReadStates    NewsReadState[]
   newsSavedArticles NewsSavedArticle[]
   decisionRuns      DecisionRun[]
+  feedbackEntries   Feedback[]
 
   @@index([status], map: "idx_users_status")
   @@index([createdAt], map: "idx_users_created_at")
@@ -291,6 +292,20 @@ model Notification {
   @@index([read], map: "idx_notifications_read")
   @@index([createdAt], map: "idx_notifications_created_at")
   @@map("notifications")
+}
+
+model Feedback {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  message   String
+  page      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_feedback_user_id")
+  @@index([createdAt], map: "idx_feedback_created_at")
+  @@map("feedback")
 }
 
 model NewsArticle {

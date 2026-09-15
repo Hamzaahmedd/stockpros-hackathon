@@ -3,6 +3,7 @@ import { accessControlModule } from './access-control'
 import { authModule } from './auth'
 import { dashboardModule } from './dashboard'
 import { decisionSupportModule } from './decision-support'
+import { feedbackModule } from './feedback'
 import { forecastModule } from './forecast'
 import { marketModule } from './market'
 import { newsModule } from './news'
@@ -22,6 +23,7 @@ export const modules: readonly AppModule[] = [
   newsModule,
   dashboardModule,
   searchModule,
+  feedbackModule,
 ]
 
 export type { AppModule } from './module-interface'

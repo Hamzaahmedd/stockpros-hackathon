@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Roles, SystemOverview, Users } from "@/modules/access-control";
+import { Roles, Users } from "@/modules/access-control";
 import {
   Login,
   Onboarding,
@@ -8,6 +8,7 @@ import {
 } from "@/modules/auth";
 import { Dashboard } from "@/modules/dashboard";
 import { MarketAnalysis, OpportunityRadar, PortfolioHealth } from "@/modules/decision-support";
+import { FeedbackList } from "@/modules/feedback";
 import { Forecast } from "@/modules/forecast";
 import { Markets } from "@/modules/markets";
 import { News } from "@/modules/news";
@@ -105,9 +106,9 @@ export default function App() {
             <Roles />
           </ProtectedRoute>
         } />
-        <Route path="/access-control/overview" element={
+        <Route path="/access-control/feedback" element={
           <ProtectedRoute requirements={[{ resource: "ACCESS_CONTROL" }, { resource: "ROLE" }] }>
-            <SystemOverview />
+            <FeedbackList />
           </ProtectedRoute>
         } />
 

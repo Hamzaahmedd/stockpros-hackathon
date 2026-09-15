@@ -37,6 +37,7 @@
       { "name": "Notifications", "description": "User notifications, unread counts, and batch actions" },
       { "name": "Search", "description": "Symbol lookup and company autocomplete" },
       { "name": "Watchlist", "description": "Tracked symbols, AI baseline calculation, alerts, and position conversion" },
+      { "name": "Feedback", "description": "User-submitted feedback, bug reports, and suggestions" },
       { "name": "System", "description": "Platform health and operational readiness" }
     ],
     "servers": [
