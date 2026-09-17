@@ -38,10 +38,6 @@ export const notificationService = {
     await api.patch("/api/v1/notifications/read-multiple", { notificationIds });
   },
 
-  deleteNotification: async (id: string) => {
-    await api.delete(`/api/v1/notifications/${id}`);
-  },
-
   getPreferences: async (): Promise<NotificationPreferences> => {
     const res = await api.get("/api/v1/notifications/preferences");
     return res.data.data;

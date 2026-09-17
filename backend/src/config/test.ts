@@ -45,4 +45,7 @@ export const testConfig = {
   audit: {
     retentionDays: 30,
   },
+  notifications: {
+    retentionDays: 30,
+  },
 }

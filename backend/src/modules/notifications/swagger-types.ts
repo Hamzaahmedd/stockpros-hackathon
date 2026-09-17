@@ -106,17 +106,6 @@ export class NotificationsSwaggerController extends Controller {
   }
 
   /**
-   * Delete a specific notification.
-   */
-  @Delete('{id}')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'Notification deleted')
-  @Response<ApiErrorResponse>(404, 'Notification not found')
-  async deleteNotification(@Path() id: string): Promise<ApiResponse> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
    * Delete all notifications for the authenticated user.
    */
   @Delete('')

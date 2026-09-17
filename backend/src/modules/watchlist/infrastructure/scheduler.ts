@@ -7,7 +7,10 @@ import {
   runSecFilingJob,
   runAiZoneRecomputeJob,
 } from './watchlist-job'
-import { sendDailyDigestsToAllSubscribers } from '../../notifications/public'
+import {
+  sendDailyDigestsToAllSubscribers,
+  runNotificationCleanupJob,
+} from '../../notifications/public'
 import { logger } from '../../../shared/infrastructure/logger'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import type { JobDefinition } from './types'
@@ -53,6 +56,11 @@ const JOB_DEFINITIONS: JobDefinition[] = [
     handler: sendDailyDigestsToAllSubscribers,
     pattern: PREMARKET_DIGEST_CRON,
     timeZone: US_EASTERN_TIME_ZONE,
+  },
+  {
+    name: 'notification-cleanup',
+    handler: runNotificationCleanupJob,
+    pattern: '0 4 * * *', // daily at 04:00 UTC (off-peak)
   },
 ]
 

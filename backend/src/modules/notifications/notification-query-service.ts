@@ -188,18 +188,20 @@ export const markMultipleAsRead = async (
   return { updated: result.count }
 }
 
-// ─── Delete Single ────────────────────────────────────────────────────────────
+// ─── Delete Expired (Retention) ────────────────────────────────────────────────
 
-export const deleteNotification = async (
-  userId: string,
-  notificationId: string,
-): Promise<void> => {
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+/**
+ * Purges all notifications older than the retention window,
+ * regardless of read state.
+ */
+export const deleteExpiredNotifications = async (
+  retentionDays: number,
+): Promise<{ deleted: number }> => {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
+
+  const result = await prisma.notification.deleteMany({
+    where: { createdAt: { lt: cutoff } },
   })
-  if (!notification) {
-    throw new AppError('Notification not found', 404)
-  }
 
-  await prisma.notification.delete({ where: { id: notificationId } })
+  return { deleted: result.count }
 }

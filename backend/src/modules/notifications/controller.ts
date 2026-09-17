@@ -165,24 +165,3 @@ export const markMultipleAsRead = async (
     next(err)
   }
 }
-
-/**
- * DELETE /notifications/:id
- * Delete a single notification.
- */
-export const deleteNotification = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const userId = getUserId(req)
-    const id = req.params.id as string
-    await NotificationService.deleteNotification(userId, id)
-    sendSuccess(res, {
-      message: 'Notification deleted successfully',
-    })
-  } catch (err) {
-    next(err)
-  }
-}

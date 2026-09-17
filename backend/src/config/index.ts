@@ -134,6 +134,9 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       enabled: true,
       retentionDays: env.audit.retentionDays,
     },
+    notifications: {
+      retentionDays: env.notifications.retentionDays,
+    },
   }
 }
 

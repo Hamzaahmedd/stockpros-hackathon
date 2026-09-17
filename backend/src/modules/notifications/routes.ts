@@ -44,10 +44,5 @@ router.patch(
   rbacMiddleware(Resource.CORE_APP, Action.WRITE),
   NotificationController.markAsRead,
 )
-router.delete(
-  '/:id',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
-  NotificationController.deleteNotification,
-)
 
 export default router

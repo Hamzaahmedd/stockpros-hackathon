@@ -3,5 +3,6 @@
 // router/middleware chain (keeps callers free of circular imports).
 export { enqueueAuthEmail } from './infrastructure/auth-email-worker'
 export { sendDailyDigestsToAllSubscribers } from './digest-service'
+export { runNotificationCleanupJob } from './notification-cleanup-job'
 export type { AuthEmailJobPayload } from './types'
 

@@ -46,4 +46,7 @@ export const productionConfig = {
   audit: {
     retentionDays: 30,
   },
+  notifications: {
+    retentionDays: 30,
+  },
 }
