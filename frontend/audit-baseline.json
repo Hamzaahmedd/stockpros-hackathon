@@ -1,0 +1,6 @@
+[
+  { "name": "esbuild", "severity": "moderate" },
+  { "name": "react-router", "severity": "moderate" },
+  { "name": "react-router-dom", "severity": "moderate" },
+  { "name": "vite", "severity": "high" }
+]

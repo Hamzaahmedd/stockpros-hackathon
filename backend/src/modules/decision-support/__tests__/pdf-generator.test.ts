@@ -3,15 +3,16 @@ import {
   generateTradePlanPdfBuffer,
   generatePortfolioReportPdfBuffer,
 } from '../pdf-generator'
+import type { PortfolioPdfPayload, TradePlanData } from '../types'
 
 describe('Decision Support PDF Generators', () => {
   it('generates a valid Trade Plan PDF buffer', async () => {
-    const mockPlan = {
+    const mockPlan: TradePlanData = {
       symbol: 'NVDA',
       sector: 'Technology',
       currentPrice: 120.5,
       atr: 4.2,
-      recommendation: 'BUY (CONFIRMED)',
+      recommendation: 'BUY',
       confidence: 0.85,
       timeHorizon: 'Short-to-Medium Term',
       entryRange: { low: 118.0, high: 122.0 },
@@ -35,7 +36,7 @@ describe('Decision Support PDF Generators', () => {
   })
 
   it('generates a valid Portfolio Health Report PDF buffer', async () => {
-    const mockPayload = {
+    const mockPayload: PortfolioPdfPayload = {
       portfolioData: {
         positions: [
           {
@@ -60,7 +61,7 @@ describe('Decision Support PDF Generators', () => {
         {
           symbol: 'AAPL',
           sector: 'Technology',
-          marketDecision: 'HOLD',
+          marketDecision: 'HOLD / CAUTION',
           portfolioDecision: 'HOLD',
           confidence: 0.75,
           riskLevel: 'LOW',

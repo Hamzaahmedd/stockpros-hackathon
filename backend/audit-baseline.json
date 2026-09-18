@@ -1,0 +1,14 @@
+[
+  { "name": "@prisma/config", "severity": "high" },
+  { "name": "@tsoa/cli", "severity": "moderate" },
+  { "name": "body-parser", "severity": "moderate" },
+  { "name": "csv-parse", "severity": "moderate" },
+  { "name": "deepmerge-ts", "severity": "high" },
+  { "name": "express", "severity": "moderate" },
+  { "name": "nodemailer", "severity": "high" },
+  { "name": "prisma", "severity": "high" },
+  { "name": "qs", "severity": "moderate" },
+  { "name": "ts-deepmerge", "severity": "moderate" },
+  { "name": "tsoa", "severity": "moderate" },
+  { "name": "xlsx", "severity": "high" }
+]

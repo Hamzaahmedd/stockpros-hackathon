@@ -11,9 +11,14 @@
  */
 
 // ── Infrastructure mocks ──────────────────────────────────────────────────────
-// Prisma: mock at module level so no TCP connection is attempted
+// Prisma: mock only the client (so no TCP connection is attempted), but keep
+// the real generated enums (NewsCategory, AlertType, UserStatus, ...) — several
+// modules import these as values, not just types, and a partial mock without
+// them throws at import time for any route that pulls those modules in.
 jest.mock('@prisma/client', () => {
+  const actual = jest.requireActual('@prisma/client')
   return {
+    ...actual,
     PrismaClient: jest.fn().mockImplementation(() => ({
       $connect: jest.fn().mockResolvedValue(undefined),
       $disconnect: jest.fn().mockResolvedValue(undefined),

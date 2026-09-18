@@ -196,9 +196,9 @@ describe('computeSentiment', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('computeDecision', () => {
-  const baseInput = {
+  const baseInput: Parameters<typeof computeDecision>[0] = {
     rsi: 50,
-    sentimentTrend: 'FLAT' as const,
+    sentimentTrend: 'FLAT',
     analystRating: 'HOLD',
     sentimentScore: 0,
     newsVolume: 5,
