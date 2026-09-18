@@ -1,6 +1,7 @@
 import type { AlertType } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
+import { captureEvent, PostHogEvent } from '../../shared/infrastructure/posthog'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
 import { enqueueEmail } from './infrastructure/email-worker'
 
@@ -101,6 +102,11 @@ export const dispatchNotification = async (
     },
   })
   if (!preferences) return
+
+  captureEvent(userId, PostHogEvent.WatchlistAlertTriggered, {
+    symbol,
+    alertType,
+  })
 
   const { title, body } = formatNotification(
     symbol,

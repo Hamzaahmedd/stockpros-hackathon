@@ -5,6 +5,7 @@ import { GOOGLE_CLIENT_ID } from "@/shared/config";
 import { setAccessToken } from "@/shared/utils/token";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import posthog from "posthog-js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -118,7 +119,8 @@ export const Login: React.FC = () => {
         }
 
         setAccessToken(accessToken);
-        await refreshMe();
+        const signedInUser = await refreshMe();
+        if (signedInUser) posthog.identify(signedInUser.userId);
         toast.success("Signed in with Google successfully");
         // The "already logged in" redirect effect above takes over once `user` is set
       } catch (err: any) {

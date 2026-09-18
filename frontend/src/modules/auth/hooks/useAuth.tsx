@@ -1,4 +1,5 @@
 import api from "@/shared/api/axios";
+import posthog from "posthog-js";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/utils/token";
@@ -17,7 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ------------------------
   // /me
   // ------------------------
-  const fetchMe = useCallback(async () => {
+  const fetchMe = useCallback(async (): Promise<User> => {
     let token = getAccessToken();
 
     // If no token (e.g. on page reload), try to refresh it
@@ -37,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setScreenPermissions({});
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
@@ -46,11 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         api.get("/api/v1/rbac/user-screens")
       ]);
 
-      setUser(meRes.data?.user || meRes.data);
+      const fetchedUser = meRes.data?.user || meRes.data;
+      setUser(fetchedUser);
       setScreenPermissions(screensRes.data?.data || screensRes.data || {});
+      return fetchedUser;
     } catch {
       setUser(null);
       setScreenPermissions({});
+      return null;
     } finally {
       setLoading(false);
     }
@@ -84,7 +88,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    fetchMe();
+    // Initial session load (e.g. page refresh) — identify once here rather
+    // than inside fetchMe itself, since fetchMe is also reused as `refreshMe`
+    // for background re-validations that shouldn't re-fire identify.
+    fetchMe().then((fetchedUser) => {
+      if (fetchedUser) posthog.identify(fetchedUser.userId);
+    });
   }, [fetchMe]);
 
   // ------------------------
@@ -95,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await api.post("/api/v1/auth/logout");
     } catch { }
     clearAccessToken();
+    posthog.reset();
     setUser(null);
     setScreenPermissions({});
   };

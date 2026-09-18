@@ -31,7 +31,7 @@ export type AuthContextValue = {
   register: (payload: { email: string }) => Promise<void>;
   logout: () => Promise<void>;
   can: (resource: string, action: keyof ScreenPermissions) => boolean;
-  refreshMe: () => Promise<void>;
+  refreshMe: () => Promise<User>;
 };
 
 export type { LoginFormValues, OnboardingFormValues } from "./validation";

@@ -74,6 +74,8 @@ FMP_API_KEY=your_fmp_api_key
 TWELVE_DATA_API_KEY=your_twelve_data_api_key
 POLYGON_API_KEY=your_polygon_api_key
 NODE_ENV=development
+AXIOM_TOKEN=your_axiom_token
+POSTHOG_API_KEY=your_posthog_project_api_key
 ```
 
 4. Database Setup

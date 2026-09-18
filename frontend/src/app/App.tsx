@@ -14,14 +14,27 @@ import { Markets } from "@/modules/markets";
 import { News } from "@/modules/news";
 import { Settings } from "@/modules/settings";
 import { Watchlist } from "@/modules/watchlist";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { NotFound } from "@/shared/components/NotFound";
+import posthog from "posthog-js";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+const PostHogPageviewTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    posthog.capture("$pageview");
+  }, [location.pathname]);
+
+  return null;
+};
 
 export default function App() {
   return (
     <>
+      <PostHogPageviewTracker />
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -114,7 +127,7 @@ export default function App() {
 
 
         {/* Catch-all route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );

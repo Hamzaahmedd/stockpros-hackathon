@@ -15,6 +15,11 @@ import { transporter } from '../../shared/infrastructure/config/email'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
+  AuthMethod,
+  captureEvent,
+  PostHogEvent,
+} from '../../shared/infrastructure/posthog'
+import {
   convertToMilliseconds,
   hashToken,
   signToken,
@@ -248,6 +253,8 @@ export async function deleteAccount(userId: string): Promise<void> {
   if (user.status === UserStatus.DELETED) {
     throw new UnauthorizedError('Account is already deleted')
   }
+
+  captureEvent(userId, PostHogEvent.AccountDeleted)
 
   // Step 2: Immediately revoke ALL active sessions — blocks all future requests
   await prisma.userSession.updateMany({
@@ -580,6 +587,10 @@ export async function verifyMagicLink(
     where: { tokenHash },
   })
 
+  captureEvent(user.id, PostHogEvent.UserSignedIn, {
+    method: AuthMethod.MagicLink,
+  })
+
   return {
     requiresOnboarding: false,
     user: {
@@ -646,6 +657,8 @@ export async function completeOnboarding(
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
     },
   })
+
+  captureEvent(user.id, PostHogEvent.OnboardingCompleted)
 
   return {
     user: {
@@ -883,6 +896,10 @@ export async function googleLogin(
       userAgent,
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
     },
+  })
+
+  captureEvent(user.id, PostHogEvent.UserSignedIn, {
+    method: AuthMethod.Google,
   })
 
   return {

@@ -19,6 +19,7 @@ export const readSecrets = () => ({
   polygonApiKey: process.env.POLYGON_API_KEY || '',
   twelveDataApiKey: process.env.TWELVE_DATA_API_KEY || '',
   axiomToken: process.env.AXIOM_TOKEN || '',
+  posthogApiKey: process.env.POSTHOG_API_KEY || '',
   groqApiKey: process.env.GROQ_API_KEY || '',
   groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
   corsOrigins: process.env.CORS_ORIGINS || '',
@@ -124,6 +125,10 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
     axiom: {
       token: secrets.axiomToken,
       dataset: env.axiom.dataset,
+    },
+    posthog: {
+      apiKey: secrets.posthogApiKey,
+      host: env.posthog.host,
     },
     groq: {
       apiKey: secrets.groqApiKey,

@@ -579,11 +579,11 @@ export const Dashboard: React.FC = () => {
                                         <div className="w-full flex justify-between gap-6 mt-8 pt-6 border-t">
                                             <div className="min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total Value</div>
-                                                <div className="text-2xl font-bold tracking-tight">${(portfolio?.totalValue ?? 0).toLocaleString()}</div>
+                                                <div className="ph-mask text-2xl font-bold tracking-tight">${(portfolio?.totalValue ?? 0).toLocaleString()}</div>
                                             </div>
                                             <div className="text-right min-w-fit">
                                                 <div className="text-xs text-muted-foreground mb-1">Total P&L</div>
-                                                <div className={`text-2xl font-bold tracking-tight ${(portfolio?.totalUnrealizedPnL ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                <div className={`ph-mask text-2xl font-bold tracking-tight ${(portfolio?.totalUnrealizedPnL ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                     {(portfolio?.totalUnrealizedPnL ?? 0) >= 0 ? '+' : ''}${Math.abs(portfolio?.totalUnrealizedPnL ?? 0).toLocaleString()}
                                                 </div>
                                             </div>

@@ -230,18 +230,22 @@ interface KeyValueItemProps {
   readonly label: string;
   readonly value: string;
   readonly accent?: boolean;
+  readonly mask?: boolean;
 }
 
 const KeyValueItem: React.FC<KeyValueItemProps> = ({
   label,
   value,
   accent,
+  mask,
 }) => (
   <div className="flex items-center gap-2">
     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider w-10">
       {label}
     </span>
-    <span className={`text-sm font-bold ${accent ? "text-primary" : ""}`}>
+    <span
+      className={`text-sm font-bold ${accent ? "text-primary" : ""} ${mask ? "ph-mask" : ""}`}
+    >
       {value}
     </span>
   </div>
@@ -496,7 +500,7 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({
                 {pos.unrealizedPnLPercent >= 0 ? "+" : ""}
                 {pos.unrealizedPnLPercent.toFixed(2)}%
               </div>
-              <div className="text-[10px] opacity-80 font-mono">
+              <div className="ph-mask text-[10px] opacity-80 font-mono">
                 ${pos.currentValue.toLocaleString()}
               </div>
             </div>
@@ -732,16 +736,18 @@ const PositionTableRow: React.FC<PositionTableRowProps> = ({
           <KeyValueItem
             label="Entry"
             value={`$${pos.avg_entry_price.toFixed(2)}`}
+            mask
           />
           <KeyValueItem
             label="Value"
             value={`$${pos.currentValue.toLocaleString()}`}
             accent
+            mask
           />
         </td>
         <td className="px-4 py-3.5">
           <div
-            className={`text-base font-bold tracking-tight ${
+            className={`ph-mask text-base font-bold tracking-tight ${
               pos.unrealizedPnL >= 0 ? "text-emerald-500" : "text-destructive"
             }`}
           >
@@ -963,7 +969,7 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
           iconCls="bg-blue-500/10 text-blue-500"
           label="Market Value"
         >
-          <span className="text-2xl md:text-3xl font-bold tracking-tight">
+          <span className="ph-mask text-2xl md:text-3xl font-bold tracking-tight">
             ${portfolioData.summary.totalMarketValue.toLocaleString()}
           </span>
           <span className="block text-[10px] text-muted-foreground mt-1 font-medium">
@@ -977,7 +983,7 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
           label="Unrealized PnL"
         >
           <span
-            className={`text-2xl md:text-3xl font-bold tracking-tight ${
+            className={`ph-mask text-2xl md:text-3xl font-bold tracking-tight ${
               portfolioData.summary.totalUnrealizedPnL >= 0
                 ? "text-green-500"
                 : "text-destructive"

@@ -1,6 +1,7 @@
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { setAccessToken } from "@/shared/utils/token";
 import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../../shared/api/axios";
@@ -50,7 +51,8 @@ export const VerifyMagicLink = () => {
           setAccessToken(accessToken);
         }
 
-        await refreshMe();
+        const verifiedUser = await refreshMe();
+        if (verifiedUser) posthog.identify(verifiedUser.userId);
         setIsSuccess(true);
 
         // Determine destination based on user profile and role

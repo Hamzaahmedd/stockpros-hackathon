@@ -3,7 +3,8 @@ import { AuthenticatedRequest } from '../auth'
 import { getForecast } from './service'
 import { forecastQueryValidator } from './validation'
 import { validateOrThrow } from '../../shared/errors'
-import { sendSuccess } from '../../shared/utils'
+import { getUserId, sendSuccess } from '../../shared/utils'
+import { captureEvent, PostHogEvent } from '../../shared/infrastructure/posthog'
 import {
   generateForecastPdfBuffer,
   getForecastReportFileName,
@@ -20,6 +21,8 @@ export const getStockForecast = async (
       req.query,
     )
     const forecastData = await getForecast(symbol, period)
+
+    captureEvent(getUserId(req), PostHogEvent.ForecastGenerated, { symbol })
 
     return sendSuccess(res, {
       message: 'Stock forecast data retrieved successfully.',

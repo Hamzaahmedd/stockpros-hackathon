@@ -29,6 +29,7 @@ import {
   prisma,
 } from './shared/infrastructure/database'
 import { logger } from './shared/infrastructure/logger'
+import { posthogClient } from './shared/infrastructure/posthog'
 import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 
 export const httpServer = http.createServer(createApp())
@@ -43,6 +44,7 @@ const shutdown = async () => {
   await stopNewsCronJobs()
   await stopEmailWorker()
   await stopAuthEmailWorker()
+  await posthogClient?.shutdown()
   await prisma.$disconnect()
   httpServer.close(() => process.exit(0))
 }

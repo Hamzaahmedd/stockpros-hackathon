@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
+import posthog from "posthog-js";
 import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -201,7 +202,8 @@ export const Onboarding: React.FC = () => {
       }
 
       // 4. Update auth state and navigate to live terminal
-      await refreshMe();
+      const onboardedUser = await refreshMe();
+      if (onboardedUser) posthog.identify(onboardedUser.userId);
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       console.error("Onboarding error:", err);

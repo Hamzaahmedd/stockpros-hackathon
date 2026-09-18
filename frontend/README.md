@@ -22,9 +22,13 @@ Web frontend for the Stock Prediction Platform, built with React + TypeScript. P
 
 ## Environment Variables
 
-Create a `.env` file in the project root with these or  actual urls:
+Create a `.env` file in the project root with these or actual values (see `.env.example`):
 ```bash
-API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3000
+VITE_HEALTH_CHECK_URL=http://localhost:3000/health
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+VITE_POSTHOG_KEY=your_posthog_project_api_key
+VITE_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 ## Installation

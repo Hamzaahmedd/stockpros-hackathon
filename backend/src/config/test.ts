@@ -36,6 +36,9 @@ export const testConfig = {
   axiom: {
     dataset: 'stockpros-audit-logs',
   },
+  posthog: {
+    host: 'https://us.i.posthog.com',
+  },
   features: {
     enableNewsCron: false,
     enableWatchlistCron: false,
