@@ -71,7 +71,7 @@ const Watchlist: React.FC = () => {
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [currentAlerts, setCurrentAlerts] = useState<Alert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
-  const [newAlertType, setNewAlertType] = useState("PRICE_ABOVE");
+  const [newAlertType, setNewAlertType] = useState<Alert["type"]>("PRICE_ABOVE");
   
   // Confirmation states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -772,7 +772,7 @@ const Watchlist: React.FC = () => {
                       <select 
                     name="type" 
                     value={newAlertType}
-                    onChange={(e) => setNewAlertType(e.target.value)}
+                    onChange={(e) => setNewAlertType(e.target.value as Alert["type"])}
                     className={`border rounded-xl px-4 h-12 outline-none text-sm focus:border-cyan-500/50 appearance-none cursor-pointer font-medium ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                   >
                      <option value="PRICE_ABOVE" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Price Above</option>
@@ -780,7 +780,7 @@ const Watchlist: React.FC = () => {
                      <option value="PCT_CHANGE_UP" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>% Change Up</option>
                      <option value="PCT_CHANGE_DOWN" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>% Change Down</option>
                      <option value="ENTRY_ZONE" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Entry Zone Hit</option>
-                     <option value="SL_BREACHED" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Stop Loss Hit</option>
+                     <option value="STOP_LOSS_BREACHED" className={theme === 'dark' ? "bg-zinc-900 text-white" : "bg-white text-black"}>Stop Loss Hit</option>
                   </select>
                   
                   {["PRICE_ABOVE", "PRICE_BELOW", "PCT_CHANGE_UP", "PCT_CHANGE_DOWN"].includes(newAlertType) ? (

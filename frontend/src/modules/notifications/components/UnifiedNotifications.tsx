@@ -9,6 +9,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import { useAuth } from '@/modules/auth';
 import { useSocket } from '@/shared/hooks/useSocket';
 import { socketManager } from '@/shared/utils/socketManager';
+import { SocketEvent } from '@/shared/utils/socket-events';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export const UnifiedNotifications: React.FC = () => {
@@ -72,8 +73,8 @@ export const UnifiedNotifications: React.FC = () => {
 
     useEffect(() => {
         if (connected && user?.id) {
-            socketManager.emit('join', user.id);
-            
+            socketManager.emit(SocketEvent.Join, user.id);
+
             const onNotification = (newNotif: any) => {
                 console.log("Real-time notification received:", newNotif);
                 // Prepend to current list
@@ -82,9 +83,9 @@ export const UnifiedNotifications: React.FC = () => {
                 notificationService.getSummary().then(setNotifSummary);
             };
 
-            socketManager.on('notification', onNotification);
+            socketManager.on(SocketEvent.Notification, onNotification);
             return () => {
-                socketManager.off('notification', onNotification);
+                socketManager.off(SocketEvent.Notification, onNotification);
             };
         }
     }, [connected, user?.id]);

@@ -1,3 +1,5 @@
+export type MarketRecommendation = 'BUY' | 'SELL' | 'HOLD / CAUTION';
+
 export interface PortfolioSummary {
   totalPositions: number;
   totalMarketValue: number;
@@ -69,7 +71,7 @@ export interface RadarCard {
   stopLoss: number;
   confidence: number;
   confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW';
-  recommendation: string;
+  recommendation: MarketRecommendation;
   timeHorizon: string;
   riskFlags: string[];
 }
@@ -81,7 +83,7 @@ export interface PositionSizeResult {
   stopLoss: number;
   bullTarget: number;
   atr?: number;
-  recommendation?: string;
+  recommendation?: MarketRecommendation;
   confidence?: number;
   shares: number;
   riskPerShare: number;
@@ -128,7 +130,7 @@ export interface MarketDecisionData {
     newsVolume: number;
   };
   decision: {
-    recommendation: string;
+    recommendation: MarketRecommendation;
     timeHorizon: string;
     confidence: number;
   };

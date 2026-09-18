@@ -2,6 +2,7 @@ import type { AlertType } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import { captureEvent, PostHogEvent } from '../../shared/infrastructure/posthog'
+import { SocketEvent } from '../../shared/infrastructure/realtime/socket-events'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
 import { enqueueEmail } from './infrastructure/email-worker'
 
@@ -123,7 +124,7 @@ export const dispatchNotification = async (
     try {
       const socketServer = SocketServer.getInstance()
       if (socketServer) {
-        socketServer.io.to(`user:${userId}`).emit('notification', {
+        socketServer.io.to(`user:${userId}`).emit(SocketEvent.Notification, {
           ...notification,
           read: false,
         })

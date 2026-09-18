@@ -1,6 +1,7 @@
 import type { Trade } from "@/modules/markets/types";
 import { io, Socket } from "socket.io-client";
 import { API_URL } from "../config";
+import { SocketEvent } from "./socket-events";
 import type { SocketListener as Listener } from "../types/socket";
 
 class SocketManager {
@@ -55,13 +56,13 @@ class SocketManager {
       if (!this.manualDisconnect) this.retryConnect();
     });
 
-    this.socket.on("trade", (trade: Trade) => {
-      this.emitLocal("trade", trade);
+    this.socket.on(SocketEvent.Trade, (trade: Trade) => {
+      this.emitLocal(SocketEvent.Trade, trade);
     });
 
-    this.socket.on("subscribed", (payload: any) => this.emitLocal("subscribed", payload));
-    this.socket.on("unsubscribed", (payload: any) => this.emitLocal("unsubscribed", payload));
-    this.socket.on("finnhub_error", (payload: any) => this.emitLocal("finnhub_error", payload));
+    this.socket.on(SocketEvent.Subscribed, (payload: any) => this.emitLocal(SocketEvent.Subscribed, payload));
+    this.socket.on(SocketEvent.Unsubscribed, (payload: any) => this.emitLocal(SocketEvent.Unsubscribed, payload));
+    this.socket.on(SocketEvent.FinnhubError, (payload: any) => this.emitLocal(SocketEvent.FinnhubError, payload));
 
     this.socket.on("connect_error", (err: any) => {
       this.connected = false;
@@ -69,8 +70,8 @@ class SocketManager {
       this.retryConnect();
     });
 
-    this.socket.on("error", (err: any) => {
-      this.emitLocal("error", err);
+    this.socket.on(SocketEvent.Error, (err: any) => {
+      this.emitLocal(SocketEvent.Error, err);
     });
   }
 
@@ -123,7 +124,7 @@ class SocketManager {
     this.pendingSubs.delete(s);
     if (this.subscribed.has(s)) {
       this.subscribed.delete(s);
-      this.socket?.emit("unsubscribe", { symbol: s });
+      this.socket?.emit(SocketEvent.Unsubscribe, { symbol: s });
     }
   }
 
@@ -144,7 +145,7 @@ class SocketManager {
       const gap = i * 120;
       window.setTimeout(() => {
         if (!this.subscribed.has(s)) {
-          this.socket?.emit("subscribe", { symbol: s });
+          this.socket?.emit(SocketEvent.Subscribe, { symbol: s });
           this.subscribed.add(s);
         }
       }, gap);

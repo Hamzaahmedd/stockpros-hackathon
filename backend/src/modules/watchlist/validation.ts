@@ -1,6 +1,20 @@
 import { z } from 'zod'
 import { AlertType } from '@prisma/client'
 
+// ─── Route Params ─────────────────────────────────────────────────────────────
+
+export const symbolParamValidator = z.object({
+  symbol: z
+    .string()
+    .trim()
+    .min(1, 'Symbol is required')
+    .max(10, 'Symbol must be 10 characters or fewer'),
+})
+
+export const symbolAndIdParamValidator = symbolParamValidator.extend({
+  id: z.string().uuid('Invalid id'),
+})
+
 // ─── Add to Watchlist ────────────────────────────────────────────────────────
 
 export const addToWatchlistValidator = z.object({

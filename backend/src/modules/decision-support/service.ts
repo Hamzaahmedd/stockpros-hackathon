@@ -17,8 +17,11 @@ import fmpClient from '../../shared/infrastructure/clients/fmp-client'
 import twelveDataClient from '../../shared/infrastructure/clients/twelve-data-client'
 import {
   ActionGuidance,
+  AnalystRating,
   DecisionResult,
   EnrichedPortfolioPosition,
+  MarketRecommendation,
+  PortfolioDecision,
   PortfolioPosition,
   PortfolioRiskMetrics,
   PortfolioSummary,
@@ -27,6 +30,7 @@ import {
   RadarCard,
   RawPortfolioRow,
   RiskLevel,
+  SentimentTrend,
   VolatilityLevel,
 } from './types'
 import { PortfolioArrayValidator } from './validation'
@@ -324,9 +328,11 @@ export const computeTrend = (closes: number[]) => {
 
 const average = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
 
-export const parseAnalystConsensus = (data: any[]) => {
+export const parseAnalystConsensus = (
+  data: any[],
+): { rating: AnalystRating; confidencePercent: number; sourceCount: number } => {
   if (!data || data.length === 0) {
-    return { rating: 'HOLD', confidencePercent: 0, sourceCount: 0 }
+    return { rating: AnalystRating.Hold, confidencePercent: 0, sourceCount: 0 }
   }
 
   const r = data[0]
@@ -335,12 +341,12 @@ export const parseAnalystConsensus = (data: any[]) => {
   const confidencePercent =
     totalAnalysts > 0 ? Math.round((bullishCount / totalAnalysts) * 100) : 0
 
-  let rating: string
-  if (confidencePercent >= 80) rating = 'STRONG_BUY'
-  else if (confidencePercent >= 60) rating = 'BUY'
-  else if (confidencePercent >= 40) rating = 'HOLD'
-  else if (confidencePercent >= 20) rating = 'SELL'
-  else rating = 'STRONG_SELL'
+  let rating: AnalystRating
+  if (confidencePercent >= 80) rating = AnalystRating.StrongBuy
+  else if (confidencePercent >= 60) rating = AnalystRating.Buy
+  else if (confidencePercent >= 40) rating = AnalystRating.Hold
+  else if (confidencePercent >= 20) rating = AnalystRating.Sell
+  else rating = AnalystRating.StrongSell
 
   return {
     rating,
@@ -353,7 +359,12 @@ export const computeSentiment = (feed: any[], targetTicker: string) => {
   const volume = feed.length
 
   if (!volume) {
-    return { score: 0, trend: 'FLAT', change48hPercent: 0, newsVolume: 0 }
+    return {
+      score: 0,
+      trend: SentimentTrend.Flat,
+      change48hPercent: 0,
+      newsVolume: 0,
+    }
   }
 
   const tickerScores = feed.map((article) => {
@@ -373,9 +384,9 @@ export const computeSentiment = (feed: any[], targetTicker: string) => {
 
   const avgScore = tickerScores.reduce((a, b) => a + b, 0) / volume
 
-  let trend: 'UP' | 'DOWN' | 'FLAT' = 'FLAT'
-  if (avgScore >= 0.15) trend = 'UP'
-  else if (avgScore <= -0.15) trend = 'DOWN'
+  let trend: SentimentTrend = SentimentTrend.Flat
+  if (avgScore >= 0.15) trend = SentimentTrend.Up
+  else if (avgScore <= -0.15) trend = SentimentTrend.Down
 
   // Need at least 2 articles to split into a "recent" and "older" half;
   // with fewer there's nothing to compare, so change48h is undefined (0).
@@ -431,22 +442,22 @@ const computeDataConfidence = (newsVolume: number, analystCount: number) => {
 
 const determineRiskFlags = (
   rsi: number,
-  analystRating: string,
-  sentimentTrend: string,
+  analystRating: AnalystRating,
+  sentimentTrend: SentimentTrend,
 ): string[] => {
   const riskFlags: string[] = []
 
   if (rsi >= 70) riskFlags.push('OVERBOUGHT_CONDITION')
   else if (rsi <= 30) riskFlags.push('OVERSOLD_OPPORTUNITY')
 
-  if (analystRating === 'STRONG_BUY' && sentimentTrend === 'DOWN')
+  if (analystRating === AnalystRating.StrongBuy && sentimentTrend === SentimentTrend.Down)
     riskFlags.push('SENTIMENT_DIVERGENCE_WARNING')
 
-  if (analystRating === 'SELL' && sentimentTrend === 'UP')
+  if (analystRating === AnalystRating.Sell && sentimentTrend === SentimentTrend.Up)
     riskFlags.push('CONTRA_RECOVERY_DETECTED')
 
   if (riskFlags.length === 0) {
-    if (rsi > 40 && rsi < 60 && sentimentTrend === 'UP')
+    if (rsi > 40 && rsi < 60 && sentimentTrend === SentimentTrend.Up)
       riskFlags.push('STABLE_UPTREND')
     else riskFlags.push('NEUTRAL_MARKET_CONDITIONS')
   }
@@ -455,20 +466,20 @@ const determineRiskFlags = (
 
 const determineRecommendation = (
   rsi: number,
-  sentimentTrend: string,
-  analystRating: string,
-): string => {
+  sentimentTrend: SentimentTrend,
+  analystRating: AnalystRating,
+): MarketRecommendation => {
   if (
     rsi < 65 &&
-    sentimentTrend === 'UP' &&
-    (analystRating === 'BUY' || analystRating === 'STRONG_BUY')
+    sentimentTrend === SentimentTrend.Up &&
+    (analystRating === AnalystRating.Buy || analystRating === AnalystRating.StrongBuy)
   ) {
-    return 'BUY'
+    return MarketRecommendation.Buy
   }
-  if (rsi >= 75 || (rsi > 60 && sentimentTrend === 'DOWN')) {
-    return 'SELL'
+  if (rsi >= 75 || (rsi > 60 && sentimentTrend === SentimentTrend.Down)) {
+    return MarketRecommendation.Sell
   }
-  return 'HOLD / CAUTION'
+  return MarketRecommendation.HoldCaution
 }
 
 const determineTimeHorizon = (analystConfidencePercent: number): string => {
@@ -486,7 +497,15 @@ export const computeDecision = ({
   newsVolume,
   analystConfidencePercent,
   analystSourceCount,
-}: any) => {
+}: {
+  rsi: number
+  sentimentScore: number
+  sentimentTrend: SentimentTrend
+  analystRating: AnalystRating
+  newsVolume: number
+  analystConfidencePercent: number
+  analystSourceCount: number
+}) => {
   const riskFlags = determineRiskFlags(rsi, analystRating, sentimentTrend)
   const recommendation = determineRecommendation(
     rsi,
@@ -525,18 +544,23 @@ export const generateReasoning = ({
   sentimentTrend,
   sentimentChange48h,
   analystRating,
-}: any) => {
+}: {
+  rsi: number
+  sentimentTrend: SentimentTrend
+  sentimentChange48h: number
+  analystRating: AnalystRating
+}) => {
   const details: string[] = []
 
-  if (analystRating === 'STRONG_BUY' || analystRating === 'BUY') {
+  if (analystRating === AnalystRating.StrongBuy || analystRating === AnalystRating.Buy) {
     details.push(
       `Analyst consensus remains ${analystRating.replace('_', ' ').toLowerCase()}`,
     )
   }
 
-  if (sentimentTrend === 'DOWN') {
+  if (sentimentTrend === SentimentTrend.Down) {
     details.push('Market sentiment has weakened in the last 48 hours')
-  } else if (sentimentTrend === 'UP') {
+  } else if (sentimentTrend === SentimentTrend.Up) {
     details.push('Market sentiment is improving')
   }
 
@@ -555,11 +579,11 @@ export const generateReasoning = ({
 }
 
 export const computeActionGuidance = (
-  recommendation: string,
+  recommendation: MarketRecommendation,
   rsi: number,
-  sentimentTrend: string,
+  sentimentTrend: SentimentTrend,
 ) => {
-  if (recommendation === 'BUY') {
+  if (recommendation === MarketRecommendation.Buy) {
     return {
       buyWindow:
         rsi < 60 ? 'Next 1-3 days on pullbacks' : 'Wait for RSI cooling',
@@ -569,7 +593,7 @@ export const computeActionGuidance = (
     }
   }
 
-  if (recommendation === 'SELL') {
+  if (recommendation === MarketRecommendation.Sell) {
     return {
       buyWindow: null,
       holdWindow: null,
@@ -583,7 +607,7 @@ export const computeActionGuidance = (
     holdWindow: '1-5 days',
     sellWindow: null,
     watchFor:
-      sentimentTrend === 'DOWN'
+      sentimentTrend === SentimentTrend.Down
         ? 'Further sentiment deterioration'
         : 'RSI normalization below 65',
   }
@@ -832,7 +856,7 @@ const getHoldDuration = (isHighRisk: boolean, confidence: number): string => {
 
 const getActionGuidance = (
   currentPrice: number,
-  riskLevel: string,
+  riskLevel: RiskLevel,
   confidence: number,
 ): ActionGuidance => {
   const isHighRisk = riskLevel === 'HIGH'
@@ -853,25 +877,31 @@ const getActionGuidance = (
 
 const determinePortfolioDecision = (
   pnlPct: number,
-  marketDecision: string,
+  marketDecision: MarketRecommendation,
   exposure: ReturnType<typeof calculateExposure>,
-): string => {
-  if (pnlPct < -20 || (marketDecision === 'SELL' && exposure.isOverExposed)) {
-    return 'EXIT'
+): PortfolioDecision => {
+  if (
+    pnlPct < -20 ||
+    (marketDecision === MarketRecommendation.Sell && exposure.isOverExposed)
+  ) {
+    return PortfolioDecision.Exit
   }
   if (
     pnlPct < -5 ||
     (exposure.isOverExposed && exposure.positionPercentOfPortfolio > 25)
   ) {
-    return 'TRIM'
+    return PortfolioDecision.Trim
   }
-  if (exposure.isOverExposed || marketDecision === 'SELL') {
-    return 'HOLD'
+  if (exposure.isOverExposed || marketDecision === MarketRecommendation.Sell) {
+    return PortfolioDecision.Hold
   }
-  if (marketDecision === 'BUY' && exposure.positionPercentOfPortfolio < 20) {
-    return 'ADD'
+  if (
+    marketDecision === MarketRecommendation.Buy &&
+    exposure.positionPercentOfPortfolio < 20
+  ) {
+    return PortfolioDecision.Add
   }
-  return 'HOLD'
+  return PortfolioDecision.Hold
 }
 
 const generateDecisionDetails = (
@@ -896,16 +926,16 @@ const generateDecisionDetails = (
 }
 
 const generateReasoningSummary = (
-  portfolioDecision: string,
+  portfolioDecision: PortfolioDecision,
   isOverExposed: boolean,
 ): string => {
-  if (portfolioDecision === 'EXIT') {
+  if (portfolioDecision === PortfolioDecision.Exit) {
     return 'Critical risk detected — position should be closed to protect portfolio health.'
   }
-  if (portfolioDecision === 'TRIM') {
+  if (portfolioDecision === PortfolioDecision.Trim) {
     return 'Risk metrics indicate reducing this position size to improve portfolio balance.'
   }
-  if (portfolioDecision === 'ADD') {
+  if (portfolioDecision === PortfolioDecision.Add) {
     return 'Technicals and portfolio allocation support increasing exposure to this position.'
   }
   if (isOverExposed) {

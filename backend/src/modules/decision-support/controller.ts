@@ -13,6 +13,7 @@ import {
   uploadPortfolio,
 } from './service'
 import {
+  decisionQueryValidator,
   opportunityRadarQueryValidator,
   portfolioDecisionRequestValidator,
   portfolioRiskMetricsValidator,
@@ -30,7 +31,7 @@ export const getMarketBasedTradeDecision = async (
   next: NextFunction,
 ) => {
   try {
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(decisionQueryValidator, req.params)
     const data = await getMarketDecisionResponse(symbol)
 
     sendSuccess(res, {

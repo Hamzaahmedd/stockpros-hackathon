@@ -40,7 +40,7 @@ export interface ActivityItem {
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/dashboard')
+@Route('api/v1/dashboard')
 @Tags('Dashboard')
 export class DashboardSwaggerController extends Controller {
   /**
@@ -51,16 +51,6 @@ export class DashboardSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Dashboard data returned')
   async getDashboard(): Promise<ApiResponse<DashboardSummary>> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Get real-time market overview including top gainers, losers, and most active stocks.
-   */
-  @Get('market-overview')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'Market overview returned')
-  async getMarketOverview(): Promise<ApiResponse<MarketOverview>> {
     throw new Error('tsoa spec-only')
   }
 }

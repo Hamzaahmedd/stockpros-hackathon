@@ -27,6 +27,45 @@ export type DecisionType = 'ADD' | 'HOLD' | 'TRIM' | 'EXIT' | 'BUY' | 'SELL'
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 export type VolatilityLevel = 'NORMAL' | 'ELEVATED'
 
+// Market-level call from determineRecommendation/computeDecision — distinct
+// from PortfolioDecision, which is the position-sizing action layered on top
+// of it (see determinePortfolioDecision).
+export const MarketRecommendation = {
+  Buy: 'BUY',
+  Sell: 'SELL',
+  HoldCaution: 'HOLD / CAUTION',
+} as const
+export type MarketRecommendation =
+  (typeof MarketRecommendation)[keyof typeof MarketRecommendation]
+
+// Position-sizing action for an existing portfolio holding, produced by
+// determinePortfolioDecision.
+export const PortfolioDecision = {
+  Add: 'ADD',
+  Hold: 'HOLD',
+  Trim: 'TRIM',
+  Exit: 'EXIT',
+} as const
+export type PortfolioDecision =
+  (typeof PortfolioDecision)[keyof typeof PortfolioDecision]
+
+export const AnalystRating = {
+  StrongBuy: 'STRONG_BUY',
+  Buy: 'BUY',
+  Hold: 'HOLD',
+  Sell: 'SELL',
+  StrongSell: 'STRONG_SELL',
+} as const
+export type AnalystRating = (typeof AnalystRating)[keyof typeof AnalystRating]
+
+export const SentimentTrend = {
+  Up: 'UP',
+  Down: 'DOWN',
+  Flat: 'FLAT',
+} as const
+export type SentimentTrend =
+  (typeof SentimentTrend)[keyof typeof SentimentTrend]
+
 export interface PortfolioPosition {
   symbol: string
   quantity: number
@@ -64,10 +103,10 @@ export type ActionGuidance = {
 export type DecisionResult = {
   symbol: string
   sector: string
-  marketDecision: string
-  portfolioDecision: string
+  marketDecision: MarketRecommendation
+  portfolioDecision: PortfolioDecision
   confidence: number
-  riskLevel: string
+  riskLevel: RiskLevel
   reasoning: {
     summary: string
     details: string[]
@@ -97,7 +136,7 @@ export type RadarCard = {
   stopLoss: number
   confidence: number // 0–1 from computeDecision()
   confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW'
-  recommendation: string // 'BUY' | 'SELL' | 'HOLD / CAUTION'
+  recommendation: MarketRecommendation
   timeHorizon: string
   riskFlags: string[]
 }
@@ -128,7 +167,7 @@ export interface TradePlanData {
   sector?: string
   currentPrice: number
   atr?: number
-  recommendation: string
+  recommendation: MarketRecommendation
   confidence: number
   timeHorizon?: string
   entryRange?: { low: number; high: number }
@@ -167,10 +206,10 @@ export interface PortfolioPdfPayload {
   detailedPositions?: Array<{
     symbol: string
     sector?: string
-    marketDecision?: string
-    portfolioDecision?: string
+    marketDecision?: MarketRecommendation
+    portfolioDecision?: PortfolioDecision
     confidence?: number | null
-    riskLevel?: string
+    riskLevel?: RiskLevel
     beta?: number | null
     sharpe?: number | null
     volatilityAnnualized?: number | null

@@ -19,7 +19,7 @@ export interface Alert {
   id: string;
   watchlistId: string;
   userId: string;
-  type: "PRICE_ABOVE" | "PRICE_BELOW" | "PCT_CHANGE_UP" | "PCT_CHANGE_DOWN" | "ENTRY_ZONE" | "SL_BREACHED";
+  type: "PRICE_ABOVE" | "PRICE_BELOW" | "PCT_CHANGE_UP" | "PCT_CHANGE_DOWN" | "ENTRY_ZONE" | "STOP_LOSS_BREACHED";
   threshold: number;
   isActive: boolean;
   createdAt: string;

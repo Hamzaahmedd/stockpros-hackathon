@@ -228,7 +228,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__": {
+			"ApiResponse_unknown_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -236,42 +236,27 @@
 					"message": {
 						"type": "string"
 					},
-					"data": {
-						"properties": {
-							"aiConfidence": {
-								"type": "string",
-								"enum": [
-									"LOW",
-									"MEDIUM",
-									"HIGH"
-								]
-							},
-							"aiStopLoss": {
-								"type": "number",
-								"format": "double"
-							},
-							"aiTakeProfit": {
-								"type": "number",
-								"format": "double"
-							},
-							"aiSuggestedEntry": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"aiConfidence",
-							"aiStopLoss",
-							"aiTakeProfit",
-							"aiSuggestedEntry"
-						],
-						"type": "object"
-					}
+					"data": {}
 				},
 				"required": [
 					"success",
 					"message"
 				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ConvertToPositionRequest": {
+				"properties": {
+					"entryPrice": {
+						"type": "number",
+						"format": "double"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double",
+						"description": "Fractional shares allowed"
+					}
+				},
 				"type": "object",
 				"additionalProperties": true
 			},
@@ -393,33 +378,18 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"Partial_CreateAlertRequest_": {
+			"UpdateAlertRequest": {
 				"properties": {
-					"type": {
-						"type": "string",
-						"enum": [
-							"PRICE_ABOVE",
-							"PRICE_BELOW",
-							"PCT_CHANGE_UP",
-							"PCT_CHANGE_DOWN",
-							"ENTRY_ZONE",
-							"STOP_LOSS_BREACHED",
-							"EARNINGS_APPROACHING",
-							"DIVIDEND_APPROACHING",
-							"ANALYST_RATING_CHANGE",
-							"NEWS_PUBLISHED",
-							"SEC_FILING",
-							"AI_SIGNAL_CHANGED"
-						]
-					},
 					"threshold": {
 						"type": "number",
-						"format": "double",
-						"description": "Numeric threshold (for price/percent alerts)"
+						"format": "double"
+					},
+					"isActive": {
+						"type": "boolean"
 					}
 				},
 				"type": "object",
-				"description": "Make all properties in T optional"
+				"additionalProperties": true
 			},
 			"SymbolSearchResult": {
 				"properties": {
@@ -498,7 +468,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"PaginatedResponse_Notification_": {
+			"ApiResponse_Notification-Array_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -507,44 +477,20 @@
 						"type": "string"
 					},
 					"data": {
-						"properties": {
-							"limit": {
-								"type": "number",
-								"format": "double"
-							},
-							"page": {
-								"type": "number",
-								"format": "double"
-							},
-							"total": {
-								"type": "number",
-								"format": "double"
-							},
-							"items": {
-								"items": {
-									"$ref": "#/components/schemas/Notification"
-								},
-								"type": "array"
-							}
+						"items": {
+							"$ref": "#/components/schemas/Notification"
 						},
-						"required": [
-							"limit",
-							"page",
-							"total",
-							"items"
-						],
-						"type": "object"
+						"type": "array"
 					}
 				},
 				"required": [
 					"success",
-					"message",
-					"data"
+					"message"
 				],
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__count-number__": {
+			"ApiResponse__unreadCount-number--preview-Notification-Array__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -554,13 +500,20 @@
 					},
 					"data": {
 						"properties": {
-							"count": {
+							"preview": {
+								"items": {
+									"$ref": "#/components/schemas/Notification"
+								},
+								"type": "array"
+							},
+							"unreadCount": {
 								"type": "number",
 								"format": "double"
 							}
 						},
 						"required": [
-							"count"
+							"preview",
+							"unreadCount"
 						],
 						"type": "object"
 					}
@@ -654,7 +607,22 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__deleted-number__": {
+			"MarkMultipleNotificationsReadRequest": {
+				"properties": {
+					"notificationIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"notificationIds"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_Notification_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -663,16 +631,7 @@
 						"type": "string"
 					},
 					"data": {
-						"properties": {
-							"deleted": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"deleted"
-						],
-						"type": "object"
+						"$ref": "#/components/schemas/Notification"
 					}
 				},
 				"required": [
@@ -689,12 +648,6 @@
 					},
 					"headline": {
 						"type": "string"
-					},
-					"summaryBullets": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
 					},
 					"url": {
 						"type": "string"
@@ -722,10 +675,6 @@
 							"NEUTRAL"
 						]
 					},
-					"sentimentScore": {
-						"type": "number",
-						"format": "double"
-					},
 					"category": {
 						"type": "string",
 						"enum": [
@@ -748,7 +697,6 @@
 				"required": [
 					"id",
 					"headline",
-					"summaryBullets",
 					"url",
 					"source",
 					"publishedAt",
@@ -760,7 +708,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"PaginatedResponse_NewsArticle_": {
+			"ApiResponse_NewsArticle-Array_": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -769,44 +717,20 @@
 						"type": "string"
 					},
 					"data": {
-						"properties": {
-							"limit": {
-								"type": "number",
-								"format": "double"
-							},
-							"page": {
-								"type": "number",
-								"format": "double"
-							},
-							"total": {
-								"type": "number",
-								"format": "double"
-							},
-							"items": {
-								"items": {
-									"$ref": "#/components/schemas/NewsArticle"
-								},
-								"type": "array"
-							}
+						"items": {
+							"$ref": "#/components/schemas/NewsArticle"
 						},
-						"required": [
-							"limit",
-							"page",
-							"total",
-							"items"
-						],
-						"type": "object"
+						"type": "array"
 					}
 				},
 				"required": [
 					"success",
-					"message",
-					"data"
+					"message"
 				],
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse__saved-boolean__": {
+			"ApiResponse__count-number__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -816,12 +740,13 @@
 					},
 					"data": {
 						"properties": {
-							"saved": {
-								"type": "boolean"
+							"count": {
+								"type": "number",
+								"format": "double"
 							}
 						},
 						"required": [
-							"saved"
+							"count"
 						],
 						"type": "object"
 					}
@@ -829,6 +754,21 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MarkMultipleNewsReadRequest": {
+				"properties": {
+					"articleIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"articleIds"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -906,188 +846,6 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"LivePriceEntry": {
-				"properties": {
-					"symbol": {
-						"type": "string"
-					},
-					"price": {
-						"type": "number",
-						"format": "double"
-					},
-					"change": {
-						"type": "number",
-						"format": "double"
-					},
-					"changePercent": {
-						"type": "number",
-						"format": "double"
-					},
-					"high": {
-						"type": "number",
-						"format": "double"
-					},
-					"low": {
-						"type": "number",
-						"format": "double"
-					},
-					"open": {
-						"type": "number",
-						"format": "double"
-					},
-					"previousClose": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"symbol",
-					"price",
-					"change",
-					"changePercent",
-					"high",
-					"low",
-					"open",
-					"previousClose"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_LivePriceEntry-Array_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/LivePriceEntry"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"GetLivePricesRequest": {
-				"properties": {
-					"symbols": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"symbols"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"CompanySector": {
-				"properties": {
-					"symbol": {
-						"type": "string"
-					},
-					"sector": {
-						"type": "string"
-					},
-					"industry": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"symbol",
-					"sector"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_CompanySector-Array_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/CompanySector"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"LogoResponse": {
-				"properties": {
-					"symbol": {
-						"type": "string"
-					},
-					"logoUrl": {
-						"type": "string",
-						"nullable": true
-					}
-				},
-				"required": [
-					"symbol",
-					"logoUrl"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_LogoResponse-Array_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/LogoResponse"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"GetLogosBatchRequest": {
-				"properties": {
-					"symbols": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"symbols"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
 			"ForecastDataPoint": {
 				"properties": {
 					"date": {
@@ -1102,13 +860,11 @@
 					},
 					"lower": {
 						"type": "number",
-						"format": "double",
-						"description": "Lower confidence bound"
+						"format": "double"
 					},
 					"upper": {
 						"type": "number",
-						"format": "double",
-						"description": "Upper confidence bound"
+						"format": "double"
 					}
 				},
 				"required": [
@@ -1150,17 +906,6 @@
 					"symbol": {
 						"type": "string"
 					},
-					"model": {
-						"type": "string",
-						"enum": [
-							"GRU"
-						],
-						"nullable": false
-					},
-					"horizon": {
-						"type": "number",
-						"format": "double"
-					},
 					"forecasts": {
 						"items": {
 							"$ref": "#/components/schemas/ForecastDataPoint"
@@ -1169,23 +914,12 @@
 					},
 					"metrics": {
 						"$ref": "#/components/schemas/ForecastMetrics"
-					},
-					"generatedAt": {
-						"type": "string"
-					},
-					"cached": {
-						"type": "boolean",
-						"description": "Cached result — true if served from Redis"
 					}
 				},
 				"required": [
 					"symbol",
-					"model",
-					"horizon",
 					"forecasts",
-					"metrics",
-					"generatedAt",
-					"cached"
+					"metrics"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1200,89 +934,6 @@
 					},
 					"data": {
 						"$ref": "#/components/schemas/ForecastResult"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ForecastRequest": {
-				"properties": {
-					"symbol": {
-						"type": "string",
-						"example": "AAPL"
-					},
-					"days": {
-						"type": "number",
-						"format": "double",
-						"description": "Forecast horizon in days",
-						"example": 30
-					}
-				},
-				"required": [
-					"symbol"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ForecastHistoryRecord": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"symbol": {
-						"type": "string"
-					},
-					"horizon": {
-						"type": "number",
-						"format": "double"
-					},
-					"generatedAt": {
-						"type": "string"
-					},
-					"metrics": {
-						"$ref": "#/components/schemas/ForecastMetrics"
-					}
-				},
-				"required": [
-					"id",
-					"symbol",
-					"horizon",
-					"generatedAt",
-					"metrics"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse__items-ForecastHistoryRecord-Array--total-number__": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"properties": {
-							"total": {
-								"type": "number",
-								"format": "double"
-							},
-							"items": {
-								"items": {
-									"$ref": "#/components/schemas/ForecastHistoryRecord"
-								},
-								"type": "array"
-							}
-						},
-						"required": [
-							"total",
-							"items"
-						],
-						"type": "object"
 					}
 				},
 				"required": [
@@ -1426,138 +1077,19 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
-			"DecisionResult": {
+			"PositionSizeRequest": {
 				"properties": {
-					"symbol": {
-						"type": "string"
-					},
-					"marketDecision": {
-						"type": "string",
-						"enum": [
-							"BUY",
-							"SELL",
-							"HOLD"
-						]
-					},
-					"portfolioDecision": {
-						"type": "string",
-						"enum": [
-							"BUY",
-							"SELL",
-							"HOLD",
-							"REDUCE",
-							"INCREASE"
-						]
-					},
-					"confidence": {
+					"capital": {
 						"type": "number",
 						"format": "double"
 					},
-					"riskLevel": {
-						"type": "string",
-						"enum": [
-							"LOW",
-							"MEDIUM",
-							"HIGH"
-						]
-					},
-					"sector": {
+					"symbol": {
 						"type": "string"
-					},
-					"reasoning": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
-					"exposure": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
-					"actionGuidance": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
 					}
 				},
 				"required": [
-					"symbol",
-					"marketDecision",
-					"portfolioDecision",
-					"confidence",
-					"riskLevel",
-					"reasoning",
-					"exposure",
-					"actionGuidance"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"DecisionRunRecord": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"portfolioId": {
-						"type": "string"
-					},
-					"mode": {
-						"type": "string"
-					},
-					"runAt": {
-						"type": "string"
-					},
-					"results": {
-						"items": {
-							"$ref": "#/components/schemas/DecisionResult"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"portfolioId",
-					"mode",
-					"runAt",
-					"results"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse_DecisionRunRecord_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/DecisionRunRecord"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"RunDecisionRequest": {
-				"properties": {
-					"portfolioId": {
-						"type": "string"
-					},
-					"mode": {
-						"type": "string",
-						"enum": [
-							"DETAILED",
-							"SUMMARY"
-						]
-					}
-				},
-				"required": [
-					"portfolioId"
+					"capital",
+					"symbol"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1571,7 +1103,7 @@
 						"type": "number",
 						"format": "double"
 					},
-					"avgEntryPrice": {
+					"avg_entry_price": {
 						"type": "number",
 						"format": "double"
 					},
@@ -1582,7 +1114,7 @@
 				"required": [
 					"symbol",
 					"quantity",
-					"avgEntryPrice"
+					"avg_entry_price"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1617,7 +1149,131 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"PaginatedResponse_DecisionRunRecord_": {
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"DecisionResult": {
+				"properties": {
+					"symbol": {
+						"type": "string"
+					},
+					"sector": {
+						"type": "string"
+					},
+					"marketDecision": {
+						"type": "string",
+						"enum": [
+							"BUY",
+							"SELL",
+							"HOLD / CAUTION"
+						]
+					},
+					"portfolioDecision": {
+						"type": "string",
+						"enum": [
+							"ADD",
+							"HOLD",
+							"TRIM",
+							"EXIT"
+						]
+					},
+					"confidence": {
+						"type": "number",
+						"format": "double"
+					},
+					"riskLevel": {
+						"type": "string",
+						"enum": [
+							"LOW",
+							"MEDIUM",
+							"HIGH"
+						]
+					},
+					"reasoning": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"exposure": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"actionGuidance": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"symbol",
+					"sector",
+					"marketDecision",
+					"portfolioDecision",
+					"confidence",
+					"riskLevel",
+					"reasoning",
+					"exposure",
+					"actionGuidance"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_DecisionResult-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/DecisionResult"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PortfolioDecisionRequest": {
+				"properties": {
+					"portfolioId": {
+						"type": "string"
+					},
+					"decisionMode": {
+						"type": "string",
+						"enum": [
+							"OVERVIEW",
+							"DETAILED"
+						]
+					},
+					"symbol": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"portfolioId",
+					"decisionMode"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PortfolioRiskMetricsRequest": {
+				"properties": {
+					"portfolioId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"portfolioId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse__removedCount-number__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -1627,38 +1283,20 @@
 					},
 					"data": {
 						"properties": {
-							"limit": {
+							"removedCount": {
 								"type": "number",
 								"format": "double"
-							},
-							"page": {
-								"type": "number",
-								"format": "double"
-							},
-							"total": {
-								"type": "number",
-								"format": "double"
-							},
-							"items": {
-								"items": {
-									"$ref": "#/components/schemas/DecisionRunRecord"
-								},
-								"type": "array"
 							}
 						},
 						"required": [
-							"limit",
-							"page",
-							"total",
-							"items"
+							"removedCount"
 						],
 						"type": "object"
 					}
 				},
 				"required": [
 					"success",
-					"message",
-					"data"
+					"message"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1822,25 +1460,6 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse_MarketOverview_": {
-				"properties": {
-					"success": {
-						"type": "boolean"
-					},
-					"message": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/MarketOverview"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
 			"MagicLinkRequest": {
 				"properties": {
 					"email": {
@@ -1857,9 +1476,9 @@
 			},
 			"UserProfile": {
 				"properties": {
-					"id": {
+					"userId": {
 						"type": "string",
-						"example": "usr_01j7xyz987"
+						"example": "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f"
 					},
 					"email": {
 						"type": "string",
@@ -1868,47 +1487,37 @@
 					},
 					"displayName": {
 						"type": "string",
+						"nullable": true,
 						"example": "Alex Morgan"
 					},
-					"avatarUrl": {
-						"type": "string",
-						"nullable": true
-					},
-					"country": {
-						"type": "string",
-						"nullable": true
-					},
-					"tradingExperience": {
-						"type": "string",
-						"nullable": true,
-						"example": "INTERMEDIATE"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"nullable": true,
-						"example": "MODERATE"
-					},
-					"isProfileComplete": {
-						"type": "boolean"
-					},
-					"roles": {
+					"userRoles": {
 						"items": {
-							"type": "string"
+							"properties": {
+								"role": {
+									"properties": {
+										"name": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"name"
+									],
+									"type": "object"
+								}
+							},
+							"required": [
+								"role"
+							],
+							"type": "object"
 						},
 						"type": "array"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
 					}
 				},
 				"required": [
-					"id",
+					"userId",
 					"email",
 					"displayName",
-					"isProfileComplete",
-					"roles",
-					"createdAt"
+					"userRoles"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1999,46 +1608,17 @@
 						"type": "string",
 						"example": "Jordan Belfort"
 					},
+					"onboardingToken": {
+						"type": "string"
+					},
 					"email": {
 						"type": "string",
 						"example": "jordan@example.com",
 						"format": "email"
-					},
-					"onboardingToken": {
-						"type": "string"
-					},
-					"country": {
-						"type": "string",
-						"example": "US"
-					},
-					"tradingExperience": {
-						"type": "string",
-						"enum": [
-							"BEGINNER",
-							"INTERMEDIATE",
-							"ADVANCED"
-						],
-						"example": "ADVANCED"
-					},
-					"preferredSectors": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"enum": [
-							"CONSERVATIVE",
-							"MODERATE",
-							"AGGRESSIVE"
-						],
-						"example": "AGGRESSIVE"
 					}
 				},
 				"required": [
-					"displayName",
-					"email"
+					"displayName"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2070,41 +1650,7 @@
 				"type": "object",
 				"additionalProperties": true
 			},
-			"UpdateProfileRequest": {
-				"properties": {
-					"displayName": {
-						"type": "string"
-					},
-					"country": {
-						"type": "string"
-					},
-					"tradingExperience": {
-						"type": "string",
-						"enum": [
-							"BEGINNER",
-							"INTERMEDIATE",
-							"ADVANCED"
-						]
-					},
-					"preferredSectors": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"riskTolerance": {
-						"type": "string",
-						"enum": [
-							"CONSERVATIVE",
-							"MODERATE",
-							"AGGRESSIVE"
-						]
-					}
-				},
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiResponse__avatarUrl-string__": {
+			"ApiResponse_Record_string.unknown__": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -2113,15 +1659,48 @@
 						"type": "string"
 					},
 					"data": {
-						"properties": {
-							"avatarUrl": {
-								"type": "string"
-							}
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"User": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_User-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/User"
 						},
-						"required": [
-							"avatarUrl"
-						],
-						"type": "object"
+						"type": "array"
 					}
 				},
 				"required": [
@@ -2228,7 +1807,8 @@
 					}
 				},
 				"required": [
-					"name"
+					"name",
+					"description"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2238,13 +1818,16 @@
 					"userId": {
 						"type": "string"
 					},
-					"roleId": {
-						"type": "string"
+					"roleIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
 					}
 				},
 				"required": [
 					"userId",
-					"roleId"
+					"roleIds"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2267,6 +1850,108 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AssignPermissionsRequest": {
+				"properties": {
+					"roleId": {
+						"type": "string"
+					},
+					"permissions": {
+						"items": {
+							"properties": {
+								"actions": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"resourceName": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"actions",
+								"resourceName"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"roleId",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Resource": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_Resource-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/Resource"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AssignResourceActionsRequest": {
+				"properties": {
+					"resources": {
+						"items": {
+							"properties": {
+								"actions": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"actions",
+								"name"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"resources"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2298,7 +1983,7 @@
 		}
 	},
 	"paths": {
-		"/api/watchlist": {
+		"/api/v1/watchlist": {
 			"get": {
 				"operationId": "GetWatchlist",
 				"responses": {
@@ -2370,8 +2055,8 @@
 				}
 			}
 		},
-		"/api/watchlist/{symbol}": {
-			"put": {
+		"/api/v1/watchlist/{symbol}": {
+			"patch": {
 				"operationId": "UpdateEntry",
 				"responses": {
 					"200": {
@@ -2470,22 +2155,22 @@
 				]
 			}
 		},
-		"/api/watchlist/{symbol}/ai-baseline": {
+		"/api/v1/watchlist/{symbol}/convert-to-position": {
 			"post": {
-				"operationId": "CalculateAiBaseline",
+				"operationId": "ConvertToPosition",
 				"responses": {
-					"200": {
-						"description": "AI suggestions calculated",
+					"201": {
+						"description": "Symbol converted to portfolio position",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__aiSuggestedEntry-number--aiTakeProfit-number--aiStopLoss-number--aiConfidence-LOW-or-MEDIUM-or-HIGH__"
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Trigger AI suggestion calculation for a watchlist symbol.\r\nComputes suggested entry price, take-profit, and stop-loss from technical analysis.",
+				"description": "Convert a watchlist symbol into a real portfolio position.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2503,10 +2188,20 @@
 							"type": "string"
 						}
 					}
-				]
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ConvertToPositionRequest"
+							}
+						}
+					}
+				}
 			}
 		},
-		"/api/watchlist/{symbol}/alerts": {
+		"/api/v1/watchlist/{symbol}/alerts": {
 			"get": {
 				"operationId": "GetAlerts",
 				"responses": {
@@ -2596,8 +2291,8 @@
 				}
 			}
 		},
-		"/api/watchlist/{symbol}/alerts/{id}": {
-			"put": {
+		"/api/v1/watchlist/{symbol}/alerts/{id}": {
+			"patch": {
 				"operationId": "UpdateAlert",
 				"responses": {
 					"200": {
@@ -2611,7 +2306,7 @@
 						}
 					}
 				},
-				"description": "Update an existing alert configuration.",
+				"description": "Update an existing alert's threshold or active state.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2643,7 +2338,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/Partial_CreateAlertRequest_"
+								"$ref": "#/components/schemas/UpdateAlertRequest"
 							}
 						}
 					}
@@ -2692,12 +2387,12 @@
 				]
 			}
 		},
-		"/api/search": {
+		"/api/v1/search/symbol-lookup": {
 			"get": {
-				"operationId": "SearchSymbols",
+				"operationId": "SymbolLookup",
 				"responses": {
 					"200": {
-						"description": "Search results returned",
+						"description": "Symbol lookup completed successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2738,22 +2433,22 @@
 				]
 			}
 		},
-		"/api/notifications": {
+		"/api/v1/notifications": {
 			"get": {
 				"operationId": "GetNotifications",
 				"responses": {
 					"200": {
-						"description": "Notifications returned",
+						"description": "Notifications retrieved successfully",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/PaginatedResponse_Notification_"
+									"$ref": "#/components/schemas/ApiResponse_Notification-Array_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Fetch paginated notifications for the authenticated user, newest first.",
+				"description": "Fetch cursor-paginated notifications for the authenticated user, newest first.",
 				"tags": [
 					"Notifications"
 				],
@@ -2765,11 +2460,10 @@
 				"parameters": [
 					{
 						"in": "query",
-						"name": "page",
+						"name": "cursor",
 						"required": false,
 						"schema": {
-							"format": "double",
-							"type": "number"
+							"type": "string"
 						}
 					},
 					{
@@ -2782,49 +2476,24 @@
 						}
 					}
 				]
-			},
-			"delete": {
-				"operationId": "ClearAll",
-				"responses": {
-					"200": {
-						"description": "All notifications cleared",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__deleted-number__"
-								}
-							}
-						}
-					}
-				},
-				"description": "Delete all notifications for the authenticated user.",
-				"tags": [
-					"Notifications"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
 			}
 		},
-		"/api/notifications/unread-count": {
+		"/api/v1/notifications/summary": {
 			"get": {
-				"operationId": "GetUnreadCount",
+				"operationId": "GetNotificationSummary",
 				"responses": {
 					"200": {
-						"description": "Unread count returned",
+						"description": "Notification summary retrieved successfully",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__count-number__"
+									"$ref": "#/components/schemas/ApiResponse__unreadCount-number--preview-Notification-Array__"
 								}
 							}
 						}
 					}
 				},
-				"description": "Get the count of unread notifications for the authenticated user.",
+				"description": "Get unread count + latest 5 notifications, for the bell icon badge.",
 				"tags": [
 					"Notifications"
 				],
@@ -2836,12 +2505,12 @@
 				"parameters": []
 			}
 		},
-		"/api/notifications/preferences": {
+		"/api/v1/notifications/preferences": {
 			"get": {
 				"operationId": "GetPreferences",
 				"responses": {
 					"200": {
-						"description": "Notification preferences returned",
+						"description": "Notification preferences retrieved successfully",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2866,7 +2535,7 @@
 				"operationId": "UpdatePreferences",
 				"responses": {
 					"200": {
-						"description": "Notification preferences updated",
+						"description": "Notification preferences updated successfully",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2898,55 +2567,9 @@
 				}
 			}
 		},
-		"/api/notifications/{id}/read": {
-			"post": {
-				"operationId": "MarkRead",
-				"responses": {
-					"200": {
-						"description": "Notification marked as read",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					},
-					"404": {
-						"description": "Notification not found",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Mark a specific notification as read.",
-				"tags": [
-					"Notifications"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/notifications/mark-all-read": {
-			"post": {
-				"operationId": "MarkAllRead",
+		"/api/v1/notifications/read-all": {
+			"patch": {
+				"operationId": "MarkAllAsRead",
 				"responses": {
 					"200": {
 						"description": "All notifications marked as read",
@@ -2959,7 +2582,7 @@
 						}
 					}
 				},
-				"description": "Mark all notifications as read for the authenticated user.",
+				"description": "Mark all unread notifications as read for the authenticated user.",
 				"tags": [
 					"Notifications"
 				],
@@ -2971,16 +2594,53 @@
 				"parameters": []
 			}
 		},
-		"/api/notifications/{id}": {
-			"delete": {
-				"operationId": "DeleteNotification",
+		"/api/v1/notifications/read-multiple": {
+			"patch": {
+				"operationId": "MarkMultipleAsRead",
 				"responses": {
 					"200": {
-						"description": "Notification deleted",
+						"description": "Notifications marked as read",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/ApiResponse__updated-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a specific set of notifications as read.",
+				"tags": [
+					"Notifications"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MarkMultipleNotificationsReadRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/notifications/{id}/read": {
+			"patch": {
+				"operationId": "MarkAsRead",
+				"responses": {
+					"200": {
+						"description": "Notification marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Notification_"
 								}
 							}
 						}
@@ -2996,7 +2656,7 @@
 						}
 					}
 				},
-				"description": "Delete a specific notification.",
+				"description": "Mark a single notification as read.",
 				"tags": [
 					"Notifications"
 				],
@@ -3017,22 +2677,22 @@
 				]
 			}
 		},
-		"/api/news": {
+		"/api/v1/news/feed": {
 			"get": {
-				"operationId": "GetNews",
+				"operationId": "GetNewsFeed",
 				"responses": {
 					"200": {
-						"description": "News articles returned",
+						"description": "News feed retrieved successfully",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/PaginatedResponse_NewsArticle_"
+									"$ref": "#/components/schemas/ApiResponse_NewsArticle-Array_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Fetch a paginated list of financial news articles.\r\nSupports filtering by symbol, sentiment, category, and full-text search.",
+				"description": "Fetch a cursor-paginated news feed, filterable by portfolio/watchlist/all, symbol,\ncategory, and date range.",
 				"tags": [
 					"News"
 				],
@@ -3044,7 +2704,7 @@
 				"parameters": [
 					{
 						"in": "query",
-						"name": "symbol",
+						"name": "cursor",
 						"required": false,
 						"schema": {
 							"type": "string"
@@ -3052,15 +2712,11 @@
 					},
 					{
 						"in": "query",
-						"name": "sentiment",
+						"name": "limit",
 						"required": false,
 						"schema": {
-							"type": "string",
-							"enum": [
-								"BULLISH",
-								"BEARISH",
-								"NEUTRAL"
-							]
+							"format": "double",
+							"type": "number"
 						}
 					},
 					{
@@ -3073,6 +2729,71 @@
 					},
 					{
 						"in": "query",
+						"name": "symbol",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "filter",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"portfolio",
+								"watchlist",
+								"all"
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/search": {
+			"get": {
+				"operationId": "SearchNews",
+				"responses": {
+					"200": {
+						"description": "Search results retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_NewsArticle-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Full-text search across news articles, with the same filters as the feed.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
 						"name": "q",
 						"required": false,
 						"schema": {
@@ -3081,11 +2802,42 @@
 					},
 					{
 						"in": "query",
-						"name": "page",
+						"name": "symbol",
 						"required": false,
 						"schema": {
-							"format": "double",
-							"type": "number"
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "category",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
 						}
 					},
 					{
@@ -3100,9 +2852,198 @@
 				]
 			}
 		},
-		"/api/news/{id}/read": {
-			"post": {
-				"operationId": "MarkRead",
+		"/api/v1/news/summary": {
+			"get": {
+				"operationId": "GetNewsSummary",
+				"responses": {
+					"200": {
+						"description": "News summary retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get unread-count and category-breakdown summary for the authenticated user.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/news/saved": {
+			"get": {
+				"operationId": "GetSavedNews",
+				"responses": {
+					"200": {
+						"description": "Saved articles retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_NewsArticle-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch all articles the authenticated user has saved/bookmarked.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/symbol/{symbol}": {
+			"get": {
+				"operationId": "GetNewsBySymbol",
+				"responses": {
+					"200": {
+						"description": "News for symbol retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_NewsArticle-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch news for a specific symbol.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/news/read-all": {
+			"patch": {
+				"operationId": "MarkAllAsRead",
+				"responses": {
+					"200": {
+						"description": "All articles marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__count-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark all unread articles as read for the authenticated user.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/news/read-multiple": {
+			"patch": {
+				"operationId": "MarkMultipleAsRead",
+				"responses": {
+					"200": {
+						"description": "Articles marked as read",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse__count-number__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark a specific set of articles as read.",
+				"tags": [
+					"News"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MarkMultipleNewsReadRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/news/{id}/read": {
+			"patch": {
+				"operationId": "MarkAsRead",
 				"responses": {
 					"200": {
 						"description": "Article marked as read",
@@ -3125,7 +3066,7 @@
 						}
 					}
 				},
-				"description": "Mark a news article as read for the authenticated user.",
+				"description": "Mark a single news article as read.",
 				"tags": [
 					"News"
 				],
@@ -3146,16 +3087,16 @@
 				]
 			}
 		},
-		"/api/news/{id}/save": {
+		"/api/v1/news/{id}/save": {
 			"post": {
-				"operationId": "ToggleSave",
+				"operationId": "SaveArticle",
 				"responses": {
 					"200": {
-						"description": "Save state toggled",
+						"description": "Article saved",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__saved-boolean__"
+									"$ref": "#/components/schemas/ApiResponse"
 								}
 							}
 						}
@@ -3171,7 +3112,7 @@
 						}
 					}
 				},
-				"description": "Save or unsave a news article (toggle bookmark).",
+				"description": "Save/bookmark a news article.",
 				"tags": [
 					"News"
 				],
@@ -3192,10 +3133,10 @@
 				]
 			},
 			"delete": {
-				"operationId": "Unsave",
+				"operationId": "UnsaveArticle",
 				"responses": {
 					"200": {
-						"description": "Article unsaved",
+						"description": "Article removed from saved",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3236,85 +3177,12 @@
 				]
 			}
 		},
-		"/api/news/saved": {
-			"get": {
-				"operationId": "GetSaved",
-				"responses": {
-					"200": {
-						"description": "Saved articles returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PaginatedResponse_NewsArticle_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch all saved articles for the authenticated user.",
-				"tags": [
-					"News"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "page",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/news/mark-all-read": {
-			"post": {
-				"operationId": "MarkAllRead",
-				"responses": {
-					"200": {
-						"description": "All articles marked as read",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__count-number__"
-								}
-							}
-						}
-					}
-				},
-				"description": "Mark all unread articles as read.",
-				"tags": [
-					"News"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/market/top-stocks": {
+		"/api/v1/market/top-stocks": {
 			"get": {
 				"operationId": "GetTopStocks",
 				"responses": {
 					"200": {
-						"description": "Top stocks returned",
+						"description": "Most actively traded stocks retrieved successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3324,7 +3192,7 @@
 						}
 					}
 				},
-				"description": "Get ranked top US stocks ordered by a composite score (volume, momentum, market cap).\r\nResults are cached for performance.",
+				"description": "Get ranked, most-actively-traded US stocks ordered by a composite score\n(volume, momentum, market cap). Results are cached for performance.",
 				"tags": [
 					"Market Data"
 				],
@@ -3333,158 +3201,15 @@
 						"bearerAuth": []
 					}
 				],
-				"parameters": [
-					{
-						"description": "Number of stocks to return (1–100)",
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
+				"parameters": []
 			}
 		},
-		"/api/market/live-prices": {
-			"post": {
-				"operationId": "GetLivePrices",
+		"/api/v1/forecast": {
+			"get": {
+				"operationId": "GetStockForecast",
 				"responses": {
 					"200": {
-						"description": "Live prices returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_LivePriceEntry-Array_"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "No symbols provided",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch live quote snapshots for a batch of symbols.\r\nPulls from the in-memory PriceCache (updated via Finnhub WebSocket) with Yahoo Finance fallback.",
-				"tags": [
-					"Market Data"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/GetLivePricesRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/market/company-sectors": {
-			"post": {
-				"operationId": "GetCompanySectors",
-				"responses": {
-					"200": {
-						"description": "Sectors returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_CompanySector-Array_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Resolve company sectors and industry classification for a list of symbols.",
-				"tags": [
-					"Market Data"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"symbols": {
-										"items": {
-											"type": "string"
-										},
-										"type": "array"
-									}
-								},
-								"required": [
-									"symbols"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/market/logos": {
-			"post": {
-				"operationId": "GetLogos",
-				"responses": {
-					"200": {
-						"description": "Logos returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_LogoResponse-Array_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch cached logo URLs for a batch of symbols. Missing logos fall back to Clearbit.",
-				"tags": [
-					"Market Data"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/GetLogosBatchRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/forecast/predict": {
-			"post": {
-				"operationId": "Predict",
-				"responses": {
-					"200": {
-						"description": "Forecast generated successfully",
+						"description": "Stock forecast data retrieved successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3492,66 +3217,9 @@
 								}
 							}
 						}
-					},
-					"400": {
-						"description": "Invalid symbol or horizon",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					},
-					"503": {
-						"description": "AI service unavailable",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
 					}
 				},
-				"description": "Generate a GRU-based time-series stock price forecast.\r\nDelegates to the Python AI Service which trains/loads a GRU model on Tiingo OHLCV data.\r\nResults are cached in Redis to avoid redundant inference.",
-				"tags": [
-					"AI Forecast"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ForecastRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/forecast/history": {
-			"get": {
-				"operationId": "GetHistory",
-				"responses": {
-					"200": {
-						"description": "Forecast history returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__items-ForecastHistoryRecord-Array--total-number__"
-								}
-							}
-						}
-					}
-				},
-				"description": "Retrieve paginated forecast history for the authenticated user.",
+				"description": "Generate a GRU-based time-series stock price forecast for a symbol.\nDelegates to the Python AI Service, which trains/loads a GRU model on Tiingo OHLCV data.\nResults are cached in Redis to avoid redundant inference.",
 				"tags": [
 					"AI Forecast"
 				],
@@ -3563,80 +3231,75 @@
 				"parameters": [
 					{
 						"in": "query",
-						"name": "page",
-						"required": false,
+						"name": "symbol",
+						"required": true,
 						"schema": {
-							"format": "double",
-							"type": "number"
+							"type": "string"
 						}
 					},
 					{
 						"in": "query",
-						"name": "limit",
+						"name": "period",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"1d",
+								"1w"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/forecast/pdf": {
+			"get": {
+				"operationId": "ExportForecastPdfGet",
+				"responses": {
+					"200": {
+						"description": "PDF file stream"
+					}
+				},
+				"description": "Export a forecast report as a PDF, regenerated from `symbol`/`period` query params.",
+				"tags": [
+					"AI Forecast"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "symbol",
 						"required": false,
 						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/forecast/history/{id}": {
-			"get": {
-				"operationId": "GetHistoryById",
-				"responses": {
-					"200": {
-						"description": "Forecast record returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_ForecastResult_"
-								}
-							}
+							"type": "string"
 						}
 					},
-					"404": {
-						"description": "Not found",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch a single historical forecast record by ID.",
-				"tags": [
-					"AI Forecast"
-				],
-				"security": [
 					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
+						"in": "query",
+						"name": "period",
+						"required": false,
 						"schema": {
-							"type": "string"
+							"type": "string",
+							"enum": [
+								"1d",
+								"1w"
+							]
 						}
 					}
 				]
-			}
-		},
-		"/api/forecast/{id}/export/csv": {
-			"get": {
-				"operationId": "ExportCsv",
+			},
+			"post": {
+				"operationId": "ExportForecastPdfPost",
 				"responses": {
 					"200": {
-						"description": "CSV file returned"
+						"description": "PDF file stream"
 					}
 				},
-				"description": "Export a forecast result as a CSV file.",
+				"description": "Export a forecast report as a PDF from a pre-computed forecast payload in the request body\n(falls back to `symbol`/`period` query params if the body has no `symbol`).",
 				"tags": [
 					"AI Forecast"
 				],
@@ -3645,19 +3308,10 @@
 						"bearerAuth": []
 					}
 				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
+				"parameters": []
 			}
 		},
-		"/api/feedback": {
+		"/api/v1/feedback": {
 			"post": {
 				"operationId": "CreateFeedback",
 				"responses": {
@@ -3739,32 +3393,98 @@
 				]
 			}
 		},
-		"/api/decision-support/run": {
-			"post": {
-				"operationId": "RunDecision",
+		"/api/v1/decision-support/market/decision/{symbol}": {
+			"get": {
+				"operationId": "GetMarketBasedTradeDecision",
 				"responses": {
 					"200": {
-						"description": "Decision analysis complete",
+						"description": "Trade decision retrieved successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Invalid portfolio ID",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Run the full multi-factor decision engine for a user's portfolio.\r\nCombines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,\r\nearnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.",
+				"description": "Get the market-level trade decision (technicals + analyst ratings + sentiment) for a symbol.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "symbol",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/decision-support/market/radar": {
+			"get": {
+				"operationId": "GetOpportunityRadar",
+				"responses": {
+					"200": {
+						"description": "Opportunity radar retrieved successfully.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get the opportunity radar — ranked candidate trades across the watchlist universe.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "timeline",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"1D",
+								"1W"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/decision-support/market/position-size": {
+			"post": {
+				"operationId": "CalculatePositionSize",
+				"responses": {
+					"200": {
+						"description": "Position size calculated successfully.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Calculate suggested position size for a symbol given available capital.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3779,19 +3499,19 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/RunDecisionRequest"
+								"$ref": "#/components/schemas/PositionSizeRequest"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/decision-support/portfolio/upload": {
+		"/api/v1/decision-support/upload-portfolio": {
 			"post": {
 				"operationId": "UploadPortfolio",
 				"responses": {
 					"200": {
-						"description": "Portfolio uploaded and parsed",
+						"description": "Portfolio uploaded successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3811,7 +3531,7 @@
 						}
 					}
 				},
-				"description": "Upload a portfolio CSV or XLSX file for batch position import.\r\nAccepted columns: symbol, quantity, avgEntryPrice, sector.",
+				"description": "Upload a portfolio CSV/XLSX file for batch position import (multipart/form-data, field \"portfolio\").",
 				"tags": [
 					"Decision Support"
 				],
@@ -3823,22 +3543,22 @@
 				"parameters": []
 			}
 		},
-		"/api/decision-support/history": {
-			"get": {
-				"operationId": "GetHistory",
+		"/api/v1/decision-support/portfolio/decision": {
+			"post": {
+				"operationId": "GetPortfolioBasedTradeDecision",
 				"responses": {
 					"200": {
-						"description": "Decision history returned",
+						"description": "Decisions generated successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/PaginatedResponse_DecisionRunRecord_"
+									"$ref": "#/components/schemas/ApiResponse_DecisionResult-Array_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Fetch paginated history of decision runs for the authenticated user.",
+				"description": "Generate per-position decisions (ADD/HOLD/TRIM/EXIT) for the user's latest uploaded portfolio.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3847,54 +3567,35 @@
 						"bearerAuth": []
 					}
 				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "page",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PortfolioDecisionRequest"
+							}
 						}
 					}
-				]
+				}
 			}
 		},
-		"/api/decision-support/history/{id}": {
-			"get": {
-				"operationId": "GetHistoryById",
+		"/api/v1/decision-support/portfolio/risk-metrics": {
+			"post": {
+				"operationId": "GetPortfolioRiskMetrics",
 				"responses": {
 					"200": {
-						"description": "Decision run returned",
+						"description": "Portfolio risk metrics calculated successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_DecisionRunRecord_"
-								}
-							}
-						}
-					},
-					"404": {
-						"description": "Record not found",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Fetch a single decision run by ID including all per-symbol results.",
+				"description": "Get portfolio-level risk metrics (weighted beta, Sharpe ratio, sector concentration).",
 				"tags": [
 					"Decision Support"
 				],
@@ -3903,42 +3604,62 @@
 						"bearerAuth": []
 					}
 				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PortfolioRiskMetricsRequest"
+							}
 						}
 					}
-				]
-			},
+				}
+			}
+		},
+		"/api/v1/decision-support/portfolio/latest": {
+			"get": {
+				"operationId": "GetLatestPortfolio",
+				"responses": {
+					"200": {
+						"description": "Latest portfolio retrieved successfully.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_unknown_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch the authenticated user's most recently uploaded portfolio.",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/decision-support/portfolio": {
 			"delete": {
-				"operationId": "DeleteHistory",
+				"operationId": "RemovePortfolio",
 				"responses": {
 					"200": {
-						"description": "Decision run deleted",
+						"description": "Portfolio removed successfully.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					},
-					"404": {
-						"description": "Record not found",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
+									"$ref": "#/components/schemas/ApiResponse__removedCount-number__"
 								}
 							}
 						}
 					}
 				},
-				"description": "Delete a specific decision run record.",
+				"description": "Remove all uploaded portfolio data for the authenticated user.",
 				"tags": [
 					"Decision Support"
 				],
@@ -3947,19 +3668,50 @@
 						"bearerAuth": []
 					}
 				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
+				"parameters": []
 			}
 		},
-		"/api/dashboard": {
+		"/api/v1/decision-support/trade-plan/pdf": {
+			"post": {
+				"operationId": "ExportTradePlanPdf",
+				"responses": {
+					"200": {
+						"description": "PDF file stream"
+					}
+				},
+				"description": "Export a single-symbol trade plan as a PDF (binary response, not JSON).",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/decision-support/portfolio/pdf": {
+			"post": {
+				"operationId": "ExportPortfolioPdf",
+				"responses": {
+					"200": {
+						"description": "PDF file stream"
+					}
+				},
+				"description": "Export the full portfolio decision report as a PDF (binary response, not JSON).",
+				"tags": [
+					"Decision Support"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/dashboard": {
 			"get": {
 				"operationId": "GetDashboard",
 				"responses": {
@@ -3986,34 +3738,7 @@
 				"parameters": []
 			}
 		},
-		"/api/dashboard/market-overview": {
-			"get": {
-				"operationId": "GetMarketOverview",
-				"responses": {
-					"200": {
-						"description": "Market overview returned",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_MarketOverview_"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get real-time market overview including top gainers, losers, and most active stocks.",
-				"tags": [
-					"Dashboard"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/auth/magic-link": {
+		"/api/v1/auth/magic-link": {
 			"post": {
 				"operationId": "SendMagicLink",
 				"responses": {
@@ -4056,7 +3781,7 @@
 				}
 			}
 		},
-		"/api/auth/verify-magic-link": {
+		"/api/v1/auth/verify-magic-link": {
 			"post": {
 				"operationId": "VerifyMagicLink",
 				"responses": {
@@ -4099,7 +3824,7 @@
 				}
 			}
 		},
-		"/api/auth/google": {
+		"/api/v1/auth/google": {
 			"post": {
 				"operationId": "GoogleLogin",
 				"responses": {
@@ -4142,7 +3867,7 @@
 				}
 			}
 		},
-		"/api/auth/onboarding": {
+		"/api/v1/auth/onboarding": {
 			"post": {
 				"operationId": "CompleteOnboarding",
 				"responses": {
@@ -4175,7 +3900,7 @@
 				}
 			}
 		},
-		"/api/auth/refresh-token": {
+		"/api/v1/auth/refresh-token": {
 			"post": {
 				"operationId": "Refresh",
 				"responses": {
@@ -4212,7 +3937,7 @@
 				"parameters": []
 			}
 		},
-		"/api/auth/logout": {
+		"/api/v1/auth/logout": {
 			"post": {
 				"operationId": "Logout",
 				"responses": {
@@ -4239,7 +3964,7 @@
 				"parameters": []
 			}
 		},
-		"/api/auth/me": {
+		"/api/v1/auth/me": {
 			"get": {
 				"operationId": "GetMe",
 				"responses": {
@@ -4276,59 +4001,22 @@
 				"parameters": []
 			}
 		},
-		"/api/auth/profile": {
-			"put": {
-				"operationId": "UpdateProfile",
+		"/api/v1/auth/account": {
+			"delete": {
+				"operationId": "DeleteAccount",
 				"responses": {
 					"200": {
-						"description": "Profile updated",
+						"description": "Account deleted",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+									"$ref": "#/components/schemas/ApiResponse"
 								}
 							}
 						}
 					}
 				},
-				"description": "Partially update the authenticated user's profile.",
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdateProfileRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/auth/avatar": {
-			"post": {
-				"operationId": "UploadAvatar",
-				"responses": {
-					"200": {
-						"description": "Avatar uploaded",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse__avatarUrl-string__"
-								}
-							}
-						}
-					}
-				},
-				"description": "Upload a profile avatar image (multipart/form-data).",
+				"description": "Permanently delete (anonymize) the authenticated user's account.",
 				"tags": [
 					"Authentication"
 				],
@@ -4340,9 +4028,81 @@
 				"parameters": []
 			}
 		},
-		"/api/access-control/roles": {
+		"/api/v1/rbac/user-screens": {
 			"get": {
-				"operationId": "GetRoles",
+				"operationId": "GetUserScreenPermissions",
+				"responses": {
+					"200": {
+						"description": "User's screen permissions returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Record_string.unknown__"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get the permission matrix for the currently authenticated user, keyed by resource.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/rbac/users": {
+			"get": {
+				"operationId": "GetAllUsers",
+				"responses": {
+					"200": {
+						"description": "Users returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_User-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "List users, cursor-paginated.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/rbac/roles": {
+			"get": {
+				"operationId": "GetAllRoles",
 				"responses": {
 					"200": {
 						"description": "Roles returned",
@@ -4367,24 +4127,14 @@
 				"parameters": []
 			},
 			"post": {
-				"operationId": "CreateRole",
+				"operationId": "AddRole",
 				"responses": {
 					"201": {
-						"description": "Role created",
+						"description": "Role added",
 						"content": {
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse_Role_"
-								}
-							}
-						}
-					},
-					"409": {
-						"description": "Role name already exists",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -4412,12 +4162,12 @@
 				}
 			}
 		},
-		"/api/access-control/roles/{id}": {
+		"/api/v1/rbac/roles/{roleId}": {
 			"delete": {
-				"operationId": "DeleteRole",
+				"operationId": "RevokeRole",
 				"responses": {
 					"200": {
-						"description": "Role deleted",
+						"description": "Role revoked",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4437,7 +4187,7 @@
 						}
 					}
 				},
-				"description": "Delete a role and revoke it from all assigned users.",
+				"description": "Revoke (delete) a role by id.",
 				"tags": [
 					"Access Control (RBAC)"
 				],
@@ -4449,7 +4199,7 @@
 				"parameters": [
 					{
 						"in": "path",
-						"name": "id",
+						"name": "roleId",
 						"required": true,
 						"schema": {
 							"type": "string"
@@ -4458,7 +4208,7 @@
 				]
 			}
 		},
-		"/api/access-control/assign": {
+		"/api/v1/rbac/assign-role": {
 			"post": {
 				"operationId": "AssignRole",
 				"responses": {
@@ -4467,13 +4217,13 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/ApiResponse_Role_"
 								}
 							}
 						}
 					}
 				},
-				"description": "Assign a role to a user.",
+				"description": "Assign one or more roles to a user.",
 				"tags": [
 					"Access Control (RBAC)"
 				],
@@ -4495,49 +4245,12 @@
 				}
 			}
 		},
-		"/api/access-control/revoke": {
-			"post": {
-				"operationId": "RevokeRole",
-				"responses": {
-					"200": {
-						"description": "Role revoked",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Revoke a role from a user.",
-				"tags": [
-					"Access Control (RBAC)"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/AssignRoleRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/access-control/my-permissions": {
+		"/api/v1/rbac/permissions": {
 			"get": {
-				"operationId": "GetMyPermissions",
+				"operationId": "GetAllPermissions",
 				"responses": {
 					"200": {
-						"description": "User's permissions returned",
+						"description": "Permissions returned",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4547,7 +4260,7 @@
 						}
 					}
 				},
-				"description": "Get the permission matrix for the currently authenticated user.",
+				"description": "List all permissions grouped by role.",
 				"tags": [
 					"Access Control (RBAC)"
 				],
@@ -4557,6 +4270,144 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/rbac/assign-permissions": {
+			"post": {
+				"operationId": "AssignPermissionsToRole",
+				"responses": {
+					"200": {
+						"description": "Permissions assigned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Assign a set of resource/action permissions to a role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignPermissionsRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/revoke-permissions": {
+			"delete": {
+				"operationId": "RevokePermissionsFromRole",
+				"responses": {
+					"200": {
+						"description": "Permissions revoked",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke a set of resource/action permissions from a role.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignPermissionsRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/rbac/resources": {
+			"get": {
+				"operationId": "GetAllResources",
+				"responses": {
+					"200": {
+						"description": "Resources returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_Resource-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "List all defined resources.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/rbac/resource-mappings": {
+			"post": {
+				"operationId": "AssignActionsToResources",
+				"responses": {
+					"201": {
+						"description": "Actions assigned to resources",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create/assign actions to one or more resources.",
+				"tags": [
+					"Access Control (RBAC)"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AssignResourceActionsRequest"
+							}
+						}
+					}
+				}
 			}
 		}
 	},

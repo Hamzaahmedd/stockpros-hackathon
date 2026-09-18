@@ -157,28 +157,30 @@ cd backend
 npm install
 ```
 
-Create a `.env` file (see `.env.example`) with the required variables:
+Create a `.env` file (see `backend/.env.example`) with the required variables:
 
 ```env
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-ACCESS_TOKEN_SECRET=...
-REFRESH_TOKEN_SECRET=...
-PORT=3000
-FRONTEND_URL=http://localhost:5173
-ML_INTERNAL_URL=http://localhost:8000
-FINNHUB_API_KEY=...
-FMP_API_KEY=...
-TWELVE_DATA_API_KEY=...
-POLYGON_API_KEY=...
-SMTP_HOST=...
-SMTP_PORT=...
-SMTP_USER=...
-SMTP_PASS=...
-GOOGLE_CLIENT_ID=...
+NODE_ENV=development
+DATABASE_URL=postgresql://user:password@host:port/database_name?sslmode=require
+REDIS_URL=redis://:password@host:port/db
+ACCESS_TOKEN_SECRET=your_secure_secret_key
+REFRESH_TOKEN_SECRET=your_secure_secret_key
+GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+CORS_ORIGINS=your_cors_origins
+SMTP_USER=your_email@example.com
+SMTP_PASS=email_password
+FINNHUB_API_KEY=your_finnhub_api_key
+FMP_API_KEY=your_fmp_api_key
+TWELVE_DATA_API_KEY=your_twelve_data_api_key
+POLYGON_API_KEY=your_polygon_api_key
+RESEND_API_KEY=your_resend_api_key
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-20b
+AXIOM_TOKEN=your_axiom_token
+POSTHOG_API_KEY=your_posthog_project_api_key
 ```
 
-Then set up the database and seed RBAC data:
+Then push the schema to your database, generate the Prisma client, and start the dev server:
 
 ```bash
 npm run db:sync
@@ -192,10 +194,14 @@ cd frontend
 npm install
 ```
 
-Create a `.env` file:
+Create a `.env` file (see `frontend/.env.example`):
 
 ```env
-API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3000
+VITE_HEALTH_CHECK_URL=http://localhost:3000/health
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+VITE_POSTHOG_KEY=your_posthog_project_api_key
+VITE_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 ```bash
@@ -214,29 +220,59 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 
-````env
+```env
 REDIS_URL=your_app_env
 SUPABASE_URL=your_app_env
 SUPABASE_KEY=your_app_env
 TIINGO_API_KEY=your_app_env
 APP_ENV=your_app_env
-GITHUB_TOKEN=your_app_env```
+GITHUB_TOKEN=your_app_env
+```
 
 ```bash
 uvicorn app.main:app --host localhost --port 8000 --reload
-````
+```
+
+Standalone maintenance scripts live in `ai-service/tools/`:
+
+```bash
+# Train a GRU model, convert to ONNX and upload to Supabase
+python tools/train_script.py --symbol AAPL
+
+# Manually convert an existing Keras model to ONNX
+python tools/convert.py <input_model_path> <output_model_path>
+```
 
 ## Scripts
 
-| Service    | Command                         | Description                       |
-| ---------- | ------------------------------- | --------------------------------- |
-| Backend    | `npm run dev`                   | Start with hot reload (nodemon)   |
-| Backend    | `npm run build`                 | Compile TypeScript for production |
-| Backend    | `npm start`                     | Run production build              |
-| Frontend   | `npm run dev`                   | Start Vite dev server             |
-| Frontend   | `npm run build`                 | Production build                  |
-| Frontend   | `npm run preview`               | Preview production build          |
-| AI Service | `uvicorn app.main:app --reload` | Start dev server                  |
+| Service    | Command                         | Description                                              |
+| ---------- | -------------------------------- | --------------------------------------------------------- |
+| Backend    | `npm run dev`                    | Start with hot reload (nodemon)                            |
+| Backend    | `npm run build`                  | Compile TypeScript for production                          |
+| Backend    | `npm start`                      | Run production build                                       |
+| Backend    | `npm test`                       | Run the Jest test suite                                    |
+| Backend    | `npm run test:finnhub`           | Run the Finnhub live-streaming integration test in isolation |
+| Backend    | `npm run typecheck`              | Type-check without emitting (`tsc --noEmit`)                |
+| Backend    | `npm run lint`                   | Check formatting with Prettier                              |
+| Backend    | `npm run architecture:check`     | Enforce module-boundary rules (`scripts/check-module-boundaries.cjs`) |
+| Backend    | `npm run tsoa:spec`              | Regenerate `src/docs/generated/swagger.json` from the TSOA spec files |
+| Backend    | `npm run rbac:seed`              | Seed default roles/permissions                              |
+| Backend    | `npm run db:sync`                | Push the Prisma schema to the database and regenerate the client |
+| Frontend   | `npm run dev`                     | Start Vite dev server                                       |
+| Frontend   | `npm run build`                   | Production build                                            |
+| Frontend   | `npm run preview`                 | Preview production build                                    |
+| Frontend   | `npm run typecheck`               | Type-check without emitting                                 |
+| Frontend   | `npm run lint`                    | Run ESLint                                                   |
+| AI Service | `uvicorn app.main:app --reload`  | Start dev server                                             |
+| AI Service | `python tools/train_script.py`   | Train a GRU model, convert to ONNX, upload to Supabase       |
+| AI Service | `python tools/convert.py`        | Convert an existing Keras model to ONNX                      |
+
+## Troubleshooting
+
+- Verify all required environment variables are set (see the `.env` blocks above and each service's `.env.example`)
+- Confirm Node.js, npm, and Python versions match the Prerequisites above
+- Reinstall dependencies (`npm install` / `pip install -r requirements.txt`) if you see missing-module errors
+- Confirm PostgreSQL and Redis are reachable at the URLs in your `.env` before starting the backend
 
 ## Deployment
 
@@ -249,6 +285,13 @@ uvicorn app.main:app --host localhost --port 8000 --reload
 ## Documentation
 
 - [Architecture Overview](backend/ARCHITECTURE.md)
+
+## External Documentation
+
+- [![Redis Docs](https://img.shields.io/badge/Stock%20app%20Redis%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1IZPj7N5SekGWNFgJS-Vvx-aaZ41pE-WQCbRhi02nZuE/edit?usp=sharing) — Redis installation & setup on Windows (MSI installer method)
+- [![API Docs](https://img.shields.io/badge/Stock%20app%20API%20Docs-Click%20Here-blue?style=for-the-badge)](https://documenter.getpostman.com/view/48086882/2sB3WjxiMH) — Postman API documentation
+- [![DB Docs](https://img.shields.io/badge/Stock%20app%20DB%20Docs-Click%20Here-blue?style=for-the-badge)](https://dbdocs.io/hamzahmed303/Stock-App) — Database and ERD documentation
+- [![Tests Docs](https://img.shields.io/badge/Stock%20app%20Tests%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1HkD4J1kKJ4aJm2rR-TUTt2EUw1uAufLYQUw_usj92Vs/edit?usp=sharing) — Test suite documentation
 
 ## License
 

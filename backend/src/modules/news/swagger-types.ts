@@ -2,27 +2,24 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Route,
   Tags,
   Security,
+  Body,
   Path,
   Query,
   SuccessResponse,
   Response,
 } from 'tsoa'
-import {
-  ApiResponse,
-  ApiErrorResponse,
-  PaginatedResponse,
-} from '../../shared/docs-types'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 export interface NewsArticle {
   id: string
   headline: string
-  summaryBullets: string[]
   url: string
   imageUrl?: string
   source: string
@@ -30,7 +27,6 @@ export interface NewsArticle {
   relatedSymbols: string[]
   /** @enum {string} */
   sentiment?: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
-  sentimentScore?: number
   /** @enum {string} */
   category:
     | 'EARNINGS'
@@ -44,73 +40,130 @@ export interface NewsArticle {
   isSaved: boolean
 }
 
+export interface MarkMultipleNewsReadRequest {
+  articleIds: string[]
+}
+
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/news')
+@Route('api/v1/news')
 @Tags('News')
 export class NewsSwaggerController extends Controller {
   /**
-   * Fetch a paginated list of financial news articles.
-   * Supports filtering by symbol, sentiment, category, and full-text search.
+   * Fetch a cursor-paginated news feed, filterable by portfolio/watchlist/all, symbol,
+   * category, and date range.
    */
-  @Get('')
+  @Get('feed')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'News articles returned')
-  async getNews(
-    @Query() symbol?: string,
-    @Query() sentiment?: 'BULLISH' | 'BEARISH' | 'NEUTRAL',
-    @Query() category?: string,
-    @Query() q?: string,
-    @Query() page?: number,
+  @SuccessResponse(200, 'News feed retrieved successfully')
+  async getNewsFeed(
+    @Query() cursor?: string,
     @Query() limit?: number,
-  ): Promise<PaginatedResponse<NewsArticle>> {
+    @Query() category?: string,
+    @Query() symbol?: string,
+    @Query() filter?: 'portfolio' | 'watchlist' | 'all',
+    @Query() from?: string,
+    @Query() to?: string,
+  ): Promise<ApiResponse<NewsArticle[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Mark a news article as read for the authenticated user.
+   * Full-text search across news articles, with the same filters as the feed.
    */
-  @Post('{id}/read')
+  @Get('search')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Article marked as read')
-  @Response<ApiErrorResponse>(404, 'Article not found')
-  async markRead(@Path() id: string): Promise<ApiResponse> {
+  @SuccessResponse(200, 'Search results retrieved successfully')
+  async searchNews(
+    @Query() q?: string,
+    @Query() symbol?: string,
+    @Query() category?: string,
+    @Query() from?: string,
+    @Query() to?: string,
+    @Query() cursor?: string,
+    @Query() limit?: number,
+  ): Promise<ApiResponse<NewsArticle[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Save or unsave a news article (toggle bookmark).
+   * Get unread-count and category-breakdown summary for the authenticated user.
    */
-  @Post('{id}/save')
+  @Get('summary')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Save state toggled')
-  @Response<ApiErrorResponse>(404, 'Article not found')
-  async toggleSave(
-    @Path() id: string,
-  ): Promise<ApiResponse<{ saved: boolean }>> {
+  @SuccessResponse(200, 'News summary retrieved successfully')
+  async getNewsSummary(): Promise<ApiResponse<unknown>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Fetch all saved articles for the authenticated user.
+   * Fetch all articles the authenticated user has saved/bookmarked.
    */
   @Get('saved')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Saved articles returned')
-  async getSaved(
-    @Query() page?: number,
+  @SuccessResponse(200, 'Saved articles retrieved successfully')
+  async getSavedNews(
+    @Query() cursor?: string,
     @Query() limit?: number,
-  ): Promise<PaginatedResponse<NewsArticle>> {
+  ): Promise<ApiResponse<NewsArticle[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Mark all unread articles as read.
+   * Fetch news for a specific symbol.
    */
-  @Post('mark-all-read')
+  @Get('symbol/{symbol}')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'News for symbol retrieved successfully')
+  async getNewsBySymbol(
+    @Path() symbol: string,
+    @Query() cursor?: string,
+    @Query() limit?: number,
+  ): Promise<ApiResponse<NewsArticle[]>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Mark all unread articles as read for the authenticated user.
+   */
+  @Patch('read-all')
   @Security('bearerAuth')
   @SuccessResponse(200, 'All articles marked as read')
-  async markAllRead(): Promise<ApiResponse<{ count: number }>> {
+  async markAllAsRead(): Promise<ApiResponse<{ count: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Mark a specific set of articles as read.
+   */
+  @Patch('read-multiple')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Articles marked as read')
+  async markMultipleAsRead(
+    @Body() body: MarkMultipleNewsReadRequest,
+  ): Promise<ApiResponse<{ count: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Mark a single news article as read.
+   */
+  @Patch('{id}/read')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Article marked as read')
+  @Response<ApiErrorResponse>(404, 'Article not found')
+  async markAsRead(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Save/bookmark a news article.
+   */
+  @Post('{id}/save')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Article saved')
+  @Response<ApiErrorResponse>(404, 'Article not found')
+  async saveArticle(@Path() id: string): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 
@@ -119,9 +172,9 @@ export class NewsSwaggerController extends Controller {
    */
   @Delete('{id}/save')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Article unsaved')
+  @SuccessResponse(200, 'Article removed from saved')
   @Response<ApiErrorResponse>(404, 'Article not found')
-  async unsave(@Path() id: string): Promise<ApiResponse> {
+  async unsaveArticle(@Path() id: string): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 }

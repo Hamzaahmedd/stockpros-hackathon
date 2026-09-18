@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { socketManager, Trade } from "@/shared/utils/socketManager";
+import { SocketEvent } from "@/shared/utils/socket-events";
 
 export const useSocket = (autoConnect = true) => {
   const [connected, setConnected] = useState<boolean>(false);
@@ -34,20 +35,20 @@ export const useSocket = (autoConnect = true) => {
 
     socketManager.on("connect", onConnect);
     socketManager.on("disconnect", onDisconnect);
-    socketManager.on("trade", onTrade);
-    socketManager.on("finnhub_error", onFinnhubErr);
+    socketManager.on(SocketEvent.Trade, onTrade);
+    socketManager.on(SocketEvent.FinnhubError, onFinnhubErr);
     socketManager.on("connect_error", (e) => setError(e?.message ?? "Connection error"));
-    socketManager.on("error", (e) => setError(e?.message ?? "Socket error"));
+    socketManager.on(SocketEvent.Error, (e) => setError(e?.message ?? "Socket error"));
 
     if (autoConnect) socketManager.connect();
 
     return () => {
       socketManager.off("connect", onConnect);
       socketManager.off("disconnect", onDisconnect);
-      socketManager.off("trade", onTrade);
-      socketManager.off("finnhub_error", onFinnhubErr);
+      socketManager.off(SocketEvent.Trade, onTrade);
+      socketManager.off(SocketEvent.FinnhubError, onFinnhubErr);
       socketManager.off("connect_error");
-      socketManager.off("error");
+      socketManager.off(SocketEvent.Error);
     };
   }, [autoConnect]);
 

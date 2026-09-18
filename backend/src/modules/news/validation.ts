@@ -5,6 +5,12 @@ const cursorSchema = z.string().uuid('Invalid cursor').optional()
 const limitSchema = z.coerce.number().int().min(1).max(50).default(20)
 const categorySchema = z.nativeEnum(NewsCategory).optional()
 
+// ─── Route Params ─────────────────────────────────────────────────────────────
+
+export const symbolParamValidator = z.object({
+  symbol: z.string().trim().min(1, 'Symbol is required').max(10),
+})
+
 export const newsFeedValidator = z.object({
   cursor: cursorSchema,
   limit: limitSchema,

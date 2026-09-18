@@ -12,84 +12,95 @@ import {
   SuccessResponse,
   Response,
 } from 'tsoa'
-import {
-  ApiResponse,
-  ApiErrorResponse,
-  PaginatedResponse,
-} from '../../shared/docs-types'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 export interface DecisionResult {
   symbol: string
+  sector: string
   /** @enum {string} */
-  marketDecision: 'BUY' | 'SELL' | 'HOLD'
+  marketDecision: 'BUY' | 'SELL' | 'HOLD / CAUTION'
   /** @enum {string} */
-  portfolioDecision: 'BUY' | 'SELL' | 'HOLD' | 'REDUCE' | 'INCREASE'
+  portfolioDecision: 'ADD' | 'HOLD' | 'TRIM' | 'EXIT'
   confidence: number
   /** @enum {string} */
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'
-  sector?: string
   reasoning: Record<string, unknown>
   exposure: Record<string, unknown>
   actionGuidance: Record<string, unknown>
 }
 
-export interface DecisionFactor {
-  name: string
-  value: string | number
-  signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
-  weight: number
-}
-
-export interface RunDecisionRequest {
-  portfolioId: string
-  /** @enum {string} */
-  mode?: 'DETAILED' | 'SUMMARY'
-}
-
 export interface PortfolioPosition {
   symbol: string
   quantity: number
-  avgEntryPrice: number
+  avg_entry_price: number
   sector?: string
 }
 
-export interface DecisionRunRecord {
-  id: string
+export interface PositionSizeRequest {
+  capital: number
+  symbol: string
+}
+
+export interface PortfolioDecisionRequest {
   portfolioId: string
-  mode: string
-  runAt: string
-  results: DecisionResult[]
+  /** @enum {string} */
+  decisionMode: 'OVERVIEW' | 'DETAILED'
+  symbol?: string
+}
+
+export interface PortfolioRiskMetricsRequest {
+  portfolioId: string
 }
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/decision-support')
+@Route('api/v1/decision-support')
 @Tags('Decision Support')
 export class DecisionSupportSwaggerController extends Controller {
   /**
-   * Run the full multi-factor decision engine for a user's portfolio.
-   * Combines technical indicators (RSI, Bollinger Bands), analyst ratings, news sentiment,
-   * earnings data, and portfolio exposure to produce BUY/SELL/HOLD recommendations.
+   * Get the market-level trade decision (technicals + analyst ratings + sentiment) for a symbol.
    */
-  @Post('run')
+  @Get('market/decision/{symbol}')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Decision analysis complete')
-  @Response<ApiErrorResponse>(400, 'Invalid portfolio ID')
-  async runDecision(
-    @Body() body: RunDecisionRequest,
-  ): Promise<ApiResponse<DecisionRunRecord>> {
+  @SuccessResponse(200, 'Trade decision retrieved successfully.')
+  async getMarketBasedTradeDecision(
+    @Path() symbol: string,
+  ): Promise<ApiResponse<unknown>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Upload a portfolio CSV or XLSX file for batch position import.
-   * Accepted columns: symbol, quantity, avgEntryPrice, sector.
+   * Get the opportunity radar — ranked candidate trades across the watchlist universe.
    */
-  @Post('portfolio/upload')
+  @Get('market/radar')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Portfolio uploaded and parsed')
+  @SuccessResponse(200, 'Opportunity radar retrieved successfully.')
+  async getOpportunityRadar(
+    @Query() timeline?: '1D' | '1W',
+  ): Promise<ApiResponse<unknown>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Calculate suggested position size for a symbol given available capital.
+   */
+  @Post('market/position-size')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Position size calculated successfully.')
+  async calculatePositionSize(
+    @Body() body: PositionSizeRequest,
+  ): Promise<ApiResponse<unknown>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Upload a portfolio CSV/XLSX file for batch position import (multipart/form-data, field "portfolio").
+   */
+  @Post('upload-portfolio')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Portfolio uploaded successfully.')
   @Response<ApiErrorResponse>(400, 'Unsupported file format')
   async uploadPortfolio(): Promise<
     ApiResponse<{ positions: PortfolioPosition[] }>
@@ -98,39 +109,66 @@ export class DecisionSupportSwaggerController extends Controller {
   }
 
   /**
-   * Fetch paginated history of decision runs for the authenticated user.
+   * Generate per-position decisions (ADD/HOLD/TRIM/EXIT) for the user's latest uploaded portfolio.
    */
-  @Get('history')
+  @Post('portfolio/decision')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Decision history returned')
-  async getHistory(
-    @Query() page?: number,
-    @Query() limit?: number,
-  ): Promise<PaginatedResponse<DecisionRunRecord>> {
+  @SuccessResponse(200, 'Decisions generated successfully.')
+  async getPortfolioBasedTradeDecision(
+    @Body() body: PortfolioDecisionRequest,
+  ): Promise<ApiResponse<DecisionResult[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Fetch a single decision run by ID including all per-symbol results.
+   * Get portfolio-level risk metrics (weighted beta, Sharpe ratio, sector concentration).
    */
-  @Get('history/{id}')
+  @Post('portfolio/risk-metrics')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Decision run returned')
-  @Response<ApiErrorResponse>(404, 'Record not found')
-  async getHistoryById(
-    @Path() id: string,
-  ): Promise<ApiResponse<DecisionRunRecord>> {
+  @SuccessResponse(200, 'Portfolio risk metrics calculated successfully.')
+  async getPortfolioRiskMetrics(
+    @Body() body: PortfolioRiskMetricsRequest,
+  ): Promise<ApiResponse<unknown>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Delete a specific decision run record.
+   * Fetch the authenticated user's most recently uploaded portfolio.
    */
-  @Delete('history/{id}')
+  @Get('portfolio/latest')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Decision run deleted')
-  @Response<ApiErrorResponse>(404, 'Record not found')
-  async deleteHistory(@Path() id: string): Promise<ApiResponse> {
+  @SuccessResponse(200, 'Latest portfolio retrieved successfully.')
+  async getLatestPortfolio(): Promise<ApiResponse<unknown>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Remove all uploaded portfolio data for the authenticated user.
+   */
+  @Delete('portfolio')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Portfolio removed successfully.')
+  async removePortfolio(): Promise<ApiResponse<{ removedCount: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Export a single-symbol trade plan as a PDF (binary response, not JSON).
+   */
+  @Post('trade-plan/pdf')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'PDF file stream')
+  async exportTradePlanPdf(): Promise<void> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Export the full portfolio decision report as a PDF (binary response, not JSON).
+   */
+  @Post('portfolio/pdf')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'PDF file stream')
+  async exportPortfolioPdf(): Promise<void> {
     throw new Error('tsoa spec-only')
   }
 }

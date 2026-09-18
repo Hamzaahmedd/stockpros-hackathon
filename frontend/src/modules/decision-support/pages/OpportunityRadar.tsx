@@ -25,7 +25,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import type { PositionSizeResult, RadarCard } from "../types";
+import type { MarketRecommendation, PositionSizeResult, RadarCard } from "../types";
 import { downloadTradePlanPdf } from "../utils/downloadTradePlanPdf";
 
 /* ───────────── Radar Content Grid ───────────── */
@@ -37,7 +37,7 @@ interface RadarContentGridProps {
     confidence: number,
     label?: string,
   ) => React.ReactNode;
-  readonly getRecommendationBadge: (rec: string) => React.ReactNode;
+  readonly getRecommendationBadge: (rec: MarketRecommendation) => React.ReactNode;
   readonly onAnalyze: (symbol: string) => void;
   readonly onOpenCalculator: (card: RadarCard) => void;
 }
@@ -306,7 +306,7 @@ export const OpportunityRadar: React.FC = () => {
     }
   };
 
-  const getRecommendationBadge = (rec: string) => {
+  const getRecommendationBadge = (rec: MarketRecommendation) => {
     if (rec === 'BUY') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">

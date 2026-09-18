@@ -21,7 +21,7 @@ export interface SymbolSearchResult {
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/search')
+@Route('api/v1/search')
 @Tags('Search')
 export class SearchSwaggerController extends Controller {
   /**
@@ -30,10 +30,10 @@ export class SearchSwaggerController extends Controller {
    * @param q Search query (e.g. "Apple" or "AAPL")
    * @param exchange Exchange filter (default: "US")
    */
-  @Get('')
+  @Get('symbol-lookup')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Search results returned')
-  async searchSymbols(
+  @SuccessResponse(200, 'Symbol lookup completed successfully.')
+  async symbolLookup(
     @Query() q: string,
     @Query() exchange?: string,
   ): Promise<ApiResponse<SymbolSearchResult[]>> {

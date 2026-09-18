@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express'
 import { validateOrThrow } from '../../shared/errors'
+import { uuidParamValidator } from '../../shared/validation'
 import * as NewsService from './service'
 import {
   newsFeedValidator,
@@ -11,6 +12,7 @@ import {
   newsSavedValidator,
   NewsSavedQuery,
   articleIdsValidator,
+  symbolParamValidator,
 } from './validation'
 import { AuthenticatedRequest } from '../auth'
 import { getUserId, sendSuccess } from '../../shared/utils'
@@ -40,7 +42,7 @@ export const getNewsBySymbol = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = (req.params.symbol as string).toUpperCase()
+    const symbol = validateOrThrow(symbolParamValidator, req.params).symbol.toUpperCase()
     const query: NewsSymbolQuery = validateOrThrow(
       newsSymbolValidator,
       req.query,
@@ -118,10 +120,8 @@ export const markAsRead = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const result = await NewsService.markArticleAsRead(
-      userId,
-      req.params.id as string,
-    )
+    const { id } = validateOrThrow(uuidParamValidator, req.params)
+    const result = await NewsService.markArticleAsRead(userId, id)
     sendSuccess(res, {
       message: 'Article marked as read',
       data: result,
@@ -176,10 +176,8 @@ export const saveArticle = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const result = await NewsService.saveArticle(
-      userId,
-      req.params.id as string,
-    )
+    const { id } = validateOrThrow(uuidParamValidator, req.params)
+    const result = await NewsService.saveArticle(userId, id)
     sendSuccess(res, {
       message: 'Article saved',
       data: result,
@@ -196,7 +194,8 @@ export const unsaveArticle = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    await NewsService.unsaveArticle(userId, req.params.id as string)
+    const { id } = validateOrThrow(uuidParamValidator, req.params)
+    await NewsService.unsaveArticle(userId, id)
     sendSuccess(res, {
       message: 'Article removed from saved',
     })

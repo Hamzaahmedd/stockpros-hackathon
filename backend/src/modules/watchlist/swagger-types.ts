@@ -2,7 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Put,
+  Patch,
   Delete,
   Route,
   Tags,
@@ -55,6 +55,12 @@ export interface UpdateWatchlistEntryRequest {
   notes?: string
 }
 
+export interface ConvertToPositionRequest {
+  entryPrice?: number
+  /** Fractional shares allowed */
+  quantity?: number
+}
+
 export interface WatchlistAlert {
   id: string
   watchlistId: string
@@ -96,9 +102,14 @@ export interface CreateAlertRequest {
   threshold?: number
 }
 
+export interface UpdateAlertRequest {
+  threshold?: number
+  isActive?: boolean
+}
+
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/watchlist')
+@Route('api/v1/watchlist')
 @Tags('Watchlist')
 export class WatchlistSwaggerController extends Controller {
   /**
@@ -127,7 +138,7 @@ export class WatchlistSwaggerController extends Controller {
   /**
    * Update trade plan fields (target entry, stop-loss, notes) for a watchlist symbol.
    */
-  @Put('{symbol}')
+  @Patch('{symbol}')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Watchlist entry updated')
   @Response<ApiErrorResponse>(404, 'Symbol not in watchlist')
@@ -150,20 +161,15 @@ export class WatchlistSwaggerController extends Controller {
   }
 
   /**
-   * Trigger AI suggestion calculation for a watchlist symbol.
-   * Computes suggested entry price, take-profit, and stop-loss from technical analysis.
+   * Convert a watchlist symbol into a real portfolio position.
    */
-  @Post('{symbol}/ai-baseline')
+  @Post('{symbol}/convert-to-position')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'AI suggestions calculated')
-  async calculateAiBaseline(@Path() symbol: string): Promise<
-    ApiResponse<{
-      aiSuggestedEntry: number
-      aiTakeProfit: number
-      aiStopLoss: number
-      aiConfidence: 'LOW' | 'MEDIUM' | 'HIGH'
-    }>
-  > {
+  @SuccessResponse(201, 'Symbol converted to portfolio position')
+  async convertToPosition(
+    @Path() symbol: string,
+    @Body() body: ConvertToPositionRequest,
+  ): Promise<ApiResponse<unknown>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -195,15 +201,15 @@ export class WatchlistSwaggerController extends Controller {
   }
 
   /**
-   * Update an existing alert configuration.
+   * Update an existing alert's threshold or active state.
    */
-  @Put('{symbol}/alerts/{id}')
+  @Patch('{symbol}/alerts/{id}')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Alert updated')
   async updateAlert(
     @Path() symbol: string,
     @Path() id: string,
-    @Body() body: Partial<CreateAlertRequest>,
+    @Body() body: UpdateAlertRequest,
   ): Promise<ApiResponse<WatchlistAlert>> {
     throw new Error('tsoa spec-only')
   }

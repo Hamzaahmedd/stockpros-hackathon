@@ -5,6 +5,7 @@ import { updatePriceCache } from '../../../modules/market/caches/price-cache'
 import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
 import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
 import { logger } from '../logger'
+import { SocketEvent } from './socket-events'
 import { socketSubscribeValidator } from './subscription-validation'
 
 export class SocketServer {
@@ -38,15 +39,17 @@ export class SocketServer {
       logger.info(`Socket connected: ${socket.id}`)
 
       // Handle user joining a private room for notifications
-      socket.on('join', (userId: string) => {
+      socket.on(SocketEvent.Join, (userId: string) => {
         if (userId) {
           socket.join(`user:${userId}`)
           logger.info(`Socket ${socket.id} joined user room: user:${userId}`)
         }
       })
 
-      socket.on('subscribe', (payload) => this.handleSubscribe(socket, payload))
-      socket.on('unsubscribe', (payload) =>
+      socket.on(SocketEvent.Subscribe, (payload) =>
+        this.handleSubscribe(socket, payload),
+      )
+      socket.on(SocketEvent.Unsubscribe, (payload) =>
         this.handleUnsubscribe(socket, payload),
       )
       socket.on('disconnecting', () => this.handleDisconnecting(socket))
@@ -60,7 +63,7 @@ export class SocketServer {
   ): Promise<void> {
     const parsed = socketSubscribeValidator.safeParse(payload)
     if (!parsed.success) {
-      socket.emit('error', {
+      socket.emit(SocketEvent.Error, {
         message: 'Invalid subscribe payload',
         issues: parsed.error.issues,
       })
@@ -76,7 +79,7 @@ export class SocketServer {
     // Send initial snapshot quote
     try {
       const snapshot = await finnhubService.getQuote(symbol)
-      socket.emit('trade', {
+      socket.emit(SocketEvent.Trade, {
         s: symbol,
         p: snapshot.c,
         v: 0,
@@ -89,14 +92,14 @@ export class SocketServer {
       )
     }
 
-    socket.emit('subscribed', { symbol })
+    socket.emit(SocketEvent.Subscribed, { symbol })
     logger.info(`Socket ${socket.id} joined room ${symbol}`)
   }
 
   private handleUnsubscribe(socket: Socket, payload: unknown): void {
     const parsed = socketSubscribeValidator.safeParse(payload)
     if (!parsed.success) {
-      socket.emit('error', {
+      socket.emit(SocketEvent.Error, {
         message: 'Invalid unsubscribe payload',
         issues: parsed.error.issues,
       })
@@ -105,7 +108,7 @@ export class SocketServer {
 
     const symbol = parsed.data.symbol.toUpperCase()
     socket.leave(symbol)
-    socket.emit('unsubscribed', { symbol })
+    socket.emit(SocketEvent.Unsubscribed, { symbol })
     logger.info(`Socket ${socket.id} left room ${symbol}`)
 
     const room = this.io.sockets.adapter.rooms.get(symbol)
@@ -143,7 +146,7 @@ export class SocketServer {
       try {
         const symbol = String(trade.s).toUpperCase()
         updatePriceCache(symbol, trade.p, trade.v ?? 0) // M2 — already there
-        this.io.to(symbol).emit('trade', trade) // already there
+        this.io.to(symbol).emit(SocketEvent.Trade, trade) // already there
 
         // M6: Evaluate alert rules for this tick — fire-and-forget,
         // errors are caught inside evaluateAlertsForTick so the pipeline

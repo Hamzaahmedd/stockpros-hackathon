@@ -21,6 +21,7 @@ const localLogoPath = path.resolve(__dirname, '../../assets/stockpros-logo.png')
 
 const readLocalLogo = (): string | undefined => {
   try {
+    if (!fs.existsSync(localLogoPath)) return undefined
     return fs.readFileSync(localLogoPath).toString('base64')
   } catch {
     // Logo is optional; ignore read errors

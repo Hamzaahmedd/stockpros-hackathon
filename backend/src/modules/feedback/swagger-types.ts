@@ -13,7 +13,7 @@ export interface SubmitFeedbackRequest {
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/feedback')
+@Route('api/v1/feedback')
 @Tags('Feedback')
 export class FeedbackSwaggerController extends Controller {
   /**

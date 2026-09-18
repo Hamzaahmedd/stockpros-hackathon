@@ -19,3 +19,21 @@ export const googleLoginValidator = z.object({
     })
     .min(1, 'Google credential is required'),
 })
+
+export const magicLinkTokenValidator = z.object({
+  token: z
+    .string({
+      required_error: 'Token is required',
+      invalid_type_error: 'Token must be a string',
+    })
+    .min(1, 'Token is required'),
+})
+
+export const completeOnboardingValidator = z.object({
+  onboardingToken: z.string().min(1).optional(),
+  displayName: z
+    .string({ required_error: 'Display name is required' })
+    .trim()
+    .min(1, 'Display name is required'),
+  email: z.string().email('Invalid email format').optional(),
+})

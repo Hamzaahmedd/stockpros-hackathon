@@ -19,7 +19,12 @@ import {
   verifyMagicLink,
 } from './service'
 import { AuthenticatedRequest } from './types'
-import { emailValidator, googleLoginValidator } from './validation'
+import {
+  completeOnboardingValidator,
+  emailValidator,
+  googleLoginValidator,
+  magicLinkTokenValidator,
+} from './validation'
 
 export const getMyInfo = async (
   req: AuthenticatedRequest,
@@ -155,10 +160,7 @@ export const verifyMagicLinkToken = async (
   next: NextFunction,
 ) => {
   try {
-    const { token } = req.body
-    if (!token || typeof token !== 'string') {
-      throw new ValidationError('Invalid token')
-    }
+    const { token } = validateOrThrow(magicLinkTokenValidator, req.body)
 
     const loginResult = await verifyMagicLink(
       token,
@@ -204,7 +206,10 @@ export const completeOnboardingHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const { onboardingToken, displayName, email } = req.body
+    const { onboardingToken, displayName, email } = validateOrThrow(
+      completeOnboardingValidator,
+      req.body,
+    )
 
     const result = await completeOnboardingFlow({
       onboardingToken,

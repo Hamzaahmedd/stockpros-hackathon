@@ -415,7 +415,10 @@ export async function generateMagicLink(
   } catch (mailErr) {
     logger.error('[MagicLink] Failed to send email', mailErr)
     if (config.server.nodeEnv !== 'production') {
-      logger.info(`Magic link for ${email}: ${loginLink}`)
+      // Local dev convenience only — deliberately NOT routed through the
+      // structured logger, which can ship to Axiom if AXIOM_TOKEN is set
+      // even in a dev environment. This must never reach persistent/remote logs.
+      console.log(`Magic link for ${email}: ${loginLink}`)
     } else {
       throw mailErr
     }

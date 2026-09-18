@@ -1,9 +1,7 @@
 import {
   Controller,
   Get,
-  Post,
   Patch,
-  Delete,
   Route,
   Tags,
   Security,
@@ -13,11 +11,7 @@ import {
   SuccessResponse,
   Response,
 } from 'tsoa'
-import {
-  ApiResponse,
-  ApiErrorResponse,
-  PaginatedResponse,
-} from '../../shared/docs-types'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -38,38 +32,44 @@ export interface NotificationPreferences {
   dailyDigestEnabled: boolean
 }
 
+export interface MarkMultipleNotificationsReadRequest {
+  notificationIds: string[]
+}
+
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/notifications')
+@Route('api/v1/notifications')
 @Tags('Notifications')
 export class NotificationsSwaggerController extends Controller {
   /**
-   * Fetch paginated notifications for the authenticated user, newest first.
+   * Fetch cursor-paginated notifications for the authenticated user, newest first.
    */
   @Get('')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Notifications returned')
+  @SuccessResponse(200, 'Notifications retrieved successfully')
   async getNotifications(
-    @Query() page?: number,
+    @Query() cursor?: string,
     @Query() limit?: number,
-  ): Promise<PaginatedResponse<Notification>> {
+  ): Promise<ApiResponse<Notification[]>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Get the count of unread notifications for the authenticated user.
+   * Get unread count + latest 5 notifications, for the bell icon badge.
    */
-  @Get('unread-count')
+  @Get('summary')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Unread count returned')
-  async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+  @SuccessResponse(200, 'Notification summary retrieved successfully')
+  async getNotificationSummary(): Promise<
+    ApiResponse<{ unreadCount: number; preview: Notification[] }>
+  > {
     throw new Error('tsoa spec-only')
   }
 
   /** Get the authenticated user's notification preferences. */
   @Get('preferences')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Notification preferences returned')
+  @SuccessResponse(200, 'Notification preferences retrieved successfully')
   async getPreferences(): Promise<ApiResponse<NotificationPreferences>> {
     throw new Error('tsoa spec-only')
   }
@@ -77,7 +77,7 @@ export class NotificationsSwaggerController extends Controller {
   /** Update the authenticated user's notification preferences. */
   @Patch('preferences')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Notification preferences updated')
+  @SuccessResponse(200, 'Notification preferences updated successfully')
   async updatePreferences(
     @Body() preferences: NotificationPreferences,
   ): Promise<ApiResponse<NotificationPreferences>> {
@@ -85,33 +85,35 @@ export class NotificationsSwaggerController extends Controller {
   }
 
   /**
-   * Mark a specific notification as read.
+   * Mark all unread notifications as read for the authenticated user.
    */
-  @Post('{id}/read')
+  @Patch('read-all')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'All notifications marked as read')
+  async markAllAsRead(): Promise<ApiResponse<{ updated: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Mark a specific set of notifications as read.
+   */
+  @Patch('read-multiple')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Notifications marked as read')
+  async markMultipleAsRead(
+    @Body() body: MarkMultipleNotificationsReadRequest,
+  ): Promise<ApiResponse<{ updated: number }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Mark a single notification as read.
+   */
+  @Patch('{id}/read')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Notification marked as read')
   @Response<ApiErrorResponse>(404, 'Notification not found')
-  async markRead(@Path() id: string): Promise<ApiResponse> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Mark all notifications as read for the authenticated user.
-   */
-  @Post('mark-all-read')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'All notifications marked as read')
-  async markAllRead(): Promise<ApiResponse<{ updated: number }>> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Delete all notifications for the authenticated user.
-   */
-  @Delete('')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'All notifications cleared')
-  async clearAll(): Promise<ApiResponse<{ deleted: number }>> {
+  async markAsRead(@Path() id: string): Promise<ApiResponse<Notification>> {
     throw new Error('tsoa spec-only')
   }
 }

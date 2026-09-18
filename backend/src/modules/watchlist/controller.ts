@@ -4,6 +4,8 @@ import {
   addToWatchlistValidator,
   convertToPositionValidator,
   createAlertValidator,
+  symbolAndIdParamValidator,
+  symbolParamValidator,
   updateWatchlistValidator,
   updateAlertValidator,
 } from './validation'
@@ -37,7 +39,7 @@ export const convertToPosition = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(symbolParamValidator, req.params)
 
     const validatedData = validateOrThrow(convertToPositionValidator, req.body)
     const position = await WatchlistService.convertToPosition(
@@ -63,7 +65,7 @@ export const createAlert = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(symbolParamValidator, req.params)
     const validatedData = validateOrThrow(createAlertValidator, req.body)
 
     const alert = await WatchlistService.createAlert(
@@ -107,7 +109,7 @@ export const getAlerts = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(symbolParamValidator, req.params)
 
     const alerts = await WatchlistService.getAlerts(userId, symbol)
 
@@ -127,7 +129,7 @@ export const updateWatchlistEntry = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(symbolParamValidator, req.params)
     const validatedData = validateOrThrow(updateWatchlistValidator, req.body)
 
     const updated = await WatchlistService.updateWatchlistEntry(
@@ -152,8 +154,7 @@ export const updateAlert = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
-    const id = req.params.id as string
+    const { symbol, id } = validateOrThrow(symbolAndIdParamValidator, req.params)
     const validatedData = validateOrThrow(updateAlertValidator, req.body)
 
     const updated = await WatchlistService.updateAlert(
@@ -179,7 +180,7 @@ export const removeFromWatchlist = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
+    const { symbol } = validateOrThrow(symbolParamValidator, req.params)
 
     await WatchlistService.removeFromWatchlist(userId, symbol)
 
@@ -198,8 +199,7 @@ export const deleteAlert = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = req.params.symbol as string
-    const id = req.params.id as string
+    const { symbol, id } = validateOrThrow(symbolAndIdParamValidator, req.params)
 
     await WatchlistService.deleteAlert(userId, symbol, id)
 

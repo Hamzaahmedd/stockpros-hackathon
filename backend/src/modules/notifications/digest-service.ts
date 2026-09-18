@@ -220,9 +220,9 @@ export const sendPremarketDigestToUser = async (
       text: textContent,
       html: htmlContent,
     })
-    logger.info(`[DigestService] Sent premarket digest to ${user.email}`)
+    logger.info(`[DigestService] Sent premarket digest to user ${userId}`)
   } catch (err: unknown) {
-    logger.error(`[DigestService] Failed to send email to ${user.email}:`, err)
+    logger.error(`[DigestService] Failed to send email to user ${userId}:`, err)
   }
 
   // 2. Create an in-app notification only when the user has enabled it.

@@ -1,8 +1,8 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
-  Put,
   Route,
   Tags,
   Security,
@@ -11,31 +11,18 @@ import {
   Response,
 } from 'tsoa'
 
-import {
-  ApiResponse,
-  ApiErrorResponse,
-  PaginatedResponse,
-} from '../../shared/docs-types'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Auth models ──────────────────────────────────────────────────────────────
 
 export interface UserProfile {
-  /** @example "usr_01j7xyz987" */
-  id: string
+  /** @example "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f" */
+  userId: string
   /** @format email @example "trader@example.com" */
   email: string
   /** @example "Alex Morgan" */
-  displayName: string
-  avatarUrl?: string | null
-  country?: string | null
-  /** @example "INTERMEDIATE" */
-  tradingExperience?: string | null
-  /** @example "MODERATE" */
-  riskTolerance?: string | null
-  isProfileComplete: boolean
-  roles: string[]
-  /** @format date-time */
-  createdAt: string
+  displayName: string | null
+  userRoles: Array<{ role: { name: string } }>
 }
 
 export interface MagicLinkRequest {
@@ -56,24 +43,9 @@ export interface GoogleLoginRequest {
 export interface OnboardingRequest {
   /** @example "Jordan Belfort" */
   displayName: string
-  /** @format email @example "jordan@example.com" */
-  email: string
   onboardingToken?: string
-  /** @example "US" */
-  country?: string
-  /** @enum {string} @example "ADVANCED" */
-  tradingExperience?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
-  preferredSectors?: string[]
-  /** @enum {string} @example "AGGRESSIVE" */
-  riskTolerance?: 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE'
-}
-
-export interface UpdateProfileRequest {
-  displayName?: string
-  country?: string
-  tradingExperience?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
-  preferredSectors?: string[]
-  riskTolerance?: 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE'
+  /** @format email @example "jordan@example.com" */
+  email?: string
 }
 
 export interface AuthTokensResponse {
@@ -83,7 +55,7 @@ export interface AuthTokensResponse {
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
 
-@Route('api/auth')
+@Route('api/v1/auth')
 @Tags('Authentication')
 export class AuthSwaggerController extends Controller {
   /**
@@ -164,24 +136,12 @@ export class AuthSwaggerController extends Controller {
   }
 
   /**
-   * Partially update the authenticated user's profile.
+   * Permanently delete (anonymize) the authenticated user's account.
    */
-  @Put('profile')
+  @Delete('account')
   @Security('bearerAuth')
-  @SuccessResponse(200, 'Profile updated')
-  async updateProfile(
-    @Body() body: UpdateProfileRequest,
-  ): Promise<ApiResponse<UserProfile>> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /**
-   * Upload a profile avatar image (multipart/form-data).
-   */
-  @Post('avatar')
-  @Security('bearerAuth')
-  @SuccessResponse(200, 'Avatar uploaded')
-  async uploadAvatar(): Promise<ApiResponse<{ avatarUrl: string }>> {
+  @SuccessResponse(200, 'Account deleted')
+  async deleteAccount(): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 }

@@ -7,3 +7,5 @@ export const decisionSupportModule = defineModule({
   router,
 })
 export { getLatestDecisionRun } from './repository'
+export { MarketRecommendation, PortfolioDecision } from './types'
+export type { RiskLevel } from './types'

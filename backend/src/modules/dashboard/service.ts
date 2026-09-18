@@ -27,7 +27,11 @@ import type {
 import { getCache, setCache } from '../../shared/infrastructure/cache'
 import yahoo from '../../shared/infrastructure/clients/yahoo-finance-client'
 import { convertToMilliseconds, getPakistanHour } from '../../shared/utils'
-import { getLatestDecisionRun } from '../decision-support'
+import {
+  getLatestDecisionRun,
+  MarketRecommendation,
+  PortfolioDecision,
+} from '../decision-support'
 import type { RankedStockRow } from '../market'
 import { getCurrentPrice, getCompanySectors, getRankedTopStocks } from '../market'
 
@@ -113,11 +117,17 @@ const buildDecisionSupport = (
 
   const results = lastRun.results
   const buySignals = results.filter(
-    (r) => r.portfolioDecision === 'ADD' || r.marketDecision === 'BUY',
+    (r) =>
+      r.portfolioDecision === PortfolioDecision.Add ||
+      r.marketDecision === MarketRecommendation.Buy,
   ).length
-  const holdSignals = results.filter((r) => r.portfolioDecision === 'HOLD').length
+  const holdSignals = results.filter(
+    (r) => r.portfolioDecision === PortfolioDecision.Hold,
+  ).length
   const trimSignals = results.filter(
-    (r) => r.portfolioDecision === 'TRIM' || r.portfolioDecision === 'EXIT',
+    (r) =>
+      r.portfolioDecision === PortfolioDecision.Trim ||
+      r.portfolioDecision === PortfolioDecision.Exit,
   ).length
   const positionsAtRisk = results.filter((r) => r.riskLevel === 'HIGH').length
 
@@ -231,7 +241,9 @@ const calculateDiversificationScore = (
 const calculateRiskScores = (lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>) => {
   if (!lastRun?.results.length) return { riskRewardScore: 70, volatilityScore: 70 }
   const positiveDecisions = lastRun.results.filter(
-    (r) => r.portfolioDecision === 'ADD' || r.portfolioDecision === 'HOLD',
+    (r) =>
+      r.portfolioDecision === PortfolioDecision.Add ||
+      r.portfolioDecision === PortfolioDecision.Hold,
   ).length
   const highRiskCount = lastRun.results.filter((r) => r.riskLevel === 'HIGH').length
   return {
