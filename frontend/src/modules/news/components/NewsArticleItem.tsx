@@ -59,8 +59,16 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={handleOpen}
-      className="group relative border border-border rounded-lg overflow-hidden transition-all duration-300 cursor-pointer bg-card hover:border-border/80 hover:shadow-md"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleOpen();
+        }
+      }}
+      className="group relative border border-border rounded-lg overflow-hidden transition-all duration-300 cursor-pointer bg-card hover:border-border/80 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
     >
       <div className="flex flex-col md:flex-row gap-6 p-5">
         {/* image */}
@@ -85,6 +93,7 @@ export const NewsArticleItem: React.FC<Props> = ({ article, onUpdate, onClick })
             </h3>
             <button
               onClick={handleToggleSave}
+              onKeyDown={(e) => e.stopPropagation()}
               className={`p-2 rounded-md border transition-all ${article.isSaved
                   ? "bg-primary/10 border-primary/50 text-primary"
                   : "bg-secondary border-border text-muted-foreground hover:text-foreground"

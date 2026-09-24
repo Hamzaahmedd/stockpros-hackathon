@@ -9,8 +9,9 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton as ShadcnSkeleton } from "@/shared/components/ui/skeleton";
 import { useSocket } from "@/shared/hooks/useSocket";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import { preloader } from "@/shared/utils/preloader";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     FiActivity,
     FiAlertCircle,
@@ -86,6 +87,11 @@ const Watchlist: React.FC = () => {
   // Edit entry state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null);
+
+  const editModalRef = useRef<HTMLDivElement>(null);
+  const addModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(editModalRef, showEditModal, () => setShowEditModal(false));
+  useFocusTrap(addModalRef, showAddModal, () => setShowAddModal(false));
 
   const [newTickerSymbol, setNewTickerSymbol] = useState("");
 
@@ -221,7 +227,7 @@ const Watchlist: React.FC = () => {
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -559,25 +565,31 @@ const Watchlist: React.FC = () => {
       {/* Edit Ticker Modal */}
       {showEditModal && editingItem && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="border rounded-lg w-full max-w-md shadow-2xl p-6 bg-card border-border">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <div
+            ref={editModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-ticker-modal-title"
+            className="border rounded-lg w-full max-w-md shadow-2xl p-6 bg-card border-border"
+          >
+            <h2 id="edit-ticker-modal-title" className="text-xl font-bold mb-6 flex items-center gap-2">
               <FiEdit2 className="text-primary" />
               Edit {editingItem.symbol}
             </h2>
             <form onSubmit={handleUpdateEntry} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Target Entry Price</label>
-                  <input name="targetEntryPrice" type="number" step="0.01" defaultValue={editingItem.targetEntryPrice || ''} required className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition bg-secondary border-border" />
+                  <label htmlFor="edit-target-entry-price" className="block text-xs font-medium text-muted-foreground mb-1">Target Entry Price</label>
+                  <input id="edit-target-entry-price" name="targetEntryPrice" type="number" step="0.01" defaultValue={editingItem.targetEntryPrice || ''} required className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition bg-secondary border-border" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Stop Loss</label>
-                  <input name="stopLoss" type="number" step="0.01" defaultValue={editingItem.stopLoss || ''} required className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition text-red-400 bg-secondary border-border" />
+                  <label htmlFor="edit-stop-loss" className="block text-xs font-medium text-muted-foreground mb-1">Stop Loss</label>
+                  <input id="edit-stop-loss" name="stopLoss" type="number" step="0.01" defaultValue={editingItem.stopLoss || ''} required className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition text-red-400 bg-secondary border-border" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Notes (Optional)</label>
-                <textarea name="notes" defaultValue={editingItem.notes || ''} placeholder="Update your strategy notes..." className="w-full h-24 border rounded-lg px-4 py-3 focus:border-primary/50 outline-none transition resize-none bg-secondary border-border" />
+                <label htmlFor="edit-notes" className="block text-xs font-medium text-muted-foreground mb-1">Notes (Optional)</label>
+                <textarea id="edit-notes" name="notes" defaultValue={editingItem.notes || ''} placeholder="Update your strategy notes..." className="w-full h-24 border rounded-lg px-4 py-3 focus:border-primary/50 outline-none transition resize-none bg-secondary border-border" />
               </div>
               <div className="flex gap-3 mt-4">
                 <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 h-12 rounded-lg font-bold transition bg-secondary text-muted-foreground hover:bg-secondary/80">Cancel</button>
@@ -591,8 +603,14 @@ const Watchlist: React.FC = () => {
       {/* Add Ticker Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="border rounded-lg w-full max-w-md shadow-2xl p-6 bg-card border-border">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <div
+            ref={addModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-ticker-modal-title"
+            className="border rounded-lg w-full max-w-md shadow-2xl p-6 bg-card border-border"
+          >
+            <h2 id="add-ticker-modal-title" className="text-xl font-bold mb-6 flex items-center gap-2">
               <FiPlus className="text-primary" />
               Add New Ticker
             </h2>
@@ -638,25 +656,26 @@ const Watchlist: React.FC = () => {
               }
             }} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Ticker Symbol</label>
-                <SmartSearch 
+                <label htmlFor="add-ticker-symbol" className="block text-xs font-medium text-muted-foreground mb-1">Ticker Symbol</label>
+                <SmartSearch
+                  inputId="add-ticker-symbol"
                   onSubmit={(sym) => setNewTickerSymbol(sym)}
                   placeholder="Search symbol (e.g. NVDA)"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Target Entry Price</label>
-                  <input name="targetEntryPrice" type="number" step="0.01" required placeholder="150" className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition bg-secondary border-border" />
+                  <label htmlFor="add-target-entry-price" className="block text-xs font-medium text-muted-foreground mb-1">Target Entry Price</label>
+                  <input id="add-target-entry-price" name="targetEntryPrice" type="number" step="0.01" required placeholder="150" className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition bg-secondary border-border" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Stop Loss</label>
-                  <input name="stopLoss" type="number" step="0.01" required placeholder="140" className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition text-red-400 bg-secondary border-border" />
+                  <label htmlFor="add-stop-loss" className="block text-xs font-medium text-muted-foreground mb-1">Stop Loss</label>
+                  <input id="add-stop-loss" name="stopLoss" type="number" step="0.01" required placeholder="140" className="w-full h-12 border rounded-lg px-4 focus:border-primary/50 outline-none transition text-red-400 bg-secondary border-border" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Notes (Optional)</label>
-                <textarea name="notes" placeholder="e.g. Buy near EMA support" className="w-full h-24 border rounded-lg px-4 py-3 focus:border-primary/50 outline-none transition resize-none bg-secondary border-border" />
+                <label htmlFor="add-notes" className="block text-xs font-medium text-muted-foreground mb-1">Notes (Optional)</label>
+                <textarea id="add-notes" name="notes" placeholder="e.g. Buy near EMA support" className="w-full h-24 border rounded-lg px-4 py-3 focus:border-primary/50 outline-none transition resize-none bg-secondary border-border" />
               </div>
               <div className="flex gap-3 mt-4">
                 <button type="button" onClick={() => { setShowAddModal(false); setNewTickerSymbol(""); }} className="flex-1 h-12 rounded-lg font-bold transition bg-secondary text-muted-foreground hover:bg-secondary/80">Cancel</button>

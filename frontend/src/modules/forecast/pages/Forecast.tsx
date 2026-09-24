@@ -292,7 +292,7 @@ const Forecast: React.FC = () => {
       <Sidebar />
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">

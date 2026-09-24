@@ -6,6 +6,7 @@ import { newsService } from '../services';
 import { NewsSummary, NewsSummaryItem } from '../types';
 import { formatTimeAgo } from '@/modules/news/utils/date';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useEscapeToClose } from '@/shared/hooks/useEscapeToClose';
 
 interface Props {
     align?: 'left' | 'right';
@@ -16,6 +17,9 @@ export const NewsDropdown: React.FC<Props> = ({ align = 'left' }) => {
     const [summary, setSummary] = useState<NewsSummary | null>(null);
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+
+    useEscapeToClose(isOpen, () => setIsOpen(false), triggerRef);
 
     const fetchSummary = async () => {
         setLoading(true);
@@ -46,13 +50,15 @@ export const NewsDropdown: React.FC<Props> = ({ align = 'left' }) => {
     }, []);
 
     const NewsItem = ({ item }: { item: NewsSummaryItem }) => (
-        <div 
+        <button
+          type="button"
+          role="menuitem"
           onClick={() => {
               newsService.markRead(item.id).catch(() => {});
               window.open(`/news?id=${item.id}`, '_blank');
               setIsOpen(false);
           }}
-          className={`group p-4 flex gap-4 cursor-pointer hover:bg-white/[0.04] transition-all relative overflow-hidden ${!item.isRead ? 'bg-cyan-500/[0.02]' : ''}`}
+          className={`w-full text-left group p-4 flex gap-4 cursor-pointer hover:bg-white/[0.04] transition-all relative overflow-hidden focus:outline-none focus-visible:bg-white/[0.06] ${!item.isRead ? 'bg-cyan-500/[0.02]' : ''}`}
         >
             {!item.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />}
             
@@ -83,13 +89,16 @@ export const NewsDropdown: React.FC<Props> = ({ align = 'left' }) => {
                     {item.headline}
                 </p>
             </div>
-        </div>
+        </button>
     );
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <button 
+            <button
+                ref={triggerRef}
                 onClick={() => setIsOpen(!isOpen)}
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
                 className="relative p-2.5 rounded-xl text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/5 transition-all group border border-transparent hover:border-white/5"
                 title="News Alerts"
             >
@@ -102,7 +111,7 @@ export const NewsDropdown: React.FC<Props> = ({ align = 'left' }) => {
             </button>
 
             {isOpen && (
-                <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-4 w-[500px] bg-[#0A0D14] border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <div role="menu" className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-4 w-[500px] bg-[#0A0D14] border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between">
                         <div>

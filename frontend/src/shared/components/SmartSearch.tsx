@@ -1,7 +1,7 @@
 import api from "@/shared/api/axios";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useTheme } from "@/shared/hooks/useTheme";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { FiArrowRight, FiSearch, FiX } from "react-icons/fi";
 
 interface SymbolResult {
@@ -15,20 +15,26 @@ interface SmartSearchProps {
   placeholder?: string;
   className?: string;
   initialValue?: string;
+  inputId?: string;
 }
 
-export const SmartSearch: React.FC<SmartSearchProps> = ({ 
-  onSubmit, 
-  placeholder = "Type stock symbol (e.g. AAPL)", 
+export const SmartSearch: React.FC<SmartSearchProps> = ({
+  onSubmit,
+  placeholder = "Type stock symbol (e.g. AAPL)",
   className = "",
-  initialValue = ""
+  initialValue = "",
+  inputId
 }) => {
   const { theme } = useTheme();
   const [value, setValue] = useState(initialValue);
   const [results, setResults] = useState<SymbolResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const instanceId = useId();
+  const listboxId = `smart-search-listbox-${instanceId}`;
+  const getOptionId = (index: number) => `smart-search-option-${instanceId}-${index}`;
 
   useEffect(() => {
     setValue(initialValue);
@@ -57,6 +63,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
       if (res.data.success) {
         setResults(res.data.data);
         setShowDropdown(res.data.data.length > 0);
+        setActiveIndex(-1);
       }
     } catch (err) {
       console.error("Symbol lookup failed", err);
@@ -86,9 +93,35 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
   }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      if (showDropdown && results.length > 0) {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1) % results.length);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      if (showDropdown && results.length > 0) {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev <= 0 ? results.length - 1 : prev - 1));
+      }
+      return;
+    }
+
     if (e.key === "Enter") {
-      onSubmit(value.trim().toUpperCase());
+      if (showDropdown && activeIndex >= 0 && results[activeIndex]) {
+        handleSelect(results[activeIndex].symbol);
+      } else {
+        onSubmit(value.trim().toUpperCase());
+        setShowDropdown(false);
+      }
+      return;
+    }
+
+    if (e.key === "Escape" && showDropdown) {
       setShowDropdown(false);
+      setActiveIndex(-1);
     }
   };
 
@@ -96,6 +129,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
     setValue(symbol);
     onSubmit(symbol);
     setShowDropdown(false);
+    setActiveIndex(-1);
   };
 
   const handleClear = () => {
@@ -116,6 +150,12 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
           {loading ? <Skeleton className="w-5 h-5 rounded-full" /> : <FiSearch />}
         </div>
         <input
+          id={inputId}
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeIndex >= 0 ? getOptionId(activeIndex) : undefined}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -140,16 +180,24 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
         <div className={`absolute left-0 right-0 mt-2 rounded-[1.5rem] border z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 shadow-2xl ${
           theme === 'dark' ? 'bg-[#0F1219] border-white/10' : 'bg-white border-gray-200'
         }`}>
-          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-            {results.map((item) => (
+          <div id={listboxId} role="listbox" className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            {results.map((item, index) => (
               <button
                 type="button"
+                id={getOptionId(index)}
+                role="option"
+                aria-selected={index === activeIndex}
                 key={item.symbol}
                 onClick={() => handleSelect(item.symbol)}
+                onMouseEnter={() => setActiveIndex(index)}
                 className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors border-b last:border-b-0 ${
-                  theme === 'dark' 
-                    ? 'border-white/5 hover:bg-white/5' 
-                    : 'border-gray-100 hover:bg-gray-50'
+                  theme === 'dark' ? 'border-white/5' : 'border-gray-100'
+                } ${
+                  index === activeIndex
+                    ? (theme === 'dark' ? 'bg-white/10' : 'bg-gray-100')
+                    : theme === 'dark'
+                      ? 'hover:bg-white/5'
+                      : 'hover:bg-gray-50'
                 }`}
               >
                 <div className="flex-1 min-w-0">

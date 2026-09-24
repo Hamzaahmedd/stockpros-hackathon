@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FiAlertTriangle } from 'react-icons/fi';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -23,6 +24,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   cancelText = 'Cancel',
   variant = 'info'
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  useFocusTrap(modalRef, isOpen, onCancel, variant === 'danger' ? cancelButtonRef : undefined);
+
   if (!isOpen) return null;
 
   const getVariantColor = () => {
@@ -42,10 +47,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       ></div>
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-[360px] overflow-hidden bg-[#111318] rounded-[28px] shadow-2xl border border-white/5 p-8 animate-in fade-in zoom-in-95 duration-200">
-        
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmation-modal-title"
+        className="relative w-full max-w-[360px] overflow-hidden bg-[#111318] rounded-[28px] shadow-2xl border border-white/5 p-8 animate-in fade-in zoom-in-95 duration-200"
+      >
+
         <div className="flex flex-col items-center text-center">
-          <h3 className="text-[22px] font-bold text-white mb-3 leading-tight tracking-tight">
+          <h3 id="confirmation-modal-title" className="text-[22px] font-bold text-white mb-3 leading-tight tracking-tight">
             {title}
           </h3>
 
@@ -69,6 +80,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </button>
 
             <button
+              ref={cancelButtonRef}
               onClick={onCancel}
               className="w-full py-3.5 rounded-full text-[15px] font-bold text-white bg-[#1f2229] hover:bg-[#2a2e38] active:scale-[0.98] transition-all"
             >

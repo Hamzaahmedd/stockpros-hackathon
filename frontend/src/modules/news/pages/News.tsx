@@ -162,7 +162,7 @@ export default function News() {
         .date-field-btn:hover { border-color: var(--primary) !important; }
       `}</style>
       <Sidebar />
-      <main className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
+      <main id="main-content" className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -174,7 +174,7 @@ export default function News() {
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-              <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80">
+              <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 transition-colors">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <FiSearch className="group-focus-within:text-primary transition-colors" />
                 </div>

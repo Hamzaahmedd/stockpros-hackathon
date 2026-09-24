@@ -122,7 +122,7 @@ export const Dashboard: React.FC = () => {
         return (
         <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+                <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
                     <div className="max-w-[1400px] mx-auto space-y-8">
                         {/* Header Skeleton */}
                         <div className="flex flex-col gap-2">
@@ -279,7 +279,7 @@ export const Dashboard: React.FC = () => {
         return (
         <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 flex items-center justify-center p-8">
+                <main id="main-content" className="flex-1 flex items-center justify-center p-8">
                     <div className="text-center space-y-2 max-w-md">
                         <h1 className="text-xl font-semibold">Dashboard unavailable</h1>
                         <p className="text-sm text-muted-foreground">
@@ -309,7 +309,7 @@ export const Dashboard: React.FC = () => {
         <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+            <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
                 <div className="max-w-[1400px] mx-auto space-y-8">
                     {/* Header */}
                     <div className="flex flex-col gap-1">

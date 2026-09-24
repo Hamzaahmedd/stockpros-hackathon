@@ -11,12 +11,14 @@ import { useSocket } from '@/shared/hooks/useSocket';
 import { socketManager } from '@/shared/utils/socketManager';
 import { SocketEvent } from '@/shared/utils/socket-events';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useEscapeToClose } from '@/shared/hooks/useEscapeToClose';
 
 export const UnifiedNotifications: React.FC = () => {
     const { theme } = useTheme();
     const { user } = useAuth();
     const { connected } = useSocket();
     const [isOpen, setIsOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const [activeTab, setActiveTab] = useState<'news' | 'alerts'>('news');
     const [newsSummary, setNewsSummary] = useState<NewsSummary | null>(null);
     const [notifSummary, setNotifSummary] = useState<any>(null);
@@ -100,8 +102,10 @@ export const UnifiedNotifications: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEscapeToClose(isOpen, () => setIsOpen(false), triggerRef);
+
     const NewsItem = ({ item }: { item: NewsSummaryItem }) => {
-        const setRef = (el: HTMLDivElement | null) => {
+        const setRef = (el: HTMLButtonElement | null) => {
             if (el && !item.isRead) {
                 itemRefs.current.set(item.id, el);
                 observer.current?.observe(el);
@@ -111,7 +115,9 @@ export const UnifiedNotifications: React.FC = () => {
         };
 
         return (
-            <div 
+            <button
+              type="button"
+              role="menuitem"
               ref={setRef}
               data-id={item.id}
               data-type="news"
@@ -120,7 +126,7 @@ export const UnifiedNotifications: React.FC = () => {
                   window.open(`/news?id=${item.id}`, '_blank');
                   setIsOpen(false);
               }}
-              className={`group p-4 flex gap-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-all relative overflow-hidden ${!item.isRead ? 'bg-cyan-500/[0.02] dark:bg-cyan-500/[0.02]' : ''}`}
+              className={`w-full text-left group p-4 flex gap-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-all relative overflow-hidden focus:outline-none focus-visible:bg-black/[0.04] dark:focus-visible:bg-white/[0.06] ${!item.isRead ? 'bg-cyan-500/[0.02] dark:bg-cyan-500/[0.02]' : ''}`}
             >
                 {!item.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />}
                 
@@ -150,14 +156,14 @@ export const UnifiedNotifications: React.FC = () => {
                         {item.headline}
                     </p>
                 </div>
-            </div>
+            </button>
         );
     };
 
     const [pendingReadIds, setPendingReadIds] = useState<Set<string>>(new Set());
     const [pendingNewsIds, setPendingNewsIds] = useState<Set<string>>(new Set());
     const observer = useRef<IntersectionObserver | null>(null);
-    const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const itemRefs = useRef<Map<string, HTMLElement>>(new Map());
 
     useEffect(() => {
         if (pendingReadIds.size > 0) {
@@ -236,7 +242,7 @@ export const UnifiedNotifications: React.FC = () => {
     }, []);
 
     const NotificationItem = ({ notif }: { notif: any }) => {
-        const setRef = (el: HTMLDivElement | null) => {
+        const setRef = (el: HTMLButtonElement | null) => {
             if (el && !notif.read) {
                 itemRefs.current.set(notif.id, el);
                 observer.current?.observe(el);
@@ -246,7 +252,9 @@ export const UnifiedNotifications: React.FC = () => {
         };
 
         return (
-            <div 
+            <button
+              type="button"
+              role="menuitem"
               ref={setRef}
               data-id={notif.id}
               data-type="alert"
@@ -254,7 +262,7 @@ export const UnifiedNotifications: React.FC = () => {
                 if (!notif.read) await notificationService.markRead(notif.id);
                 setIsOpen(false);
               }}
-              className={`p-5 flex gap-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-all relative border-b border-gray-100 dark:border-white/[0.03] ${!notif.read ? 'bg-cyan-500/[0.02]' : ''}`}
+              className={`w-full text-left p-5 flex gap-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-all relative border-b border-gray-100 dark:border-white/[0.03] focus:outline-none focus-visible:bg-black/[0.04] dark:focus-visible:bg-white/[0.06] ${!notif.read ? 'bg-cyan-500/[0.02]' : ''}`}
             >
               <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${notif.read ? 'bg-transparent' : 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]'}`} />
               <div className="flex-1 min-w-0">
@@ -270,7 +278,7 @@ export const UnifiedNotifications: React.FC = () => {
                   {notif.body}
                 </p>
               </div>
-            </div>
+            </button>
         );
     };
 
@@ -278,7 +286,8 @@ export const UnifiedNotifications: React.FC = () => {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <button 
+            <button
+                ref={triggerRef}
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => {
                     notificationService.getSummary().catch(() => {});
@@ -289,6 +298,8 @@ export const UnifiedNotifications: React.FC = () => {
                     notificationService.getSummary().catch(() => {});
                     newsService.getSummary().catch(() => {});
                 }}
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
                 className={`relative p-2.5 rounded-xl transition-all group border border-transparent ${
                     isOpen 
                     ? "text-cyan-500 bg-cyan-500/5 border-cyan-500/20 shadow-sm" 
@@ -305,7 +316,7 @@ export const UnifiedNotifications: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className={`absolute left-0 mt-4 w-[500px] bg-white dark:bg-[#0A0D14] border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <div role="menu" className={`absolute left-0 mt-4 w-[500px] bg-white dark:bg-[#0A0D14] border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
                     
                     {/* Tabs Switcher */}
                     <div className="flex border-b border-gray-100 dark:border-white/5 p-1.5 bg-gray-50 dark:bg-white/[0.01]">

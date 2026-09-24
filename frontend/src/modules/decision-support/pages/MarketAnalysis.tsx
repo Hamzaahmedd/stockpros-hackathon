@@ -80,6 +80,14 @@ const MarketAnalysis: React.FC = () => {
   const [capitalInput, setCapitalInput] = useState<number>(10000);
   const [sizingResult, setSizingResult] = useState<PositionSizeResult | null>(null);
 
+  // Read via a ref inside fetchDecision so the 10s polling interval (which only
+  // recreates its closure when currentSymbol changes) always sizes against the
+  // capital the user currently has entered, not whatever it was when the poll started.
+  const capitalInputRef = useRef(capitalInput);
+  useEffect(() => {
+    capitalInputRef.current = capitalInput;
+  }, [capitalInput]);
+
   const calculateSizing = async (symbol: string, capital: number, priceTargets?: any, currentPrice?: number) => {
     try {
       const res = await api.post("/api/v1/decision-support/market/position-size", {
@@ -143,7 +151,7 @@ const MarketAnalysis: React.FC = () => {
 
       // Auto-calculate position size
       if (decisionData?.priceTargets && decisionData?.priceState?.current) {
-        calculateSizing(trimmed, capitalInput, decisionData.priceTargets, decisionData.priceState.current);
+        calculateSizing(trimmed, capitalInputRef.current, decisionData.priceTargets, decisionData.priceState.current);
       }
     } catch (err) {
       if (!silent) {
@@ -176,7 +184,7 @@ const MarketAnalysis: React.FC = () => {
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground font-sans overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1400px] mx-auto space-y-8">
           
           <div className="flex items-center justify-between">

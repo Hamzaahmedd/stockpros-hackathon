@@ -158,7 +158,7 @@ const Users = () => {
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground font-inter overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 p-4 md:p-10 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:p-10 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1200px] mx-auto space-y-10">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -277,10 +277,12 @@ const Users = () => {
                   {allRoles.map((role) => {
                     const isSelected = selectedRoleIds.includes(role.id);
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={role.id}
                         onClick={() => toggleRole(role.id)}
-                        className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer group ${isSelected
+                        aria-pressed={isSelected}
+                        className={`w-full text-left flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${isSelected
                           ? "border-primary/50 bg-primary/5 shadow-sm"
                           : "border-border bg-card hover:border-border/80 hover:bg-muted/30"
                           }`}
@@ -298,7 +300,7 @@ const Users = () => {
                           </div>
                         </div>
                         {isSelected && <div className="text-[10px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded">Selected</div>}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

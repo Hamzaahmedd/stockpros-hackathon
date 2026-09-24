@@ -227,7 +227,7 @@ const Settings: React.FC = () => {
     <div className="flex h-screen bg-background text-foreground transition-all duration-300 overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-4 lg:p-8">
           <header className="mb-10">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -310,9 +310,11 @@ const Settings: React.FC = () => {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Light Mode Card */}
-                      <div
+                      <button
+                        type="button"
                         onClick={() => setTheme("light")}
-                        className={`group relative overflow-hidden cursor-pointer rounded-lg border-2 transition-all duration-200 ${
+                        aria-pressed={theme === "light"}
+                        className={`w-full text-left group relative overflow-hidden cursor-pointer rounded-lg border-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                           theme === "light"
                             ? "border-primary ring-2 ring-primary/10"
                             : "border-border bg-muted/20"
@@ -347,12 +349,14 @@ const Settings: React.FC = () => {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* Dark Mode Card */}
-                      <div
+                      <button
+                        type="button"
                         onClick={() => setTheme("dark")}
-                        className={`group relative overflow-hidden cursor-pointer rounded-lg border-2 transition-all duration-200 ${
+                        aria-pressed={theme === "dark"}
+                        className={`w-full text-left group relative overflow-hidden cursor-pointer rounded-lg border-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                           theme === "dark"
                             ? "border-primary ring-2 ring-primary/10"
                             : "border-border bg-muted/20"
@@ -387,7 +391,7 @@ const Settings: React.FC = () => {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     </div>
                   </CardContent>
                 </Card>

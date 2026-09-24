@@ -23,7 +23,7 @@ api.interceptors.request.use((config) => {
 // REFRESH TOKEN LOGIC
 
 let isRefreshing = false;
-let queue: Array<{ resolve: Function; reject: Function }> = [];
+let queue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: unknown) => void }> = [];
 
 const processQueue = (err: any) => {
   queue.forEach((p) => (err ? p.reject(err) : p.resolve(null)));

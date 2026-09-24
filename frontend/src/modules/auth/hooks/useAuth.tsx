@@ -102,7 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await api.post("/api/v1/auth/logout");
-    } catch { }
+    } catch {
+      // best-effort server-side logout; proceed to clear local state regardless
+    }
     clearAccessToken();
     posthog.reset();
     setUser(null);

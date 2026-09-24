@@ -65,7 +65,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, period }) => {
     );
   }
 
-  let chartData: any[] = [];
+  const chartData: any[] = [];
 
   if (data.historicalData && data.historicalData.length > 0) {
     data.historicalData.forEach((h: any) => {

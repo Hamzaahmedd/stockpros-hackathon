@@ -75,7 +75,7 @@ class ForecastService {
     }
 
     // Calculate confidence
-    let confidence = this.calculateConfidence(predictions);
+    const confidence = this.calculateConfidence(predictions);
     
     // Generate insights
     const insights = this.generateInsights(predictions);

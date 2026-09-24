@@ -326,7 +326,7 @@ const Markets = () => {
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
       <Sidebar />
-      <main className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1600px] mx-auto space-y-10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>

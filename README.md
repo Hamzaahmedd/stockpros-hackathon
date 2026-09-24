@@ -274,24 +274,9 @@ python tools/convert.py <input_model_path> <output_model_path>
 - Reinstall dependencies (`npm install` / `pip install -r requirements.txt`) if you see missing-module errors
 - Confirm PostgreSQL and Redis are reachable at the URLs in your `.env` before starting the backend
 
-## Deployment
-
-| Service    | Target           | Config                                                        |
-| ---------- | ---------------- | ------------------------------------------------------------- |
-| Frontend   | **Vercel**       | `frontend/vercel.json` — SPA rewrites for client-side routing |
-| AI Service | **Railway**      | `ai-service/railway.toml` — nixpacks builder, Python 3.11     |
-| Backend    | Any Node.js host | Standard `npm run build && npm start`                         |
-
-## Documentation
-
-- [Architecture Overview](backend/ARCHITECTURE.md)
-
 ## External Documentation
 
 - [![Redis Docs](https://img.shields.io/badge/Stock%20app%20Redis%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1IZPj7N5SekGWNFgJS-Vvx-aaZ41pE-WQCbRhi02nZuE/edit?usp=sharing) — Redis installation & setup on Windows (MSI installer method)
-- [![API Docs](https://img.shields.io/badge/Stock%20app%20API%20Docs-Click%20Here-blue?style=for-the-badge)](https://documenter.getpostman.com/view/48086882/2sB3WjxiMH) — Postman API documentation
-- [![DB Docs](https://img.shields.io/badge/Stock%20app%20DB%20Docs-Click%20Here-blue?style=for-the-badge)](https://dbdocs.io/hamzahmed303/Stock-App) — Database and ERD documentation
-- [![Tests Docs](https://img.shields.io/badge/Stock%20app%20Tests%20Docs-Click%20Here-blue?style=for-the-badge)](https://docs.google.com/document/d/1HkD4J1kKJ4aJm2rR-TUTt2EUw1uAufLYQUw_usj92Vs/edit?usp=sharing) — Test suite documentation
 
 ## License
 

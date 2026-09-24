@@ -30,7 +30,7 @@ class SocketManager {
   disconnect() {
     this.manualDisconnect = true;
     if (this.socket) {
-      try { this.socket.disconnect(); } catch {}
+      try { this.socket.disconnect(); } catch { /* socket already closed */ }
       this.socket = undefined;
     }
     this.connected = false;
@@ -83,7 +83,7 @@ class SocketManager {
       if (!this.socket || !this.socket.connected) {
         try {
           this.socket?.removeAllListeners();
-        } catch {}
+        } catch { /* socket already torn down */ }
         this.socket = undefined;
         this.createSocket();
       }
@@ -94,7 +94,7 @@ class SocketManager {
     const set = this.listeners.get(event);
     if (!set) return;
     for (const fn of Array.from(set)) {
-      try { fn(payload); } catch {}
+      try { fn(payload); } catch { /* listener threw; isolate from other listeners */ }
     }
   }
 

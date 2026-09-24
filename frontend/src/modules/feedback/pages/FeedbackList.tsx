@@ -56,7 +56,7 @@ const FeedbackList = () => {
     <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground font-inter overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 p-4 md:p-10 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="flex-1 p-4 md:p-10 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1200px] mx-auto space-y-10">
           {/* Header */}
           <div className="flex items-center justify-between">
