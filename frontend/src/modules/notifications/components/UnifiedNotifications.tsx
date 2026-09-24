@@ -316,7 +316,7 @@ export const UnifiedNotifications: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div role="menu" className={`absolute left-0 mt-4 w-[500px] bg-white dark:bg-[#0A0D14] border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <div role="menu" className={`absolute left-0 mt-4 w-[calc(100vw-2rem)] sm:w-[500px] bg-white dark:bg-[#0A0D14] border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
                     
                     {/* Tabs Switcher */}
                     <div className="flex border-b border-gray-100 dark:border-white/5 p-1.5 bg-gray-50 dark:bg-white/[0.01]">

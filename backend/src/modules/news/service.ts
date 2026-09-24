@@ -258,7 +258,11 @@ export const searchNews = async (
 export const getNewsSummary = async (
   userId: string,
 ): Promise<NewsSummaryResponse> => {
-  const [portfolios, watchlistItems, readStates] = await Promise.all([
+  const [user, portfolios, watchlistItems, readStates] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { createdAt: true },
+    }),
     prisma.portfolio.findMany({
       where: { userId },
       include: { positions: { select: { symbol: true } } },
@@ -303,12 +307,19 @@ export const getNewsSummary = async (
           })
         : [],
       prisma.newsArticle.findMany({
-        where: { category: 'GENERAL' },
+        where: { category: 'GENERAL', publishedAt: { gte: user.createdAt } },
         orderBy: { publishedAt: 'desc' },
         take: SUMMARY_MAX_ITEMS * 3,
         select: summarySelect,
       }),
-      prisma.newsArticle.count({ where: { readStates: { none: { userId } } } }),
+      // "Unread" means "published since this user joined" — without this,
+      // a brand-new user's badge counts the entire historical news backlog.
+      prisma.newsArticle.count({
+        where: {
+          readStates: { none: { userId } },
+          publishedAt: { gte: user.createdAt },
+        },
+      }),
     ])
 
   const toItem = (

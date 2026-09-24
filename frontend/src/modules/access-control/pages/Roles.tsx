@@ -10,6 +10,34 @@ import { FiPlus, FiShield, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import type { Resource, Role, RolePermission } from "../types";
 
+const ACTION_DESCRIPTIONS: Record<string, Record<string, string>> = {
+    core_app: {
+        read: "View the main app: Dashboard, Markets, Forecast, News, Watchlist, and Settings.",
+        write: "Make changes within the main app, e.g. adding to a watchlist or updating settings.",
+    },
+    portfolio: {
+        read: "View portfolio holdings and the Portfolio Health analysis/reports.",
+        write: "Upload portfolios and generate new Portfolio Health analysis/reports.",
+    },
+    access_control: {
+        read: "View the Users and Roles admin screens.",
+    },
+    role: {
+        read: "View existing roles and which permissions are assigned to each.",
+        write: "Create roles and edit which permissions a role has.",
+        delete: "Remove a role from the system.",
+    },
+};
+
+const formatCreatedAt = (isoDate: string) => {
+    const date = new Date(isoDate);
+    const datePart = date.toLocaleDateString("en-US", { dateStyle: "medium" });
+    const timePart = date
+        .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+        .toLowerCase();
+    return `${datePart} ${timePart}`;
+};
+
 const Roles = () => {
     const { theme } = useTheme();
     const { can } = useAuth();
@@ -267,11 +295,7 @@ const Roles = () => {
 
                                             {/* Created Date */}
                                             <div className="text-muted-foreground text-[11px] font-medium">
-                                                {role.createdAt ? new Date(role.createdAt).toLocaleDateString(undefined, {
-                                                    year: "numeric",
-                                                    month: "short",
-                                                    day: "numeric"
-                                                }) : "N/A"}
+                                                {role.createdAt ? formatCreatedAt(role.createdAt) : "N/A"}
                                             </div>
 
                                             {/* Actions */}
@@ -406,7 +430,7 @@ const Roles = () => {
                                                     </div>
                                                     <div>
                                                         <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">{resource.name}</h3>
-                                                        {resource.description && <p className="text-[10px] text-muted-foreground font-medium line-clamp-1 italic">{resource.description}</p>}
+                                                        {resource.description && <p className="text-xs text-muted-foreground font-medium">{resource.description}</p>}
                                                     </div>
                                                 </div>
 
@@ -426,7 +450,7 @@ const Roles = () => {
                                                                         ? "bg-primary/10 border-primary/50 text-primary shadow-sm"
                                                                         : "bg-background border-border text-muted-foreground hover:border-border/80"
                                                                         }`}
-                                                                    title={action.toUpperCase()}
+                                                                    title={ACTION_DESCRIPTIONS[resource.name.toLowerCase()]?.[action.toLowerCase()] ?? action.toUpperCase()}
                                                                 >
                                                                     <div className={`w-1 h-1 rounded-full ${isChecked ? "bg-primary" : "bg-muted"}`} />
                                                                     <span className="text-[10px] font-bold uppercase tracking-tight">{action}</span>

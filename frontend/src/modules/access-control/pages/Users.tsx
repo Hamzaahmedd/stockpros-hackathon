@@ -6,6 +6,15 @@ import { FiCheck, FiShield, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import type { Role, AccessControlUser as User } from "../types";
 
+const formatJoinedAt = (isoDate: string) => {
+  const date = new Date(isoDate);
+  const datePart = date.toLocaleDateString("en-US", { dateStyle: "medium" });
+  const timePart = date
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    .toLowerCase();
+  return `${datePart} ${timePart}`;
+};
+
 const Users = () => {
   const { can, user, refreshMe } = useAuth();
   const userRoleList = user?.userRoles?.map((ur: any) => ur.role?.name?.toUpperCase()) || [];
@@ -210,11 +219,7 @@ const Users = () => {
                       </div>
 
                       <div className="text-muted-foreground text-xs font-medium">
-                        {user.createdAt
-                          ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                              dateStyle: "medium",
-                            })
-                          : "—"}
+                        {user.createdAt ? formatJoinedAt(user.createdAt) : "—"}
                       </div>
 
                       <div className="text-right">

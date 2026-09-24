@@ -111,7 +111,7 @@ export const NewsDropdown: React.FC<Props> = ({ align = 'left' }) => {
             </button>
 
             {isOpen && (
-                <div role="menu" className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-4 w-[500px] bg-[#0A0D14] border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <div role="menu" className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-4 w-[calc(100vw-2rem)] sm:w-[500px] bg-[#0A0D14] border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300`}>
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between">
                         <div>
