@@ -12,7 +12,6 @@ pnpm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 dist
-package-lock.json
 .env
 
 # vite config temp artifacts

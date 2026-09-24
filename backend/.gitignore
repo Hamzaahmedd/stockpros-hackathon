@@ -2,7 +2,6 @@ node_modules/
 /dist
 .env
 .env copy
-package-lock.json
 prisma/migrations
 prisma/generated
 /generated/docs

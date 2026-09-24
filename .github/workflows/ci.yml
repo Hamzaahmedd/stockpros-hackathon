@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -79,13 +80,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      # TODO: Resolve legacy any-types and remove continue-on-error.
-      # ~55 pre-existing @typescript-eslint/no-explicit-any violations were
-      # found in an earlier audit; eslint was never actually installed until
-      # this CI setup, so this step is non-blocking until that debt is paid down.
-      - name: Lint (ESLint, non-blocking)
+      - name: Lint (ESLint)
         run: npm run lint
-        continue-on-error: true
 
       - name: Dependency audit (fails only on NEW high/critical findings)
         run: npm run audit:check
