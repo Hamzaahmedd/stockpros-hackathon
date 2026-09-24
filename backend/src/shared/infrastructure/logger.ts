@@ -60,7 +60,9 @@ const transports: pino.TransportTargetOptions[] = [
   },
 ]
 
-if (config.axiom.token && config.axiom.dataset) {
+// Only ever enabled in production — even if a real token/dataset ends up in a
+// dev or test .env, audit logs should never ship to Axiom from those environments.
+if (config.server.nodeEnv === 'production' && config.axiom.token && config.axiom.dataset) {
   transports.push({
     target: 'pino-opentelemetry-transport',
     options: {

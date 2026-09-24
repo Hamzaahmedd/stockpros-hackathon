@@ -5,13 +5,17 @@ import { config } from '../../config'
 // onboarding, alerts) rather than high-frequency telemetry — disable batching
 // so each event sends immediately instead of risking loss if the process is
 // killed before a batch would otherwise flush.
-export const posthogClient = config.posthog.apiKey
-  ? new PostHog(config.posthog.apiKey, {
-      host: config.posthog.host,
-      flushAt: 1,
-      flushInterval: 0,
-    })
-  : null
+//
+// Only ever enabled in production — even if a real API key ends up in a dev
+// or test .env, analytics should never fire from those environments.
+export const posthogClient =
+  config.server.nodeEnv === 'production' && config.posthog.apiKey
+    ? new PostHog(config.posthog.apiKey, {
+        host: config.posthog.host,
+        flushAt: 1,
+        flushInterval: 0,
+      })
+    : null
 
 export const PostHogEvent = {
   UserSignedIn: 'user_signed_in',

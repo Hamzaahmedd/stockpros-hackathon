@@ -2,12 +2,9 @@
 import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton';
 import { Sidebar } from '@/shared/components/Sidebar';
 import { SmartSearch } from '@/shared/components/SmartSearch';
-import healthService from '@/shared/services/healthService';
 import {
   AlertCircle,
   AlertTriangle,
-  BarChart3,
-  Calendar,
   Menu
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -17,7 +14,7 @@ import ForecastTable from '../components/ForecastTable';
 import PriceTargetRange from '../components/PriceTargetRange';
 import TrainingTimer from '../components/TrainingTimer';
 import forecastService from '../services';
-import { ForecastData, PeriodOption } from '../types';
+import { ForecastData } from '../types';
 import { downloadForecastCsv } from '../utils/downloadForecast';
 import { downloadForecastPdf } from '../utils/downloadForecastPdf';
 
@@ -46,41 +43,28 @@ function Card({ title, actions, children, className = "" }: Readonly<{
   );
 }
 
+const PERIOD = '1w';
+
 const Forecast: React.FC = () => {
   const [symbol, setSymbol] = useState<string>('AAPL');
-  const [period, setPeriod] = useState<string>('1w');
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
-  const periodOptions: PeriodOption[] = [
-    { value: '1d', label: '1 Day', icon: <Calendar size={16} /> },
-    { value: '1w', label: '1 Week', icon: <BarChart3 size={16} /> }
-  ];
-
-  useEffect(() => {
-    healthService.checkHealth();
-  }, []);
-
   const fetchForecast = async (isManualRefresh = false) => {
     if (!forecastService.validateSymbol(symbol)) {
       setError('Invalid stock symbol. Use 1-5 uppercase letters.');
       return;
     }
-    
-    if (!forecastService.validatePeriod(period)) {
-      setError('Invalid period. Use: 1d or 1w');
-      return;
-    }
-    
+
     setLoading(true);
     setError(null);
-    if (!isManualRefresh) setForecastData(null); 
-    
+    if (!isManualRefresh) setForecastData(null);
+
     try {
-      const data = await forecastService.getForecast(symbol, period);
+      const data = await forecastService.getForecast(symbol, PERIOD);
       setForecastData(data);
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching forecast data');
@@ -91,10 +75,10 @@ const Forecast: React.FC = () => {
   };
 
   useEffect(() => {
-    if (symbol && period) {
+    if (symbol) {
       fetchForecast();
     }
-  }, [symbol, period]);
+  }, [symbol]);
 
   const handleTrainingComplete = () => {
     // Re-fetch forecast once timer hits zero
@@ -112,7 +96,7 @@ const Forecast: React.FC = () => {
     if (!forecastData || !canDownload) return;
     setExporting(true);
     try {
-      const raw = await forecastService.getRawForecast(symbol, period);
+      const raw = await forecastService.getRawForecast(symbol, PERIOD);
 
       if (format === 'csv') {
         downloadForecastCsv(raw);
@@ -236,7 +220,7 @@ const Forecast: React.FC = () => {
         {/* Chart Section */}
         <Card title="Price Forecast Chart">
           <div className="mt-6">
-            <ForecastChart data={forecastData} period={period} />
+            <ForecastChart data={forecastData} period={PERIOD} />
           </div>
         </Card>
 
@@ -263,7 +247,7 @@ const Forecast: React.FC = () => {
             targetRange={forecastData.targetRange}
             directionalBias={forecastData.directionalBias}
             symbol={symbol}
-            period={period}
+            period={PERIOD}
           />
         )}
 
@@ -334,21 +318,6 @@ const Forecast: React.FC = () => {
                   initialValue={symbol}
                   placeholder="Search stock symbol (e.g., AAPL, MSFT)"
                 />
-              </div>
-
-              {/* Period Selector */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {periodOptions.map((option: PeriodOption) => (
-                  <Button
-                    key={option.value}
-                    variant={period === option.value ? "default" : "outline"}
-                    onClick={() => setPeriod(option.value)}
-                    className="flex items-center gap-2"
-                  >
-                    {option.icon}
-                    <span>{option.label}</span>
-                  </Button>
-                ))}
               </div>
             </div>
             

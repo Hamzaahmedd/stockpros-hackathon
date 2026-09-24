@@ -15,6 +15,7 @@ import { News } from "@/modules/news";
 import { Settings } from "@/modules/settings";
 import { Watchlist } from "@/modules/watchlist";
 import { NotFound } from "@/shared/components/NotFound";
+import { POSTHOG_KEY } from "@/shared/config";
 import posthog from "posthog-js";
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -25,7 +26,7 @@ const PostHogPageviewTracker = () => {
   const location = useLocation();
 
   useEffect(() => {
-    posthog.capture("$pageview");
+    if (POSTHOG_KEY) posthog.capture("$pageview");
   }, [location.pathname]);
 
   return null;

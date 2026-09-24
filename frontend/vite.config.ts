@@ -15,4 +15,7 @@ export default defineConfig({
     },
   },
   server: { port: 5173 },
+  // Vite only exposes VITE_-prefixed env vars to client code by default;
+  // widen this so APP_ENV is readable via import.meta.env.APP_ENV too.
+  envPrefix: ["VITE_", "APP_ENV"],
 })

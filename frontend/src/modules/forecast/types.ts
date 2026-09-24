@@ -58,12 +58,6 @@ export interface ForecastInsight {
   icon: string;
 }
 
-export interface PeriodOption {
-  value: string;
-  label: string;
-  icon: React.ReactNode;
-}
-
 export interface StatCardProps {
   title: string;
   value: string | number;
