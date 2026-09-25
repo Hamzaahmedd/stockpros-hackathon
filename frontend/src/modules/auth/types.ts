@@ -5,6 +5,7 @@ export type User = {
   displayName?: string;
   roles?: any[];
   userRoles?: any[];
+  phoneVerifiedAt?: string | null;
 } | null;
 
 export type ScreenPermissions = {
@@ -34,7 +35,12 @@ export type AuthContextValue = {
   refreshMe: () => Promise<User>;
 };
 
-export type { LoginFormValues, OnboardingFormValues } from "./validation";
+export type {
+  LoginFormValues,
+  OnboardingFormValues,
+  RequestPhoneOtpFormValues,
+  VerifyPhoneOtpFormValues,
+} from "./validation";
 
 export interface SuggestedSymbol {
   symbol: string;

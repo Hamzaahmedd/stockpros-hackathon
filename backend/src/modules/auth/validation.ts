@@ -37,3 +37,30 @@ export const completeOnboardingValidator = z.object({
     .min(1, 'Display name is required'),
   email: z.string().email('Invalid email format').optional(),
 })
+
+// ─── Phone Verification (WhatsApp OTP) ─────────────────────────────────────
+
+// Validates an already-normalized E.164 Pakistani mobile number. Callers must
+// run `normalizePakistaniNumber` first — this schema only ever sees canonical
+// `+923XXXXXXXXX` input, it does not accept local/no-plus forms itself.
+export const phoneNumberValidator = z.object({
+  phoneNumber: z
+    .string({
+      required_error: 'Phone number is required',
+      invalid_type_error: 'Phone number must be a string',
+    })
+    .regex(
+      /^\+923\d{9}$/,
+      'Phone number must be a valid Pakistani mobile number',
+    ),
+})
+
+export const otpCodeValidator = z.object({
+  code: z
+    .string({
+      required_error: 'Verification code is required',
+      invalid_type_error: 'Verification code must be a string',
+    })
+    .trim()
+    .regex(/^\d{6}$/, 'Verification code must be a 6-digit number'),
+})

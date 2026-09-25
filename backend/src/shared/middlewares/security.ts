@@ -56,6 +56,66 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+/**
+ * Best-effort normalization used only to key the phone-OTP request limiter —
+ * not the source of truth for canonical storage (that lives in
+ * `normalizePakistaniNumber` inside the auth module). Kept self-contained
+ * here so shared middleware doesn't reach into a business module;
+ * malformed input simply falls through to the raw/IP-based key below,
+ * since the real validation happens at the service layer regardless.
+ */
+function approximateNormalizedPhoneKey(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const digits = raw
+    .trim()
+    .replace(/[\s\-()]/g, '')
+    .replace(/^\+/, '')
+  if (!/^\d{10,12}$/.test(digits)) return null
+  if (/^0\d{10}$/.test(digits)) return `92${digits.slice(1)}`
+  return digits
+}
+
+// Rate limiter for WhatsApp OTP requests — keyed by normalized phone number,
+// on top of (not instead of) the 60s per-user cooldown enforced in
+// requestOtp itself.
+export const phoneOtpRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  limit: 3, // Allow up to 3 OTP requests per phone number per 15 minutes
+  store: createRateLimitStore('rl:phone-otp-request:'),
+  keyGenerator: (req: Request): string => {
+    const normalized = approximateNormalizedPhoneKey(req.body?.phoneNumber)
+    return `phone-otp-request:${normalized || req.ip || 'unknown'}`
+  },
+  message: {
+    success: false,
+    message:
+      'Too many verification code requests for this phone number. Please try again after 15 minutes.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  validate: {
+    keyGeneratorIpFallback: false,
+  },
+})
+
+// Rate limiter for WhatsApp OTP verification attempts — keyed by IP+userId,
+// on top of the per-row `attempts` cap enforced in verifyOtp itself.
+export const phoneOtpVerifyLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes window
+  limit: 5, // Allow up to 5 verify attempts per IP+user per 5 minutes
+  store: createRateLimitStore('rl:phone-otp-verify:'),
+  keyGenerator: (req: Request): string => {
+    const userId = (req as { user?: { userId?: string } }).user?.userId
+    return `phone-otp-verify:${req.ip || 'unknown'}:${userId || 'unknown'}`
+  },
+  message: {
+    success: false,
+    message: 'Too many verification attempts. Try again later after 5 minutes.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})
+
 export const securityMiddleware = (app: Application): void => {
   // Global Rate Limiting
   app.use(

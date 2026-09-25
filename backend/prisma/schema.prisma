@@ -16,12 +16,15 @@ model User {
   inAppAlertsEnabled           Boolean    @default(true) @map("in_app_alerts_enabled")
   emailVolatilityAlertsEnabled Boolean    @default(true) @map("email_volatility_alerts_enabled")
   dailyDigestEnabled           Boolean    @default(true) @map("daily_digest_enabled")
+  phoneNumber                  String?    @unique @map("phone_number")
+  phoneVerifiedAt              DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
   deletedAt                    DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletionScheduledAt          DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
   createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   userSessions      UserSession[]
+  phoneOtps         PhoneOtp[]
   portfolios        Portfolio[]
   assignedUserRoles UserRole[]       @relation("AssignedRoles")
   userRoles         UserRole[]       @relation("UserRoles")
@@ -62,6 +65,26 @@ model UserSession {
   @@index([expiresAt], map: "idx_usersessions_expires_at")
   @@index([isRevoked], map: "idx_usersessions_is_revoked")
   @@map("user_sessions")
+}
+
+// ─── Phone Verification Feature (WhatsApp OTP via SendPK) ────────────────────
+
+model PhoneOtp {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  phoneNumber String    @map("phone_number")
+  codeHash    String    @map("code_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  attempts    Int       @default(0)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_phone_otp_user_id")
+  @@index([expiresAt], map: "idx_phone_otp_expires_at")
+  @@index([userId, consumedAt], map: "idx_phone_otp_user_id_consumed_at")
+  @@map("phone_otps")
 }
 
 model Portfolio {

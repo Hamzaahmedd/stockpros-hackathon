@@ -23,6 +23,10 @@ export const readSecrets = () => ({
   groqApiKey: process.env.GROQ_API_KEY || '',
   groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
   corsOrigins: process.env.CORS_ORIGINS || '',
+  sendpkApiKey: process.env.SENDPK_API_KEY || '',
+  sendpkBaseUrl:
+    process.env.SENDPK_BASE_URL || 'https://wa.sendpk.com/api/send.php',
+  sendpkTemplateId: process.env.SENDPK_TEMPLATE_ID || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -133,6 +137,12 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
     groq: {
       apiKey: secrets.groqApiKey,
       model: secrets.groqModel,
+    },
+    sendpk: {
+      apiKey: secrets.sendpkApiKey,
+      baseUrl: secrets.sendpkBaseUrl,
+      templateId: secrets.sendpkTemplateId,
+      mockProvider: env.sendpk.mockProvider,
     },
     features: env.features,
     audit: {

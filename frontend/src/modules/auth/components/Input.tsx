@@ -9,17 +9,20 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   registration?: Partial<UseFormRegisterReturn>;
 }
 
-export const Input: React.FC<InputProps> = ({ 
-  label, 
-  error, 
-  registration, 
-  className = "", 
-  ...inputProps 
+export const Input: React.FC<InputProps> = ({
+  label,
+  error,
+  registration,
+  className = "",
+  ...inputProps
 }) => {
   return (
     <div className="space-y-1 w-full">
       {label && (
-        <label className="block text-sm font-medium text-foreground">
+        <label
+          htmlFor={inputProps.id}
+          className="block text-sm font-medium text-foreground"
+        >
           {label}
         </label>
       )}

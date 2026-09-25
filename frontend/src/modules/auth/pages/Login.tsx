@@ -40,6 +40,10 @@ export const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Set once a Google sign-in response says phone verification is required,
+  // so the "already logged in" effect below doesn't race an imperative
+  // navigate to /auth/verify-phone and bounce the user back to the dashboard.
+  const [phoneVerificationPending, setPhoneVerificationPending] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -52,7 +56,7 @@ export const Login: React.FC = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !phoneVerificationPending) {
       const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
 
       if (isAdminOnly) {
@@ -61,7 +65,7 @@ export const Login: React.FC = () => {
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [user, can, navigate]);
+  }, [user, can, navigate, phoneVerificationPending]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -101,7 +105,7 @@ export const Login: React.FC = () => {
       setIsGoogleLoading(true);
       try {
         const response = await googleLogin(credential);
-        const { requiresOnboarding, onboardingToken, defaultDisplayName, accessToken } = response.data || {};
+        const { requiresOnboarding, requiresPhoneVerification, onboardingToken, defaultDisplayName, accessToken } = response.data || {};
 
         if (requiresOnboarding && onboardingToken) {
           sessionStorage.setItem("onboarding_token", onboardingToken);
@@ -122,7 +126,15 @@ export const Login: React.FC = () => {
         const signedInUser = await refreshMe();
         if (signedInUser) posthog.identify(signedInUser.userId);
         toast.success("Signed in with Google successfully");
-        // The "already logged in" redirect effect above takes over once `user` is set
+
+        // Phone verification (when required) takes priority over the
+        // "already logged in" redirect effect below — checked before it.
+        if (requiresPhoneVerification) {
+          setPhoneVerificationPending(true);
+          navigate("/auth/verify-phone", { replace: true });
+          return;
+        }
+        // Otherwise the "already logged in" redirect effect above takes over once `user` is set
       } catch (err: any) {
         toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
       } finally {

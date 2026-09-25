@@ -5,6 +5,8 @@ import {
   Onboarding,
   ProtectedRoute,
   VerifyMagicLink,
+  VerifyPhone,
+  VerifyPhoneGuard,
 } from "@/modules/auth";
 import { Dashboard } from "@/modules/dashboard";
 import { MarketAnalysis, OpportunityRadar, PortfolioHealth } from "@/modules/decision-support";
@@ -54,6 +56,14 @@ export default function App() {
 
         <Route path="/login" element={<Login />} />
         <Route path="/auth/verify" element={<VerifyMagicLink />} />
+        <Route
+          path="/auth/verify-phone"
+          element={
+            <VerifyPhoneGuard>
+              <VerifyPhone />
+            </VerifyPhoneGuard>
+          }
+        />
         <Route path="/auth/onboarding" element={<Onboarding />} />
 
         {/* Protected routes */}

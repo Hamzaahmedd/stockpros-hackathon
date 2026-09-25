@@ -3,7 +3,7 @@ import pino from 'pino'
 import { config } from '../../config'
 
 const SENSITIVE_KEY_PATTERN =
-  /password|token|apikey|api_key|authorization|cookie|secret/i
+  /password|token|apikey|api_key|authorization|cookie|secret|phone|otp|\bcode\b/i
 
 // Applied via JSON.stringify's replacer, so this reaches nested fields inside
 // arbitrary thrown objects too — pino's own `redact` option can't, since by
@@ -62,7 +62,11 @@ const transports: pino.TransportTargetOptions[] = [
 
 // Only ever enabled in production — even if a real token/dataset ends up in a
 // dev or test .env, audit logs should never ship to Axiom from those environments.
-if (config.server.nodeEnv === 'production' && config.axiom.token && config.axiom.dataset) {
+if (
+  config.server.nodeEnv === 'production' &&
+  config.axiom.token &&
+  config.axiom.dataset
+) {
   transports.push({
     target: 'pino-opentelemetry-transport',
     options: {
@@ -115,6 +119,12 @@ const pinoLogger = pino(
         '*.headers["set-cookie"]',
         '*.cookie',
         '*.cookies',
+        '*.phoneNumber',
+        '*.phone_number',
+        '*.phone',
+        '*.otp',
+        '*.otpCode',
+        '*.code',
       ],
       censor: '[REDACTED]',
     },
@@ -125,6 +135,7 @@ const pinoLogger = pino(
 )
 
 export const logger = {
+  debug: (msg: string) => pinoLogger.debug(msg),
   info: (msg: string) => pinoLogger.info(msg),
   warn: (msg: string) => pinoLogger.warn(msg),
   error: (msg: string, err?: unknown) => {

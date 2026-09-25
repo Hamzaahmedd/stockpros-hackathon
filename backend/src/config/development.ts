@@ -45,6 +45,12 @@ export const developmentConfig = {
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
     enableSwaggerDocs: true,
+    enablePhoneVerification: false,
+  },
+  sendpk: {
+    // Explicit, visible flag rather than inferring mock mode from a missing
+    // API key — mock behavior is never accidental here.
+    mockProvider: true,
   },
   audit: {
     retentionDays: 30,

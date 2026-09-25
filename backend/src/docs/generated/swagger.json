@@ -1529,6 +1529,10 @@
 					},
 					"user": {
 						"$ref": "#/components/schemas/UserProfile"
+					},
+					"requiresPhoneVerification": {
+						"type": "boolean",
+						"description": "True when the user still needs to complete WhatsApp OTP phone verification."
 					}
 				},
 				"required": [
@@ -1646,6 +1650,34 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RequestPhoneOtpRequest": {
+				"properties": {
+					"phoneNumber": {
+						"type": "string",
+						"description": "Accepts 03XXXXXXXXX, 923XXXXXXXXX, or +923XXXXXXXXX; normalized server-side.",
+						"example": "+923001234567"
+					}
+				},
+				"required": [
+					"phoneNumber"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"VerifyPhoneOtpRequest": {
+				"properties": {
+					"code": {
+						"type": "string",
+						"description": "6-digit code sent via WhatsApp.",
+						"example": "123456"
+					}
+				},
+				"required": [
+					"code"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2260,7 +2292,7 @@
 						}
 					}
 				},
-				"description": "Create a new alert for a watchlist symbol.\r\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
+				"description": "Create a new alert for a watchlist symbol.\nSupports 12 alert types: price thresholds, analyst changes, SEC filings, earnings, dividends, and AI signals.",
 				"tags": [
 					"Watchlist"
 				],
@@ -2402,7 +2434,7 @@
 						}
 					}
 				},
-				"description": "Search for stock symbols or company names (autocomplete).\r\nPowered by Finnhub symbol search with US exchange filter by default.",
+				"description": "Search for stock symbols or company names (autocomplete).\nPowered by Finnhub symbol search with US exchange filter by default.",
 				"tags": [
 					"Search"
 				],
@@ -3726,7 +3758,7 @@
 						}
 					}
 				},
-				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\r\nCombines data from multiple modules for a single-request page load.",
+				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\nCombines data from multiple modules for a single-request page load.",
 				"tags": [
 					"Dashboard"
 				],
@@ -4026,6 +4058,100 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/auth/phone-verification/request": {
+			"post": {
+				"operationId": "RequestPhoneOtp",
+				"responses": {
+					"200": {
+						"description": "Verification code sent via WhatsApp",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Cooldown active or rate limit exceeded",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Request a WhatsApp OTP be sent to the given Pakistani phone number (rate-limited; 60s cooldown between requests).",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestPhoneOtpRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/phone-verification/verify": {
+			"post": {
+				"operationId": "VerifyPhoneOtp",
+				"responses": {
+					"200": {
+						"description": "Phone number verified successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid or expired code",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify the WhatsApp OTP code and mark the authenticated user's phone number as verified.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyPhoneOtpRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/rbac/user-screens": {

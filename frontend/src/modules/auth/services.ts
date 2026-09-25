@@ -21,3 +21,9 @@ export const refresh = () =>
 
 export const deleteAccount = (confirmationPhrase: string) =>
   api.delete("/api/v1/auth/account", { data: { confirmationPhrase } });
+
+export const requestPhoneOtp = (phoneNumber: string) =>
+  api.post("/api/v1/auth/phone-verification/request", { phoneNumber });
+
+export const verifyPhoneOtp = (code: string) =>
+  api.post("/api/v1/auth/phone-verification/verify", { code });

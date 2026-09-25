@@ -8,9 +8,12 @@ import { uuidv7 } from 'uuidv7'
 import {
   NotFoundError,
   InternalServerError,
+  TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
+  validateOrThrow,
 } from '../../shared/errors'
+import { sendWhatsappOtp } from '../../shared/infrastructure/clients/sendpk'
 import { transporter } from '../../shared/infrastructure/config/email'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
@@ -28,6 +31,8 @@ import {
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
 import { enqueueAuthEmail } from '../notifications/public'
 import { AuthTokens, MeProfile, TokenClaims, UserData } from './types'
+import { normalizePakistaniNumber } from './utils/normalizePakistaniNumber'
+import { otpCodeValidator, phoneNumberValidator } from './validation'
 
 const ACCESS_TOKEN_EXPIRY = config.auth.accessTokenExpiry
 const REFRESH_TOKEN_EXPIRY = config.auth.refreshTokenExpiry
@@ -36,6 +41,13 @@ const REFRESH_TOKEN_SECRET = config.auth.refreshTokenSecret
 const GOOGLE_CLIENT_ID = config.auth.googleClientId
 
 const googleOAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID)
+
+/** Whether phone verification should be required before a user reaches the app. */
+function computeRequiresPhoneVerification(
+  phoneVerifiedAt: Date | null,
+): boolean {
+  return config.features.enablePhoneVerification && !phoneVerifiedAt
+}
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient
 
@@ -87,9 +99,9 @@ export async function refreshAccessToken(refreshToken: string) {
 
     // Fallback: check unhashed jti in case legacy unhashed session exists
     session ??= await prisma.userSession.findUnique({
-        where: { jti: payload.jti },
-        include: { user: true },
-      });
+      where: { jti: payload.jti },
+      include: { user: true },
+    })
 
     const refreshTokenExpiryMs =
       convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
@@ -106,9 +118,7 @@ export async function refreshAccessToken(refreshToken: string) {
         include: { user: true },
       })
 
-      if (
-        recentRotatedSession?.user.status === UserStatus.ACTIVE
-      ) {
+      if (recentRotatedSession?.user.status === UserStatus.ACTIVE) {
         // Tab race condition handled: rotate again and hand this tab a fresh
         // pair too, instead of replaying the already-consumed refresh token —
         // otherwise a later refresh with that stale token (once this race's
@@ -287,6 +297,8 @@ export async function deleteAccount(userId: string): Promise<void> {
         tx.userPermission.deleteMany({ where: { userId } }),
         // Magic link tokens (keyed by email, not userId)
         tx.magicLinkToken.deleteMany({ where: { email: user.email } }),
+        // Phone OTP records — purge alongside the rest of this account's PII
+        tx.phoneOtp.deleteMany({ where: { userId } }),
 
         // Step 4: Soft-delete the user
         tx.user.update({
@@ -298,6 +310,8 @@ export async function deleteAccount(userId: string): Promise<void> {
             // Anonymise PII immediately
             displayName: '[deleted]',
             email: `deleted+${userId}@stockpros.invalid`,
+            phoneNumber: null,
+            phoneVerifiedAt: null,
           },
         }),
       ])
@@ -318,6 +332,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
       id: true,
       email: true,
       displayName: true,
+      phoneVerifiedAt: true,
       userRoles: {
         include: {
           role: {
@@ -336,6 +351,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
     userId: user.id,
     email: user.email,
     displayName: user.displayName,
+    phoneVerifiedAt: user.phoneVerifiedAt,
     userRoles: user.userRoles,
   }
 }
@@ -460,6 +476,7 @@ export async function verifyMagicLink(
       user: null
       accessToken: null
       refreshToken: null
+      requiresPhoneVerification?: undefined
     }
   | {
       requiresOnboarding: false
@@ -467,6 +484,7 @@ export async function verifyMagicLink(
       accessToken: string
       refreshToken: string
       onboardingToken?: undefined
+      requiresPhoneVerification: boolean
     }
 > {
   if (!rawToken || typeof rawToken !== 'string') {
@@ -602,9 +620,13 @@ export async function verifyMagicLink(
       displayName: user.displayName,
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
     },
     accessToken,
     refreshToken,
+    requiresPhoneVerification: computeRequiresPhoneVerification(
+      user.phoneVerifiedAt,
+    ),
   }
 }
 
@@ -613,7 +635,12 @@ export async function completeOnboarding(
   displayName: string,
   ip: string,
   userAgent: string,
-): Promise<{ user: UserData; accessToken: string; refreshToken: string }> {
+): Promise<{
+  user: UserData
+  accessToken: string
+  refreshToken: string
+  requiresPhoneVerification: boolean
+}> {
   const normalizedEmail = email.toLowerCase().trim()
 
   // Create user and assign the configured default role in a single transaction.
@@ -670,21 +697,30 @@ export async function completeOnboarding(
       displayName: user.displayName,
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
     },
     accessToken,
     refreshToken,
+    requiresPhoneVerification: computeRequiresPhoneVerification(
+      user.phoneVerifiedAt,
+    ),
   }
 }
 
 // ─── Onboarding flow orchestration ───────────────────────────────────────────
 
 export type OnboardingFlowResult =
-  | { kind: 'profileUpdated'; user: UserData }
+  | {
+      kind: 'profileUpdated'
+      user: UserData
+      requiresPhoneVerification: boolean
+    }
   | {
       kind: 'signupCompleted'
       user: UserData
       accessToken: string
       refreshToken: string
+      requiresPhoneVerification: boolean
     }
 
 // ─── Helper: resolve email from a bearer access token ────────────────────────
@@ -693,7 +729,13 @@ async function resolveEmailFromBearer(
   authHeader: string | undefined,
   resolvedName: string,
 ): Promise<
-  { email: string } | { kind: 'profileUpdated'; user: UserData } | null
+  | { email: string }
+  | {
+      kind: 'profileUpdated'
+      user: UserData
+      requiresPhoneVerification: boolean
+    }
+  | null
 > {
   const bearerToken = authHeader?.startsWith('Bearer ')
     ? authHeader.substring(7)
@@ -719,7 +761,11 @@ async function resolveEmailFromBearer(
         displayName: updated.displayName,
         roleId: updated.userRoles?.[0]?.roleId,
         status: updated.status,
+        phoneVerifiedAt: updated.phoneVerifiedAt,
       },
+      requiresPhoneVerification: computeRequiresPhoneVerification(
+        updated.phoneVerifiedAt,
+      ),
     }
   } catch {
     // invalid bearer token — fall through to body email
@@ -807,6 +853,7 @@ export async function googleLogin(
       user: null
       accessToken: null
       refreshToken: null
+      requiresPhoneVerification?: undefined
     }
   | {
       requiresOnboarding: false
@@ -815,6 +862,7 @@ export async function googleLogin(
       refreshToken: string
       onboardingToken?: undefined
       defaultDisplayName?: undefined
+      requiresPhoneVerification: boolean
     }
 > {
   if (!GOOGLE_CLIENT_ID) {
@@ -913,8 +961,167 @@ export async function googleLogin(
       displayName: user.displayName,
       roleId: user.userRoles?.[0]?.roleId,
       status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
     },
     accessToken,
     refreshToken,
+    requiresPhoneVerification: computeRequiresPhoneVerification(
+      user.phoneVerifiedAt,
+    ),
   }
+}
+
+// ─── Phone Verification (WhatsApp OTP) ────────────────────────────────────────
+
+const OTP_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
+const OTP_REQUEST_COOLDOWN_MS = 60 * 1000 // 60 seconds
+const MAX_VERIFY_ATTEMPTS = 5
+
+function generateOtpCode(): string {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0')
+}
+
+/**
+ * Requests a new WhatsApp OTP for the given user.
+ *
+ * 1. Normalizes + validates the phone number (Pakistani mobile only).
+ * 2. Enforces a 60-second per-user cooldown, in addition to (not instead of)
+ *    the 3/15min `phoneOtpRequestLimiter` rate limiter applied at the route
+ *    layer — the rate limiter guards sustained abuse, this guards each
+ *    individual burst click and protects the SendPK send balance.
+ * 3. Invalidates all previous unconsumed PhoneOtp rows for the user so only
+ *    one active code ever exists per user.
+ * 4. Generates a 6-digit code, stores only its hash with a 5-minute expiry,
+ *    and dispatches it via the SendPK WhatsApp client.
+ */
+export async function requestOtp(
+  userId: string,
+  rawPhoneNumber: string,
+): Promise<void> {
+  const normalizedPhone = normalizePakistaniNumber(rawPhoneNumber)
+  const { phoneNumber } = validateOrThrow(phoneNumberValidator, {
+    phoneNumber: normalizedPhone,
+  })
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  })
+  if (!user) {
+    throw new NotFoundError('User not found')
+  }
+
+  // Guard against the same physical number being claimed by two accounts
+  // (normalization above already prevents format-based duplicates).
+  const existingOwner = await prisma.user.findUnique({
+    where: { phoneNumber },
+    select: { id: true, phoneVerifiedAt: true },
+  })
+  if (
+    existingOwner &&
+    existingOwner.id !== userId &&
+    existingOwner.phoneVerifiedAt
+  ) {
+    throw new ValidationError(
+      'This phone number is already verified on another account',
+    )
+  }
+
+  const now = new Date()
+
+  const latestOtp = await prisma.phoneOtp.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  if (
+    latestOtp &&
+    now.getTime() - latestOtp.createdAt.getTime() < OTP_REQUEST_COOLDOWN_MS
+  ) {
+    throw new TooManyRequestsError(
+      'Please wait 60 seconds before requesting another code.',
+    )
+  }
+
+  // Invalidate all previous unconsumed codes before issuing a new one.
+  await prisma.phoneOtp.updateMany({
+    where: { userId, consumedAt: null },
+    data: { consumedAt: now },
+  })
+
+  const code = generateOtpCode()
+  const codeHash = hashToken(code)
+  const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MS)
+
+  await prisma.phoneOtp.create({
+    data: {
+      userId,
+      phoneNumber,
+      codeHash,
+      expiresAt,
+    },
+  })
+
+  await sendWhatsappOtp({ phoneNumber, code })
+
+  logger.info(`[PhoneVerification] OTP requested for userId=${userId}`)
+}
+
+/**
+ * Verifies the OTP code for the given user against the latest unconsumed
+ * PhoneOtp row, enforcing expiry and a per-row attempts cap. On success,
+ * marks the row consumed and sets User.phoneNumber/phoneVerifiedAt.
+ */
+export async function verifyOtp(
+  userId: string,
+  rawCode: string,
+): Promise<void> {
+  const { code } = validateOrThrow(otpCodeValidator, { code: rawCode })
+
+  const otp = await prisma.phoneOtp.findFirst({
+    where: { userId, consumedAt: null },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  if (!otp) {
+    throw new UnauthorizedError(
+      'No pending verification code found. Please request a new one.',
+    )
+  }
+
+  const now = new Date()
+
+  if (otp.expiresAt <= now) {
+    throw new UnauthorizedError(
+      'This verification code has expired. Please request a new one.',
+    )
+  }
+
+  if (otp.attempts >= MAX_VERIFY_ATTEMPTS) {
+    throw new TooManyRequestsError(
+      'Too many incorrect attempts. Please request a new code.',
+    )
+  }
+
+  const codeHash = hashToken(code)
+  if (codeHash !== otp.codeHash) {
+    await prisma.phoneOtp.update({
+      where: { id: otp.id },
+      data: { attempts: { increment: 1 } },
+    })
+    throw new UnauthorizedError('Incorrect verification code')
+  }
+
+  await prisma.$transaction([
+    prisma.phoneOtp.update({
+      where: { id: otp.id },
+      data: { consumedAt: now },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { phoneNumber: otp.phoneNumber, phoneVerifiedAt: now },
+    }),
+  ])
+
+  logger.info(`[PhoneVerification] Phone verified for userId=${userId}`)
 }

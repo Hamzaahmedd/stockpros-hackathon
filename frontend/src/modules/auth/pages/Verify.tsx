@@ -34,7 +34,7 @@ export const VerifyMagicLink = () => {
     const verify = async () => {
       try {
         const response = await api.post("/api/v1/auth/verify-magic-link", { token });
-        const { requiresOnboarding, onboardingToken, accessToken, user } = response.data;
+        const { requiresOnboarding, requiresPhoneVerification, onboardingToken, accessToken, user } = response.data;
 
         // New user — backend verified the email but needs profile setup first
         if (requiresOnboarding && onboardingToken) {
@@ -55,8 +55,15 @@ export const VerifyMagicLink = () => {
         if (verifiedUser) posthog.identify(verifiedUser.userId);
         setIsSuccess(true);
 
-        // Determine destination based on user profile and role
+        // Determine destination based on user profile and role. Phone
+        // verification (when required) takes priority over any other
+        // destination — checked before onboarding/dashboard routing.
         setTimeout(() => {
+          if (requiresPhoneVerification) {
+            navigate("/auth/verify-phone", { replace: true });
+            return;
+          }
+
           if (!user?.displayName || user.displayName.trim() === "") {
             navigate("/auth/onboarding", { replace: true });
             return;

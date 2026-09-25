@@ -44,6 +44,10 @@ export const testConfig = {
     enableWatchlistCron: false,
     enableAiRecomputeCron: false,
     enableSwaggerDocs: false,
+    enablePhoneVerification: false,
+  },
+  sendpk: {
+    mockProvider: true,
   },
   audit: {
     retentionDays: 30,

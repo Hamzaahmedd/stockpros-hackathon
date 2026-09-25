@@ -174,6 +174,8 @@ export const Onboarding: React.FC = () => {
         sessionStorage.removeItem("onboarding_display_name");
       }
 
+      let requiresPhoneVerification = false;
+
       // 1. Complete account onboarding if token is pending
       if (onboardingToken) {
         const response = await api.post("/api/v1/auth/onboarding", {
@@ -184,6 +186,7 @@ export const Onboarding: React.FC = () => {
         if (response.data?.accessToken) {
           setAccessToken(response.data.accessToken);
         }
+        requiresPhoneVerification = Boolean(response.data?.requiresPhoneVerification);
 
         sessionStorage.removeItem("onboarding_token");
       }
@@ -201,10 +204,16 @@ export const Onboarding: React.FC = () => {
         );
       }
 
-      // 4. Update auth state and navigate to live terminal
+      // 4. Update auth state and navigate onward — phone verification (when
+      // required) takes priority over landing straight on the dashboard.
       const onboardedUser = await refreshMe();
       if (onboardedUser) posthog.identify(onboardedUser.userId);
-      navigate("/dashboard", { replace: true });
+
+      if (requiresPhoneVerification) {
+        navigate("/auth/verify-phone", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err: any) {
       console.error("Onboarding error:", err);
       setError(

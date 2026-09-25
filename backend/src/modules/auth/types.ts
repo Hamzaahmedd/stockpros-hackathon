@@ -12,6 +12,7 @@ export interface UserData {
   status: UserStatus
   createdAt?: Date
   updatedAt?: Date
+  phoneVerifiedAt?: Date | null
 }
 
 export interface AuthTokens {
@@ -38,6 +39,7 @@ export interface MeProfile {
   userId: string
   email: string
   displayName: string | null
+  phoneVerifiedAt: Date | null
   userRoles: Array<{ role: { name: string } }>
 }
 

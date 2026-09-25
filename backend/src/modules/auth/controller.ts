@@ -7,7 +7,11 @@ import {
   ValidationError,
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
-import { convertToMilliseconds, getUserId, sendSuccess } from '../../shared/utils'
+import {
+  convertToMilliseconds,
+  getUserId,
+  sendSuccess,
+} from '../../shared/utils'
 import {
   completeOnboardingFlow,
   deleteAccount as deleteAccountService,
@@ -16,7 +20,9 @@ import {
   googleLogin as googleLoginService,
   logoutUser,
   refreshAccessToken,
+  requestOtp,
   verifyMagicLink,
+  verifyOtp,
 } from './service'
 import { AuthenticatedRequest } from './types'
 import {
@@ -191,6 +197,7 @@ export const verifyMagicLinkToken = async (
       message: 'Login successful via magic link',
       extra: {
         requiresOnboarding: false,
+        requiresPhoneVerification: loginResult.requiresPhoneVerification,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
       },
@@ -224,7 +231,10 @@ export const completeOnboardingHandler = async (
     if (result.kind === 'profileUpdated') {
       return sendSuccess(res, {
         message: 'Onboarding completed successfully',
-        extra: { user: result.user },
+        extra: {
+          user: result.user,
+          requiresPhoneVerification: result.requiresPhoneVerification,
+        },
       })
     }
 
@@ -241,7 +251,11 @@ export const completeOnboardingHandler = async (
     return sendSuccess(res, {
       statusCode: 201,
       message: 'Account created successfully',
-      extra: { user: result.user, accessToken: result.accessToken },
+      extra: {
+        user: result.user,
+        accessToken: result.accessToken,
+        requiresPhoneVerification: result.requiresPhoneVerification,
+      },
     })
   } catch (error) {
     next(error)
@@ -288,9 +302,50 @@ export const googleLogin = async (
       message: 'Login successful via Google',
       extra: {
         requiresOnboarding: false,
+        requiresPhoneVerification: loginResult.requiresPhoneVerification,
         user: loginResult.user,
         accessToken: loginResult.accessToken,
       },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ─── Phone Verification (WhatsApp OTP) ────────────────────────────────────────
+
+export const requestOtpHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { phoneNumber } = req.body
+
+    await requestOtp(userId, phoneNumber)
+
+    return sendSuccess(res, {
+      message: 'Verification code sent via WhatsApp.',
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const verifyOtpHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { code } = req.body
+
+    await verifyOtp(userId, code)
+
+    return sendSuccess(res, {
+      message: 'Phone number verified successfully.',
     })
   } catch (error) {
     next(error)

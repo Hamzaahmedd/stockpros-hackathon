@@ -37,7 +37,7 @@ flowchart LR
     FE["Frontend (React + Vite)<br/>• Tailored Dashboards<br/>• Real-time Tickers"]:::client
 
     subgraph CoreBackend["Core Backend (Node.js / Express 5)"]
-        BE["API & Business Logic<br/>(10 Domain Modules)"]:::backend
+        BE["API & Business Logic<br/>(11 Domain Modules)"]:::backend
         WS["Socket.IO Server<br/>(Real-time Push)"]:::backend
         WRK["BullMQ Workers<br/>(Cron & Async Tasks)"]:::backend
     end
@@ -78,7 +78,7 @@ flowchart LR
 
 #### Key Architectural Patterns
 
-- **Modular Monolith**: Node.js backend separated into 10 domain modules with enforced boundary checks.
+- **Modular Monolith**: Node.js backend separated into 11 domain modules with enforced boundary checks.
 - **Event-Driven & Decoupled Workers**: BullMQ queues handle email notifications and asynchronous alert tasks.
 - **Real-Time Streaming**: Finnhub WebSocket trades streamed via Socket.io directly to connected clients.
 - **AI Proxy Pattern**: Python FastAPI service isolates heavy GRU ML inference and caching behind the backend.
@@ -100,7 +100,7 @@ flowchart LR
 
 ## Features
 
-- **Authentication** — JWT sessions, magic-link login, Google OAuth
+- **Authentication** — JWT sessions, magic-link login, Google OAuth, optional WhatsApp OTP phone verification for Pakistani (+92) numbers via SendPK
 - **Real-Time Market Data** — Live quotes via Finnhub WebSocket, historical data from Polygon.io, Twelve Data, FMP, and Yahoo Finance
 - **AI Forecasting** — GRU-based time-series predictions with evaluation metrics (MSE, RMSE, MAE), exportable as CSV or PDF reports
 - **Dashboard** — Portfolio summary, market overview, and activity feeds
@@ -178,6 +178,9 @@ GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=openai/gpt-oss-20b
 AXIOM_TOKEN=your_axiom_token
 POSTHOG_API_KEY=your_posthog_project_api_key
+SENDPK_API_KEY=your_sendpk_api_key
+SENDPK_BASE_URL=https://wa.sendpk.com/api/send.php
+SENDPK_TEMPLATE_ID=your_sendpk_template_id
 ```
 
 Then push the schema to your database, generate the Prisma client, and start the dev server:

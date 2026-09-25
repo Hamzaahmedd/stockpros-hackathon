@@ -51,6 +51,18 @@ export interface OnboardingRequest {
 export interface AuthTokensResponse {
   accessToken: string
   user: UserProfile
+  /** True when the user still needs to complete WhatsApp OTP phone verification. */
+  requiresPhoneVerification?: boolean
+}
+
+export interface RequestPhoneOtpRequest {
+  /** Accepts 03XXXXXXXXX, 923XXXXXXXXX, or +923XXXXXXXXX; normalized server-side. @example "+923001234567" */
+  phoneNumber: string
+}
+
+export interface VerifyPhoneOtpRequest {
+  /** 6-digit code sent via WhatsApp. @example "123456" */
+  code: string
 }
 
 // ─── Controller (TSOA spec-only — not used at runtime) ────────────────────────
@@ -142,6 +154,32 @@ export class AuthSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Account deleted')
   async deleteAccount(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Request a WhatsApp OTP be sent to the given Pakistani phone number (rate-limited; 60s cooldown between requests).
+   */
+  @Post('phone-verification/request')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Verification code sent via WhatsApp')
+  @Response<ApiErrorResponse>(429, 'Cooldown active or rate limit exceeded')
+  async requestPhoneOtp(
+    @Body() body: RequestPhoneOtpRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Verify the WhatsApp OTP code and mark the authenticated user's phone number as verified.
+   */
+  @Post('phone-verification/verify')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Phone number verified successfully')
+  @Response<ApiErrorResponse>(400, 'Invalid or expired code')
+  async verifyPhoneOtp(
+    @Body() body: VerifyPhoneOtpRequest,
+  ): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 }
