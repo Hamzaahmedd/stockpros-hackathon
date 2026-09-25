@@ -5,7 +5,7 @@ import type { EnrichedArticle, NewsArticleRow } from './types'
 import {
   INTEREST_TO_CATEGORIES,
   MarketInterest,
-} from '../notifications/preferences'
+} from '../notifications/public'
 
 export const enrichArticles = async (
   userId: string,

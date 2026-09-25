@@ -16,6 +16,7 @@
     "audit:check": "node scripts/check-audit-regressions.cjs",
     "tsoa:spec": "npx tsoa spec",
     "rbac:seed": "ts-node -r tsconfig-paths/register scripts/seed-rbac.ts",
+    "seed:dev-fixtures": "ts-node -r tsconfig-paths/register scripts/seed-fixtures.ts",
     "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {

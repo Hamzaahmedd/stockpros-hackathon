@@ -16,7 +16,7 @@ import type {
   NewsSearchQuery,
   NewsSavedQuery,
 } from './validation'
-import type { MarketInterest } from '../notifications/preferences'
+import type { MarketInterest } from '../notifications/public'
 
 export const feedCacheKey = (params: {
   category?: string
