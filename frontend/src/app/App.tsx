@@ -14,7 +14,7 @@ import { FeedbackList } from "@/modules/feedback";
 import { Forecast } from "@/modules/forecast";
 import { Markets } from "@/modules/markets";
 import { News } from "@/modules/news";
-import { Plans } from "@/modules/plans";
+import { PaymentResult, Plans } from "@/modules/plans";
 import { Settings } from "@/modules/settings";
 import { Watchlist } from "@/modules/watchlist";
 import { NotFound } from "@/shared/components/NotFound";
@@ -101,6 +101,11 @@ export default function App() {
         <Route path="/plans" element={
           <ProtectedRoute resource="CORE_APP" requirePricingTiersEnabled>
             <Plans />
+          </ProtectedRoute>
+        } />
+        <Route path="/plans/result" element={
+          <ProtectedRoute resource="CORE_APP" requirePricingTiersEnabled>
+            <PaymentResult />
           </ProtectedRoute>
         } />
 

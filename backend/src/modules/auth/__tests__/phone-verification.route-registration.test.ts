@@ -42,7 +42,7 @@ jest.mock('ioredis', () => {
   }))
 })
 
-jest.mock('../market/infrastructure/finnhub-stream', () => ({
+jest.mock('../../market/infrastructure/finnhub-stream', () => ({
   finnhubService: {
     subscribe: jest.fn(),
     unsubscribe: jest.fn(),
@@ -54,8 +54,8 @@ jest.mock('../market/infrastructure/finnhub-stream', () => ({
 
 import request from 'supertest'
 import config from '@/config'
-import { createApp } from '../../app'
-import { modules } from '../index'
+import { createApp } from '../../../app'
+import { modules } from '../../index'
 
 describe('Phone verification — feature flag off (default test config)', () => {
   it('config.features.enablePhoneVerification is false in the test environment', () => {

@@ -23,7 +23,7 @@ export interface UserProfile {
   /** @example "Alex Morgan" */
   displayName: string | null
   userRoles: Array<{ role: { name: string } }>
-  /** Subscription tier — self-serve, no payment processor yet. @example "FREE" */
+  /** Subscription tier. Set directly (Bypass Mode) or via Safepay-confirmed checkout (Payment Mode) depending on `enablePaymentProcessor`. @example "FREE" */
   plan: 'FREE' | 'PRO'
 }
 
@@ -161,13 +161,20 @@ export class AuthSwaggerController extends Controller {
 
   /**
    * Self-serve plan change — set the authenticated user's own subscription tier.
-   * Only registered/enforced when `pricingTiersEnabled` is on for this environment;
-   * there is no payment step yet, this directly assigns the plan.
+   * Only registered/enforced when `pricingTiersEnabled` is on for this environment.
+   * In Bypass Mode (`enablePaymentProcessor` off) this directly assigns PRO or FREE.
+   * In Payment Mode (`enablePaymentProcessor` on), PRO is rejected here (403) —
+   * upgrades must go through `POST /api/v1/payments/create-checkout` and a
+   * webhook-confirmed Safepay payment instead; downgrading to FREE stays allowed.
    */
   @Post('plan')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Plan updated successfully')
   @Response<ApiErrorResponse>(400, 'Invalid plan value')
+  @Response<ApiErrorResponse>(
+    403,
+    'PRO upgrades require Safepay checkout when payment processing is enabled',
+  )
   async setPlan(
     @Body() body: SetPlanRequest,
   ): Promise<ApiResponse<SetPlanResponse>> {

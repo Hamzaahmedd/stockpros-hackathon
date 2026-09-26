@@ -40,6 +40,9 @@ model User {
   decisionRuns      DecisionRun[]
   feedbackEntries   Feedback[]
 
+  // ── Payments feature ────────────────────────────────────────────────────────
+  paymentTransactions PaymentTransaction[]
+
   @@index([status], map: "idx_users_status")
   @@index([createdAt], map: "idx_users_created_at")
   @@index([updatedAt], map: "idx_users_updated_at")
@@ -476,4 +479,35 @@ enum AiConfidence {
 enum PlanTier {
   FREE
   PRO
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ─── Safepay Payments (Pro tier checkout) ────────────────────────────────────
+
+model PaymentTransaction {
+  id        String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String  @map("user_id") @db.Uuid
+  trackerId String  @unique @map("tracker_id")
+  // Safepay pay-in amounts are integer paisa, e.g. Rs 5,999 -> 599900.
+  amount            Int
+  currency          String        @default("PKR")
+  status            PaymentStatus @default(PENDING)
+  paymentMethod     String?       @map("payment_method")
+  planTier          PlanTier      @map("plan_tier")
+  rawWebhookPayload Json?         @map("raw_webhook_payload")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_payment_transactions_user_id")
+  @@index([status], map: "idx_payment_transactions_status")
+  @@index([trackerId], map: "idx_payment_transactions_tracker_id")
+  @@map("payment_transactions")
 }

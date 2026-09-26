@@ -21,12 +21,12 @@ export const readSecrets = () => ({
   axiomToken: process.env.AXIOM_TOKEN || '',
   posthogApiKey: process.env.POSTHOG_API_KEY || '',
   groqApiKey: process.env.GROQ_API_KEY || '',
-  groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
   corsOrigins: process.env.CORS_ORIGINS || '',
   sendpkApiKey: process.env.SENDPK_API_KEY || '',
-  sendpkBaseUrl:
-    process.env.SENDPK_BASE_URL || 'https://wa.sendpk.com/api/send.php',
   sendpkTemplateId: process.env.SENDPK_TEMPLATE_ID || '',
+  safepayApiKey: process.env.SAFEPAY_API_KEY || '',
+  safepaySecretKey: process.env.SAFEPAY_SECRET_KEY || '',
+  safepayWebhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -136,13 +136,22 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
     },
     groq: {
       apiKey: secrets.groqApiKey,
-      model: secrets.groqModel,
+      model: env.groq.model,
     },
     sendpk: {
       apiKey: secrets.sendpkApiKey,
-      baseUrl: secrets.sendpkBaseUrl,
+      baseUrl: env.sendpk.baseUrl,
       templateId: secrets.sendpkTemplateId,
       mockProvider: env.sendpk.mockProvider,
+    },
+    safepay: {
+      apiKey: secrets.safepayApiKey,
+      secretKey: secrets.safepaySecretKey,
+      webhookSecret: secrets.safepayWebhookSecret,
+      baseUrl: env.safepay.baseUrl,
+      mockProvider: env.safepay.mockProvider,
+      environment: env.safepay.environment,
+      checkoutBaseUrl: env.safepay.checkoutBaseUrl,
     },
     features: env.features,
     audit: {

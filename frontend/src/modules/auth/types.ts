@@ -31,6 +31,7 @@ export type AuthContextValue = {
   screenPermissions: Record<string, ScreenPermissions>;
   loading: boolean;
   pricingTiersEnabled: boolean;
+  enablePaymentProcessor: boolean;
   sendMagicLink: (email: string) => Promise<boolean>;
   login: (email: string) => Promise<boolean>;
   register: (payload: { email: string }) => Promise<void>;

@@ -1,6 +1,7 @@
 import config from '@/config'
 import { NextFunction, Request, Response } from 'express'
 import {
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   validateOrThrow,
@@ -48,6 +49,7 @@ export const getMyInfo = async (
       extra: {
         user: myDetails,
         pricingTiersEnabled: config.features.pricingTiersEnabled,
+        enablePaymentProcessor: config.features.enablePaymentProcessor,
       },
     })
   } catch (error) {
@@ -63,6 +65,16 @@ export const updateMyPlan = async (
   try {
     const userId = getUserId(req)
     const { plan } = validateOrThrow(setPlanValidator, req.body)
+
+    // In Payment Mode, PRO can only be granted via a webhook-confirmed
+    // Safepay transaction — this endpoint stays open only for the Bypass
+    // Mode self-serve flow and for downgrading back to FREE.
+    if (plan === 'PRO' && config.features.enablePaymentProcessor) {
+      throw new ForbiddenError(
+        'Upgrading to Pro requires completing payment via Safepay',
+      )
+    }
+
     const updatedPlan = await setMyPlan(userId, plan)
 
     return sendSuccess(res, {

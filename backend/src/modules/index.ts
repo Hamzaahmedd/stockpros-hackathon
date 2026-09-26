@@ -8,6 +8,7 @@ import { forecastModule } from './forecast'
 import { marketModule } from './market'
 import { newsModule } from './news'
 import { notificationsModule } from './notifications'
+import { paymentsModule } from './payments'
 import { searchModule } from './search'
 import { watchlistModule } from './watchlist'
 
@@ -24,6 +25,7 @@ export const modules: readonly AppModule[] = [
   dashboardModule,
   searchModule,
   feedbackModule,
+  paymentsModule,
 ]
 
 export type { AppModule } from './module-interface'

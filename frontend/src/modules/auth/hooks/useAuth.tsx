@@ -15,6 +15,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [screenPermissions, setScreenPermissions] = useState<Record<string, ScreenPermissions>>({});
   const [loading, setLoading] = useState(true);
   const [pricingTiersEnabled, setPricingTiersEnabled] = useState(false);
+  const [enablePaymentProcessor, setEnablePaymentProcessor] = useState(false);
 
   // ------------------------
   // /me
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setScreenPermissions({});
       setPricingTiersEnabled(false);
+      setEnablePaymentProcessor(false);
       setLoading(false);
       return null;
     }
@@ -53,11 +55,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(fetchedUser);
       setScreenPermissions(screensRes.data?.data || screensRes.data || {});
       setPricingTiersEnabled(Boolean(meRes.data?.pricingTiersEnabled));
+      setEnablePaymentProcessor(Boolean(meRes.data?.enablePaymentProcessor));
       return fetchedUser;
     } catch {
       setUser(null);
       setScreenPermissions({});
       setPricingTiersEnabled(false);
+      setEnablePaymentProcessor(false);
       return null;
     } finally {
       setLoading(false);
@@ -127,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       screenPermissions,
       loading,
       pricingTiersEnabled,
+      enablePaymentProcessor,
       sendMagicLink,
       login,
       register,
@@ -135,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshMe: fetchMe,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, screenPermissions, loading, pricingTiersEnabled, can, fetchMe]
+    [user, screenPermissions, loading, pricingTiersEnabled, enablePaymentProcessor, can, fetchMe]
   );
 
   return (

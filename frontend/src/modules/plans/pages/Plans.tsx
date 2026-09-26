@@ -53,7 +53,7 @@ function FeatureRow({ label, included }: { label: string; included: boolean }) {
 }
 
 export default function Plans() {
-  const { user, refreshMe } = useAuth();
+  const { user, refreshMe, enablePaymentProcessor } = useAuth();
   const [updating, setUpdating] = useState<PlanTier | null>(null);
   const currentPlan: PlanTier = user?.plan ?? "FREE";
 
@@ -61,6 +61,18 @@ export default function Plans() {
     if (plan === currentPlan || updating) return;
     setUpdating(plan);
     try {
+      // Upgrading to Pro with a live payment processor goes through Safepay's
+      // hosted checkout — the plan only actually changes once the webhook
+      // confirms payment (see PaymentResult.tsx). Downgrades and Bypass Mode
+      // upgrades still go straight through /auth/plan.
+      if (plan === "PRO" && enablePaymentProcessor) {
+        const res = await api.post("/api/v1/payments/create-checkout", { plan });
+        const checkoutUrl = res.data?.checkoutUrl;
+        if (!checkoutUrl) throw new Error("No checkout URL returned");
+        window.location.href = checkoutUrl;
+        return;
+      }
+
       await api.post("/api/v1/auth/plan", { plan });
       await refreshMe();
       toast.success(

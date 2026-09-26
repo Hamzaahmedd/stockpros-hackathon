@@ -40,6 +40,9 @@ export const productionConfig = {
   posthog: {
     host: 'https://us.i.posthog.com',
   },
+  groq: {
+    model: 'openai/gpt-oss-20b',
+  },
   features: {
     enableNewsCron: true,
     enableWatchlistCron: true,
@@ -47,9 +50,24 @@ export const productionConfig = {
     enableSwaggerDocs: false,
     enablePhoneVerification: true,
     pricingTiersEnabled: false,
+    enablePaymentProcessor: false,
   },
   sendpk: {
     mockProvider: false,
+    baseUrl: 'https://wa.sendpk.com/api/send.php',
+  },
+  safepay: {
+    mockProvider: false,
+    environment: 'production' as const,
+    // Fixed, not env-sourced: previously this fell back to the SANDBOX host
+    // whenever SAFEPAY_BASE_URL was unset, which would have silently sent
+    // production traffic to the sandbox API. Matches Safepay's own SDK
+    // constant API_URL_PRODUCTION.
+    baseUrl: 'https://api.getsafepay.com',
+    // Note: production checkout is on a different host to the API
+    // (getsafepay.com, not api.getsafepay.com) — matches Safepay's own SDK
+    // constants (CHECKOUT_PRODUCTION vs API_URL_PRODUCTION).
+    checkoutBaseUrl: 'https://getsafepay.com/checkout/pay',
   },
   audit: {
     retentionDays: 30,

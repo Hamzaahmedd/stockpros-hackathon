@@ -22,9 +22,12 @@ router.post('/verify-magic-link', AuthController.verifyMagicLinkToken)
 router.post('/google', loginLimiter, AuthController.googleLogin)
 router.post('/onboarding', AuthController.completeOnboardingHandler)
 
-// ─── Self-Serve Plan Selection ───────────────────────────────────────────────
-// No RBAC/tier check — any logged-in user may set their own plan directly;
-// there's no payment processor yet, so this is the whole "checkout" flow.
+// ─── Self-Serve Plan Selection (Bypass Mode) ─────────────────────────────────
+// No RBAC/tier check — any logged-in user may set their own plan directly.
+// This is the whole "checkout" flow when config.features.enablePaymentProcessor
+// is off. When it's on, the controller rejects PRO upgrades here and routes
+// them through the Safepay checkout flow (see modules/payments) instead;
+// downgrading to FREE stays available through this endpoint either way.
 router.post('/plan', authTokenMiddleware, AuthController.updateMyPlan)
 
 // ─── Session Management ──────────────────────────────────────────────────────

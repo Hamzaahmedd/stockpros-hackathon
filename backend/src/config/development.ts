@@ -40,6 +40,9 @@ export const developmentConfig = {
   posthog: {
     host: 'https://us.i.posthog.com',
   },
+  groq: {
+    model: 'openai/gpt-oss-20b',
+  },
   features: {
     enableNewsCron: true,
     enableWatchlistCron: true,
@@ -47,11 +50,21 @@ export const developmentConfig = {
     enableSwaggerDocs: true,
     enablePhoneVerification: false,
     pricingTiersEnabled: false,
+    enablePaymentProcessor: false,
   },
   sendpk: {
     // Explicit, visible flag rather than inferring mock mode from a missing
     // API key — mock behavior is never accidental here.
     mockProvider: true,
+    baseUrl: 'https://wa.sendpk.com/api/send.php',
+  },
+  safepay: {
+    mockProvider: true,
+    // Sandbox and dev share the same host/checkout base per Safepay's own
+    // SDK constants (API_URL_SANDBOX === API_URL_DEVELOPMENT's host shape).
+    environment: 'sandbox' as const,
+    baseUrl: 'https://sandbox.api.getsafepay.com',
+    checkoutBaseUrl: 'https://sandbox.api.getsafepay.com/checkout/pay',
   },
   audit: {
     retentionDays: 30,

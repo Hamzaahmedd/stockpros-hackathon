@@ -440,6 +440,125 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"CreateCheckoutResponse": {
+				"properties": {
+					"checkoutUrl": {
+						"type": "string",
+						"description": "Safepay hosted-checkout URL to redirect the browser to."
+					},
+					"trackerId": {
+						"type": "string",
+						"description": "Safepay's own tracker/session token — also returned to the frontend as `tracker_id` on redirect."
+					}
+				},
+				"required": [
+					"checkoutUrl",
+					"trackerId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_CreateCheckoutResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/CreateCheckoutResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"CreateCheckoutRequest": {
+				"properties": {
+					"plan": {
+						"type": "string",
+						"enum": [
+							"PRO"
+						],
+						"nullable": false,
+						"description": "Only PRO is purchasable today.",
+						"example": "PRO"
+					}
+				},
+				"required": [
+					"plan"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"VerifyTrackerResponse": {
+				"properties": {
+					"trackerId": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"PENDING",
+							"COMPLETED",
+							"FAILED",
+							"CANCELLED"
+						],
+						"example": "COMPLETED"
+					},
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO"
+						],
+						"example": "PRO"
+					}
+				},
+				"required": [
+					"trackerId",
+					"status",
+					"plan"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_VerifyTrackerResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/VerifyTrackerResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"VerifyTrackerRequest": {
+				"properties": {
+					"trackerId": {
+						"type": "string",
+						"example": "C5A5APSBCV41R2QF2MHG"
+					}
+				},
+				"required": [
+					"trackerId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"Notification": {
 				"properties": {
 					"id": {
@@ -1518,7 +1637,7 @@
 							"FREE",
 							"PRO"
 						],
-						"description": "Subscription tier — self-serve, no payment processor yet.",
+						"description": "Subscription tier. Set directly (Bypass Mode) or via Safepay-confirmed checkout (Payment Mode) depending on `enablePaymentProcessor`.",
 						"example": "FREE"
 					}
 				},
@@ -2526,6 +2645,155 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/v1/payments/create-checkout": {
+			"post": {
+				"operationId": "CreateCheckout",
+				"responses": {
+					"200": {
+						"description": "Checkout session created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_CreateCheckoutResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid plan value",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Initiates a Safepay hosted-checkout session for upgrading to Pro.\nOnly registered when `config.features.enablePaymentProcessor` is on\n(Payment Mode) — in Bypass Mode this route does not exist (404) and\n`POST /api/v1/auth/plan` is used directly instead.",
+				"tags": [
+					"Payments"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateCheckoutRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/payments/safepay/webhook": {
+			"post": {
+				"operationId": "SafepayWebhook",
+				"responses": {
+					"200": {
+						"description": "Webhook received",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"received": {
+											"type": "boolean",
+											"enum": [
+												true
+											],
+											"nullable": false
+										}
+									},
+									"required": [
+										"received"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Invalid or missing webhook signature",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Safepay webhook — confirms a payment asynchronously and, on success,\nupgrades the paying user to Pro. Authenticated via the `x-sfpy-signature`\nHMAC-SHA512 header, not a bearer token. Always registered regardless of\n`enablePaymentProcessor`, so a late-arriving webhook is still recorded.",
+				"tags": [
+					"Payments"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/api/v1/payments/verify-tracker": {
+			"post": {
+				"operationId": "VerifyTracker",
+				"responses": {
+					"200": {
+						"description": "Transaction status fetched",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_VerifyTrackerResponse_"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Transaction does not belong to the caller",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Payment transaction not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Frontend post-redirect status check for a checkout tracker — used since\nthe webhook confirmation may lag the browser's redirect back from\nSafepay's hosted checkout page.",
+				"tags": [
+					"Payments"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyTrackerRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/notifications": {
@@ -4119,9 +4387,19 @@
 								}
 							}
 						}
+					},
+					"403": {
+						"description": "PRO upgrades require Safepay checkout when payment processing is enabled",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
 					}
 				},
-				"description": "Self-serve plan change — set the authenticated user's own subscription tier.\nOnly registered/enforced when `pricingTiersEnabled` is on for this environment;\nthere is no payment step yet, this directly assigns the plan.",
+				"description": "Self-serve plan change — set the authenticated user's own subscription tier.\nOnly registered/enforced when `pricingTiersEnabled` is on for this environment.\nIn Bypass Mode (`enablePaymentProcessor` off) this directly assigns PRO or FREE.\nIn Payment Mode (`enablePaymentProcessor` on), PRO is rejected here (403) —\nupgrades must go through `POST /api/v1/payments/create-checkout` and a\nwebhook-confirmed Safepay payment instead; downgrading to FREE stays allowed.",
 				"tags": [
 					"Authentication"
 				],
@@ -4696,6 +4974,10 @@
 		{
 			"name": "Feedback",
 			"description": "User-submitted feedback, bug reports, and suggestions"
+		},
+		{
+			"name": "Payments",
+			"description": "Safepay checkout sessions, webhook confirmation, and transaction status for Pro tier upgrades"
 		},
 		{
 			"name": "System",

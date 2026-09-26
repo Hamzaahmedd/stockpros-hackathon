@@ -3,15 +3,15 @@ import {
   TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
-} from '../../shared/errors'
-import { hashToken } from '../../shared/utils'
-import { requestOtp, verifyOtp } from './service'
+} from '../../../shared/errors'
+import { hashToken } from '../../../shared/utils'
+import { requestOtp, verifyOtp } from '../service'
 
 // service.ts transitively imports notifications/public -> ... -> alert-evaluator
 // -> socket-server -> finnhub-stream, whose module-level singleton opens a real
 // WebSocket connection on import. Mock it so this unit test never touches the
 // network (matches the same mock already used in service.test.ts).
-jest.mock('../market/infrastructure/finnhub-stream', () => ({
+jest.mock('../../market/infrastructure/finnhub-stream', () => ({
   finnhubService: {
     subscribe: jest.fn(),
     unsubscribe: jest.fn(),
@@ -24,11 +24,11 @@ jest.mock('../market/infrastructure/finnhub-stream', () => ({
 // Mock the SendPK client so requestOtp never makes a real HTTP call —
 // captures the plaintext OTP so the "full flow" test can feed it into
 // verifyOtp without needing to know the internal crypto.randomInt output.
-jest.mock('../../shared/infrastructure/clients/sendpk', () => ({
+jest.mock('../../../shared/infrastructure/clients/sendpk', () => ({
   sendWhatsappOtp: jest.fn().mockResolvedValue(undefined),
 }))
 
-jest.mock('../../shared/infrastructure/database', () => ({
+jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     user: {
       findUnique: jest.fn(),
@@ -44,7 +44,7 @@ jest.mock('../../shared/infrastructure/database', () => ({
   },
 }))
 
-jest.mock('../../shared/infrastructure/logger', () => ({
+jest.mock('../../../shared/infrastructure/logger', () => ({
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
@@ -53,8 +53,8 @@ jest.mock('../../shared/infrastructure/logger', () => ({
   },
 }))
 
-import { sendWhatsappOtp } from '../../shared/infrastructure/clients/sendpk'
-import { prisma } from '../../shared/infrastructure/database'
+import { sendWhatsappOtp } from '../../../shared/infrastructure/clients/sendpk'
+import { prisma } from '../../../shared/infrastructure/database'
 
 const mockedSendWhatsappOtp = sendWhatsappOtp as jest.Mock
 const mockedUserFindUnique = prisma.user.findUnique as jest.Mock

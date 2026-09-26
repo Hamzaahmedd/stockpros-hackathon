@@ -1,4 +1,4 @@
-import { otpCodeValidator, phoneNumberValidator } from './validation'
+import { otpCodeValidator, phoneNumberValidator } from '../validation'
 
 describe('phoneNumberValidator', () => {
   it('accepts a canonical E.164 Pakistani mobile number', () => {

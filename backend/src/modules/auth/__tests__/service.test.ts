@@ -1,15 +1,15 @@
 import { UserStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
-import { UnauthorizedError } from '../../shared/errors'
-import { prisma } from '../../shared/infrastructure/database'
-import { hashToken } from '../../shared/utils'
-import { refreshAccessToken } from './service'
+import { UnauthorizedError } from '../../../shared/errors'
+import { prisma } from '../../../shared/infrastructure/database'
+import { hashToken } from '../../../shared/utils'
+import { refreshAccessToken } from '../service'
 
 // service.ts transitively imports notifications/public -> ... -> alert-evaluator
 // -> socket-server -> finnhub-stream, whose module-level singleton opens a real
 // WebSocket connection on import. Mock it so this unit test never touches the
 // network (matches the same mock already used in app.integration.test.ts).
-jest.mock('../market/infrastructure/finnhub-stream', () => ({
+jest.mock('../../market/infrastructure/finnhub-stream', () => ({
   finnhubService: {
     subscribe: jest.fn(),
     unsubscribe: jest.fn(),
@@ -19,7 +19,7 @@ jest.mock('../market/infrastructure/finnhub-stream', () => ({
   },
 }))
 
-jest.mock('../../shared/infrastructure/database', () => ({
+jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     userSession: {
       findUnique: jest.fn(),

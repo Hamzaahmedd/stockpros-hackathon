@@ -54,11 +54,21 @@ export async function sendWhatsappOtp({
   const recipient = phoneNumber.replace(/^\+/, '')
 
   try {
+    // Field names and shape confirmed against the documented request format
+    // at https://wa.sendpk.com/api.php — the recipient and template
+    // variables both live inside `template_data`, not as top-level
+    // `phone`/`variables` fields, and the auth field is `api_key` (not
+    // `apikey`). Each `body` entry fills one `{{n}}` placeholder in order;
+    // this template has a single OTP-code placeholder.
     await sendpkClient.post('', {
-      apikey: config.sendpk.apiKey,
+      api_key: config.sendpk.apiKey,
       template_id: config.sendpk.templateId,
-      phone: recipient,
-      variables: { otp: code },
+      template_data: [
+        {
+          mobile: recipient,
+          body: [{ type: 'text', text: code }],
+        },
+      ],
     })
   } catch (err) {
     logger.error('[SendPK] Failed to send WhatsApp OTP', err)

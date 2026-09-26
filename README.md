@@ -111,6 +111,7 @@ flowchart LR
 - **Role-Based Access Control** — Admin, Portfolio Manager, and Analyst roles with screen-level CRUD permissions
 - **Search** — Symbol and company lookup
 - **Free/Pro Plan Tiers** *(off by default, see below)* — self-serve `/plans` page and `POST /api/v1/auth/plan`; Free is capped on AI forecasts (1/day), decision support (watchlist symbols only), watchlist size (10 symbols), portfolios (1), and real-time quotes (15-min delayed); Pro is unlimited on all of these. Gating runs in parallel to RBAC, toggled per-environment by `config.features.pricingTiersEnabled` (`backend/src/config/{development,production,test}.ts`) — off, the app behaves exactly as RBAC-only; on, tier checks replace RBAC checks for these customer-facing routes only (admin/RBAC-management endpoints are unaffected either way)
+- **Safepay Payments** *(off by default, see below)* — Pro tier (Rs 5,999/mo) checkout via Safepay's hosted page (JazzCash, Easypaisa, and cards), confirmed asynchronously via a signed webhook (`POST /api/v1/payments/safepay/webhook`, `x-sfpy-signature` HMAC-SHA512). Toggled independently of pricing tiers by `config.features.enablePaymentProcessor` — off ("Bypass Mode"), upgrading to Pro calls `POST /api/v1/auth/plan` directly with no payment step; on ("Payment Mode"), upgrading redirects to Safepay checkout and the plan only changes once the webhook confirms payment
 
 ## Tech Stack
 
@@ -176,12 +177,13 @@ TWELVE_DATA_API_KEY=your_twelve_data_api_key
 POLYGON_API_KEY=your_polygon_api_key
 RESEND_API_KEY=your_resend_api_key
 GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=openai/gpt-oss-20b
 AXIOM_TOKEN=your_axiom_token
 POSTHOG_API_KEY=your_posthog_project_api_key
 SENDPK_API_KEY=your_sendpk_api_key
-SENDPK_BASE_URL=https://wa.sendpk.com/api/send.php
 SENDPK_TEMPLATE_ID=your_sendpk_template_id
+SAFEPAY_API_KEY=your_safepay_api_key
+SAFEPAY_SECRET_KEY=your_safepay_secret_key
+SAFEPAY_WEBHOOK_SECRET=your_safepay_webhook_secret
 ```
 
 Then push the schema to your database, generate the Prisma client, and start the dev server:

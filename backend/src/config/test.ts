@@ -39,6 +39,9 @@ export const testConfig = {
   posthog: {
     host: 'https://us.i.posthog.com',
   },
+  groq: {
+    model: 'openai/gpt-oss-20b',
+  },
   features: {
     enableNewsCron: false,
     enableWatchlistCron: false,
@@ -46,9 +49,17 @@ export const testConfig = {
     enableSwaggerDocs: false,
     enablePhoneVerification: false,
     pricingTiersEnabled: false,
+    enablePaymentProcessor: false,
   },
   sendpk: {
     mockProvider: true,
+    baseUrl: 'https://wa.sendpk.com/api/send.php',
+  },
+  safepay: {
+    mockProvider: true,
+    environment: 'sandbox' as const,
+    baseUrl: 'https://sandbox.api.getsafepay.com',
+    checkoutBaseUrl: 'https://sandbox.api.getsafepay.com/checkout/pay',
   },
   audit: {
     retentionDays: 30,
