@@ -1,4 +1,4 @@
-import type { UserStatus } from '@prisma/client'
+import type { PlanTier, UserStatus } from '@prisma/client'
 import type * as express from 'express'
 import type { SignOptions } from 'jsonwebtoken'
 
@@ -41,6 +41,7 @@ export interface MeProfile {
   displayName: string | null
   phoneVerifiedAt: Date | null
   userRoles: Array<{ role: { name: string } }>
+  plan: PlanTier
 }
 
 export interface AuthenticatedRequest extends express.Request {
@@ -48,6 +49,7 @@ export interface AuthenticatedRequest extends express.Request {
     userId: string
     jti?: string
     roleId?: string
+    plan: PlanTier
   }
   file?: Express.Multer.File
 }

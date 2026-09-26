@@ -1,4 +1,5 @@
 import config from '@/config'
+import type { PlanTier } from '@prisma/client'
 import { NextFunction, Response } from 'express'
 import { UnauthorizedError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
@@ -27,18 +28,22 @@ export const authTokenMiddleware = async (
     const payload = verifyAccessToken(accessToken, ACCESS_TOKEN_SECRET)
 
     // Validate session in DB
+    let plan: PlanTier = 'FREE'
     if (payload.jti) {
       const session = await prisma.userSession.findUnique({
         where: { jti: payload.jti },
+        include: { user: { select: { plan: true } } },
       })
 
       if (!session || session.isRevoked || new Date() > session.expiresAt) {
         throw new UnauthorizedError('Session expired or revoked')
       }
+
+      plan = session.user.plan
     }
 
     // Attach user info to request
-    req.user = { userId: payload.sub, jti: payload.jti }
+    req.user = { userId: payload.sub, jti: payload.jti, plan }
     next()
   } catch (error: any) {
     if (error.name === 'TokenExpiredError') {

@@ -21,6 +21,7 @@ import {
   logoutUser,
   refreshAccessToken,
   requestOtp,
+  setMyPlan,
   verifyMagicLink,
   verifyOtp,
 } from './service'
@@ -30,6 +31,7 @@ import {
   emailValidator,
   googleLoginValidator,
   magicLinkTokenValidator,
+  setPlanValidator,
 } from './validation'
 
 export const getMyInfo = async (
@@ -43,7 +45,29 @@ export const getMyInfo = async (
 
     return sendSuccess(res, {
       message: 'My details fetched successfully',
-      extra: { user: myDetails },
+      extra: {
+        user: myDetails,
+        pricingTiersEnabled: config.features.pricingTiersEnabled,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const updateMyPlan = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { plan } = validateOrThrow(setPlanValidator, req.body)
+    const updatedPlan = await setMyPlan(userId, plan)
+
+    return sendSuccess(res, {
+      message: 'Plan updated successfully',
+      extra: { plan: updatedPlan },
     })
   } catch (error) {
     next(error)

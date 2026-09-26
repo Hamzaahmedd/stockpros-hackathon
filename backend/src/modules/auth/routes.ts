@@ -22,6 +22,11 @@ router.post('/verify-magic-link', AuthController.verifyMagicLinkToken)
 router.post('/google', loginLimiter, AuthController.googleLogin)
 router.post('/onboarding', AuthController.completeOnboardingHandler)
 
+// ─── Self-Serve Plan Selection ───────────────────────────────────────────────
+// No RBAC/tier check — any logged-in user may set their own plan directly;
+// there's no payment processor yet, so this is the whole "checkout" flow.
+router.post('/plan', authTokenMiddleware, AuthController.updateMyPlan)
+
 // ─── Session Management ──────────────────────────────────────────────────────
 router.post('/refresh-token', AuthController.refreshToken)
 router.post('/logout', AuthController.logout)

@@ -1,5 +1,11 @@
 import { Router } from 'express'
-import { Action, rbacMiddleware, Resource } from '../access-control'
+import {
+  gate,
+  noTierRestriction,
+  requireAlertTypeAllowedForPlan,
+  requireWatchlistLimitForFree,
+} from '../../shared/middlewares/plan-gating'
+import { Action, Resource } from '../access-control'
 import { authTokenMiddleware as authenticate } from '../auth'
 import * as WatchlistController from './controller'
 
@@ -10,51 +16,51 @@ router.use(authenticate)
 // ─── Watchlist CRUD ──────────────────────────────────────────────────────────
 router.post(
   '/',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, requireWatchlistLimitForFree),
   WatchlistController.addToWatchlist,
 )
 router.get(
   '/',
-  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  gate(Resource.CORE_APP, Action.READ, noTierRestriction),
   WatchlistController.getWatchlist,
 )
 router.patch(
   '/:symbol',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, noTierRestriction),
   WatchlistController.updateWatchlistEntry,
 )
 router.delete(
   '/:symbol',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, noTierRestriction),
   WatchlistController.removeFromWatchlist,
 )
 
 // ─── Convert to Position ─────────────────────────────────────────────────────
 router.post(
   '/:symbol/convert-to-position',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, noTierRestriction),
   WatchlistController.convertToPosition,
 )
 
 // ─── Alert Management ─────────────────────────────────────────────────────────
 router.post(
   '/:symbol/alerts',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, requireAlertTypeAllowedForPlan),
   WatchlistController.createAlert,
 )
 router.get(
   '/:symbol/alerts',
-  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  gate(Resource.CORE_APP, Action.READ, noTierRestriction),
   WatchlistController.getAlerts,
 )
 router.patch(
   '/:symbol/alerts/:id',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, requireAlertTypeAllowedForPlan),
   WatchlistController.updateAlert,
 )
 router.delete(
   '/:symbol/alerts/:id',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, noTierRestriction),
   WatchlistController.deleteAlert,
 )
 

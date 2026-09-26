@@ -37,6 +37,12 @@ import { onboardingSchema } from "../validation";
 
 type OnboardingStep = 1 | 2 | 3;
 
+// Mirrors the backend's requireWatchlistLimitForFree cap (10 symbols/user on
+// the Free plan) — shown as an inline warning here rather than blocking, since
+// the account is always FREE at this point and the limit is informational
+// until pricing tiers are enabled.
+const FREE_WATCHLIST_LIMIT = 10;
+
 export const Onboarding: React.FC = () => {
   const [step, setStep] = useState<OnboardingStep>(1);
   const [loading, setLoading] = useState(false);
@@ -50,6 +56,7 @@ export const Onboarding: React.FC = () => {
   ]);
   const [searchQuery, setSearchQuery] = useState("");
   const [customSymbols, setCustomSymbols] = useState<SuggestedSymbol[]>([]);
+  const [showWatchlistLimitWarning, setShowWatchlistLimitWarning] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreferences>(
     DEFAULT_NOTIFICATION_PREFERENCES,
   );
@@ -68,11 +75,17 @@ export const Onboarding: React.FC = () => {
   });
 
   const toggleSymbol = (symbol: string) => {
-    setSelectedSymbols((current) =>
-      current.includes(symbol)
-        ? current.filter((item) => item !== symbol)
-        : [...current, symbol],
-    );
+    setSelectedSymbols((current) => {
+      if (current.includes(symbol)) {
+        setShowWatchlistLimitWarning(false);
+        return current.filter((item) => item !== symbol);
+      }
+      if (current.length >= FREE_WATCHLIST_LIMIT) {
+        setShowWatchlistLimitWarning(true);
+        return current;
+      }
+      return [...current, symbol];
+    });
   };
 
   const toggleMarketInterest = (interest: MarketInterest) => {
@@ -93,6 +106,10 @@ export const Onboarding: React.FC = () => {
     if (!clean) return;
 
     if (!selectedSymbols.includes(clean)) {
+      if (selectedSymbols.length >= FREE_WATCHLIST_LIMIT) {
+        setShowWatchlistLimitWarning(true);
+        return;
+      }
       setSelectedSymbols((prev) => [...prev, clean]);
       const exists =
         SUGGESTED_SYMBOLS.some((s) => s.symbol === clean) ||
@@ -514,6 +531,16 @@ export const Onboarding: React.FC = () => {
                     AI predictions and technical signals will automatically generate for your selected tickers.
                   </p>
                 </div>
+
+                {/* Free plan watchlist limit warning (inline, non-blocking) */}
+                {showWatchlistLimitWarning && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-center gap-3">
+                    <Info className="w-4 h-4 text-amber-500 shrink-0" />
+                    <p className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed">
+                      The Free plan supports up to {FREE_WATCHLIST_LIMIT} watchlist symbols. Remove one to add another, or upgrade to Pro later for unlimited tracking.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Step 2 Actions */}

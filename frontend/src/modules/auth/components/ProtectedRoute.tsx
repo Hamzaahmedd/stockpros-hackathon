@@ -12,10 +12,12 @@ interface Props {
     resource: string;
     action?: keyof ScreenPermissions;
   }[];
+  /** Requires config.features.pricingTiersEnabled to be on; otherwise redirects away (e.g. /plans while the pricing page is disabled). */
+  requirePricingTiersEnabled?: boolean;
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements }) => {
-  const { user, loading, can } = useAuth();
+export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements, requirePricingTiersEnabled }) => {
+  const { user, loading, can, pricingTiersEnabled } = useAuth();
   const requiredPermissions = requirements ?? (resource ? [{ resource, action }] : []);
 
   if (loading) {
@@ -28,8 +30,12 @@ export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "
       </div>
     );
   }
-  
+
   if (!user) return <Navigate to="/login" replace />;
+
+  if (requirePricingTiersEnabled && !pricingTiersEnabled) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (!requiredPermissions.every(({ resource, action }) => can(resource, action ?? "canRead"))) {
     return (

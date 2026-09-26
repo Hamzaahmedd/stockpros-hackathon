@@ -46,6 +46,7 @@ export const productionConfig = {
     enableAiRecomputeCron: true,
     enableSwaggerDocs: false,
     enablePhoneVerification: true,
+    pricingTiersEnabled: false,
   },
   sendpk: {
     mockProvider: false,

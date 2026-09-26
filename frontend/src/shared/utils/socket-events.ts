@@ -13,5 +13,6 @@ export const SocketEvent = {
   Error: "error",
   FinnhubError: "finnhub_error",
   Notification: "notification",
+  PlanRestricted: "plan_restricted",
 } as const;
 export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent];

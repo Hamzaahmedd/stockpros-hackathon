@@ -7,6 +7,8 @@ import {
   ConflictError,
   InternalServerError,
   NotFoundError,
+  PlanRequiredError,
+  QuotaExceededError,
   ValidationError,
 } from '../errors'
 import { logger } from '../infrastructure/logger'
@@ -120,10 +122,17 @@ export const errorHandler = (
     logger.error('Unexpected error', err)
   }
 
+  const details =
+    error instanceof ValidationError ||
+    error instanceof QuotaExceededError ||
+    error instanceof PlanRequiredError
+      ? error.details
+      : undefined
+
   sendError(res, {
     message: error.message,
     statusCode: error.statusCode,
-    details: error instanceof ValidationError ? error.details : undefined,
+    details,
     errorCode: error.name !== 'AppError' ? error.name : undefined,
   })
 }

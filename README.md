@@ -110,6 +110,7 @@ flowchart LR
 - **Notifications** — Persisted market-interest and delivery preferences; users can independently control in-app alerts, email volatility alerts, and the weekday pre-market digest
 - **Role-Based Access Control** — Admin, Portfolio Manager, and Analyst roles with screen-level CRUD permissions
 - **Search** — Symbol and company lookup
+- **Free/Pro Plan Tiers** *(off by default, see below)* — self-serve `/plans` page and `POST /api/v1/auth/plan`; Free is capped on AI forecasts (1/day), decision support (watchlist symbols only), watchlist size (10 symbols), portfolios (1), and real-time quotes (15-min delayed); Pro is unlimited on all of these. Gating runs in parallel to RBAC, toggled per-environment by `config.features.pricingTiersEnabled` (`backend/src/config/{development,production,test}.ts`) — off, the app behaves exactly as RBAC-only; on, tier checks replace RBAC checks for these customer-facing routes only (admin/RBAC-management endpoints are unaffected either way)
 
 ## Tech Stack
 

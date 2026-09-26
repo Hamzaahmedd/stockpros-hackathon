@@ -1,16 +1,33 @@
 import config from '@/config'
+import type { PlanTier } from '@prisma/client'
 import * as http from 'http'
-import { Server as IOServer, Socket } from 'socket.io'
-import { updatePriceCache } from '../../../modules/market/caches/price-cache'
+import { Server as IOServer, Socket as BaseSocket } from 'socket.io'
+import { verifyAccessToken } from '../../../modules/auth/utils/jwt'
+import {
+  priceCache,
+  updatePriceCache,
+} from '../../../modules/market/caches/price-cache'
 import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
 import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
+import { prisma } from '../database'
 import { logger } from '../logger'
 import { SocketEvent } from './socket-events'
 import { socketSubscribeValidator } from './subscription-validation'
 
+const DELAYED_REFRESH_MS = 15 * 60 * 1000
+const DELAYED_ROOM_SUFFIX = ':delayed'
+const delayedRoom = (symbol: string) => `${symbol}${DELAYED_ROOM_SUFFIX}`
+
+interface SocketData {
+  plan?: PlanTier
+}
+
+type Socket = BaseSocket<any, any, any, SocketData>
+
 export class SocketServer {
   private static instance: SocketServer
   public io: IOServer
+  private readonly delayedTimers = new Map<string, NodeJS.Timeout>()
 
   constructor(server: http.Server) {
     this.io = new IOServer(server, {
@@ -29,9 +46,44 @@ export class SocketServer {
   }
 
   private initialize(): void {
+    if (config.features.pricingTiersEnabled) {
+      this.io.use((socket, next) => this.authenticateSocket(socket, next))
+    }
     this.handleConnections()
     this.handleFinnhubEvents()
     this.handleFinnhubErrors()
+  }
+
+  /**
+   * Only wired up when pricingTiersEnabled is on — leaves the socket server's
+   * current (unauthenticated, everyone-gets-live-ticks) behavior fully intact
+   * when the flag is off, so this isn't a silent security change to the
+   * RBAC-mode default.
+   */
+  private async authenticateSocket(
+    socket: Socket,
+    next: (err?: Error) => void,
+  ): Promise<void> {
+    try {
+      const token = socket.handshake.auth?.token as string | undefined
+      if (!token) return next(new Error('Unauthorized'))
+
+      const payload = verifyAccessToken(token, config.auth.accessTokenSecret)
+      if (!payload.jti) return next(new Error('Unauthorized'))
+
+      const session = await prisma.userSession.findUnique({
+        where: { jti: payload.jti },
+        include: { user: { select: { plan: true } } },
+      })
+      if (!session || session.isRevoked || new Date() > session.expiresAt) {
+        return next(new Error('Unauthorized'))
+      }
+
+      socket.data.plan = session.user.plan
+      next()
+    } catch {
+      next(new Error('Unauthorized'))
+    }
   }
 
   private handleConnections(): void {
@@ -46,15 +98,19 @@ export class SocketServer {
         }
       })
 
-      socket.on(SocketEvent.Subscribe, (payload) =>
+      socket.on(SocketEvent.Subscribe, (payload: unknown) =>
         this.handleSubscribe(socket, payload),
       )
-      socket.on(SocketEvent.Unsubscribe, (payload) =>
+      socket.on(SocketEvent.Unsubscribe, (payload: unknown) =>
         this.handleUnsubscribe(socket, payload),
       )
       socket.on('disconnecting', () => this.handleDisconnecting(socket))
       socket.on('disconnect', (reason) => this.handleDisconnect(socket, reason))
     })
+  }
+
+  private isFreeTier(socket: Socket): boolean {
+    return config.features.pricingTiersEnabled && socket.data.plan !== 'PRO'
   }
 
   private async handleSubscribe(
@@ -71,9 +127,21 @@ export class SocketServer {
     }
 
     const symbol = parsed.data.symbol.toUpperCase()
-    socket.join(symbol)
+    const free = this.isFreeTier(socket)
 
-    // Subscribe to Finnhub WS
+    if (free) {
+      socket.join(delayedRoom(symbol))
+      this.ensureDelayedTimer(symbol)
+      socket.emit(SocketEvent.PlanRestricted, {
+        feature: 'realtime_quotes',
+        symbol,
+      })
+    } else {
+      socket.join(symbol)
+    }
+
+    // Subscribe to Finnhub WS — shared upstream feed backs both the live and
+    // delayed rooms for this symbol.
     finnhubService.subscribe(symbol)
 
     // Send initial snapshot quote
@@ -93,7 +161,44 @@ export class SocketServer {
     }
 
     socket.emit(SocketEvent.Subscribed, { symbol })
-    logger.info(`Socket ${socket.id} joined room ${symbol}`)
+    logger.info(
+      `Socket ${socket.id} joined room ${free ? delayedRoom(symbol) : symbol}`,
+    )
+  }
+
+  /** Starts the ~15-minute delayed-quote broadcaster for a symbol, once per symbol. */
+  private ensureDelayedTimer(symbol: string): void {
+    if (this.delayedTimers.has(symbol)) return
+    const timer = setInterval(() => {
+      const cached = priceCache.get(symbol)
+      if (!cached) return
+      this.io.to(delayedRoom(symbol)).emit(SocketEvent.Trade, {
+        s: symbol,
+        p: cached.price,
+        v: cached.volume,
+        delayed: true,
+      })
+    }, DELAYED_REFRESH_MS)
+    timer.unref?.()
+    this.delayedTimers.set(symbol, timer)
+  }
+
+  private clearDelayedTimerIfEmpty(symbol: string): void {
+    const room = this.io.sockets.adapter.rooms.get(delayedRoom(symbol))
+    if (room && room.size > 0) return
+    const timer = this.delayedTimers.get(symbol)
+    if (timer) {
+      clearInterval(timer)
+      this.delayedTimers.delete(symbol)
+    }
+  }
+
+  /** Combined live + delayed subscriber count — the real signal for whether Finnhub still needs this symbol. */
+  private totalSubscriberCount(symbol: string): number {
+    const live = this.io.sockets.adapter.rooms.get(symbol)?.size ?? 0
+    const delayed =
+      this.io.sockets.adapter.rooms.get(delayedRoom(symbol))?.size ?? 0
+    return live + delayed
   }
 
   private handleUnsubscribe(socket: Socket, payload: unknown): void {
@@ -108,12 +213,12 @@ export class SocketServer {
 
     const symbol = parsed.data.symbol.toUpperCase()
     socket.leave(symbol)
+    socket.leave(delayedRoom(symbol))
     socket.emit(SocketEvent.Unsubscribed, { symbol })
     logger.info(`Socket ${socket.id} left room ${symbol}`)
 
-    const room = this.io.sockets.adapter.rooms.get(symbol)
-    const roomSize = room ? room.size : 0
-    if (roomSize === 0) {
+    this.clearDelayedTimerIfEmpty(symbol)
+    if (this.totalSubscriberCount(symbol) === 0) {
       finnhubService.unsubscribe(symbol)
       logger.info(`Unsubscribed ${symbol} from Finnhub (no active sockets)`)
     }
@@ -122,16 +227,22 @@ export class SocketServer {
   private handleDisconnecting(socket: Socket): void {
     const rooms = Array.from(socket.rooms)
     for (const room of rooms) {
-      if (room !== socket.id && !room.startsWith('user:')) {
-        const roomSet = this.io.sockets.adapter.rooms.get(room)
-        const roomSize = roomSet ? roomSet.size : 0
-        // If this socket is the only one left in the room, size will be 1
-        if (roomSize <= 1) {
-          finnhubService.unsubscribe(room)
-          logger.info(
-            `Unsubscribed ${room} from Finnhub (no active sockets after disconnect)`,
-          )
-        }
+      if (room === socket.id || room.startsWith('user:')) continue
+
+      const symbol = room.endsWith(DELAYED_ROOM_SUFFIX)
+        ? room.slice(0, -DELAYED_ROOM_SUFFIX.length)
+        : room
+      const roomSet = this.io.sockets.adapter.rooms.get(room)
+      const roomSize = roomSet ? roomSet.size : 0
+      // If this socket is the only one left in the room, size will be 1
+      if (roomSize > 1) continue
+
+      this.clearDelayedTimerIfEmpty(symbol)
+      if (this.totalSubscriberCount(symbol) <= 1) {
+        finnhubService.unsubscribe(symbol)
+        logger.info(
+          `Unsubscribed ${symbol} from Finnhub (no active sockets after disconnect)`,
+        )
       }
     }
   }

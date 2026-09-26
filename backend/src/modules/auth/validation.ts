@@ -55,6 +55,15 @@ export const phoneNumberValidator = z.object({
     ),
 })
 
+// ─── Self-Serve Plan Selection ──────────────────────────────────────────────
+
+export const setPlanValidator = z.object({
+  plan: z.enum(['FREE', 'PRO'], {
+    required_error: 'Plan is required',
+    invalid_type_error: 'Plan must be FREE or PRO',
+  }),
+})
+
 export const otpCodeValidator = z.object({
   code: z
     .string({

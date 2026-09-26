@@ -143,8 +143,8 @@ async function main(): Promise<void> {
 
   await prisma.rbacConfiguration.upsert({
     where: { id: 'system' },
-    update: {},
-    create: { id: 'system', defaultRoleId: analyst.id },
+    update: { defaultRoleId: portfolioManager.id },
+    create: { id: 'system', defaultRoleId: portfolioManager.id },
   })
 
   process.stdout.write(

@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { upload } from '../../shared/middlewares'
-import { Action, rbacMiddleware, Resource } from '../access-control'
+import {
+  gate,
+  noTierRestriction,
+  requirePlan,
+  requireSinglePortfolioForFree,
+  requireWatchlistMembershipOrPro,
+} from '../../shared/middlewares/plan-gating'
+import { Action, Resource } from '../access-control'
 import { authTokenMiddleware as authenticate } from '../auth'
 import * as DecisionController from './controller'
 
@@ -11,64 +18,64 @@ router.use(authenticate)
 // ─── Market Intelligence ─────────────────────────────────────────────────────
 router.get(
   '/market/decision/:symbol',
-  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  gate(Resource.CORE_APP, Action.READ, requireWatchlistMembershipOrPro),
   DecisionController.getMarketBasedTradeDecision,
 )
 
 router.get(
   '/market/radar',
-  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  gate(Resource.CORE_APP, Action.READ, requireWatchlistMembershipOrPro),
   DecisionController.getOpportunityRadarHandler,
 )
 
 router.post(
   '/market/position-size',
-  rbacMiddleware(Resource.CORE_APP, Action.WRITE),
+  gate(Resource.CORE_APP, Action.WRITE, requireWatchlistMembershipOrPro),
   DecisionController.calculatePositionSizeHandler,
 )
 
 // ─── Portfolio Analysis ──────────────────────────────────────────────────────
 router.post(
   '/upload-portfolio',
-  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
+  gate(Resource.PORTFOLIO, Action.WRITE, requireSinglePortfolioForFree),
   upload.single('portfolio'),
   DecisionController.uploadTraderPortfolio,
 )
 
 router.post(
   '/portfolio/decision',
-  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
+  gate(Resource.PORTFOLIO, Action.WRITE, noTierRestriction),
   DecisionController.getPortfolioBasedTradeDecision,
 )
 
 router.post(
   '/portfolio/risk-metrics',
-  rbacMiddleware(Resource.PORTFOLIO, Action.READ),
+  gate(Resource.PORTFOLIO, Action.READ, requirePlan('PRO')),
   DecisionController.getPortfolioRiskMetricsHandler,
 )
 
 router.get(
   '/portfolio/latest',
-  rbacMiddleware(Resource.PORTFOLIO, Action.READ),
+  gate(Resource.PORTFOLIO, Action.READ, noTierRestriction),
   DecisionController.getLatestPortfolio,
 )
 
 router.delete(
   '/portfolio',
-  rbacMiddleware(Resource.PORTFOLIO, Action.WRITE),
+  gate(Resource.PORTFOLIO, Action.WRITE, noTierRestriction),
   DecisionController.removePortfolios,
 )
 
 // ─── PDF Exports ─────────────────────────────────────────────────────────────
 router.post(
   '/trade-plan/pdf',
-  rbacMiddleware(Resource.CORE_APP, Action.READ),
+  gate(Resource.CORE_APP, Action.READ, requirePlan('PRO')),
   DecisionController.exportTradePlanPdf,
 )
 
 router.post(
   '/portfolio/pdf',
-  rbacMiddleware(Resource.PORTFOLIO, Action.READ),
+  gate(Resource.PORTFOLIO, Action.READ, requirePlan('PRO')),
   DecisionController.exportPortfolioPdf,
 )
 

@@ -1,6 +1,7 @@
 import type { Trade } from "@/modules/markets/types";
 import { io, Socket } from "socket.io-client";
 import { API_URL } from "../config";
+import { getAccessToken } from "./token";
 import { SocketEvent } from "./socket-events";
 import type { SocketListener as Listener } from "../types/socket";
 
@@ -41,6 +42,7 @@ class SocketManager {
     this.socket = io(this.url, {
       transports: ["websocket"],
       reconnection: false,
+      auth: { token: getAccessToken() },
     });
 
     this.socket.on("connect", () => {
@@ -63,6 +65,7 @@ class SocketManager {
     this.socket.on(SocketEvent.Subscribed, (payload: any) => this.emitLocal(SocketEvent.Subscribed, payload));
     this.socket.on(SocketEvent.Unsubscribed, (payload: any) => this.emitLocal(SocketEvent.Unsubscribed, payload));
     this.socket.on(SocketEvent.FinnhubError, (payload: any) => this.emitLocal(SocketEvent.FinnhubError, payload));
+    this.socket.on(SocketEvent.PlanRestricted, (payload: any) => this.emitLocal(SocketEvent.PlanRestricted, payload));
 
     this.socket.on("connect_error", (err: any) => {
       this.connected = false;

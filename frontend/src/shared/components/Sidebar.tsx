@@ -16,6 +16,7 @@ import {
   FiMessageSquare,
   FiRadio,
   FiSettings,
+  FiStar,
   FiShield,
   FiTarget,
   FiTrendingUp,
@@ -289,7 +290,7 @@ export const Sidebar: React.FC = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
-  const { user, can, logout } = useAuth();
+  const { user, can, logout, pricingTiersEnabled } = useAuth();
 
   const canReadCoreApp = can("CORE_APP", "canRead");
   const canReadPortfolio = can("PORTFOLIO", "canRead");
@@ -327,6 +328,9 @@ export const Sidebar: React.FC = () => {
 
   const navItemsSecondary = [
     { to: "/news", icon: <FiFileText />, label: "News" },
+    ...(pricingTiersEnabled
+      ? [{ to: "/plans", icon: <FiStar />, label: "Plans" }]
+      : []),
     { to: "/settings", icon: <FiSettings />, label: "Settings" },
   ];
 

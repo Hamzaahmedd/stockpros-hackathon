@@ -46,6 +46,7 @@ export const developmentConfig = {
     enableAiRecomputeCron: true,
     enableSwaggerDocs: true,
     enablePhoneVerification: false,
+    pricingTiersEnabled: false,
   },
   sendpk: {
     // Explicit, visible flag rather than inferring mock mode from a missing

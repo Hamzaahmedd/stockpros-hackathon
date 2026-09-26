@@ -18,6 +18,7 @@ model User {
   dailyDigestEnabled           Boolean    @default(true) @map("daily_digest_enabled")
   phoneNumber                  String?    @unique @map("phone_number")
   phoneVerifiedAt              DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
+  plan                         PlanTier   @default(FREE)
   deletedAt                    DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletionScheduledAt          DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
   createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -470,4 +471,9 @@ enum AiConfidence {
   LOW
   MEDIUM
   HIGH
+}
+
+enum PlanTier {
+  FREE
+  PRO
 }

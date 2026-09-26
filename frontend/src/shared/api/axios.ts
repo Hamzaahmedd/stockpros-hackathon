@@ -2,6 +2,9 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/utils/token";
 import { API_URL } from "../config";
+import { toast } from "react-toastify";
+
+const PLAN_GATED_ERROR_CODES = new Set(["QuotaExceededError", "PlanRequiredError"]);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -41,6 +44,15 @@ api.interceptors.response.use(
     // 1) If /me returns 401 and user has no accessToken, do NOT refresh
     if (url.includes("api/v1/auth/me")) {
       return Promise.reject(err);
+    }
+
+    // Surface plan/quota gating as an upsell toast pointing at /plans, for any
+    // request that hits a Free-tier limit (forecast quota, watchlist cap,
+    // decision-support watchlist-only restriction, Pro-only feature lock).
+    const errorCode = (err.response?.data as any)?.errorCode;
+    if (errorCode && PLAN_GATED_ERROR_CODES.has(errorCode)) {
+      const message = (err.response?.data as any)?.message || "This requires a Pro plan";
+      toast.warn(`${message} — visit Plans to upgrade to Pro`);
     }
 
     // 2) Only refresh for protected APIs

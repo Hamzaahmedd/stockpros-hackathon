@@ -1,3 +1,5 @@
+export type PlanTier = "FREE" | "PRO";
+
 export type User = {
   id?: string;
   userId: string;
@@ -6,6 +8,7 @@ export type User = {
   roles?: any[];
   userRoles?: any[];
   phoneVerifiedAt?: string | null;
+  plan?: PlanTier;
 } | null;
 
 export type ScreenPermissions = {
@@ -27,6 +30,7 @@ export type AuthContextValue = {
   user: User;
   screenPermissions: Record<string, ScreenPermissions>;
   loading: boolean;
+  pricingTiersEnabled: boolean;
   sendMagicLink: (email: string) => Promise<boolean>;
   login: (email: string) => Promise<boolean>;
   register: (payload: { email: string }) => Promise<void>;

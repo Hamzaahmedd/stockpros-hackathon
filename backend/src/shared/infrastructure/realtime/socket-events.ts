@@ -11,5 +11,6 @@ export const SocketEvent = {
   Unsubscribed: 'unsubscribed',
   Error: 'error',
   Notification: 'notification',
+  PlanRestricted: 'plan_restricted',
 } as const
 export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent]

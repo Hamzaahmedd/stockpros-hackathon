@@ -1,6 +1,6 @@
 // Consolidated auth service
 import config from '@/config'
-import { Prisma, UserStatus } from '@prisma/client'
+import { PlanTier, Prisma, UserStatus } from '@prisma/client'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import crypto from 'node:crypto'
@@ -333,6 +333,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
       email: true,
       displayName: true,
       phoneVerifiedAt: true,
+      plan: true,
       userRoles: {
         include: {
           role: {
@@ -353,7 +354,20 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
     displayName: user.displayName,
     phoneVerifiedAt: user.phoneVerifiedAt,
     userRoles: user.userRoles,
+    plan: user.plan,
   }
+}
+
+export async function setMyPlan(
+  userId: string,
+  plan: PlanTier,
+): Promise<PlanTier> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { plan },
+    select: { plan: true },
+  })
+  return user.plan
 }
 
 // ─── Passwordless Magic Link Methods ───────────────────────────────────────────

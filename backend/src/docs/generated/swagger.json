@@ -1511,13 +1511,23 @@
 							"type": "object"
 						},
 						"type": "array"
+					},
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO"
+						],
+						"description": "Subscription tier — self-serve, no payment processor yet.",
+						"example": "FREE"
 					}
 				},
 				"required": [
 					"userId",
 					"email",
 					"displayName",
-					"userRoles"
+					"userRoles",
+					"plan"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1650,6 +1660,59 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetPlanResponse": {
+				"properties": {
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO"
+						],
+						"example": "PRO"
+					}
+				},
+				"required": [
+					"plan"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SetPlanResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/SetPlanResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetPlanRequest": {
+				"properties": {
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO"
+						],
+						"example": "PRO"
+					}
+				},
+				"required": [
+					"plan"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -4031,6 +4094,53 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/auth/plan": {
+			"post": {
+				"operationId": "SetPlan",
+				"responses": {
+					"200": {
+						"description": "Plan updated successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SetPlanResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid plan value",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Self-serve plan change — set the authenticated user's own subscription tier.\nOnly registered/enforced when `pricingTiersEnabled` is on for this environment;\nthere is no payment step yet, this directly assigns the plan.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetPlanRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/auth/account": {

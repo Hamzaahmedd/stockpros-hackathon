@@ -23,6 +23,18 @@ export interface UserProfile {
   /** @example "Alex Morgan" */
   displayName: string | null
   userRoles: Array<{ role: { name: string } }>
+  /** Subscription tier — self-serve, no payment processor yet. @example "FREE" */
+  plan: 'FREE' | 'PRO'
+}
+
+export interface SetPlanRequest {
+  /** @example "PRO" */
+  plan: 'FREE' | 'PRO'
+}
+
+export interface SetPlanResponse {
+  /** @example "PRO" */
+  plan: 'FREE' | 'PRO'
 }
 
 export interface MagicLinkRequest {
@@ -144,6 +156,21 @@ export class AuthSwaggerController extends Controller {
   @SuccessResponse(200, 'User profile returned')
   @Response<ApiErrorResponse>(401, 'Unauthorized')
   async getMe(): Promise<ApiResponse<UserProfile>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Self-serve plan change — set the authenticated user's own subscription tier.
+   * Only registered/enforced when `pricingTiersEnabled` is on for this environment;
+   * there is no payment step yet, this directly assigns the plan.
+   */
+  @Post('plan')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Plan updated successfully')
+  @Response<ApiErrorResponse>(400, 'Invalid plan value')
+  async setPlan(
+    @Body() body: SetPlanRequest,
+  ): Promise<ApiResponse<SetPlanResponse>> {
     throw new Error('tsoa spec-only')
   }
 

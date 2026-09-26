@@ -14,6 +14,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User>(null);
   const [screenPermissions, setScreenPermissions] = useState<Record<string, ScreenPermissions>>({});
   const [loading, setLoading] = useState(true);
+  const [pricingTiersEnabled, setPricingTiersEnabled] = useState(false);
 
   // ------------------------
   // /me
@@ -37,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) {
       setUser(null);
       setScreenPermissions({});
+      setPricingTiersEnabled(false);
       setLoading(false);
       return null;
     }
@@ -50,10 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fetchedUser = meRes.data?.user || meRes.data;
       setUser(fetchedUser);
       setScreenPermissions(screensRes.data?.data || screensRes.data || {});
+      setPricingTiersEnabled(Boolean(meRes.data?.pricingTiersEnabled));
       return fetchedUser;
     } catch {
       setUser(null);
       setScreenPermissions({});
+      setPricingTiersEnabled(false);
       return null;
     } finally {
       setLoading(false);
@@ -122,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       screenPermissions,
       loading,
+      pricingTiersEnabled,
       sendMagicLink,
       login,
       register,
@@ -130,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshMe: fetchMe,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, screenPermissions, loading, can, fetchMe]
+    [user, screenPermissions, loading, pricingTiersEnabled, can, fetchMe]
   );
 
   return (

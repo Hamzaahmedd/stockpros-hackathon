@@ -45,6 +45,7 @@ export const testConfig = {
     enableAiRecomputeCron: false,
     enableSwaggerDocs: false,
     enablePhoneVerification: false,
+    pricingTiersEnabled: false,
   },
   sendpk: {
     mockProvider: true,
