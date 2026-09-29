@@ -30,6 +30,10 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          # SonarCloud's new-code analysis needs full history to diff against
+          # the base branch, not just the latest commit.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -56,6 +60,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Runs from the repo root (sonar-project.properties lives there) even
+      # though this job's other steps default to `backend/` — `uses:` steps
+      # aren't affected by `defaults.run.working-directory`. Only evaluates
+      # the New Code condition (coverage/duplication/rating on changed lines),
+      # not the existing issue backlog — see sonar-project.properties for
+      # what's actually scanned.
+      #
+      # Skipped for PRs from forks, which don't have access to the
+      # SONAR_TOKEN secret and would otherwise fail this step outright.
+      - name: SonarCloud Scan
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   frontend:
     runs-on: ubuntu-latest

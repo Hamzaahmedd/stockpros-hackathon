@@ -5,10 +5,12 @@
  * numeric output. No internal Intl.DateTimeFormat calls are mocked.
  */
 import {
+  formatPakistanDateTime24,
   formatPakistanTimestamp,
   getPakistanGreeting,
   getPakistanHour,
   getPakistanMonth,
+  getPakistanYear,
 } from '../../shared/utils/timezone'
 
 describe('getPakistanHour', () => {
@@ -59,20 +61,28 @@ describe('getPakistanGreeting', () => {
       'Good Evening',
     )
   })
+
+  it('defaults to the current time when no date is given', () => {
+    expect(['Good Morning', 'Good Afternoon', 'Good Evening']).toContain(
+      getPakistanGreeting(),
+    )
+  })
 })
 
 describe('formatPakistanTimestamp', () => {
   it('appends PKT and never GMT+5', () => {
-    const formatted = formatPakistanTimestamp(
-      new Date('2026-09-04T12:30:00Z'),
-    )
+    const formatted = formatPakistanTimestamp(new Date('2026-09-04T12:30:00Z'))
     expect(formatted).toMatch(/PKT$/)
     expect(formatted).not.toContain('GMT')
+  })
+
+  it('defaults to the current time when no date is given', () => {
+    expect(formatPakistanTimestamp()).toMatch(/PKT$/)
   })
 })
 
 describe('getPakistanMonth', () => {
-  it('returns a 0-indexed month number in the range [0, 11]', () => {
+  it('defaults to the current time when no date is given, returning a 0-indexed month number in the range [0, 11]', () => {
     const month = getPakistanMonth()
     expect(typeof month).toBe('number')
     expect(month).toBeGreaterThanOrEqual(0)
@@ -97,5 +107,34 @@ describe('getPakistanMonth', () => {
   it('returns 5 (June) for a June date', () => {
     const jun = new Date('2024-06-01T10:00:00Z')
     expect(getPakistanMonth(jun)).toBe(5)
+  })
+})
+
+describe('getPakistanYear', () => {
+  it('returns the PKT calendar year', () => {
+    expect(getPakistanYear(new Date('2024-06-01T10:00:00Z'))).toBe(2024)
+  })
+
+  it('rolls over to the next year when UTC is still in the previous year', () => {
+    // 2023-12-31T20:00:00Z → 2024-01-01T01:00 PKT
+    expect(getPakistanYear(new Date('2023-12-31T20:00:00Z'))).toBe(2024)
+  })
+
+  it('defaults to the current time when no date is given', () => {
+    expect(getPakistanYear()).toBeGreaterThanOrEqual(2024)
+  })
+})
+
+describe('formatPakistanDateTime24', () => {
+  it('formats as YYYY-MM-DD HH:mm:ss in PKT on a 24h clock', () => {
+    // 2024-01-01T20:30:15Z → 2024-01-02T01:30:15 PKT
+    const result = formatPakistanDateTime24(new Date('2024-01-01T20:30:15Z'))
+    expect(result).toBe('2024-01-02 01:30:15')
+  })
+
+  it('defaults to the current time when no date is given', () => {
+    expect(formatPakistanDateTime24()).toMatch(
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+    )
   })
 })

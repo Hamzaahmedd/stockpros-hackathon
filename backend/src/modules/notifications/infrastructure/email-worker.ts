@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import { transporter, getLogoSrc } from '../../../shared/infrastructure/config/email'
+import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
 import { logger } from '../../../shared/infrastructure/logger'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
 import type { EmailJobPayload } from '../types'
@@ -48,12 +49,16 @@ export const startEmailWorker = (): void => {
     async (job) => {
       const { to, title, body, symbol } = job.data
 
-      await transporter.sendMail({
-        to,
-        subject: title,
-        text: body,
-        html: buildAlertEmail(title, body, symbol, getLogoSrc()),
-      })
+      try {
+        await transporter.sendMail({
+          to,
+          subject: title,
+          text: body,
+          html: buildAlertEmail(title, body, symbol, getLogoSrc()),
+        })
+      } catch (err) {
+        rethrowEmailError(err, to)
+      }
 
       logger.info(`[EmailWorker] Sent "${title}" to ${to}`)
     },

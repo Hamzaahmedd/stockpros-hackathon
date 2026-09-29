@@ -203,7 +203,11 @@ export const getMarketStatus = async () => {
   })
   const marketStatus = data.isOpen ? 'OPEN' : 'CLOSED'
 
-  await setCache(CACHE_KEY, marketStatus, CACHE_TTL.DECISION_SUPPORT.MARKET_STATUS)
+  await setCache(
+    CACHE_KEY,
+    marketStatus,
+    CACHE_TTL.DECISION_SUPPORT.MARKET_STATUS,
+  )
   return marketStatus
 }
 
@@ -330,7 +334,11 @@ const average = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
 
 export const parseAnalystConsensus = (
   data: any[],
-): { rating: AnalystRating; confidencePercent: number; sourceCount: number } => {
+): {
+  rating: AnalystRating
+  confidencePercent: number
+  sourceCount: number
+} => {
   if (!data || data.length === 0) {
     return { rating: AnalystRating.Hold, confidencePercent: 0, sourceCount: 0 }
   }
@@ -450,10 +458,16 @@ const determineRiskFlags = (
   if (rsi >= 70) riskFlags.push('OVERBOUGHT_CONDITION')
   else if (rsi <= 30) riskFlags.push('OVERSOLD_OPPORTUNITY')
 
-  if (analystRating === AnalystRating.StrongBuy && sentimentTrend === SentimentTrend.Down)
+  if (
+    analystRating === AnalystRating.StrongBuy &&
+    sentimentTrend === SentimentTrend.Down
+  )
     riskFlags.push('SENTIMENT_DIVERGENCE_WARNING')
 
-  if (analystRating === AnalystRating.Sell && sentimentTrend === SentimentTrend.Up)
+  if (
+    analystRating === AnalystRating.Sell &&
+    sentimentTrend === SentimentTrend.Up
+  )
     riskFlags.push('CONTRA_RECOVERY_DETECTED')
 
   if (riskFlags.length === 0) {
@@ -472,7 +486,8 @@ const determineRecommendation = (
   if (
     rsi < 65 &&
     sentimentTrend === SentimentTrend.Up &&
-    (analystRating === AnalystRating.Buy || analystRating === AnalystRating.StrongBuy)
+    (analystRating === AnalystRating.Buy ||
+      analystRating === AnalystRating.StrongBuy)
   ) {
     return MarketRecommendation.Buy
   }
@@ -552,7 +567,10 @@ export const generateReasoning = ({
 }) => {
   const details: string[] = []
 
-  if (analystRating === AnalystRating.StrongBuy || analystRating === AnalystRating.Buy) {
+  if (
+    analystRating === AnalystRating.StrongBuy ||
+    analystRating === AnalystRating.Buy
+  ) {
     details.push(
       `Analyst consensus remains ${analystRating.replace('_', ' ').toLowerCase()}`,
     )
@@ -712,6 +730,16 @@ export const uploadPortfolio = async (
     rows = parse(buffer.toString(), {
       columns: true,
       skip_empty_lines: true,
+      // csv-parse returns every field as a string by default, but
+      // PortfolioRowValidator requires quantity/avg_entry_price as numbers —
+      // without this, every CSV upload fails validation. Scoped to just
+      // these two columns (rather than a blanket `cast: true`) so a
+      // numeric-looking symbol (e.g. a ticker like "0700") is never
+      // accidentally coerced to a number.
+      cast: (value, context) =>
+        context.column === 'quantity' || context.column === 'avg_entry_price'
+          ? Number(value)
+          : value,
     })
   } else {
     const workbook = xlsx.read(buffer)

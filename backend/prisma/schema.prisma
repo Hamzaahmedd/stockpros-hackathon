@@ -29,7 +29,6 @@ model User {
   portfolios        Portfolio[]
   assignedUserRoles UserRole[]       @relation("AssignedRoles")
   userRoles         UserRole[]       @relation("UserRoles")
-  userPermissions   UserPermission[]
 
   // ── Watchlist feature ──────────────────────────────────────────────────────
   watchlistItems    Watchlist[]
@@ -186,7 +185,6 @@ model Permission {
   updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   resource        Resource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   rolePermissions RolePermission[]
-  userPermissions UserPermission[]
 
   @@unique([action, resourceId])
   @@index([action], map: "idx_permissions_action")
@@ -208,20 +206,6 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-model UserPermission {
-  id           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId       String     @map("user_id") @db.Uuid
-  permissionId String     @map("permission_id") @db.Uuid
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, permissionId])
-  @@index([userId], map: "idx_userpermissions_userid")
-  @@index([permissionId], map: "idx_userpermissions_permissionid")
-  @@map("user_permissions")
-}
 
 // ─── Magic Link Feature ──────────────────────────────────────────────────────
 

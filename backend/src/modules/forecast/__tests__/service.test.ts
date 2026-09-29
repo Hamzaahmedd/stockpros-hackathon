@@ -1,272 +1,347 @@
-/**
- * Unit tests for the forecast calculation helpers.
- *
- * The ATR bull/bear band arithmetic and target-range computation live inside
- * the `getForecast` async function, so we extract the same pure logic into
- * inline helpers tested here. If those calculations are ever refactored into
- * exported pure functions, these tests become direct imports — no change in
- * assertions required (black-box).
- *
- * Strategy: We do NOT mock the ML client or technicals service.
- * Instead, we test the arithmetic invariants that any correct implementation
- * must satisfy, using representative numerical fixtures.
- */
+jest.mock('../../../shared/infrastructure/clients/ml-client', () => ({
+  __esModule: true,
+  default: { get: jest.fn() },
+}))
 
-// ── ATR Band Arithmetic ───────────────────────────────────────────────────────
+jest.mock('../../watchlist', () => ({
+  getTechnicalBaselines: jest.fn(),
+}))
 
-const ATR_MULT = 1.5
+jest.mock('../earnings-checker', () => ({
+  getEarningsWithinWindow: jest.fn(),
+}))
 
-/**
- * Pure helper mirroring the in-service bull/bear calculation logic.
- * This function represents the contract: given base price, atr, and optional
- * resistance/support bounds, return clamped bull and bear levels.
- */
-function computePointBands(
-  base: number,
-  atr: number,
-  resistance: number | null,
-  support: number,
-): { bull: number; bear: number } {
-  let bull = base + ATR_MULT * atr
-  let bear = base - ATR_MULT * atr
+import mlClient from '../../../shared/infrastructure/clients/ml-client'
+import { getTechnicalBaselines } from '../../watchlist'
+import { getEarningsWithinWindow } from '../earnings-checker'
+import { getForecast } from '../service'
 
-  if (resistance !== null && resistance < bull && resistance >= base) {
-    bull = resistance
-  }
-  if (support > bear && support <= base) {
-    bear = support
-  }
+const mockMlGet = (mlClient as unknown as { get: jest.Mock }).get
 
-  return {
-    bull: parseFloat(bull.toFixed(2)),
-    bear: parseFloat(bear.toFixed(2)),
-  }
+const baseTechnicals = {
+  atr: 2,
+  ema: 100,
+  swingLow: null as number | null,
+  resistance: null as number | null,
+  currentPrice: undefined as number | undefined,
 }
 
-/**
- * Pure helper for summary card confidence calculation (mirrors in-service logic).
- */
-function computeForecastConfidence(
-  ema: number,
-  swingLow: number | null,
-): 'HIGH' | 'MEDIUM' | 'LOW' {
-  if (swingLow === null) return 'LOW'
-  const divergence = Math.abs(ema - swingLow) / ema
-  return divergence <= 0.01 ? 'HIGH' : 'MEDIUM'
-}
+const predictions = (prices: number[]) =>
+  prices.map((price, i) => ({ date: `2024-01-0${i + 1}`, price }))
 
-/**
- * Pure helper for target range summary bull/bear (mirrors in-service logic).
- */
-function computeTargetRange(
-  periodHigh: number,
-  periodLow: number,
-  terminalPrice: number,
-  atr: number,
-  resistance: number | null,
-  swingLow: number | null,
-  ema: number,
-) {
-  const support = swingLow !== null ? Math.max(ema, swingLow) : ema
+beforeEach(() => {
+  jest.clearAllMocks()
+  ;(getEarningsWithinWindow as jest.Mock).mockResolvedValue(null)
+  ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({ ...baseTechnicals })
+})
 
-  let summaryBull = periodHigh + ATR_MULT * atr
-  if (
-    resistance !== null &&
-    resistance < summaryBull &&
-    resistance >= periodHigh
-  ) {
-    summaryBull = resistance
-  }
-
-  let summaryBear = periodLow - ATR_MULT * atr
-  if (support > summaryBear && support <= periodLow) {
-    summaryBear = support
-  }
-
-  return {
-    bull: parseFloat(summaryBull.toFixed(2)),
-    base: parseFloat(terminalPrice.toFixed(2)),
-    bear: parseFloat(summaryBear.toFixed(2)),
-    atr: parseFloat(atr.toFixed(2)),
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('ATR band arithmetic — computePointBands', () => {
-  const atr = 2.0
-  const base = 100
-
-  it('expands bull by ATR_MULT × atr above base when no resistance', () => {
-    const { bull } = computePointBands(base, atr, null, 0)
-    expect(bull).toBeCloseTo(base + ATR_MULT * atr, 2)
+describe('getForecast — error handling', () => {
+  it('wraps an ML client failure in a generic, symbol-scoped error', async () => {
+    mockMlGet.mockRejectedValue(new Error('ml service down'))
+    await expect(getForecast('AAPL', '5d')).rejects.toThrow(
+      'Failed to fetch and process forecast for AAPL',
+    )
   })
 
-  it('contracts bear by ATR_MULT × atr below base when no support', () => {
-    const { bear } = computePointBands(base, atr, null, 0)
-    expect(bear).toBeCloseTo(base - ATR_MULT * atr, 2)
+  it('wraps a non-Error rejection from the ML client the same way', async () => {
+    mockMlGet.mockRejectedValue('ml service down') // rejected with a plain string, not an Error
+    await expect(getForecast('AAPL', '5d')).rejects.toThrow(
+      'Failed to fetch and process forecast for AAPL',
+    )
   })
 
-  it('clamps bull to resistance when resistance < bull AND resistance >= base', () => {
-    // Unclamped bull = 103; resistance = 101 (between base and unclamped bull)
-    const { bull } = computePointBands(base, atr, 101, 0)
-    expect(bull).toBe(101)
+  it('logs a non-Error rejection from the baselines lookup without crashing the request', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: [] },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockRejectedValue('baselines down') // not an Error instance
+    await expect(getForecast('AAPL', '5d')).resolves.toBeDefined()
   })
 
-  it('does NOT clamp bull when resistance >= unclamped bull', () => {
-    // Resistance above unclamped bull → no clamping
-    const { bull } = computePointBands(base, atr, 110, 0)
-    expect(bull).toBeCloseTo(base + ATR_MULT * atr, 2)
-  })
-
-  it('does NOT clamp bull when resistance < base', () => {
-    // Resistance below base → invalid for bull clamp
-    const { bull } = computePointBands(base, atr, 95, 0)
-    expect(bull).toBeCloseTo(base + ATR_MULT * atr, 2)
-  })
-
-  it('clamps bear to support when support > bear AND support <= base', () => {
-    // Unclamped bear = 97; support = 98 (between unclamped bear and base)
-    const { bear } = computePointBands(base, atr, null, 98)
-    expect(bear).toBe(98)
-  })
-
-  it('does NOT clamp bear when support <= unclamped bear', () => {
-    // Support is lower than the unclamped bear → no clamping
-    const { bear } = computePointBands(base, atr, null, 95)
-    expect(bear).toBeCloseTo(base - ATR_MULT * atr, 2)
-  })
-
-  it('does NOT clamp bear when support > base', () => {
-    // Support above base → invalid for bear clamp
-    const { bear } = computePointBands(base, atr, null, 102)
-    expect(bear).toBeCloseTo(base - ATR_MULT * atr, 2)
-  })
-
-  it('output values are formatted to 2 decimal places', () => {
-    const { bull, bear } = computePointBands(100.333, 1.999, null, 0)
-    expect(String(bull)).toMatch(/^\d+\.\d{1,2}$/)
-    expect(String(bear)).toMatch(/^\d+\.\d{1,2}$/)
-  })
-
-  it('bull is always > bear for positive atr > 0', () => {
-    const { bull, bear } = computePointBands(100, 3, null, 0)
-    expect(bull).toBeGreaterThan(bear)
+  it('still fails the whole request if the earnings-window lookup itself rejects (not just returns null)', async () => {
+    mockMlGet.mockResolvedValue({ data: { predictions: [] } })
+    ;(getEarningsWithinWindow as jest.Mock).mockRejectedValue(
+      new Error('finnhub down'),
+    )
+    await expect(getForecast('AAPL', '5d')).rejects.toThrow(
+      'Failed to fetch and process forecast for AAPL',
+    )
   })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
+describe('getForecast — degraded inputs', () => {
+  it('returns raw ML data with no enhancement when technical baselines fail to load', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 101]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockRejectedValue(
+      new Error('baselines down'),
+    )
 
-describe('Forecast confidence — computeForecastConfidence', () => {
-  it('returns LOW when swingLow is null (no historical swing data)', () => {
-    expect(computeForecastConfidence(100, null)).toBe('LOW')
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange).toBeUndefined()
+    expect(result.directionalBias).toBeUndefined()
+    expect(result.predictions).toEqual([])
   })
 
-  it('returns HIGH when EMA and swingLow diverge by ≤1%', () => {
-    // |100 − 99.5| / 100 = 0.005 → HIGH
-    expect(computeForecastConfidence(100, 99.5)).toBe('HIGH')
+  it('returns no enhancement when the ML response has no predictions', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: [] },
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange).toBeUndefined()
+    expect(result.predictions).toEqual([])
   })
 
-  it('returns MEDIUM when EMA and swingLow diverge by >1%', () => {
-    // |100 − 97| / 100 = 0.03 → MEDIUM
-    expect(computeForecastConfidence(100, 97)).toBe('MEDIUM')
-  })
-
-  it('exact 1% divergence returns HIGH', () => {
-    // |100 − 99| / 100 = 0.01 → HIGH
-    expect(computeForecastConfidence(100, 99)).toBe('HIGH')
+  it('treats a response with no predictions field at all the same as an empty array', async () => {
+    mockMlGet.mockResolvedValue({ data: { symbol: 'AAPL', period: '5d' } })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.predictions).toEqual([])
   })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
+describe('getForecast — earnings overlay', () => {
+  it('attaches an earnings overlay and widens the target band when earnings fall within the window', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 101, 102]),
+      },
+    })
+    ;(getEarningsWithinWindow as jest.Mock).mockResolvedValue({
+      earningsDate: '2024-01-10',
+      daysUntilEarnings: 3,
+    })
 
-describe('Target range summary — computeTargetRange', () => {
-  const atr = 2
-  const ema = 98
-  const periodHigh = 105
-  const periodLow = 95
-  const terminal = 103
+    const noEarnings = await (async () => {
+      ;(getEarningsWithinWindow as jest.Mock).mockResolvedValueOnce(null)
+      return getForecast('AAPL', '5d')
+    })()
 
-  it('bull is above periodHigh when resistance is null', () => {
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      atr,
-      null,
-      null,
-      ema,
+    const withEarnings = await getForecast('AAPL', '5d')
+
+    expect(withEarnings.earningsOverlay).toEqual({
+      earningsWarning: true,
+      earningsDate: '2024-01-10',
+      daysUntilEarnings: 3,
+    })
+    // Earnings widen the band (EARNINGS_ATR_MULT=2.5 vs ATR_MULT=1.5), so the
+    // bull target should be further from the period high than without earnings.
+    expect(withEarnings.targetRange!.bull).toBeGreaterThan(
+      noEarnings.targetRange!.bull,
     )
-    expect(range.bull).toBeCloseTo(periodHigh + ATR_MULT * atr, 2)
+    // Earnings always force LOW confidence regardless of technical convergence.
+    expect(withEarnings.targetRange!.confidence).toBe('LOW')
+  })
+})
+
+describe('getForecast — target range confidence', () => {
+  it('reports HIGH confidence when EMA and swing low have converged', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 101]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      swingLow: 99.5, // divergence = 0.5/100 = 0.5% <= 1% threshold... use exact
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.confidence).toBe('HIGH')
   })
 
-  it('bull is clamped to resistance when applicable', () => {
-    const resistance = 106 // between periodHigh (105) and unclamped bull (108)
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      atr,
-      resistance,
-      null,
-      ema,
-    )
-    expect(range.bull).toBe(resistance)
+  it('reports MEDIUM confidence when EMA and swing low have diverged', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 101]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      swingLow: 80, // divergence = 20/100 = 20% > 1% threshold
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.confidence).toBe('MEDIUM')
   })
 
-  it('base is the terminal (last) price', () => {
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      atr,
-      null,
-      null,
-      ema,
-    )
-    expect(range.base).toBe(terminal)
+  it('reports LOW confidence when there is no swing low to compare against', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 101]),
+      },
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.confidence).toBe('LOW')
   })
 
-  it('bear is below periodLow when there is no support above it', () => {
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      atr,
-      null,
-      null,
-      ema,
-    )
-    // support = max(ema=98, swingLow=null→ema=98) = 98; 98 > (95 − 3) = 92 AND 98 <= 95? NO
-    // So bear = 95 - 3 = 92
-    expect(range.bear).toBeCloseTo(periodLow - ATR_MULT * atr, 2)
+  it('clamps the bull target to resistance when resistance sits inside the projected band', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 105]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      resistance: 106, // between periodHigh (105) and the unclamped bull target
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.bull).toBe(106)
   })
 
-  it('bear is clamped to support when support is between unclamped bear and periodLow', () => {
-    // swingLow=93, support=max(98,93)=98; 98 > 92(unclamped) AND 98 <= 95? NO — so no clamp
-    // Use ema=94 so support=max(94,93)=94; 94 > 92 AND 94<=95 → YES
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      atr,
-      null,
-      93,
-      94,
-    )
-    expect(range.bear).toBe(94)
+  it('ignores resistance that sits below the period high', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 105]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      resistance: 50, // below periodHigh, must not clamp
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.bull).not.toBe(50)
   })
 
-  it('atr field echoes the input atr rounded to 2dp', () => {
-    const range = computeTargetRange(
-      periodHigh,
-      periodLow,
-      terminal,
-      2.555,
-      null,
-      null,
-      ema,
-    )
-    expect(range.atr).toBe(2.56)
+  it('clamps the bear target to swing-low-derived support when it sits inside the projected band', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 105]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      swingLow: 99, // support = max(ema, swingLow) = 100, within (summaryBear, periodLow]
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.bear).toBe(100)
+  })
+})
+
+describe('getForecast — ML price field fallback', () => {
+  it('falls back to predicted_close when price is absent from an ML prediction row', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: [
+          { date: '2024-01-01', predicted_close: 100 },
+          { date: '2024-01-02', predicted_close: 101 },
+        ],
+      },
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.targetRange!.base).toBe(101)
+    expect(result.predictions![0].base).toBe(100)
+  })
+})
+
+describe('getForecast — per-point predictions', () => {
+  it('scales the funnel width with the forecast day and clamps points to resistance/support', async () => {
+    mockMlGet.mockResolvedValue({
+      data: {
+        symbol: 'AAPL',
+        period: '5d',
+        predictions: predictions([100, 100, 100, 100, 100]),
+      },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      resistance: 100.5,
+      ema: 100,
+      swingLow: 99,
+    })
+
+    const result = await getForecast('AAPL', '5d')
+    const [day1, , , , day5] = result.predictions!
+
+    // Day 5's unclamped bull would be further out than day 1's, but both
+    // clamp to the same resistance ceiling once it's inside the funnel.
+    expect(day1.bull).toBeLessThanOrEqual(100.5)
+    expect(day5.bull).toBe(100.5)
+    expect(day5.bear).toBe(100) // clamped to support = max(ema, swingLow)
+  })
+})
+
+describe('getForecast — directional bias', () => {
+  it('signals BULLISH/ACCUMULATE when price trades meaningfully above the EMA', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: predictions([110]) },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      currentPrice: 110,
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.directionalBias).toMatchObject({
+      signal: 'BULLISH',
+      posture: 'ACCUMULATE',
+    })
+  })
+
+  it('signals BEARISH/DEFENSIVE when price trades meaningfully below the EMA', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: predictions([90]) },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      currentPrice: 90,
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.directionalBias).toMatchObject({
+      signal: 'BEARISH',
+      posture: 'DEFENSIVE',
+    })
+  })
+
+  it('signals NEUTRAL/HOLD when price is consolidating near the EMA', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: predictions([100.1]) },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      currentPrice: 100.1,
+    })
+    const result = await getForecast('AAPL', '5d')
+    expect(result.directionalBias).toMatchObject({
+      signal: 'NEUTRAL',
+      posture: 'HOLD',
+    })
+  })
+
+  it('falls back to the first prediction price, then EMA, when currentPrice is unavailable', async () => {
+    mockMlGet.mockResolvedValue({
+      data: { symbol: 'AAPL', period: '5d', predictions: predictions([110]) },
+    })
+    ;(getTechnicalBaselines as jest.Mock).mockResolvedValue({
+      ...baseTechnicals,
+      ema: 100,
+      currentPrice: undefined,
+    })
+    const result = await getForecast('AAPL', '5d')
+    // refPrice falls back to basePrices[0] = 110 -> bullish vs ema 100
+    expect(result.directionalBias!.signal).toBe('BULLISH')
   })
 })

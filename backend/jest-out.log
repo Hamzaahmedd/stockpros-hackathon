@@ -1,0 +1,45 @@
+---------------------|---------|----------|---------|---------|-------------------
+File                 | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+---------------------|---------|----------|---------|---------|-------------------
+All files            |     100 |     90.9 |     100 |     100 |                   
+ earnings-checker.ts |     100 |     90.9 |     100 |     100 | 80                
+---------------------|---------|----------|---------|---------|-------------------
+Jest: Coverage data for ./src/modules/access-control/service.ts was not found.
+Jest: Coverage data for ./src/modules/auth/service.ts was not found.
+Jest: Coverage data for ./src/modules/watchlist/service.ts was not found.
+Jest: Coverage data for ./src/modules/news/service.ts was not found.
+Jest: Coverage data for ./src/modules/market/service.ts was not found.
+Jest: Coverage data for ./src/modules/forecast/service.ts was not found.
+Jest: Coverage data for ./src/modules/watchlist/evaluators/ai-zone-calculator.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/digest-service.ts was not found.
+Jest: Coverage data for ./src/modules/decision-support/controller.ts was not found.
+Jest: Coverage data for ./src/modules/auth/controller.ts was not found.
+Jest: Coverage data for ./src/shared/infrastructure/cache.ts was not found.
+Jest: Coverage data for ./src/shared/middlewares/error-handler.ts was not found.
+Jest: Coverage data for ./src/shared/infrastructure/redis-sliding-window-store.ts was not found.
+Jest: Coverage data for ./src/shared/middlewares/security.ts was not found.
+Jest: Coverage data for ./src/shared/infrastructure/logger.ts was not found.
+Jest: Coverage data for ./src/modules/access-control/controller.ts was not found.
+Jest: Coverage data for ./src/modules/watchlist/controller.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/controller.ts was not found.
+Jest: Coverage data for ./src/modules/payments/controller.ts was not found.
+Jest: Coverage data for ./src/modules/market/controller.ts was not found.
+Jest: Coverage data for ./src/modules/dashboard/controller.ts was not found.
+Jest: Coverage data for ./src/modules/search/controller.ts was not found.
+Jest: Coverage data for ./src/modules/feedback/controller.ts was not found.
+Jest: Coverage data for ./src/modules/forecast/controller.ts was not found.
+Jest: Coverage data for ./src/modules/news/controller.ts was not found.
+Jest: Coverage data for ./src/modules/news/infrastructure/news-fetcher.ts was not found.
+Jest: Coverage data for ./src/modules/watchlist/caches/portfolio-fit-cache.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/notification-query-service.ts was not found.
+Jest: Coverage data for ./src/modules/watchlist/evaluators/alert-evaluator.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/notification-dispatcher.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/infrastructure/email-worker.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/infrastructure/auth-email-worker.ts was not found.
+Jest: Coverage data for ./src/modules/news/news.ts was not found.
+Jest: Coverage data for ./src/modules/notifications/groq-enricher.ts was not found.
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        2.83 s, estimated 3 s

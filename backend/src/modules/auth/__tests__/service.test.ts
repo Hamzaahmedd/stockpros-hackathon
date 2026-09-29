@@ -217,4 +217,19 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
       UnauthorizedError,
     )
   })
+
+  it('logs a warning (not just the generic message) when the failure is not already an UnauthorizedError', async () => {
+    const validRefreshToken = jwt.sign(
+      { sub: userId, jti: oldJti },
+      validSecret,
+      { expiresIn: '7d' },
+    )
+    ;(prisma.userSession.findUnique as jest.Mock).mockRejectedValue(
+      new Error('connection pool exhausted'),
+    )
+
+    await expect(refreshAccessToken(validRefreshToken)).rejects.toThrow(
+      'Invalid refresh token',
+    )
+  })
 })

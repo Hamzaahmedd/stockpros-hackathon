@@ -60,7 +60,6 @@ describe('deleteAccount — payment transaction retention', () => {
       decisionRun: { deleteMany: jest.fn() },
       portfolio: { deleteMany: jest.fn() },
       userRole: { deleteMany: jest.fn() },
-      userPermission: { deleteMany: jest.fn() },
       magicLinkToken: { deleteMany: jest.fn() },
       phoneOtp: { deleteMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },

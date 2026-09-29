@@ -5,3 +5,4 @@ node_modules/
 prisma/migrations
 prisma/generated
 /generated/docs
+/coverage

@@ -323,7 +323,10 @@ export async function revokePermissions(params: AssignPermissionsParams) {
             where: { action_resourceId: { action, resourceId: resource.id } },
           })
           if (permission) {
-            rolePermissionWhereList.push({ roleId, permissionId: permission.id })
+            rolePermissionWhereList.push({
+              roleId,
+              permissionId: permission.id,
+            })
           }
         }
       }
@@ -499,29 +502,18 @@ export async function getUserPermissions(
     include: { permission: { include: { resource: true } } },
   })
 
-  let allowedActions: string[] = []
+  const allowedActions: string[] = []
   rolePermissions.forEach((rp: any) => {
     if (rp.permission.resource.name === resourceName) {
       allowedActions.push(rp.permission.action)
     }
   })
 
-  const userPermissions = await prisma.userPermission.findMany({
-    where: { userId },
-    include: { permission: { include: { resource: true } } },
-  })
+  const dedupedActions = Array.from(new Set(allowedActions))
 
-  userPermissions.forEach((up: any) => {
-    if (up.permission.resource.name === resourceName) {
-      allowedActions.push(up.permission.action)
-    }
-  })
+  await setCache(cacheKey, dedupedActions, CACHE_TTL.AUTH.USER_PERMISSIONS)
 
-  allowedActions = Array.from(new Set(allowedActions))
-
-  await setCache(cacheKey, allowedActions, CACHE_TTL.AUTH.USER_PERMISSIONS)
-
-  return allowedActions
+  return dedupedActions
 }
 
 // ── Data Fetching ──

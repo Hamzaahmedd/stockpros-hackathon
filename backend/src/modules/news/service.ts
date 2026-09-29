@@ -104,7 +104,9 @@ export const getNewsFeed = async (
 
   // If 'all' feed with no symbol or date filter, we can leverage the raw page cache
   const canUseCache = filter === 'all' && !symbol && !from && !to
-  const cacheKey = canUseCache ? feedCacheKey({ category, cursor, limit }) : null
+  const cacheKey = canUseCache
+    ? feedCacheKey({ category, cursor, limit })
+    : null
 
   let pageRows: typeof articleSelect extends any ? any : any
   let hasMore = false
@@ -140,8 +142,15 @@ export const getNewsFeed = async (
       where: {
         ...(category && { category }),
         ...(symbolFilter && { relatedSymbols: { hasSome: symbolFilter } }),
-        ...(from && { publishedAt: { gte: new Date(from) } }),
-        ...(to && { publishedAt: { lte: new Date(to) } }),
+        // `from` and `to` both target `publishedAt` — spreading them as two
+        // separate objects would let the second silently overwrite the
+        // first's key instead of merging gte/lte together.
+        ...((from || to) && {
+          publishedAt: {
+            ...(from && { gte: new Date(from) }),
+            ...(to && { lte: new Date(to) }),
+          },
+        }),
         ...(cursorDate && cursorWhere(cursorDate, cursor!)),
       },
       orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
@@ -238,8 +247,14 @@ export const searchNews = async (
       ...(q && { headline: { contains: q, mode: 'insensitive' } }),
       ...(category && { category }),
       ...(symbol && { relatedSymbols: { has: symbol } }),
-      ...(from && { publishedAt: { gte: new Date(from) } }),
-      ...(to && { publishedAt: { lte: new Date(to) } }),
+      // See getNewsFeed for why from/to must merge into one publishedAt
+      // object instead of spreading as two separate ones.
+      ...((from || to) && {
+        publishedAt: {
+          ...(from && { gte: new Date(from) }),
+          ...(to && { lte: new Date(to) }),
+        },
+      }),
       ...(cursorDate && cursorWhere(cursorDate, cursor!)),
     },
     orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],

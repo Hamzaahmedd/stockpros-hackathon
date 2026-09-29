@@ -23,7 +23,14 @@ export const mapPolygonCategory = (
   ].join(' ')
   if (all.includes('earning') || all.includes('eps')) return 'EARNINGS'
   if (all.includes('analyst') || all.includes('price target')) return 'ANALYST'
-  if (all.includes('sec') || all.includes('filing')) return 'FILING'
+  // "sector".includes('sec') is true, so without this exclusion an article
+  // tagged "sector" was misclassified as FILING and never reached the
+  // (correct) SECTOR check below.
+  if (
+    (all.includes('sec') && !all.includes('sector')) ||
+    all.includes('filing')
+  )
+    return 'FILING'
   if (all.includes('merger') || all.includes('acquisition')) return 'MERGER'
   if (
     all.includes('fed') ||

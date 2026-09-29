@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import { transporter, getLogoSrc } from '../../../shared/infrastructure/config/email'
+import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
 import { logger } from '../../../shared/infrastructure/logger'
 import { buildMagicLinkEmail } from '../email-templates/index'
 import type { AuthEmailJobPayload } from '../types'
@@ -51,7 +52,11 @@ export const startAuthEmailWorker = (): void => {
       const { to, loginLink, expiryMinutes } = job.data
       const emailContent = buildMagicLinkEmail(loginLink, expiryMinutes, getLogoSrc())
 
-      await transporter.sendMail({ to, ...emailContent })
+      try {
+        await transporter.sendMail({ to, ...emailContent })
+      } catch (err) {
+        rethrowEmailError(err, to)
+      }
 
       logger.info(`[AuthEmailWorker] Sent magic link to ${to}`)
     },

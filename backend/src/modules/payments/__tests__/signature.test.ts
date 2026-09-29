@@ -56,6 +56,10 @@ describe('verifySafepaySignature', () => {
     expect(verifySafepaySignature(data, undefined)).toBe(false)
   })
 
+  it('rejects when the provided signature has a different length than expected', () => {
+    expect(verifySafepaySignature(data, 'deadbeef')).toBe(false)
+  })
+
   it("matches Safepay's own published test vector (safepay-node test/fixtures/verify.ts)", () => {
     // Real fixture from the official SDK's test suite — proves this
     // implementation reproduces Safepay's actual signing scheme, not just an
@@ -91,5 +95,25 @@ describe('verifySafepaySignature', () => {
         .update(Buffer.from(JSON.stringify(fixtureData)))
         .digest('hex'),
     ).toBe(fixtureSignature)
+  })
+})
+
+describe('verifySafepaySignature — no webhook secret configured', () => {
+  it('rejects any signature when SAFEPAY_WEBHOOK_SECRET is unset', () => {
+    jest.resetModules()
+    jest.doMock('@/config', () => {
+      const actual = jest.requireActual('@/config')
+      const patched = {
+        ...actual.default,
+        safepay: { ...actual.default.safepay, webhookSecret: '' },
+      }
+      return { __esModule: true, default: patched, config: patched }
+    })
+
+    const { verifySafepaySignature: verifyWithNoSecret } = jest.requireActual(
+      '../signature',
+    ) as typeof import('../signature')
+
+    expect(verifyWithNoSecret({ tracker: 'trk_1' }, 'anysignature')).toBe(false)
   })
 })

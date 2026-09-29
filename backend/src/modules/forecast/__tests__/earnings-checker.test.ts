@@ -8,7 +8,20 @@
  * midnight to prove the count doesn't drift near either boundary.
  */
 
-import { getEasternDateStr, addDaysToDateStr, diffDateStrs } from '../earnings-checker'
+jest.mock('../../../shared/infrastructure/clients/finnhub-client', () => ({
+  __esModule: true,
+  default: { get: jest.fn() },
+}))
+
+import finnhubClient from '../../../shared/infrastructure/clients/finnhub-client'
+import {
+  addDaysToDateStr,
+  diffDateStrs,
+  getEarningsWithinWindow,
+  getEasternDateStr,
+} from '../earnings-checker'
+
+const mockFinnhubGet = (finnhubClient as unknown as { get: jest.Mock }).get
 
 describe('getEasternDateStr', () => {
   it('stays on the previous ET calendar day just after UTC midnight (ET is behind UTC)', () => {
@@ -69,5 +82,88 @@ describe('end-to-end day-count stability across the PKT/ET boundary gap', () => 
 
     const earningsDate = '2026-09-18'
     expect(diffDateStrs(todayStr, earningsDate)).toBe(1) // still "tomorrow" for the market
+  })
+})
+
+describe('getEarningsWithinWindow', () => {
+  const todayStr = getEasternDateStr(new Date())
+
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns null when Finnhub reports no earnings in the window', async () => {
+    mockFinnhubGet.mockResolvedValue({ data: { earningsCalendar: [] } })
+    expect(await getEarningsWithinWindow('AAPL')).toBeNull()
+  })
+
+  it('returns null when the earningsCalendar field is missing entirely', async () => {
+    mockFinnhubGet.mockResolvedValue({ data: {} })
+    expect(await getEarningsWithinWindow('AAPL')).toBeNull()
+  })
+
+  it('returns the nearest upcoming earnings date with a correct day count', async () => {
+    const earningsDate = addDaysToDateStr(todayStr, 3)
+    mockFinnhubGet.mockResolvedValue({
+      data: { earningsCalendar: [{ date: earningsDate, symbol: 'AAPL' }] },
+    })
+    const result = await getEarningsWithinWindow('AAPL')
+    expect(result).toEqual({ earningsDate, daysUntilEarnings: 3 })
+  })
+
+  it('picks the nearest date when multiple entries are returned', async () => {
+    mockFinnhubGet.mockResolvedValue({
+      data: {
+        earningsCalendar: [
+          { date: addDaysToDateStr(todayStr, 4), symbol: 'AAPL' },
+          { date: addDaysToDateStr(todayStr, 1), symbol: 'AAPL' },
+        ],
+      },
+    })
+    const result = await getEarningsWithinWindow('AAPL')
+    expect(result?.daysUntilEarnings).toBe(1)
+  })
+
+  it('ignores entries for a different symbol', async () => {
+    mockFinnhubGet.mockResolvedValue({
+      data: { earningsCalendar: [{ date: todayStr, symbol: 'MSFT' }] },
+    })
+    expect(await getEarningsWithinWindow('AAPL')).toBeNull()
+  })
+
+  it('ignores a stale entry dated before today', async () => {
+    mockFinnhubGet.mockResolvedValue({
+      data: {
+        earningsCalendar: [
+          { date: addDaysToDateStr(todayStr, -1), symbol: 'AAPL' },
+        ],
+      },
+    })
+    expect(await getEarningsWithinWindow('AAPL')).toBeNull()
+  })
+
+  it('defaults the window to 5 days when none is given', async () => {
+    mockFinnhubGet.mockResolvedValue({ data: { earningsCalendar: [] } })
+    await getEarningsWithinWindow('AAPL')
+    expect(mockFinnhubGet).toHaveBeenCalledWith(
+      '/calendar/earnings',
+      expect.objectContaining({
+        params: expect.objectContaining({ to: addDaysToDateStr(todayStr, 5) }),
+      }),
+    )
+  })
+
+  it('honors an explicit window size', async () => {
+    mockFinnhubGet.mockResolvedValue({ data: { earningsCalendar: [] } })
+    await getEarningsWithinWindow('AAPL', 10)
+    expect(mockFinnhubGet).toHaveBeenCalledWith(
+      '/calendar/earnings',
+      expect.objectContaining({
+        params: expect.objectContaining({ to: addDaysToDateStr(todayStr, 10) }),
+      }),
+    )
+  })
+
+  it('never throws — returns null and logs when the Finnhub request itself fails', async () => {
+    mockFinnhubGet.mockRejectedValue(new Error('finnhub down'))
+    await expect(getEarningsWithinWindow('AAPL')).resolves.toBeNull()
   })
 })

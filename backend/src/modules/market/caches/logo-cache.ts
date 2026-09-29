@@ -18,7 +18,11 @@ const fetchAndCacheLogo = async (symbol: string): Promise<string | null> => {
     )
 
     const logo = data.logo ?? null
-    await setCache(`${LOGO_CACHE_PREFIX}${symbol}`, logo, LOGO_CACHE_TTL_SECONDS)
+    await setCache(
+      `${LOGO_CACHE_PREFIX}${symbol}`,
+      logo,
+      LOGO_CACHE_TTL_SECONDS,
+    )
     return logo
   } catch (err) {
     logger.error(`[LogoCache] Failed to fetch logo for ${symbol}`, err)
@@ -31,10 +35,12 @@ const fetchAndCacheLogo = async (symbol: string): Promise<string | null> => {
  * Reads from Redis first (24-hour TTL); falls back to a Finnhub REST call only
  * on a cache miss. This replaces the old in-memory Map that was lost on restart.
  */
-export const getCompanyLogo = async (symbol: string): Promise<string | null> => {
+export const getCompanyLogo = async (
+  symbol: string,
+): Promise<string | null> => {
   const cached = await getCache<string | null>(`${LOGO_CACHE_PREFIX}${symbol}`)
 
-  if (cached !== null && cached !== undefined) {
+  if (cached !== undefined) {
     return cached
   }
 

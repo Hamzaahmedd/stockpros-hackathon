@@ -294,7 +294,6 @@ export async function deleteAccount(userId: string): Promise<void> {
         tx.portfolio.deleteMany({ where: { userId } }),
         // Roles & permissions
         tx.userRole.deleteMany({ where: { userId } }),
-        tx.userPermission.deleteMany({ where: { userId } }),
         // Magic link tokens (keyed by email, not userId)
         tx.magicLinkToken.deleteMany({ where: { email: user.email } }),
         // Phone OTP records — purge alongside the rest of this account's PII

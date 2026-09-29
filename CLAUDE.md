@@ -1,25 +1,25 @@
 # Repository Guidelines for AI Agents
 
-## Tech Stack & Architecture
-- **Backend:** Node.js, Express, TypeScript, Prisma (PostgreSQL / Supabase)
-- **Logging & Observability:** Pino logger + @axiomhq/pino transport
-- **Environment:** Node.js (production on Render free tier, development local)
+## Core Principles & Engineering Standards
+- **Strict Type Safety & Runtime Validation:** Avoid using untyped data, implicit coercions, or unsafe casts. Enforce explicit static types across all layers and require schema validation for incoming API payloads, route parameters, and environment variables.
+- **Explicit Enums & Domain Constants:** Use language-native enums, strict value objects, or schema-enforced enumerations for any fixed set of options, states, roles, or event types. Magic strings or bare numbers for conditional logic are strictly prohibited.
+- **API Specification & Documentation Consistency:** When creating, updating, or modifying API endpoints, environment variables, setup commands, or architectural modules, continuously update the corresponding OpenAPI/Swagger specs and repository `README.md` to prevent documentation drift.
+- **SonarQube Quality Standards:** Maintain Clean Code attributes (Intentional, Consistent, Adaptable, Responsible). Zero tolerance for security vulnerabilities, bugs, cognitive complexity smells, or duplicated code blocks.
+- **Formatting & Style:** Enforce automated formatting (e.g., Prettier) on all modified files. Keep code styles, naming conventions, and file structures completely consistent across the repository.
+- **Lean Codebase & Cleanup:** Continuously remove dead code, unused imports, redundant variables, and unreferenced assets. Keep pull requests minimal and focused.
+- **Directory Consistency:** Respect and adhere to the established project folder hierarchy. Do not invent duplicate directories, arbitrary subfolders, or place files out of their domain context.
 
-## Build, Test & Lint Commands
-- **Install:** `npm install`
-- **Build:** `npm run build` (compiles TS to `dist/`)
-- **Dev Server:** `npm run dev`
-- **Type Check:** `npx tsc --noEmit`
-- **Lint Check:** `npm run lint`
+## Strict System & Security Rules
+1. **Defensive Runtime Asset Checks:** Always verify the existence of dynamic or external assets (e.g., generated Swagger JSON files, static artifacts) using `fs.existsSync` before attempting to read, import, or parse them at runtime to prevent process boot crashes.
+2. **Environment Feature Gating:** Guard developer-only endpoints (e.g., Swagger UI), internal utilities, and debug interfaces behind environment configuration flags or explicit non-production environment checks.
+3. **Secrets vs. Application Configuration Isolation:** Ensure only sensitive variables and secret credentials (e.g., API keys, database passwords, private keys) are defined in environment (`.env`) files. Place non-sensitive runtime options, defaults, feature toggles, and static application metadata into dedicated configuration files within the codebase.
+4. **Structured Logging & PII Redaction:** Use structured loggers (e.g., Pino) for all operational, error, and audit events. NEVER write or log raw credentials, authorization tokens, passwords, API keys, or personally identifiable information (PII) to system logs or external telemetry streams. Use automated redaction or explicit sanitization.
+5. **Audit Data Retention vs. PII Purging:** When executing account or entity deletion routines, purge or anonymize personal identity data from primary databases while maintaining immutable, non-PII system audit logs (`user_id` references only) for operational integrity.
+6. **Resource Safety & Non-Blocking Execution:** Avoid unhandled synchronous loops, memory-intensive background tasks, or blocking operations that could exhaust system CPU/RAM bounds.
 
-## Strict Coding & Security Rules
-1. **Runtime Asset Checks:** Before loading runtime assets (like `swagger.json`), ALWAYS use `fs.existsSync` checks to prevent `MODULE_NOT_FOUND` crashes in production.
-2. **Environment Feature Gating:** Gate developer-only endpoints (e.g., Swagger UI) behind `config.features` flags or strict `process.env.NODE_ENV !== 'production'` guards.
-3. **PII & Secret Redaction:** NEVER log raw passwords, access tokens, `Authorization` headers, or API keys. Configure Pino's `redact` options or strip headers before logging.
-4. **Audit Log Retention:** When deleting user accounts, purge personal identity data (PII) from primary databases, but retain immutable system/audit logs in Axiom (`user_id` only).
-5. **No Code Blocking:** Avoid introducing heavy background collectors or blocking sync code that starves memory on constrained free tiers.
-
-## Definition of Done
-A task is complete ONLY when:
-- `npx tsc --noEmit` passes without errors.
-- New/modified features preserve existing error handling and redaction strategies.
+## Automated Self-Review & Quality Checklist
+Before marking any task or code generation as complete:
+1. **Auto-Review Code & Documentation:** Perform a thorough sanity review of all diffs to ensure no unintended breaking changes, schema discrepancies, or regression vulnerabilities were introduced. Verify that the `README.md` and API docs reflect any new environment variables, setup steps, or route additions.
+2. **Test Suite Execution & Coverage:** Update existing unit/integration tests or write new tests for modified features. Ensure the test suite passes without regressions. Coverage is enforced via `backend/jest.config.js`'s `coverageThreshold` — a repo-wide ratchet floor (raise it as legacy modules gain real tests) plus a genuine 90% bar on specific files that have earned it through deliberate testing. Never lower a threshold to force a failing suite to pass; if a change legitimately drops coverage, add real tests instead.
+3. **Static Analysis, Type Verification & Build:** Confirm that type checks (`tsc --noEmit`), build execution (`npm run build`), linter runs (`npm run lint`), module boundary checks (`scripts/check-module-boundaries.cjs`), and Clean Code complexity rules pass with zero errors. New/changed code is additionally gated in CI via SonarCloud (see `sonar-project.properties`), which evaluates only new code against the default Quality Gate (coverage, duplication, maintainability/reliability/security ratings) — it does not require fixing the existing repo-wide issue backlog, so don't treat that backlog as in scope for an unrelated change.
+4. **Preserve Error & Log Standards:** Ensure newly introduced routes, functions, or modules maintain the repository's standard error handling, Zod validation errors, and sanitization layers.

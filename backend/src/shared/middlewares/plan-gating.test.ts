@@ -125,6 +125,26 @@ describe('requirePlanOrQuota', () => {
     expect(next).toHaveBeenCalledWith()
   })
 
+  it('does not set the quota header when remaining is null (quota check unavailable)', async () => {
+    ;(incrementAndCheckQuota as jest.Mock).mockResolvedValue({
+      allowed: true,
+      remaining: null,
+      resetAt: null,
+    })
+    const { req, res, next } = mockReqRes('FREE')
+    await requirePlanOrQuota('forecast', 1)(req, res, next)
+    expect(res.setHeader).not.toHaveBeenCalled()
+    expect(next).toHaveBeenCalledWith()
+  })
+
+  it('forwards an unexpected error from the quota check to next()', async () => {
+    const quotaError = new Error('redis down')
+    ;(incrementAndCheckQuota as jest.Mock).mockRejectedValue(quotaError)
+    const { req, res, next } = mockReqRes('FREE')
+    await requirePlanOrQuota('forecast', 1)(req, res, next)
+    expect(next).toHaveBeenCalledWith(quotaError)
+  })
+
   it('blocks a FREE user over the daily limit with a QuotaExceededError', async () => {
     ;(incrementAndCheckQuota as jest.Mock).mockResolvedValue({
       allowed: false,
@@ -189,6 +209,13 @@ describe('requireWatchlistMembershipOrPro', () => {
     expect(next).toHaveBeenCalledWith()
   })
 
+  it('passes a FREE user through when no symbol is present on the request at all', async () => {
+    const { req, res, next } = mockReqRes('FREE')
+    await requireWatchlistMembershipOrPro(req, res, next)
+    expect(prisma.watchlist.findFirst).not.toHaveBeenCalled()
+    expect(next).toHaveBeenCalledWith()
+  })
+
   it('blocks a FREE user when the symbol is not in their watchlist', async () => {
     ;(prisma.watchlist.findFirst as jest.Mock).mockResolvedValue(null)
     const { req, res, next } = mockReqRes('FREE', {
@@ -205,6 +232,13 @@ describe('requireWatchlistMembershipOrPro', () => {
 })
 
 describe('requireSinglePortfolioForFree', () => {
+  it('passes PRO users through without querying the DB', async () => {
+    const { req, res, next } = mockReqRes('PRO')
+    await requireSinglePortfolioForFree(req, res, next)
+    expect(prisma.portfolio.count).not.toHaveBeenCalled()
+    expect(next).toHaveBeenCalledWith()
+  })
+
   it('allows a FREE user with no existing portfolio', async () => {
     ;(prisma.portfolio.count as jest.Mock).mockResolvedValue(0)
     const { req, res, next } = mockReqRes('FREE')

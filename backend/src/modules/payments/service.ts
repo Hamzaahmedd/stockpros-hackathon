@@ -55,9 +55,12 @@ export async function createCheckoutSession(
 /**
  * Applies a verified Safepay webhook event to the matching
  * `PaymentTransaction`, idempotently. Safepay retries webhook delivery on
- * any non-2xx/timeout response, so a transaction already in a terminal state
- * (`COMPLETED`, `FAILED`, `CANCELLED`) short-circuits without reprocessing —
- * in particular, without granting a second plan upgrade.
+ * any non-2xx/timeout response, and can deliver those retries concurrently,
+ * so the PENDING -> terminal transition is done as a single conditional
+ * `updateMany` (translates to one atomic `UPDATE ... WHERE status = PENDING`
+ * in Postgres) rather than a read-then-write check — otherwise two
+ * concurrent deliveries could both observe PENDING and both grant a plan
+ * upgrade.
  */
 export async function handleWebhookEvent(
   event: SafepayWebhookEvent,
@@ -74,23 +77,23 @@ export async function handleWebhookEvent(
     return
   }
 
-  if (transaction.status !== PaymentStatus.PENDING) {
-    logger.info(
-      `[Payments] Ignoring webhook for trackerId=${event.trackerId}, already ${transaction.status}`,
-    )
-    return
-  }
-
   const nextStatus = EVENT_STATUS_MAP[event.status]
 
-  await prisma.paymentTransaction.update({
-    where: { trackerId: event.trackerId },
+  const { count } = await prisma.paymentTransaction.updateMany({
+    where: { trackerId: event.trackerId, status: PaymentStatus.PENDING },
     data: {
       status: nextStatus,
       paymentMethod: event.paymentMethod,
       rawWebhookPayload: rawPayload,
     },
   })
+
+  if (count === 0) {
+    logger.info(
+      `[Payments] Ignoring webhook for trackerId=${event.trackerId}, already ${transaction.status}`,
+    )
+    return
+  }
 
   if (nextStatus === PaymentStatus.COMPLETED) {
     await setMyPlan(transaction.userId, transaction.planTier)

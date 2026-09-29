@@ -1,10 +1,12 @@
 import { PaymentStatus } from '@prisma/client'
+import config from '@/config'
 
 jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     paymentTransaction: {
       findUnique: jest.fn(),
-      update: jest.fn(),
+      updateMany: jest.fn(),
+      create: jest.fn(),
     },
   },
 }))
@@ -13,9 +15,63 @@ jest.mock('../../auth', () => ({
   setMyPlan: jest.fn(),
 }))
 
+jest.mock('../client', () => ({
+  initPaymentSession: jest.fn(),
+  buildCheckoutUrl: jest.fn(),
+}))
+
 import { prisma } from '../../../shared/infrastructure/database'
 import { setMyPlan } from '../../auth'
-import { handleWebhookEvent, verifyTracker } from '../service'
+import { buildCheckoutUrl, initPaymentSession } from '../client'
+import { PLAN_PRICES_PAISA, PAYMENT_CURRENCY } from '../constants'
+import {
+  createCheckoutSession,
+  handleWebhookEvent,
+  verifyTracker,
+} from '../service'
+
+describe('createCheckoutSession', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('inits a Safepay session, persists a PENDING transaction, and builds the checkout URL from it', async () => {
+    ;(initPaymentSession as jest.Mock).mockResolvedValue({ token: 'trk_new' })
+    ;(prisma.paymentTransaction.create as jest.Mock).mockResolvedValue({
+      id: 'tx-1',
+    })
+    ;(buildCheckoutUrl as jest.Mock).mockReturnValue(
+      'https://checkout.example/trk_new',
+    )
+
+    const result = await createCheckoutSession('user-1')
+
+    expect(initPaymentSession).toHaveBeenCalledWith(PLAN_PRICES_PAISA.PRO)
+    expect(prisma.paymentTransaction.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        trackerId: 'trk_new',
+        amount: PLAN_PRICES_PAISA.PRO,
+        currency: PAYMENT_CURRENCY,
+        status: PaymentStatus.PENDING,
+        planTier: 'PRO',
+      },
+    })
+
+    const frontendUrl = config.server.frontendUrl
+    expect(buildCheckoutUrl).toHaveBeenCalledWith({
+      token: 'trk_new',
+      orderId: 'tx-1',
+      redirectUrl: `${frontendUrl}/plans/result?tracker_id=trk_new&status=success`,
+      cancelUrl: `${frontendUrl}/plans/result?tracker_id=trk_new&status=cancelled`,
+    })
+
+    expect(result).toEqual({
+      checkoutUrl: 'https://checkout.example/trk_new',
+      trackerId: 'trk_new',
+    })
+  })
+})
 
 describe('handleWebhookEvent — idempotency', () => {
   beforeEach(() => {
@@ -29,14 +85,21 @@ describe('handleWebhookEvent — idempotency', () => {
       planTier: 'PRO',
       status: PaymentStatus.PENDING,
     })
-    ;(prisma.paymentTransaction.update as jest.Mock).mockResolvedValue({})
+    ;(prisma.paymentTransaction.updateMany as jest.Mock).mockResolvedValue({
+      count: 1,
+    })
 
     await handleWebhookEvent(
       { trackerId: 'trk_1', status: 'COMPLETED', paymentMethod: 'jazzcash' },
       { raw: true },
     )
 
-    expect(prisma.paymentTransaction.update).toHaveBeenCalledTimes(1)
+    expect(prisma.paymentTransaction.updateMany).toHaveBeenCalledTimes(1)
+    expect(prisma.paymentTransaction.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { trackerId: 'trk_1', status: PaymentStatus.PENDING },
+      }),
+    )
     expect(setMyPlan).toHaveBeenCalledTimes(1)
     expect(setMyPlan).toHaveBeenCalledWith('user-1', 'PRO')
   })
@@ -48,14 +111,45 @@ describe('handleWebhookEvent — idempotency', () => {
       planTier: 'PRO',
       status: PaymentStatus.COMPLETED,
     })
+    ;(prisma.paymentTransaction.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    })
 
     await handleWebhookEvent(
       { trackerId: 'trk_1', status: 'COMPLETED', paymentMethod: 'jazzcash' },
       { raw: true },
     )
 
-    expect(prisma.paymentTransaction.update).not.toHaveBeenCalled()
     expect(setMyPlan).not.toHaveBeenCalled()
+  })
+
+  it('grants the plan upgrade only once when two COMPLETED webhooks race for the same transaction', async () => {
+    // The conditional `updateMany` is what Postgres actually serializes: the
+    // second caller's `WHERE status = PENDING` matches zero rows once the
+    // first has flipped it, so `count` is what distinguishes winner from
+    // loser here rather than a second findUnique read.
+    ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValue({
+      trackerId: 'trk_1',
+      userId: 'user-1',
+      planTier: 'PRO',
+      status: PaymentStatus.PENDING,
+    })
+    ;(prisma.paymentTransaction.updateMany as jest.Mock)
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 })
+
+    const event = {
+      trackerId: 'trk_1',
+      status: 'COMPLETED' as const,
+      paymentMethod: 'jazzcash',
+    }
+
+    await Promise.all([
+      handleWebhookEvent(event, { raw: true }),
+      handleWebhookEvent(event, { raw: true }),
+    ])
+
+    expect(setMyPlan).toHaveBeenCalledTimes(1)
   })
 
   it('does not upgrade the plan for a FAILED event', async () => {
@@ -65,14 +159,16 @@ describe('handleWebhookEvent — idempotency', () => {
       planTier: 'PRO',
       status: PaymentStatus.PENDING,
     })
-    ;(prisma.paymentTransaction.update as jest.Mock).mockResolvedValue({})
+    ;(prisma.paymentTransaction.updateMany as jest.Mock).mockResolvedValue({
+      count: 1,
+    })
 
     await handleWebhookEvent(
       { trackerId: 'trk_1', status: 'FAILED' },
       { raw: true },
     )
 
-    expect(prisma.paymentTransaction.update).toHaveBeenCalledWith(
+    expect(prisma.paymentTransaction.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: PaymentStatus.FAILED }),
       }),
@@ -87,7 +183,7 @@ describe('handleWebhookEvent — idempotency', () => {
       handleWebhookEvent({ trackerId: 'trk_missing', status: 'COMPLETED' }, {}),
     ).resolves.toBeUndefined()
 
-    expect(prisma.paymentTransaction.update).not.toHaveBeenCalled()
+    expect(prisma.paymentTransaction.updateMany).not.toHaveBeenCalled()
     expect(setMyPlan).not.toHaveBeenCalled()
   })
 })

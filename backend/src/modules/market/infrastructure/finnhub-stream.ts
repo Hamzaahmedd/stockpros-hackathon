@@ -36,6 +36,13 @@ export class FinnhubService extends EventEmitter {
 
   constructor(private readonly apiKey: string) {
     super()
+    // EventEmitter special-cases 'error': emitting it with zero listeners
+    // throws and crashes the whole process. This class re-emits 'error' on
+    // transient WS failures (see connect()), and real consumers (e.g.
+    // SocketServer.handleFinnhubErrors) may not have attached their own
+    // listener yet — this permanent no-op guarantees at least one listener
+    // always exists so a network hiccup can never take down the process.
+    this.on('error', () => {})
     this.connect()
   }
 

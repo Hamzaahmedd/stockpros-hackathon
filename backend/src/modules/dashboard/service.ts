@@ -33,7 +33,11 @@ import {
   PortfolioDecision,
 } from '../decision-support'
 import type { RankedStockRow } from '../market'
-import { getCurrentPrice, getCompanySectors, getRankedTopStocks } from '../market'
+import {
+  getCurrentPrice,
+  getCompanySectors,
+  getRankedTopStocks,
+} from '../market'
 
 /** Shape of a pre-fetched watchlist price entry passed between dashboard builders. */
 type WatchlistPriceMap = Map<string, { price: number; changePercent: number }>
@@ -133,10 +137,12 @@ const buildDecisionSupport = (
 
   const parts: string[] = []
   if (buySignals === 1) parts.push('1 position has a BUY signal')
-  else if (buySignals > 1) parts.push(`${buySignals} positions have a BUY signal`)
+  else if (buySignals > 1)
+    parts.push(`${buySignals} positions have a BUY signal`)
 
   if (positionsAtRisk === 1) parts.push('1 position needs attention')
-  else if (positionsAtRisk > 1) parts.push(`${positionsAtRisk} positions need attention`)
+  else if (positionsAtRisk > 1)
+    parts.push(`${positionsAtRisk} positions need attention`)
 
   return {
     available: true,
@@ -153,7 +159,11 @@ const buildDecisionSupport = (
 }
 
 const buildPortfolioAlert = (
-  watchlistItems: { symbol: string; targetEntryPrice: number | null; stopLoss: number | null }[],
+  watchlistItems: {
+    symbol: string
+    targetEntryPrice: number | null
+    stopLoss: number | null
+  }[],
   priceMap: WatchlistPriceMap,
   lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
 ) => {
@@ -190,11 +200,17 @@ const buildPortfolioAlert = (
 
   const parts: string[] = []
   if (overexposedSectors.length > 0)
-    parts.push(`Your portfolio is heavily overexposed to ${overexposedSectors.join(', ')}`)
+    parts.push(
+      `Your portfolio is heavily overexposed to ${overexposedSectors.join(', ')}`,
+    )
   if (stopLossBreaches > 0)
-    parts.push(`${stopLossBreaches} stop loss${stopLossBreaches > 1 ? 'es' : ''} breached`)
+    parts.push(
+      `${stopLossBreaches} stop loss${stopLossBreaches > 1 ? 'es' : ''} breached`,
+    )
   if (entryZonesActive > 0)
-    parts.push(`${entryZonesActive} symbol${entryZonesActive > 1 ? 's are' : ' is'} in entry zone`)
+    parts.push(
+      `${entryZonesActive} symbol${entryZonesActive > 1 ? 's are' : ' is'} in entry zone`,
+    )
 
   return {
     overexposedSectors,
@@ -222,7 +238,11 @@ const buildBriefing = async (
 // ─── Portfolio Snapshot ───────────────────────────────────────────────────────
 
 const calculateDiversificationScore = (
-  positions: Array<{ sector: string | null; avgEntryPrice: number; quantity: number }>,
+  positions: Array<{
+    sector: string | null
+    avgEntryPrice: number
+    quantity: number
+  }>,
   totalValue: number,
 ): number => {
   const sectorMap = new Map<string, number>()
@@ -233,22 +253,34 @@ const calculateDiversificationScore = (
   })
   const maxSectorPct =
     totalValue > 0
-      ? Math.max(...Array.from(sectorMap.values()).map((v) => (v / totalValue) * 100))
+      ? Math.max(
+          ...Array.from(sectorMap.values()).map((v) => (v / totalValue) * 100),
+        )
       : 0
   return maxSectorPct > 30 ? Math.max(0, 100 - (maxSectorPct - 30) * 2) : 100
 }
 
-const calculateRiskScores = (lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>) => {
-  if (!lastRun?.results.length) return { riskRewardScore: 70, volatilityScore: 70 }
+const calculateRiskScores = (
+  lastRun: Awaited<ReturnType<typeof getLatestDecisionRun>>,
+) => {
+  if (!lastRun?.results.length)
+    return { riskRewardScore: 70, volatilityScore: 70 }
   const positiveDecisions = lastRun.results.filter(
     (r) =>
       r.portfolioDecision === PortfolioDecision.Add ||
       r.portfolioDecision === PortfolioDecision.Hold,
   ).length
-  const highRiskCount = lastRun.results.filter((r) => r.riskLevel === 'HIGH').length
+  const highRiskCount = lastRun.results.filter(
+    (r) => r.riskLevel === 'HIGH',
+  ).length
   return {
-    riskRewardScore: Math.round((positiveDecisions / lastRun.results.length) * 100),
-    volatilityScore: Math.max(0, 100 - (highRiskCount / lastRun.results.length) * 100),
+    riskRewardScore: Math.round(
+      (positiveDecisions / lastRun.results.length) * 100,
+    ),
+    volatilityScore: Math.max(
+      0,
+      100 - (highRiskCount / lastRun.results.length) * 100,
+    ),
   }
 }
 
@@ -265,7 +297,10 @@ const calculateAlertHealthScore = (
 }
 
 const calculateWatchlistDisciplineScore = (
-  watchlistItems: { targetEntryPrice: number | null; stopLoss: number | null }[],
+  watchlistItems: {
+    targetEntryPrice: number | null
+    stopLoss: number | null
+  }[],
 ): number => {
   const disciplinedCount = watchlistItems.filter(
     (item) => item.targetEntryPrice !== null && item.stopLoss !== null,
@@ -278,7 +313,8 @@ const calculateWatchlistDisciplineScore = (
 const getHealthClassification = (
   s: number,
 ): { band: HealthScore['band']; label: string } => {
-  if (s >= 80) return { band: 'Excellent', label: 'Your portfolio is well-structured' }
+  if (s >= 80)
+    return { band: 'Excellent', label: 'Your portfolio is well-structured' }
   if (s >= 60) return { band: 'Good', label: 'Minor optimizations available' }
   if (s >= 40) return { band: 'Fair', label: 'Some risks need attention' }
   return { band: 'Poor', label: 'Significant portfolio risks detected' }
@@ -296,11 +332,15 @@ const computeHealthScore = (
   priceMap: WatchlistPriceMap,
   watchlistItems: DashboardWatchlistRow[],
 ): HealthScore => {
-  const diversificationScore = calculateDiversificationScore(positions, totalValue)
+  const diversificationScore = calculateDiversificationScore(
+    positions,
+    totalValue,
+  )
   const { riskRewardScore, volatilityScore } = calculateRiskScores(lastRun)
 
   const alertHealthScore = calculateAlertHealthScore(watchlistItems, priceMap)
-  const watchlistDisciplineScore = calculateWatchlistDisciplineScore(watchlistItems)
+  const watchlistDisciplineScore =
+    calculateWatchlistDisciplineScore(watchlistItems)
 
   const score = Math.round(
     diversificationScore * HEALTH_SCORE_WEIGHTS.diversification +
@@ -549,7 +589,10 @@ const buildPriceTriggers = (
 
     if (item.stopLoss && price <= item.stopLoss) {
       const pnlPct = position
-        ? (((price - position.avgEntryPrice) / position.avgEntryPrice) * 100).toFixed(1)
+        ? (
+            ((price - position.avgEntryPrice) / position.avgEntryPrice) *
+            100
+          ).toFixed(1)
         : null
       triggers.push({
         type: 'STOP_LOSS_BREACHED',
@@ -665,7 +708,8 @@ const buildEventTriggers = async (
       const priceData = priceMap.get(symbol)
       if (priceData) {
         const pnlPct = (
-          ((priceData.price - position.avgEntryPrice) / position.avgEntryPrice) *
+          ((priceData.price - position.avgEntryPrice) /
+            position.avgEntryPrice) *
           100
         ).toFixed(1)
         context = `You are currently ${Number(pnlPct) >= 0 ? 'up' : 'down'} ${Math.abs(Number(pnlPct))}% on this position`
@@ -754,16 +798,22 @@ const SECTOR_ETF_MAP: Record<string, string> = {
   'Communication Services': 'XLC',
 }
 
-export const normalizeSectorName = (sector: string | null | undefined): string => {
+export const normalizeSectorName = (
+  sector: string | null | undefined,
+): string => {
   if (!sector) return 'Unknown'
   const s = sector.trim().toLowerCase()
 
   if (
-    s.includes('tech') ||
-    s.includes('software') ||
-    s.includes('semiconductor') ||
-    s.includes('hardware') ||
-    s.includes('it services')
+    // "biotechnology".includes('tech') is true, so without this exclusion
+    // biotech holdings were classified as Information Technology and never
+    // reached the (correct) 'biotech' check in the Health Care block below.
+    !s.includes('biotech') &&
+    (s.includes('tech') ||
+      s.includes('software') ||
+      s.includes('semiconductor') ||
+      s.includes('hardware') ||
+      s.includes('it services'))
   ) {
     return 'Information Technology'
   }
@@ -847,14 +897,14 @@ export const normalizeSectorName = (sector: string | null | undefined): string =
     return 'Communication Services'
   }
 
-  const exact = Object.keys(SECTOR_ETF_MAP).find(
-    (k) => k.toLowerCase() === s,
-  )
+  const exact = Object.keys(SECTOR_ETF_MAP).find((k) => k.toLowerCase() === s)
   if (!exact) {
     // Unrecognized provider wording falls through uncategorized — log it so
     // gaps in the substring rules above are visible instead of silently
     // skewing sector-concentration numbers.
-    logger.warn(`[Dashboard] Unrecognized sector "${sector}" — leaving unnormalized`)
+    logger.warn(
+      `[Dashboard] Unrecognized sector "${sector}" — leaving unnormalized`,
+    )
     return sector
   }
   return exact
@@ -1073,7 +1123,13 @@ export const getDashboard = async (
     sectorHeatmap,
     trendingStocks,
   ] = await Promise.all([
-    buildBriefing(userId, user.displayName, watchlistPriceMap, watchlistItems, lastRun),
+    buildBriefing(
+      userId,
+      user.displayName,
+      watchlistPriceMap,
+      watchlistItems,
+      lastRun,
+    ),
     buildPortfolioSection(userId, lastRun, watchlistItems),
     buildImpactNews(userId),
     buildSmartTriggers(userId, watchlistPriceMap, watchlistItems),

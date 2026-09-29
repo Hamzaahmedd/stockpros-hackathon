@@ -99,7 +99,7 @@ const smtpTransporter =
  */
 export const getLogoSrc = (): string => {
   if (resend && !smtpTransporter) {
-    return logoPublicUrl ?? 'cid:logo'
+    return logoPublicUrl || 'cid:logo'
   }
   return 'cid:logo'
 }
