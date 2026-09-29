@@ -27,8 +27,8 @@ model User {
   userSessions      UserSession[]
   phoneOtps         PhoneOtp[]
   portfolios        Portfolio[]
-  assignedUserRoles UserRole[]       @relation("AssignedRoles")
-  userRoles         UserRole[]       @relation("UserRoles")
+  assignedUserRoles UserRole[]    @relation("AssignedRoles")
+  userRoles         UserRole[]    @relation("UserRoles")
 
   // ── Watchlist feature ──────────────────────────────────────────────────────
   watchlistItems    Watchlist[]
@@ -41,6 +41,7 @@ model User {
 
   // ── Payments feature ────────────────────────────────────────────────────────
   paymentTransactions PaymentTransaction[]
+  subscription        Subscription?
 
   @@index([status], map: "idx_users_status")
   @@index([createdAt], map: "idx_users_created_at")
@@ -50,16 +51,16 @@ model User {
 }
 
 model UserSession {
-  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  jti       String   @unique
-  previousJti String? @map("previous_jti")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  isRevoked Boolean  @default(false) @map("is_revoked")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  jti         String   @unique
+  previousJti String?  @map("previous_jti")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+  isRevoked   Boolean  @default(false) @map("is_revoked")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -206,7 +207,6 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-
 // ─── Magic Link Feature ──────────────────────────────────────────────────────
 
 model MagicLinkToken {
@@ -257,15 +257,15 @@ model Watchlist {
 }
 
 model WatchlistAlert {
-  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  watchlistId String    @map("watchlist_id") @db.Uuid
-  userId      String    @map("user_id") @db.Uuid
-  type        AlertType
-  threshold   Float?
-  isActive    Boolean   @default(true) @map("is_active")
-  lastSeenValue String? @map("last_seen_value")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  watchlistId   String    @map("watchlist_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  type          AlertType
+  threshold     Float?
+  isActive      Boolean   @default(true) @map("is_active")
+  lastSeenValue String?   @map("last_seen_value")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   watchlist Watchlist  @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -472,12 +472,24 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum SubscriptionPaymentMethod {
+  CARD
+  WALLET
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  GRACE
+  EXPIRED
+  CANCELLED
+}
+
 // ─── Safepay Payments (Pro tier checkout) ────────────────────────────────────
 
 model PaymentTransaction {
-  id        String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId    String  @map("user_id") @db.Uuid
-  trackerId String  @unique @map("tracker_id")
+  id                String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  trackerId         String        @unique @map("tracker_id")
   // Safepay pay-in amounts are integer paisa, e.g. Rs 5,999 -> 599900.
   amount            Int
   currency          String        @default("PKR")
@@ -485,13 +497,60 @@ model PaymentTransaction {
   paymentMethod     String?       @map("payment_method")
   planTier          PlanTier      @map("plan_tier")
   rawWebhookPayload Json?         @map("raw_webhook_payload")
+  subscriptionId    String?       @map("subscription_id") @db.Uuid
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId], map: "idx_payment_transactions_user_id")
   @@index([status], map: "idx_payment_transactions_status")
   @@index([trackerId], map: "idx_payment_transactions_tracker_id")
+  @@index([subscriptionId], map: "idx_payment_transactions_subscription_id")
   @@map("payment_transactions")
+}
+
+// ─── Subscription (PRO tier billing cycle) ───────────────────────────────────
+// One row per user, tracking the current billing period regardless of payment
+// method — CARD subscriptions auto-renew (see payments/subscription-job.ts,
+// Phase 2 for the actual recurring charge), WALLET subscriptions are a manual
+// 30-day access pass. `PaymentTransaction` rows link back here via
+// `subscriptionId` so the transaction history stays a append-only ledger while
+// this row holds the current renewal/grace/expiry state.
+model Subscription {
+  id                    String                    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId                String                    @unique @map("user_id") @db.Uuid
+  planTier              PlanTier                  @map("plan_tier")
+  paymentMethod         SubscriptionPaymentMethod @map("payment_method")
+  // Schema default is only the safe fallback — application code always sets
+  // this explicitly per payment method on creation: true for CARD, false for
+  // WALLET (wallets have no recurring capability, never toggleable).
+  autoRenew             Boolean                   @default(false) @map("auto_renew")
+  status                SubscriptionStatus        @default(ACTIVE)
+  // Nullable: createCheckoutSession creates this row before the webhook
+  // confirms payment; currentPeriodEnd is only set once the webhook lands.
+  currentPeriodStart    DateTime                  @default(now()) @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd      DateTime?                 @map("current_period_end") @db.Timestamptz(6)
+  gracePeriodEnd        DateTime?                 @map("grace_period_end") @db.Timestamptz(6)
+  // Dedup guard for the day-27 reminder email — must be compared against
+  // currentPeriodStart (not just null-checked) so the reminder reliably
+  // re-fires every renewal cycle, not just on the very first one.
+  reminderSentAt        DateTime?                 @map("reminder_sent_at") @db.Timestamptz(6)
+  // Safepay's own subscription identifier for the Plan-based recurring-card
+  // flow (correlates a `payment.succeeded`/`payment.failed` webhook back to
+  // this row) — set once at subscription-checkout creation time (initially
+  // to our own `id` as the `reference` we send Safepay, then overwritten if
+  // their webhook echoes back a distinct id of their own). Never set for
+  // WALLET subscriptions.
+  safepaySubscriptionId String?                   @unique @map("safepay_subscription_id")
+  createdAt             DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions PaymentTransaction[]
+
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([currentPeriodEnd], map: "idx_subscriptions_current_period_end")
+  @@map("subscriptions")
 }

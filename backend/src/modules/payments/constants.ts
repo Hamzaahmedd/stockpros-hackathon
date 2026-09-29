@@ -21,3 +21,8 @@ export const SAFEPAY_WEBHOOKS_ENABLED = 'true'
  * against — everything else is treated as still PENDING rather than guessed.
  */
 export const SAFEPAY_STATE_PAID = 'PAID'
+
+/** Billing-period lengths for the PRO subscription cycle. */
+export const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000
+export const SUBSCRIPTION_REMINDER_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+export const SUBSCRIPTION_GRACE_PERIOD_MS = 2 * 24 * 60 * 60 * 1000

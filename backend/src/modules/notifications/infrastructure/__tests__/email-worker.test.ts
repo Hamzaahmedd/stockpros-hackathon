@@ -89,6 +89,44 @@ describe('enqueueEmail', () => {
   })
 })
 
+describe('enqueueRenewalReminderEmail', () => {
+  it('logs and skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueueRenewalReminderEmail } = require('../email-worker')
+    await expect(
+      enqueueRenewalReminderEmail({
+        to: 'a@example.com',
+        userName: 'Hamza',
+        amount: 'Rs 5,999',
+        renewsOn: 'Oct 15, 2026',
+        manageUrl: 'https://app.example/plans',
+        variant: 'card-on',
+      }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('adds the job to the same alert-email queue, under the renewal job name', async () => {
+    const { QueueMock } = mockDeps({ host: 'localhost' })
+    const { enqueueRenewalReminderEmail } = require('../email-worker')
+    const payload = {
+      to: 'a@example.com',
+      userName: 'Hamza',
+      amount: 'Rs 5,999',
+      renewsOn: 'Oct 15, 2026',
+      manageUrl: 'https://app.example/plans',
+      variant: 'card-on' as const,
+    }
+
+    await enqueueRenewalReminderEmail(payload)
+
+    const queueInstance = QueueMock.mock.results[0].value
+    expect(queueInstance.add).toHaveBeenCalledWith(
+      'subscription-renewal-reminder',
+      payload,
+    )
+  })
+})
+
 describe('startEmailWorker', () => {
   it('does not start a worker when Redis is unavailable', () => {
     const { WorkerMock } = mockDeps(null)
@@ -140,6 +178,62 @@ describe('startEmailWorker', () => {
           symbol: 'AAPL',
           title: 'Alert',
           body: 'body',
+        },
+      }),
+    ).rejects.toThrow('550 mailbox unavailable')
+  })
+
+  it('routes a renewal-reminder job to the renewal template instead of the alert template', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({
+        name: 'subscription-renewal-reminder',
+        data: {
+          to: 'a@example.com',
+          userName: 'Hamza',
+          amount: 'Rs 5,999',
+          renewsOn: 'Oct 15, 2026',
+          manageUrl: 'https://app.example/plans',
+          variant: 'card-on',
+        },
+      }),
+    ).resolves.toBeUndefined()
+
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    expect(emailConfig.transporter.sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'a@example.com',
+        subject: 'Upcoming Renewal: Your Pro Plan bills in 3 days',
+      }),
+    )
+  })
+
+  it('rethrows a permanent (5xx) SMTP failure for a renewal-reminder job too', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    emailConfig.transporter.sendMail.mockRejectedValue(
+      Object.assign(new Error('550 mailbox unavailable'), {
+        responseCode: 550,
+      }),
+    )
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({
+        name: 'subscription-renewal-reminder',
+        data: {
+          to: 'a@example.com',
+          userName: 'Hamza',
+          amount: 'Rs 5,999',
+          renewsOn: 'Oct 15, 2026',
+          manageUrl: 'https://app.example/plans',
+          variant: 'wallet',
         },
       }),
     ).rejects.toThrow('550 mailbox unavailable')

@@ -1,0 +1,72 @@
+import config from '@/config'
+import { Queue, Worker } from 'bullmq'
+import { getRedisClient } from '../../shared/infrastructure/cache'
+import { CACHE_TTL } from '../../shared/constants'
+import { logger } from '../../shared/infrastructure/logger'
+import { runSubscriptionExpiryJob } from './subscription-job'
+
+const JOB_DEFINITIONS = [
+  {
+    name: 'subscription-expiry',
+    handler: runSubscriptionExpiryJob,
+    pattern: '0 7 * * *',
+  },
+]
+
+const queues: Queue[] = []
+const workers: Worker[] = []
+
+/**
+ * Start the subscription billing-cycle cron jobs (reminder/grace/downgrade).
+ * Gated behind `config.features.enableSubscriptionCron` — no-op if the flag
+ * is off or Redis isn't connected, matching the news/watchlist cron pattern.
+ */
+export const startSubscriptionCronJobs = async (): Promise<void> => {
+  if (!config.features.enableSubscriptionCron) return
+
+  const connection = getRedisClient()
+  if (!connection) {
+    logger.warn(
+      '[SubscriptionCron] No Redis connection found — subscription jobs will not be registered.',
+    )
+    return
+  }
+
+  for (const job of JOB_DEFINITIONS) {
+    const queue = new Queue(job.name, { connection, skipVersionCheck: true })
+
+    await queue.add(
+      job.name,
+      {},
+      {
+        repeat: { pattern: job.pattern },
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnComplete: { age: CACHE_TTL.JOBS.SUBSCRIPTION_JOB_COMPLETED },
+        removeOnFail: { age: CACHE_TTL.JOBS.SUBSCRIPTION_JOB_FAILED },
+      },
+    )
+
+    queues.push(queue)
+
+    const worker = new Worker(
+      job.name,
+      async () => {
+        await job.handler()
+      },
+      { connection, skipVersionCheck: true },
+    )
+    worker.on('completed', () =>
+      logger.info(`[SubscriptionCron] ${job.name} completed`),
+    )
+    worker.on('failed', (_, err) =>
+      logger.error(`[SubscriptionCron] ${job.name} failed: ${err.message}`),
+    )
+    workers.push(worker)
+  }
+}
+
+export const stopSubscriptionCronJobs = async (): Promise<void> => {
+  await Promise.all(workers.map((w) => w.close()))
+  await Promise.all(queues.map((q) => q.close()))
+}

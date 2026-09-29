@@ -47,6 +47,7 @@ export const productionConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
+    enableSubscriptionCron: true,
     enableSwaggerDocs: false,
     enablePhoneVerification: true,
     pricingTiersEnabled: false,

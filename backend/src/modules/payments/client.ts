@@ -101,4 +101,175 @@ export function buildCheckoutUrl(params: BuildCheckoutUrlParams): string {
   return `${config.safepay.checkoutBaseUrl}?${checkoutParams.toString()}`
 }
 
+// ─── Phase 2: Plan-based recurring card subscriptions ────────────────────────
+//
+// Safepay's recurring-billing product is fundamentally different from the
+// one-time flow above: rather than us tokenizing a card and triggering
+// charges ourselves, the customer authorizes a pre-existing merchant "Plan"
+// once via a hosted subscribe page, and SAFEPAY'S OWN SYSTEM bills the card
+// each cycle, notifying us via `payment.succeeded`/`payment.failed`
+// webhooks (see service.ts's handleSubscriptionRenewalWebhookEvent).
+//
+// Endpoint paths/field names below are BEST-EFFORT, assembled from the
+// official SDKs' source (not a live-verified fixture, unlike order/v1/init
+// above):
+//   - Plan resource path `/client/plans/v1/` — confirmed from
+//     getsafepay/sfpy-php's lib/Plan.php (OBJECT_PATH = 'client.plans.v1').
+//   - Passport ("tbt" token) resource, used via $safepay->passport->create()
+//     in sfpy-php and auth.passport.create() in the Node SDK; endpoint path
+//     `/client/passport/v1/token` per third-party research, not a fixture.
+//   - Subscribe-checkout construction (PHP: SubscriptionsCheckout::constructURL,
+//     Node: safepay.checkout.createSubscription({ planId, reference })) is a
+//     client-side URL builder like Checkout.create() above, not a separate
+//     API call — mirrored here the same way.
+//   - subscription.cancel()/.pause()/.resume() exist in the Node SDK keyed by
+//     a Safepay-assigned subscriptionId; the exact REST path they call was
+//     not visible in the SDK's README, so the paths below are a plausible
+//     guess following the same `/client/<resource>/v1/<id>/<action>` shape
+//     as Plan's own path.
+//
+// None of this has been run against Safepay's real sandbox. Treat every
+// non-mock function below as a first draft to verify before going live.
+
+const requireSafepayCredentials = (): void => {
+  if (!config.safepay.apiKey) {
+    throw new Error('Safepay is not configured (missing SAFEPAY_API_KEY)')
+  }
+  if (!config.safepay.proPlanId) {
+    throw new Error('Safepay is not configured (missing SAFEPAY_PRO_PLAN_ID)')
+  }
+}
+
+interface CreatePassportTokenResult {
+  tbt: string
+}
+
+const createPassportToken = async (): Promise<CreatePassportTokenResult> => {
+  const response = await safepayClient.post('/client/passport/v1/token', {
+    client: config.safepay.apiKey,
+    environment: config.safepay.environment,
+  })
+
+  const tbt = response.data?.data?.token
+  if (!tbt) {
+    throw new Error(
+      'Safepay passport/v1/token response did not include a token',
+    )
+  }
+
+  return { tbt }
+}
+
+export interface CreateSubscriptionCheckoutParams {
+  /**
+   * Our own correlation key, sent to Safepay as `reference` and expected to
+   * be echoed back on the eventual `payment.succeeded`/`payment.failed`
+   * webhook. Callers pass the owning `Subscription` row's own id.
+   */
+  reference: string
+  redirectUrl: string
+  cancelUrl: string
+}
+
+export interface CreateSubscriptionCheckoutResult {
+  /**
+   * Our correlation id for this subscription. In mock mode and initially in
+   * live mode this is just `params.reference` echoed back — service.ts
+   * updates it if Safepay's own webhook later supplies a distinct id.
+   */
+  safepaySubscriptionId: string
+  subscriptionCheckoutUrl: string
+}
+
+/**
+ * Builds the hosted "subscribe" checkout URL for authorizing a recurring
+ * card subscription against the configured Plan. When
+ * `config.safepay.mockProvider` is true, short-circuits like the one-time
+ * flow's mock path — no network call, deterministic for local/CI runs.
+ */
+export async function createSubscriptionCheckout(
+  params: CreateSubscriptionCheckoutParams,
+): Promise<CreateSubscriptionCheckoutResult> {
+  if (config.safepay.mockProvider) {
+    logger.debug(
+      `[Safepay:mock] Would create subscription checkout reference=${params.reference}`,
+    )
+    return {
+      safepaySubscriptionId: params.reference,
+      subscriptionCheckoutUrl: `${config.server.frontendUrl}/plans/result?tracker_id=${params.reference}&status=mock-pending`,
+    }
+  }
+
+  requireSafepayCredentials()
+
+  try {
+    const { tbt } = await createPassportToken()
+
+    const checkoutParams = new URLSearchParams({
+      plan_id: config.safepay.proPlanId,
+      tbt,
+      reference: params.reference,
+      cancel_url: params.cancelUrl,
+      redirect_url: params.redirectUrl,
+      env: config.safepay.environment,
+    })
+
+    return {
+      safepaySubscriptionId: params.reference,
+      subscriptionCheckoutUrl: `${config.safepay.checkoutBaseUrl}/subscribe?${checkoutParams.toString()}`,
+    }
+  } catch (err) {
+    logger.error('[Safepay] Failed to create subscription checkout', err)
+    throw new Error('Failed to create Safepay subscription checkout')
+  }
+}
+
+/** Turns off recurring auto-charging for an authorized subscription. */
+export async function pauseSafepaySubscription(
+  safepaySubscriptionId: string,
+): Promise<void> {
+  if (config.safepay.mockProvider) {
+    logger.debug(
+      `[Safepay:mock] Would pause subscription id=${safepaySubscriptionId}`,
+    )
+    return
+  }
+
+  requireSafepayCredentials()
+
+  try {
+    await safepayClient.post(
+      `/client/subscriptions/v1/${safepaySubscriptionId}/pause`,
+      { client: config.safepay.apiKey },
+    )
+  } catch (err) {
+    logger.error('[Safepay] Failed to pause subscription', err)
+    throw new Error('Failed to pause Safepay subscription')
+  }
+}
+
+/** Re-enables recurring auto-charging for a previously paused subscription. */
+export async function resumeSafepaySubscription(
+  safepaySubscriptionId: string,
+): Promise<void> {
+  if (config.safepay.mockProvider) {
+    logger.debug(
+      `[Safepay:mock] Would resume subscription id=${safepaySubscriptionId}`,
+    )
+    return
+  }
+
+  requireSafepayCredentials()
+
+  try {
+    await safepayClient.post(
+      `/client/subscriptions/v1/${safepaySubscriptionId}/resume`,
+      { client: config.safepay.apiKey },
+    )
+  } catch (err) {
+    logger.error('[Safepay] Failed to resume subscription', err)
+    throw new Error('Failed to resume Safepay subscription')
+  }
+}
+
 export default safepayClient

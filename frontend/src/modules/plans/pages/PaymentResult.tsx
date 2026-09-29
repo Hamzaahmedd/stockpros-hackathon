@@ -1,11 +1,11 @@
 import { useAuth } from "@/modules/auth/hooks/useAuth";
-import api from "@/shared/api/axios";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { subscriptionService } from "../services";
 
 type ResultState = "checking" | "completed" | "pending" | "failed";
 
@@ -27,8 +27,7 @@ export default function PaymentResult() {
       }
 
       try {
-        const res = await api.post("/api/v1/payments/verify-tracker", { trackerId });
-        const status = res.data?.status;
+        const { status } = await subscriptionService.verifyTracker(trackerId);
         if (cancelled) return;
 
         if (status === "COMPLETED") {
@@ -42,9 +41,8 @@ export default function PaymentResult() {
           // delay is enough for the common case without polling forever.
           setTimeout(async () => {
             if (cancelled) return;
-            const retryRes = await api.post("/api/v1/payments/verify-tracker", { trackerId });
+            const { status: retryStatus } = await subscriptionService.verifyTracker(trackerId);
             if (cancelled) return;
-            const retryStatus = retryRes.data?.status;
             if (retryStatus === "COMPLETED") {
               await refreshMe();
               setState("completed");

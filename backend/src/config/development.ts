@@ -47,6 +47,7 @@ export const developmentConfig = {
     enableNewsCron: true,
     enableWatchlistCron: true,
     enableAiRecomputeCron: true,
+    enableSubscriptionCron: true,
     enableSwaggerDocs: true,
     enablePhoneVerification: false,
     pricingTiersEnabled: false,

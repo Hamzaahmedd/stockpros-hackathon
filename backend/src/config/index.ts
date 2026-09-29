@@ -27,6 +27,11 @@ export const readSecrets = () => ({
   safepayApiKey: process.env.SAFEPAY_API_KEY || '',
   safepaySecretKey: process.env.SAFEPAY_SECRET_KEY || '',
   safepayWebhookSecret: process.env.SAFEPAY_WEBHOOK_SECRET || '',
+  // Identifier for the merchant-dashboard-configured recurring "Pro Monthly"
+  // Plan (Safepay's Plan-based subscription product has no known create-via-API
+  // path — see modules/payments/client.ts's createSubscriptionCheckout) — not a
+  // credential, but env-var-driven like the other Safepay identifiers here.
+  safepayProPlanId: process.env.SAFEPAY_PRO_PLAN_ID || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -148,6 +153,7 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       apiKey: secrets.safepayApiKey,
       secretKey: secrets.safepaySecretKey,
       webhookSecret: secrets.safepayWebhookSecret,
+      proPlanId: secrets.safepayProPlanId,
       baseUrl: env.safepay.baseUrl,
       mockProvider: env.safepay.mockProvider,
       environment: env.safepay.environment,

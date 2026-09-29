@@ -20,6 +20,10 @@ import {
   stopEmailWorker,
 } from './modules/notifications/infrastructure/email-worker'
 import {
+  startSubscriptionCronJobs,
+  stopSubscriptionCronJobs,
+} from './modules/payments/scheduler'
+import {
   startCronScheduler,
   stopCronScheduler,
 } from './modules/watchlist/infrastructure/scheduler'
@@ -42,6 +46,7 @@ const shutdown = async () => {
   await closeRedis()
   stopCronScheduler()
   await stopNewsCronJobs()
+  await stopSubscriptionCronJobs()
   await stopEmailWorker()
   await stopAuthEmailWorker()
   await posthogClient?.shutdown()
@@ -67,6 +72,7 @@ const startServer = async () => {
         logger.info('Redis connected successfully')
         await startCronScheduler()
         await startNewsCronJobs()
+        await startSubscriptionCronJobs()
         startEmailWorker()
         startAuthEmailWorker()
       })

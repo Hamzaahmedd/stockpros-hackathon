@@ -1,4 +1,5 @@
 import type { NewsSentiment, AlertType } from '@prisma/client'
+import type { RenewalReminderVariant } from './email-templates/subscription-renewal'
 export interface RawNewsInput {
   symbol: string
   headline: string
@@ -20,6 +21,15 @@ export interface AuthEmailJobPayload {
   to: string
   loginLink: string
   expiryMinutes: number
+}
+
+export interface RenewalReminderEmailJobPayload {
+  to: string
+  userName: string
+  amount: string
+  renewsOn: string
+  manageUrl: string
+  variant: RenewalReminderVariant
 }
 
 export interface NotificationItem {

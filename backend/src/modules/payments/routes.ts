@@ -16,6 +16,21 @@ if (config.features.enablePaymentProcessor) {
     authTokenMiddleware,
     PaymentsController.createCheckout,
   )
+  router.get(
+    '/subscription',
+    authTokenMiddleware,
+    PaymentsController.getSubscription,
+  )
+  router.post(
+    '/subscription/renew',
+    authTokenMiddleware,
+    PaymentsController.renewSubscriptionHandler,
+  )
+  router.post(
+    '/subscription/auto-renew',
+    authTokenMiddleware,
+    PaymentsController.toggleAutoRenewHandler,
+  )
 }
 
 // ─── Webhook & Verification (always registered) ──────────────────────────────

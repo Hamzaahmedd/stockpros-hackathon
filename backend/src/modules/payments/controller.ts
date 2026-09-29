@@ -4,12 +4,23 @@ import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
 import {
   createCheckoutSession,
+  getSubscriptionSummary,
+  handleSubscriptionRenewalWebhookEvent,
   handleWebhookEvent,
+  renewSubscription,
+  toggleAutoRenew,
   verifyTracker,
 } from './service'
 import { SAFEPAY_SIGNATURE_HEADER, verifySafepaySignature } from './signature'
-import { createCheckoutValidator, verifyTrackerValidator } from './validation'
-import type { SafepayWebhookEvent } from './types'
+import {
+  createCheckoutValidator,
+  toggleAutoRenewValidator,
+  verifyTrackerValidator,
+} from './validation'
+import type {
+  SafepaySubscriptionWebhookEvent,
+  SafepayWebhookEvent,
+} from './types'
 import { logger } from '../../shared/infrastructure/logger'
 import { SAFEPAY_STATE_PAID } from './constants'
 
@@ -20,12 +31,67 @@ export const createCheckout = async (
 ) => {
   try {
     const userId = getUserId(req)
-    validateOrThrow(createCheckoutValidator, req.body)
+    const { paymentMethod } = validateOrThrow(createCheckoutValidator, req.body)
 
-    const result = await createCheckoutSession(userId)
+    const result = await createCheckoutSession(userId, paymentMethod)
 
     return sendSuccess(res, {
       message: 'Checkout session created',
+      extra: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getSubscription = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const result = await getSubscriptionSummary(userId)
+
+    return sendSuccess(res, {
+      message: 'Subscription fetched',
+      extra: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const renewSubscriptionHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const result = await renewSubscription(userId)
+
+    return sendSuccess(res, {
+      message: 'Renewal checkout session created',
+      extra: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const toggleAutoRenewHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { enabled } = validateOrThrow(toggleAutoRenewValidator, req.body)
+    const result = await toggleAutoRenew(userId, enabled)
+
+    return sendSuccess(res, {
+      message: `Auto-renew ${enabled ? 'enabled' : 'disabled'}`,
       extra: result,
     })
   } catch (error) {
@@ -70,6 +136,33 @@ function parseSafepayWebhookPayload(body: unknown): SafepayWebhookEvent {
   }
 }
 
+/**
+ * Detects the Plan-based recurring-subscription webhook shape
+ * (`data.type === 'payment.succeeded' | 'payment.failed'`), distinct from
+ * the one-time checkout shape above — see types.ts's doc comment on
+ * `SafepaySubscriptionWebhookEvent` for why this is a best-effort shape, not
+ * a confirmed fixture. Returns null when the payload doesn't match, so the
+ * caller falls back to the one-time parser.
+ */
+function parseSafepaySubscriptionWebhookPayload(
+  body: unknown,
+): SafepaySubscriptionWebhookEvent | null {
+  const payload = body as { data?: Record<string, unknown> }
+  const data = payload?.data ?? {}
+  const type = toStringOrEmpty(data.type)
+
+  if (type !== 'payment.succeeded' && type !== 'payment.failed') {
+    return null
+  }
+
+  const reference = toStringOrEmpty(data.reference)
+  if (!reference) {
+    return null
+  }
+
+  return { type, reference }
+}
+
 export const safepayWebhook = async (
   req: Request,
   res: Response,
@@ -82,6 +175,12 @@ export const safepayWebhook = async (
     if (!isValid) {
       logger.warn('[Payments] Rejected Safepay webhook with invalid signature')
       throw new UnauthorizedError('Invalid webhook signature')
+    }
+
+    const subscriptionEvent = parseSafepaySubscriptionWebhookPayload(req.body)
+    if (subscriptionEvent) {
+      await handleSubscriptionRenewalWebhookEvent(subscriptionEvent)
+      return res.status(200).json({ received: true })
     }
 
     const event = parseSafepayWebhookPayload(req.body)

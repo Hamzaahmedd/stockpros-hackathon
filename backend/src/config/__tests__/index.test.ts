@@ -35,6 +35,7 @@ describe('readSecrets', () => {
     'SAFEPAY_API_KEY',
     'SAFEPAY_SECRET_KEY',
     'SAFEPAY_WEBHOOK_SECRET',
+    'SAFEPAY_PRO_PLAN_ID',
   ]
 
   it('reads every secret from its corresponding env var', () => {

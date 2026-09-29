@@ -7,6 +7,11 @@ export const ALERT_EMAIL_QUEUE_NAME = 'watchlist-email-notifications'
 
 export const ALERT_EMAIL_JOB_NAME = 'send-alert-email'
 
+// Subscription renewal reminders share this same queue/worker (bulk,
+// business-critical, low-volume — matches the alert-email profile) rather
+// than standing up a separate queue for one more email type.
+export const RENEWAL_REMINDER_JOB_NAME = 'subscription-renewal-reminder'
+
 // BullMQ settings shared by the alert email Queue and Worker.
 export const ALERT_EMAIL_QUEUE_OPTIONS = {
   skipVersionCheck: true,

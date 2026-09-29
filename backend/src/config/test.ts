@@ -46,6 +46,7 @@ export const testConfig = {
     enableNewsCron: false,
     enableWatchlistCron: false,
     enableAiRecomputeCron: false,
+    enableSubscriptionCron: false,
     enableSwaggerDocs: false,
     enablePhoneVerification: false,
     pricingTiersEnabled: false,

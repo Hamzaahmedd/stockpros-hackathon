@@ -57,6 +57,8 @@ export const CACHE_TTL = {
     ALERT_EMAIL_FAILED: 72 * 60 * 60, // 72 hours
     NEWS_JOB_COMPLETED: 24 * 60 * 60, // 24 hours
     NEWS_JOB_FAILED: 72 * 60 * 60, // 72 hours
+    SUBSCRIPTION_JOB_COMPLETED: 24 * 60 * 60, // 24 hours
+    SUBSCRIPTION_JOB_FAILED: 72 * 60 * 60, // 72 hours
   },
 } as const
 

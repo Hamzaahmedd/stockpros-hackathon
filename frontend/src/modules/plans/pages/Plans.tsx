@@ -13,6 +13,9 @@ import { Sidebar } from "@/shared/components/Sidebar";
 import { FiCheck, FiX } from "react-icons/fi";
 import React, { useState } from "react";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
+import { subscriptionService } from "../services";
+import type { SubscriptionPaymentMethod } from "../types";
 import type { PlanTier } from "../../auth/types";
 
 const FREE_FEATURES: { label: string; included: boolean }[] = [
@@ -61,18 +64,6 @@ export default function Plans() {
     if (plan === currentPlan || updating) return;
     setUpdating(plan);
     try {
-      // Upgrading to Pro with a live payment processor goes through Safepay's
-      // hosted checkout — the plan only actually changes once the webhook
-      // confirms payment (see PaymentResult.tsx). Downgrades and Bypass Mode
-      // upgrades still go straight through /auth/plan.
-      if (plan === "PRO" && enablePaymentProcessor) {
-        const res = await api.post("/api/v1/payments/create-checkout", { plan });
-        const checkoutUrl = res.data?.checkoutUrl;
-        if (!checkoutUrl) throw new Error("No checkout URL returned");
-        window.location.href = checkoutUrl;
-        return;
-      }
-
       await api.post("/api/v1/auth/plan", { plan });
       await refreshMe();
       toast.success(
@@ -81,6 +72,22 @@ export default function Plans() {
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to update plan");
     } finally {
+      setUpdating(null);
+    }
+  };
+
+  // Upgrading to Pro with a live payment processor goes through Safepay's
+  // hosted checkout — the plan only actually changes once the webhook
+  // confirms payment (see PaymentResult.tsx). Downgrades and Bypass Mode
+  // upgrades still go straight through /auth/plan via handleSelectPlan.
+  const handleUpgradeWithMethod = async (paymentMethod: SubscriptionPaymentMethod) => {
+    if (currentPlan === "PRO" || updating) return;
+    setUpdating("PRO");
+    try {
+      const { checkoutUrl } = await subscriptionService.createCheckout(paymentMethod);
+      window.location.href = checkoutUrl;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to start checkout");
       setUpdating(null);
     }
   };
@@ -147,14 +154,46 @@ export default function Plans() {
                     <FeatureRow key={f.label} {...f} />
                   ))}
                 </ul>
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={currentPlan === "PRO" || updating !== null}
-                  onClick={() => handleSelectPlan("PRO")}
-                >
-                  {currentPlan === "PRO" ? "Current plan" : "Upgrade to Pro"}
-                </Button>
+                {currentPlan === "PRO" ? (
+                  enablePaymentProcessor ? (
+                    <Button asChild className="w-full">
+                      <Link to="/plans/manage">Manage Subscription</Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" className="w-full" disabled>
+                      Current plan
+                    </Button>
+                  )
+                ) : enablePaymentProcessor ? (
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={updating !== null}
+                      onClick={() => handleUpgradeWithMethod("CARD")}
+                    >
+                      Upgrade with Card
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={updating !== null}
+                      onClick={() => handleUpgradeWithMethod("WALLET")}
+                    >
+                      Upgrade with JazzCash/Easypaisa
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={updating !== null}
+                    onClick={() => handleSelectPlan("PRO")}
+                  >
+                    Upgrade to Pro
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

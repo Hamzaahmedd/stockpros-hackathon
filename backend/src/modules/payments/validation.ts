@@ -7,6 +7,10 @@ export const createCheckoutValidator = z.object({
     required_error: 'Plan is required',
     invalid_type_error: 'Plan must be PRO',
   }),
+  paymentMethod: z.enum(['CARD', 'WALLET'], {
+    required_error: 'Payment method is required',
+    invalid_type_error: 'Payment method must be CARD or WALLET',
+  }),
 })
 
 export const verifyTrackerValidator = z.object({
@@ -16,4 +20,11 @@ export const verifyTrackerValidator = z.object({
       invalid_type_error: 'Tracker id must be a string',
     })
     .min(1, 'Tracker id is required'),
+})
+
+export const toggleAutoRenewValidator = z.object({
+  enabled: z.boolean({
+    required_error: 'enabled is required',
+    invalid_type_error: 'enabled must be a boolean',
+  }),
 })

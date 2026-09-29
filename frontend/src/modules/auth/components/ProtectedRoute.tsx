@@ -14,10 +14,12 @@ interface Props {
   }[];
   /** Requires config.features.pricingTiersEnabled to be on; otherwise redirects away (e.g. /plans while the pricing page is disabled). */
   requirePricingTiersEnabled?: boolean;
+  /** Requires config.features.enablePaymentProcessor to be on; otherwise redirects away (e.g. /plans/manage, since Subscription rows only exist in Payment Mode). */
+  requireEnablePaymentProcessor?: boolean;
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements, requirePricingTiersEnabled }) => {
-  const { user, loading, can, pricingTiersEnabled } = useAuth();
+export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements, requirePricingTiersEnabled, requireEnablePaymentProcessor }) => {
+  const { user, loading, can, pricingTiersEnabled, enablePaymentProcessor } = useAuth();
   const requiredPermissions = requirements ?? (resource ? [{ resource, action }] : []);
 
   if (loading) {
@@ -34,6 +36,10 @@ export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "
   if (!user) return <Navigate to="/login" replace />;
 
   if (requirePricingTiersEnabled && !pricingTiersEnabled) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireEnablePaymentProcessor && !enablePaymentProcessor) {
     return <Navigate to="/dashboard" replace />;
   }
 

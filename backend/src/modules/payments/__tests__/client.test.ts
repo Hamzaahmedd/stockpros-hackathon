@@ -86,6 +86,170 @@ describe('initPaymentSession', () => {
   })
 })
 
+describe('createSubscriptionCheckout', () => {
+  const params = {
+    reference: 'sub-1',
+    redirectUrl: 'https://app.example/success',
+    cancelUrl: 'https://app.example/cancel',
+  }
+
+  it('short-circuits to a mock subscribe URL when mockProvider is enabled, without calling Safepay', async () => {
+    const { createSubscriptionCheckout } = loadClient({ mockProvider: true })
+    const result = await createSubscriptionCheckout(params)
+    expect(result.safepaySubscriptionId).toBe('sub-1')
+    expect(result.subscriptionCheckoutUrl).toContain(
+      '/plans/result?tracker_id=sub-1&status=mock-pending',
+    )
+    expect(mockPost).not.toHaveBeenCalled()
+  })
+
+  it('throws when the provider is live but no API key is configured', async () => {
+    const { createSubscriptionCheckout } = loadClient({
+      mockProvider: false,
+      apiKey: '',
+      proPlanId: 'plan_1',
+    })
+    await expect(createSubscriptionCheckout(params)).rejects.toThrow(
+      'Safepay is not configured (missing SAFEPAY_API_KEY)',
+    )
+  })
+
+  it('throws when the provider is live but no Plan id is configured', async () => {
+    const { createSubscriptionCheckout } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: '',
+    })
+    await expect(createSubscriptionCheckout(params)).rejects.toThrow(
+      'Safepay is not configured (missing SAFEPAY_PRO_PLAN_ID)',
+    )
+  })
+
+  it('fetches a passport token and builds the subscribe URL from it', async () => {
+    mockPost.mockResolvedValue({ data: { data: { token: 'tbt-value' } } })
+    const { createSubscriptionCheckout } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+
+    const result = await createSubscriptionCheckout(params)
+
+    expect(mockPost).toHaveBeenCalledWith('/client/passport/v1/token', {
+      client: 'live-key',
+      environment: 'sandbox',
+    })
+    expect(result.safepaySubscriptionId).toBe('sub-1')
+    const url = new URL(result.subscriptionCheckoutUrl)
+    expect(url.origin + url.pathname).toBe(
+      'https://sandbox.api.getsafepay.com/checkout/pay/subscribe',
+    )
+    expect(url.searchParams.get('plan_id')).toBe('plan_1')
+    expect(url.searchParams.get('tbt')).toBe('tbt-value')
+    expect(url.searchParams.get('reference')).toBe('sub-1')
+    expect(url.searchParams.get('redirect_url')).toBe(params.redirectUrl)
+    expect(url.searchParams.get('cancel_url')).toBe(params.cancelUrl)
+  })
+
+  it('throws when the passport response does not include a token', async () => {
+    mockPost.mockResolvedValue({ data: {} })
+    const { createSubscriptionCheckout } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await expect(createSubscriptionCheckout(params)).rejects.toThrow(
+      'Failed to create Safepay subscription checkout',
+    )
+  })
+
+  it('wraps a network/API failure', async () => {
+    mockPost.mockRejectedValue(new Error('timeout'))
+    const { createSubscriptionCheckout } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await expect(createSubscriptionCheckout(params)).rejects.toThrow(
+      'Failed to create Safepay subscription checkout',
+    )
+  })
+})
+
+describe('pauseSafepaySubscription / resumeSafepaySubscription', () => {
+  it('no-ops in mock mode without calling Safepay', async () => {
+    const { pauseSafepaySubscription, resumeSafepaySubscription } = loadClient({
+      mockProvider: true,
+    })
+    await pauseSafepaySubscription('sub-1')
+    await resumeSafepaySubscription('sub-1')
+    expect(mockPost).not.toHaveBeenCalled()
+  })
+
+  it('throws when live but no API key is configured', async () => {
+    const { pauseSafepaySubscription } = loadClient({
+      mockProvider: false,
+      apiKey: '',
+      proPlanId: 'plan_1',
+    })
+    await expect(pauseSafepaySubscription('sub-1')).rejects.toThrow(
+      'Safepay is not configured (missing SAFEPAY_API_KEY)',
+    )
+  })
+
+  it('pauses a subscription via a live API call', async () => {
+    mockPost.mockResolvedValue({ data: {} })
+    const { pauseSafepaySubscription } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await pauseSafepaySubscription('sub-1')
+    expect(mockPost).toHaveBeenCalledWith(
+      '/client/subscriptions/v1/sub-1/pause',
+      { client: 'live-key' },
+    )
+  })
+
+  it('wraps a pause failure', async () => {
+    mockPost.mockRejectedValue(new Error('timeout'))
+    const { pauseSafepaySubscription } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await expect(pauseSafepaySubscription('sub-1')).rejects.toThrow(
+      'Failed to pause Safepay subscription',
+    )
+  })
+
+  it('resumes a subscription via a live API call', async () => {
+    mockPost.mockResolvedValue({ data: {} })
+    const { resumeSafepaySubscription } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await resumeSafepaySubscription('sub-1')
+    expect(mockPost).toHaveBeenCalledWith(
+      '/client/subscriptions/v1/sub-1/resume',
+      { client: 'live-key' },
+    )
+  })
+
+  it('wraps a resume failure', async () => {
+    mockPost.mockRejectedValue(new Error('timeout'))
+    const { resumeSafepaySubscription } = loadClient({
+      mockProvider: false,
+      apiKey: 'live-key',
+      proPlanId: 'plan_1',
+    })
+    await expect(resumeSafepaySubscription('sub-1')).rejects.toThrow(
+      'Failed to resume Safepay subscription',
+    )
+  })
+})
+
 describe('buildCheckoutUrl', () => {
   const params = {
     token: 'trk_1',
