@@ -8,6 +8,18 @@ jest.mock('../service', () => ({
   verifyTracker: jest.fn(),
 }))
 
+jest.mock('../ledger', () => ({ getCreditLedger: jest.fn() }))
+
+jest.mock('../usage', () => ({ getMyUsage: jest.fn() }))
+
+jest.mock('../team-billing', () => ({
+  createTeamCheckout: jest.fn(),
+  createTeamRenewalCheckout: jest.fn(),
+  createTopupCheckout: jest.fn(),
+  getTeamSubscriptionSummary: jest.fn(),
+  toggleTeamAutoRenew: jest.fn(),
+}))
+
 jest.mock('../signature', () => ({
   SAFEPAY_SIGNATURE_HEADER: 'x-sfpy-signature',
   verifySafepaySignature: jest.fn(),
@@ -22,7 +34,16 @@ import {
   toggleAutoRenew,
   verifyTracker,
 } from '../service'
+import { getCreditLedger } from '../ledger'
+import { getMyUsage } from '../usage'
 import { verifySafepaySignature } from '../signature'
+import {
+  createTeamCheckout,
+  createTeamRenewalCheckout,
+  createTopupCheckout,
+  getTeamSubscriptionSummary,
+  toggleTeamAutoRenew,
+} from '../team-billing'
 import * as controller from '../controller'
 
 const mockRes = () => {
@@ -34,6 +55,7 @@ const mockRes = () => {
 const mockReq = (overrides: Record<string, any> = {}) => ({
   user: { userId: 'user-1' },
   body: {},
+  query: {},
   headers: {},
   ...overrides,
 })
@@ -342,6 +364,209 @@ describe('verifyTrackerHandler', () => {
     const req = mockReq({ body: {} })
     const res = mockRes()
     await controller.verifyTrackerHandler(req as any, res, next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('createCheckout — TEAM and TOPUP', () => {
+  it('routes a TEAM plan to the team checkout with validated seat count + name', async () => {
+    ;(createTeamCheckout as jest.Mock).mockResolvedValue({
+      checkoutUrl: 'https://t',
+    })
+    const req = mockReq({
+      body: { plan: 'TEAM', seatCount: 5, teamName: 'Alpha' },
+    })
+    await controller.createCheckout(req as any, mockRes(), next)
+    expect(createTeamCheckout).toHaveBeenCalledWith('user-1', {
+      plan: 'TEAM',
+      seatCount: 5,
+      teamName: 'Alpha',
+    })
+    expect(createCheckoutSession).not.toHaveBeenCalled()
+  })
+
+  it.each([1, 151, 2.5, '5'])('rejects seatCount %j', async (seatCount) => {
+    const req = mockReq({
+      body: { plan: 'TEAM', seatCount, teamName: 'Alpha' },
+    })
+    await controller.createCheckout(req as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+    expect(createTeamCheckout).not.toHaveBeenCalled()
+  })
+
+  it('routes a TOPUP plan with a known pack, and rejects an unknown pack', async () => {
+    ;(createTopupCheckout as jest.Mock).mockResolvedValue({
+      checkoutUrl: 'https://t',
+    })
+    await controller.createCheckout(
+      mockReq({ body: { plan: 'TOPUP', packId: 'PACK_500' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(createTopupCheckout).toHaveBeenCalledWith('user-1', 'PACK_500')
+
+    jest.clearAllMocks()
+    await controller.createCheckout(
+      mockReq({ body: { plan: 'TOPUP', packId: 'PACK_1' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+    expect(createTopupCheckout).not.toHaveBeenCalled()
+  })
+
+  it('never reads a price from the client body', async () => {
+    ;(createTopupCheckout as jest.Mock).mockResolvedValue({})
+    await controller.createCheckout(
+      mockReq({
+        body: { plan: 'TOPUP', packId: 'PACK_500', amountPaisa: 1 },
+      }) as any,
+      mockRes(),
+      next,
+    )
+    expect(createTopupCheckout).toHaveBeenCalledWith('user-1', 'PACK_500')
+  })
+})
+
+describe('subscription handlers — TEAM scope', () => {
+  it('getSubscription?scope=TEAM returns the team summary', async () => {
+    ;(getTeamSubscriptionSummary as jest.Mock).mockResolvedValue({
+      status: 'ACTIVE',
+    })
+    await controller.getSubscription(
+      mockReq({ query: { scope: 'TEAM' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(getTeamSubscriptionSummary).toHaveBeenCalledWith('user-1')
+    expect(getSubscriptionSummary).not.toHaveBeenCalled()
+  })
+
+  it('renew?scope=TEAM creates a team renewal checkout', async () => {
+    ;(createTeamRenewalCheckout as jest.Mock).mockResolvedValue({
+      checkoutUrl: 'https://t',
+    })
+    await controller.renewSubscriptionHandler(
+      mockReq({ query: { scope: 'TEAM' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(createTeamRenewalCheckout).toHaveBeenCalledWith('user-1')
+    expect(renewSubscription).not.toHaveBeenCalled()
+  })
+
+  it('auto-renew with scope TEAM toggles the team flag; default scope stays personal', async () => {
+    ;(toggleTeamAutoRenew as jest.Mock).mockResolvedValue({ autoRenew: true })
+    await controller.toggleAutoRenewHandler(
+      mockReq({ body: { enabled: true, scope: 'TEAM' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(toggleTeamAutoRenew).toHaveBeenCalledWith('user-1', true)
+    expect(toggleAutoRenew).not.toHaveBeenCalled()
+
+    ;(toggleAutoRenew as jest.Mock).mockResolvedValue({ autoRenew: false })
+    await controller.toggleAutoRenewHandler(
+      mockReq({ body: { enabled: false } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(toggleAutoRenew).toHaveBeenCalledWith('user-1', false)
+  })
+
+  it('rejects an unknown scope', async () => {
+    await controller.getSubscription(
+      mockReq({ query: { scope: 'ORG' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('getCreditLedgerHandler', () => {
+  it('validates the query, applies defaults, and returns the page', async () => {
+    ;(getCreditLedger as jest.Mock).mockResolvedValue({ entries: [] })
+    const res = mockRes()
+
+    await controller.getCreditLedgerHandler(mockReq() as any, res, next)
+
+    expect(getCreditLedger).toHaveBeenCalledWith('user-1', {
+      scope: 'USER',
+      limit: 25,
+    })
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, data: { entries: [] } }),
+    )
+  })
+
+  it('passes through scope, limit (coerced from the query string) and cursor', async () => {
+    ;(getCreditLedger as jest.Mock).mockResolvedValue({})
+    const cursor = '00000000-0000-0000-0000-000000000009'
+
+    await controller.getCreditLedgerHandler(
+      mockReq({ query: { scope: 'TEAM', limit: '50', cursor } }) as any,
+      mockRes(),
+      next,
+    )
+
+    expect(getCreditLedger).toHaveBeenCalledWith('user-1', {
+      scope: 'TEAM',
+      limit: 50,
+      cursor,
+    })
+  })
+
+  it.each([
+    [{ limit: '0' }],
+    [{ limit: '101' }],
+    [{ limit: 'abc' }],
+    [{ scope: 'ORG' }],
+    [{ cursor: 'not-a-uuid' }],
+  ])('rejects an invalid query %j', async (query) => {
+    await controller.getCreditLedgerHandler(
+      mockReq({ query }) as any,
+      mockRes(),
+      next,
+    )
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+    expect(getCreditLedger).not.toHaveBeenCalled()
+  })
+
+  it('forwards service errors', async () => {
+    ;(getCreditLedger as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.getCreditLedgerHandler(mockReq() as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('getMyUsageHandler', () => {
+  it("returns the caller's usage summary, scoped to the authenticated user", async () => {
+    ;(getMyUsage as jest.Mock).mockResolvedValue({ plan: 'PRO', metered: true })
+    const res = mockRes()
+
+    // Any user id smuggled in the query/body is ignored: only the token's user counts.
+    await controller.getMyUsageHandler(
+      mockReq({
+        query: { userId: 'someone-else' },
+        body: { userId: 'x' },
+      }) as any,
+      res,
+      next,
+    )
+
+    expect(getMyUsage).toHaveBeenCalledWith('user-1')
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { plan: 'PRO', metered: true },
+      }),
+    )
+  })
+
+  it('forwards errors', async () => {
+    ;(getMyUsage as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.getMyUsageHandler(mockReq() as any, mockRes(), next)
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

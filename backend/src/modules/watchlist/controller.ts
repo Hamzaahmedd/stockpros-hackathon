@@ -154,7 +154,10 @@ export const updateAlert = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const { symbol, id } = validateOrThrow(symbolAndIdParamValidator, req.params)
+    const { symbol, id } = validateOrThrow(
+      symbolAndIdParamValidator,
+      req.params,
+    )
     const validatedData = validateOrThrow(updateAlertValidator, req.body)
 
     const updated = await WatchlistService.updateAlert(
@@ -199,7 +202,10 @@ export const deleteAlert = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const { symbol, id } = validateOrThrow(symbolAndIdParamValidator, req.params)
+    const { symbol, id } = validateOrThrow(
+      symbolAndIdParamValidator,
+      req.params,
+    )
 
     await WatchlistService.deleteAlert(userId, symbol, id)
 

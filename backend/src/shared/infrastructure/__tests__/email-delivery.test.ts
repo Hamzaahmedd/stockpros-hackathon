@@ -7,9 +7,7 @@ describe('rethrowEmailError', () => {
       responseCode: 550,
     })
 
-    expect(() => rethrowEmailError(err, 'bad@example.com')).toThrow(
-      UnrecoverableError,
-    )
+    expect(() => rethrowEmailError(err)).toThrow(UnrecoverableError)
   })
 
   it('rethrows a 4xx SMTP response as-is so BullMQ retries with backoff', () => {
@@ -17,10 +15,8 @@ describe('rethrowEmailError', () => {
       responseCode: 421,
     })
 
-    expect(() => rethrowEmailError(err, 'user@example.com')).toThrow(err)
-    expect(() => rethrowEmailError(err, 'user@example.com')).not.toThrow(
-      UnrecoverableError,
-    )
+    expect(() => rethrowEmailError(err)).toThrow(err)
+    expect(() => rethrowEmailError(err)).not.toThrow(UnrecoverableError)
   })
 
   it('rethrows a connection-level error (no responseCode) as-is so BullMQ retries', () => {
@@ -28,9 +24,20 @@ describe('rethrowEmailError', () => {
       code: 'ETIMEDOUT',
     })
 
-    expect(() => rethrowEmailError(err, 'user@example.com')).toThrow(err)
-    expect(() => rethrowEmailError(err, 'user@example.com')).not.toThrow(
-      UnrecoverableError,
-    )
+    expect(() => rethrowEmailError(err)).toThrow(err)
+    expect(() => rethrowEmailError(err)).not.toThrow(UnrecoverableError)
+  })
+
+  it('a permanent rejection that is not an Error object gets a generic message with no recipient', () => {
+    let thrown: unknown
+    try {
+      rethrowEmailError({ responseCode: 553 })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(UnrecoverableError)
+    expect((thrown as Error).message).toBe('SMTP 553 rejecting the recipient')
+    expect((thrown as Error).message).not.toContain('@')
   })
 })

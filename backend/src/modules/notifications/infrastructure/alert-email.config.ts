@@ -12,6 +12,9 @@ export const ALERT_EMAIL_JOB_NAME = 'send-alert-email'
 // than standing up a separate queue for one more email type.
 export const RENEWAL_REMINDER_JOB_NAME = 'subscription-renewal-reminder'
 
+// Team workspace invites ride the same queue for the same reasons.
+export const TEAM_INVITE_JOB_NAME = 'team-invite'
+
 // BullMQ settings shared by the alert email Queue and Worker.
 export const ALERT_EMAIL_QUEUE_OPTIONS = {
   skipVersionCheck: true,

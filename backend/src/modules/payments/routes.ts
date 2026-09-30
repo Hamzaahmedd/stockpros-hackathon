@@ -33,6 +33,20 @@ if (config.features.enablePaymentProcessor) {
   )
 }
 
+// ─── Usage meter & credit history (always registered) ──────────────────────────────────────
+// Read-only view of the append-only credit ledger; harmless (empty) when the
+// payment processor is off, so it does not need the feature gate.
+router.get(
+  '/me/usage',
+  authTokenMiddleware,
+  PaymentsController.getMyUsageHandler,
+)
+router.get(
+  '/credits/ledger',
+  authTokenMiddleware,
+  PaymentsController.getCreditLedgerHandler,
+)
+
 // ─── Webhook & Verification (always registered) ──────────────────────────────
 // A webhook can still arrive after enablePaymentProcessor is flipped off
 // mid-flight; it must be durably recorded rather than silently 404ing.

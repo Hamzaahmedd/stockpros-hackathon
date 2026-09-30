@@ -1,3 +1,11 @@
+jest.mock('../../../shared/infrastructure/team-access', () => ({
+  // keep the real, pure role check; only the DB-backed lookups are faked
+  isTeamAdminRole: jest.requireActual(
+    '../../../shared/infrastructure/team-access',
+  ).isTeamAdminRole,
+  getActiveMembership: jest.fn().mockResolvedValue(null),
+}))
+
 jest.mock('../service', () => ({
   completeOnboardingFlow: jest.fn(),
   deleteAccount: jest.fn(),
@@ -441,5 +449,22 @@ describe('verifyOtpHandler', () => {
     const res = mockRes()
     await controller.verifyOtpHandler(req as any, res, next)
     expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('updateMyPlan — team members', () => {
+  it("refuses a plan change for a team member so their plan can't desync from the workspace", async () => {
+    const { getActiveMembership } = jest.requireMock(
+      '../../../shared/infrastructure/team-access',
+    )
+    getActiveMembership.mockResolvedValueOnce({ teamId: 'team-1' })
+    const req = mockReq({ body: { plan: 'FREE' } })
+
+    await controller.updateMyPlan(req as any, mockRes(), next)
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 403 }),
+    )
+    expect(setMyPlan).not.toHaveBeenCalled()
   })
 })

@@ -1,7 +1,12 @@
 import { Router } from 'express'
 import * as FeedbackController from './controller'
 import { authTokenMiddleware as authenticate } from '../auth'
-import { Action, allRbacMiddleware, rbacMiddleware, Resource } from '../access-control'
+import {
+  Action,
+  allRbacMiddleware,
+  rbacMiddleware,
+  Resource,
+} from '../access-control'
 
 const router = Router()
 

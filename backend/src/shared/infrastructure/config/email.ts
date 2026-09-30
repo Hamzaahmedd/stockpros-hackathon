@@ -131,9 +131,9 @@ const deliverViaSmtp = async (opts: MailOptions): Promise<void> => {
         ]
       : undefined,
   })
-  logger.info(
-    `[Email] Live email sent to ${opts.to} via SMTP (ID: ${info.messageId})`,
-  )
+  logger.info('[Email] Live email sent via SMTP', {
+    messageId: info.messageId,
+  })
 }
 
 const deliverViaResend = async (opts: MailOptions): Promise<boolean> => {
@@ -146,17 +146,24 @@ const deliverViaResend = async (opts: MailOptions): Promise<boolean> => {
     html: opts.html || opts.text || '',
   })
   if (!error) {
-    logger.info(
-      `[Email] Live email sent to ${opts.to} via Resend (ID: ${data?.id})`,
-    )
+    logger.info('[Email] Live email sent via Resend', { messageId: data?.id })
     return true
   }
-  logger.warn(`[Resend] Delivery notice for ${opts.to}: ${error.message}`)
+  // Provider text can echo the recipient; the logger scrubs addresses from it.
+  logger.warn(`[Resend] Delivery notice: ${error.message}`)
   return false
 }
 
+/**
+ * Local "inbox" for development: with no mail provider configured, print the
+ * message so a developer can copy the magic link out of the terminal. It
+ * deliberately shows the body (that is the point) but never the recipient, and
+ * only runs in `development` — not in test or any hosted environment — where
+ * logs stay on the developer's machine (telemetry export is production-only).
+ */
 const logDevFallback = (opts: MailOptions): void => {
-  logger.info(`[Email][DEV] To: ${opts.to} | Subject: ${opts.subject}`)
+  if (config.server.nodeEnv !== 'development') return
+  logger.info(`[Email][DEV] Subject: ${opts.subject}`)
   if (opts.text) logger.info(`[Email][DEV] Text: ${opts.text}`)
 }
 

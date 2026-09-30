@@ -131,7 +131,9 @@ export class AccessControlSwaggerController extends Controller {
   @Post('assign-role')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Role assigned')
-  async assignRole(@Body() body: AssignRoleRequest): Promise<ApiResponse<Role>> {
+  async assignRole(
+    @Body() body: AssignRoleRequest,
+  ): Promise<ApiResponse<Role>> {
     throw new Error('tsoa spec-only')
   }
 

@@ -77,7 +77,10 @@ export async function getLivePrices(
   for (const symbol of symbols) {
     // 1. Check in-memory WebSocket price cache (zero latency, no API call)
     const memEntry = priceCache.get(symbol)
-    if (memEntry && Date.now() - memEntry.timestamp < CACHE_TTL.MARKET.REST_PRICE_MS) {
+    if (
+      memEntry &&
+      Date.now() - memEntry.timestamp < CACHE_TTL.MARKET.REST_PRICE_MS
+    ) {
       priceMap[symbol] = memEntry.price
       continue
     }
@@ -107,7 +110,6 @@ export async function getLivePrices(
 
   return priceMap
 }
-
 
 export async function getCompanySectors(
   symbols: string[],

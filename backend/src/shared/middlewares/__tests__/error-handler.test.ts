@@ -5,6 +5,8 @@ import {
   ConflictError,
   InternalServerError,
   NotFoundError,
+  OverageReason,
+  OverageRequiredError,
   PlanRequiredError,
   QuotaExceededError,
   ValidationError,
@@ -280,5 +282,33 @@ describe('errorHandler — logging behavior', () => {
     expect(() =>
       errorHandler(new AppError('boom', 500, false), req, res, next),
     ).not.toThrow()
+  })
+})
+
+describe('errorHandler — OverageRequiredError', () => {
+  it('returns 403 with the stable OVERAGE_REQUIRED code and details', () => {
+    const res = mockRes()
+    errorHandler(
+      new OverageRequiredError({
+        reason: OverageReason.INSUFFICIENT_CREDITS,
+        feature: 'ai_forecast',
+        canTopUp: true,
+      }),
+      req,
+      res,
+      next,
+    )
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCode: 'OVERAGE_REQUIRED',
+        details: {
+          code: 'OVERAGE_REQUIRED',
+          reason: 'INSUFFICIENT_CREDITS',
+          feature: 'ai_forecast',
+          canTopUp: true,
+        },
+      }),
+    )
   })
 })

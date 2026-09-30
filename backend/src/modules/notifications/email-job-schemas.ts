@@ -1,0 +1,66 @@
+import { AlertType, TeamRole } from '@prisma/client'
+import { z } from 'zod'
+import { RENEWAL_REMINDER_VARIANTS } from './email-templates/subscription-renewal'
+
+// Job payloads round-trip through Redis, so what a worker reads is not
+// guaranteed to be what the producer wrote (stale jobs from an older deploy,
+// manual edits, corruption). These schemas are the single source of truth: the
+// payload types are inferred from them and workers parse with them, instead of
+// casting `job.data`.
+const id = z.string().min(1)
+const recipient = z.string().email()
+
+// These links are placed in email `href`s, so only web URLs are acceptable —
+// zod's plain .url() also accepts schemes such as javascript: and data:.
+const webUrl = z
+  .string()
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), {
+    message: 'Must be an http(s) URL',
+  })
+
+export const alertEmailJobSchema = z.object({
+  to: recipient,
+  /** Whose alert this is — the log correlation id (never the address). */
+  userId: id,
+  symbol: id,
+  alertType: z.nativeEnum(AlertType),
+  title: z.string(),
+  body: z.string(),
+})
+
+export const authEmailJobSchema = z.object({
+  to: recipient,
+  loginLink: webUrl,
+  expiryMinutes: z.number().positive(),
+})
+
+export const renewalReminderJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id; a team subscription has no single user, so this is the subscription. */
+  subscriptionId: id,
+  userName: z.string(),
+  amount: z.string(),
+  renewsOn: z.string(),
+  manageUrl: webUrl,
+  variant: z.enum(RENEWAL_REMINDER_VARIANTS),
+})
+
+export const teamInviteJobSchema = z.object({
+  to: recipient,
+  inviteId: id,
+  teamId: id,
+  inviterName: z.string(),
+  teamName: z.string(),
+  inviteUrl: webUrl,
+  role: z.nativeEnum(TeamRole),
+  /** ISO 8601 — jobs are JSON-serialised, so no Date objects. */
+  expiresAt: z.string().datetime(),
+})
+
+export type EmailJobPayload = z.infer<typeof alertEmailJobSchema>
+export type AuthEmailJobPayload = z.infer<typeof authEmailJobSchema>
+export type RenewalReminderEmailJobPayload = z.infer<
+  typeof renewalReminderJobSchema
+>
+export type TeamInviteEmailJobPayload = z.infer<typeof teamInviteJobSchema>

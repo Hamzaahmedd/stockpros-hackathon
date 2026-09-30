@@ -26,6 +26,9 @@ jest.mock('../../../shared/infrastructure/database', () => ({
     userSession: {
       updateMany: jest.fn(),
     },
+    team: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }))
@@ -48,6 +51,7 @@ describe('deleteAccount — payment transaction retention', () => {
     ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
       count: 0,
     })
+    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue(null)
 
     // Deliberately omits `paymentTransaction` — if service.ts is ever
     // changed to purge payment records, this mock throws and the test fails.
@@ -62,6 +66,8 @@ describe('deleteAccount — payment transaction retention', () => {
       userRole: { deleteMany: jest.fn() },
       magicLinkToken: { deleteMany: jest.fn() },
       phoneOtp: { deleteMany: jest.fn() },
+      teamMember: { deleteMany: jest.fn() },
+      teamInvite: { deleteMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(
@@ -71,5 +77,93 @@ describe('deleteAccount — payment transaction retention', () => {
     await expect(deleteAccount('user-1')).resolves.toBeUndefined()
 
     expect('paymentTransaction' in tx).toBe(false)
+  })
+})
+
+describe('deleteAccount — team workspace guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      status: UserStatus.ACTIVE,
+    })
+  })
+
+  it('refuses to delete the owner of an ACTIVE team, before revoking anything', async () => {
+    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      status: 'ACTIVE',
+    })
+
+    await expect(deleteAccount('user-1')).rejects.toMatchObject({
+      statusCode: 400,
+    })
+    expect(prisma.userSession.updateMany).not.toHaveBeenCalled()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it('removes the team seat in the purge transaction and allows a CANCELLED-team owner to delete', async () => {
+    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      status: 'CANCELLED',
+    })
+    ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    })
+    const deleteMany = () => ({ deleteMany: jest.fn() })
+    const tx = {
+      watchlistAlert: deleteMany(),
+      watchlist: deleteMany(),
+      notification: deleteMany(),
+      newsReadState: deleteMany(),
+      newsSavedArticle: deleteMany(),
+      decisionRun: deleteMany(),
+      portfolio: deleteMany(),
+      userRole: deleteMany(),
+      magicLinkToken: deleteMany(),
+      phoneOtp: deleteMany(),
+      teamMember: deleteMany(),
+      teamInvite: deleteMany(),
+      user: { update: jest.fn().mockResolvedValue({}) },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
+    )
+
+    await expect(deleteAccount('user-1')).resolves.toBeUndefined()
+    expect(tx.teamMember.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+    })
+  })
+
+  it("purges pending team invites addressed to the deleted user's email (invite rows are PII), case-insensitively", async () => {
+    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    })
+    const deleteMany = () => ({ deleteMany: jest.fn() })
+    const tx = {
+      watchlistAlert: deleteMany(),
+      watchlist: deleteMany(),
+      notification: deleteMany(),
+      newsReadState: deleteMany(),
+      newsSavedArticle: deleteMany(),
+      decisionRun: deleteMany(),
+      portfolio: deleteMany(),
+      userRole: deleteMany(),
+      magicLinkToken: deleteMany(),
+      phoneOtp: deleteMany(),
+      teamMember: deleteMany(),
+      teamInvite: deleteMany(),
+      user: { update: jest.fn().mockResolvedValue({}) },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
+    )
+
+    await deleteAccount('user-1')
+
+    expect(tx.teamInvite.deleteMany).toHaveBeenCalledWith({
+      where: { email: { equals: 'user@example.com', mode: 'insensitive' } },
+    })
   })
 })

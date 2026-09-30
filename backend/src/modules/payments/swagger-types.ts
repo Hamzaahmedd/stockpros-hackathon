@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Response,
   Route,
   Security,
@@ -14,12 +15,45 @@ import { ApiErrorResponse, ApiResponse } from '../../shared/docs-types'
 
 // ─── Payments models ────────────────────────────────────────────────────────
 
-export interface CreateCheckoutRequest {
-  /** Only PRO is purchasable today. @example "PRO" */
+export interface CreateProCheckoutRequest {
+  /** @example "PRO" */
   plan: 'PRO'
   /** @example "CARD" */
   paymentMethod: 'CARD' | 'WALLET'
 }
+
+export interface CreateTeamCheckoutRequest {
+  /** @example "TEAM" */
+  plan: 'TEAM'
+  /**
+   * Seats to buy, 2–150. Price = seatCount × 749,900 paisa (Rs 7,499/seat/mo),
+   * derived server-side.
+   * @isInt
+   * @minimum 2
+   * @maximum 150
+   * @example 10
+   */
+  seatCount: number
+  /** @example "Alpha Fund" */
+  teamName: string
+}
+
+export interface CreateTopupCheckoutRequest {
+  /** @example "TOPUP" */
+  plan: 'TOPUP'
+  /**
+   * Prepaid credit pack: PACK_500 (Rs 500 = 10 signals), PACK_1000 (Rs 1,000 =
+   * 20), PACK_2500 (Rs 2,500 = 50). Credits the team pool when the caller is a
+   * team owner/admin, otherwise the caller's own balance (PRO only).
+   * @example "PACK_1000"
+   */
+  packId: 'PACK_500' | 'PACK_1000' | 'PACK_2500'
+}
+
+export type CreateCheckoutRequest =
+  | CreateProCheckoutRequest
+  | CreateTeamCheckoutRequest
+  | CreateTopupCheckoutRequest
 
 export interface CreateCheckoutResponse {
   /** Safepay hosted-checkout URL to redirect the browser to. */
@@ -36,9 +70,9 @@ export interface VerifyTrackerRequest {
 export interface VerifyTrackerResponse {
   trackerId: string
   /** @example "COMPLETED" */
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
   /** @example "PRO" */
-  plan: 'FREE' | 'PRO'
+  plan: 'FREE' | 'PRO' | 'TEAM'
 }
 
 export interface SubscriptionSummaryResponse {
@@ -54,8 +88,73 @@ export interface SubscriptionSummaryResponse {
   gracePeriodEnd: string | null
 }
 
+export interface UsageQuotaResponse {
+  /** AI signals included per billing cycle (Pro 300, Team seat 375). */
+  limit: number
+  used: number
+  remaining: number
+  windowStart: string
+  /** When the allowance resets; in the past during a grace period. */
+  windowEnd: string | null
+  /** @example "SUBSCRIPTION_PERIOD" */
+  windowSource: 'SUBSCRIPTION_PERIOD' | 'CALENDAR_MONTH'
+}
+
+export interface UsageCreditsResponse {
+  pool: 'USER' | 'TEAM'
+  balanceInPaisa: number
+  costPerSignalPaisa: number
+  signalsAvailable: number
+  /** False for plain team members, who cannot buy credits. */
+  canTopUp: boolean
+}
+
+export interface UsageSpendCapResponse {
+  monthlyLimitPaisa: number
+  spentPaisa: number
+  remainingPaisa: number
+}
+
+export interface UsageSummaryResponse {
+  plan: 'FREE' | 'PRO' | 'TEAM'
+  /** False for FREE (daily quotas apply instead, so there is no monthly meter). */
+  metered: boolean
+  quota: UsageQuotaResponse | null
+  credits: UsageCreditsResponse | null
+  /** Team members with a monthly credit cap only. */
+  spendCap: UsageSpendCapResponse | null
+}
+
+export interface CreditLedgerEntryResponse {
+  id: string
+  /** Signed paisa: purchases/refunds positive, overage consumption negative. */
+  amountPaisa: number
+  /** @example "OVERAGE_CONSUMPTION" */
+  type: 'PURCHASE' | 'OVERAGE_CONSUMPTION' | 'REFUND'
+  description: string
+  createdAt: string
+  /** True when the movement was on the shared workspace pool. */
+  isTeamPool: boolean
+  /** Workspace-wide view only. */
+  memberName?: string
+}
+
+export interface CreditLedgerPageResponse {
+  scope: 'USER' | 'TEAM'
+  balanceInPaisa: number
+  entries: CreditLedgerEntryResponse[]
+  /** Pass back as `cursor` for the next (older) page; null when done. */
+  nextCursor: string | null
+}
+
 export interface ToggleAutoRenewRequest {
   enabled: boolean
+  /**
+   * `TEAM` targets the caller's workspace subscription (owner/admin only).
+   * Team seats are renewed manually, so this only sets the flag — it never
+   * schedules a charge. Defaults to `USER`.
+   */
+  scope?: 'USER' | 'TEAM'
 }
 
 // ─── Controller (TSOA spec-only — not used at runtime) ─────────────────────
@@ -64,7 +163,9 @@ export interface ToggleAutoRenewRequest {
 @Tags('Payments')
 export class PaymentsSwaggerController extends Controller {
   /**
-   * Initiates a Safepay hosted-checkout session for upgrading to Pro.
+   * Initiates a Safepay hosted-checkout session for upgrading to Pro, buying
+   * a Team workspace (`plan: TEAM`), or topping up prepaid credits
+   * (`plan: TOPUP`). Prices are always derived server-side.
    * Only registered when `config.features.enablePaymentProcessor` is on
    * (Payment Mode) — in Bypass Mode this route does not exist (404) and
    * `POST /api/v1/auth/plan` is used directly instead.
@@ -73,6 +174,11 @@ export class PaymentsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Checkout session created')
   @Response<ApiErrorResponse>(400, 'Invalid plan value')
+  @Response<ApiErrorResponse>(
+    403,
+    'Not allowed (restricted domain, non-admin top-up, FREE top-up)',
+  )
+  @Response<ApiErrorResponse>(409, 'Already part of a team workspace')
   async createCheckout(
     @Body() body: CreateCheckoutRequest,
   ): Promise<ApiResponse<CreateCheckoutResponse>> {
@@ -123,9 +229,40 @@ export class PaymentsSwaggerController extends Controller {
    */
   @Get('subscription')
   @Security('bearerAuth')
+  // `?scope=TEAM` returns the workspace subscription (owner/admin only).
   @SuccessResponse(200, 'Subscription fetched')
   @Response<ApiErrorResponse>(404, 'No subscription found')
   async getSubscription(): Promise<ApiResponse<SubscriptionSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * The caller's allowance for the current cycle: AI signals used vs. included,
+   * the credit pool that pays beyond it, and any team spend cap. Same window
+   * and counting as enforcement. Always registered.
+   */
+  @Get('me/usage')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Usage fetched')
+  async getMyUsage(): Promise<ApiResponse<UsageSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Newest-first credit history. `scope=USER` (default) is the caller's own
+   * activity and balance; `scope=TEAM` is the whole workspace pool with member
+   * names and is owner/admin only. Cursor-paginated. Always registered.
+   */
+  @Get('credits/ledger')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Credit history fetched')
+  @Response<ApiErrorResponse>(403, 'Workspace history is owner/admin only')
+  @Response<ApiErrorResponse>(404, 'No active workspace')
+  async getCreditLedger(
+    @Query() scope?: 'USER' | 'TEAM',
+    @Query() limit?: number,
+    @Query() cursor?: string,
+  ): Promise<ApiResponse<CreditLedgerPageResponse>> {
     throw new Error('tsoa spec-only')
   }
 
@@ -136,15 +273,17 @@ export class PaymentsSwaggerController extends Controller {
    */
   @Post('subscription/renew')
   @Security('bearerAuth')
+  // `?scope=TEAM` renews the workspace for its full current seat count.
   @SuccessResponse(200, 'Renewal checkout session created')
   async renewSubscription(): Promise<ApiResponse<CreateCheckoutResponse>> {
     throw new Error('tsoa spec-only')
   }
 
   /**
-   * Turns recurring card billing on/off. CARD subscriptions only — 400 if
-   * the caller's subscription is WALLET (wallets have no recurring
-   * capability to toggle).
+   * Turns recurring card billing on/off. For a personal subscription this is
+   * CARD only — 400 if it is WALLET (no recurring capability). With
+   * `scope: TEAM` it flags the workspace subscription (flag only; team seats
+   * are always renewed manually).
    */
   @Post('subscription/auto-renew')
   @Security('bearerAuth')

@@ -6,3 +6,4 @@ prisma/migrations
 prisma/generated
 /generated/docs
 /coverage
+test-results/

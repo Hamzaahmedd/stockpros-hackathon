@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../../shared/utils/html'
 export interface WatchlistDigestItem {
   symbol: string
   currentPrice: number | null
@@ -24,18 +25,6 @@ export interface PremarketDigestData {
   /** Resolved by the caller — `cid:logo` for SMTP, public URL for Resend. */
   logoSrc?: string
 }
-
-const escapeHtml = (value: string): string =>
-  value.replace(/[&<>'"]/g, (character) => {
-    const entities: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;',
-    }
-    return entities[character]
-  })
 
 export const buildPremarketDigestText = (data: PremarketDigestData): string => {
   const watchlistText = data.watchlistItems

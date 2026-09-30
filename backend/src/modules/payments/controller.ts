@@ -14,15 +14,31 @@ import {
 import { SAFEPAY_SIGNATURE_HEADER, verifySafepaySignature } from './signature'
 import {
   createCheckoutValidator,
+  creditLedgerQueryValidator,
+  subscriptionScopeQueryValidator,
   toggleAutoRenewValidator,
   verifyTrackerValidator,
 } from './validation'
 import type {
+  CreateCheckoutResult,
   SafepaySubscriptionWebhookEvent,
   SafepayWebhookEvent,
 } from './types'
 import { logger } from '../../shared/infrastructure/logger'
-import { SAFEPAY_STATE_PAID } from './constants'
+import {
+  CheckoutPlan,
+  SAFEPAY_STATE_PAID,
+  SubscriptionScope,
+} from './constants'
+import { getCreditLedger } from './ledger'
+import { getMyUsage } from './usage'
+import {
+  createTeamCheckout,
+  createTeamRenewalCheckout,
+  createTopupCheckout,
+  getTeamSubscriptionSummary,
+  toggleTeamAutoRenew,
+} from './team-billing'
 
 export const createCheckout = async (
   req: AuthenticatedRequest,
@@ -31,9 +47,19 @@ export const createCheckout = async (
 ) => {
   try {
     const userId = getUserId(req)
-    const { paymentMethod } = validateOrThrow(createCheckoutValidator, req.body)
+    const input = validateOrThrow(createCheckoutValidator, req.body)
 
-    const result = await createCheckoutSession(userId, paymentMethod)
+    let result: CreateCheckoutResult
+    switch (input.plan) {
+      case CheckoutPlan.TEAM:
+        result = await createTeamCheckout(userId, input)
+        break
+      case CheckoutPlan.TOPUP:
+        result = await createTopupCheckout(userId, input.packId)
+        break
+      default:
+        result = await createCheckoutSession(userId, input.paymentMethod)
+    }
 
     return sendSuccess(res, {
       message: 'Checkout session created',
@@ -51,12 +77,49 @@ export const getSubscription = async (
 ) => {
   try {
     const userId = getUserId(req)
-    const result = await getSubscriptionSummary(userId)
+    const { scope } = validateOrThrow(
+      subscriptionScopeQueryValidator,
+      req.query,
+    )
+    const result =
+      scope === SubscriptionScope.TEAM
+        ? await getTeamSubscriptionSummary(userId)
+        : await getSubscriptionSummary(userId)
 
     return sendSuccess(res, {
       message: 'Subscription fetched',
       extra: result,
     })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getCreditLedgerHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const query = validateOrThrow(creditLedgerQueryValidator, req.query)
+    const data = await getCreditLedger(userId, query)
+
+    return sendSuccess(res, { message: 'Credit history fetched', data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getMyUsageHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const data = await getMyUsage(getUserId(req))
+
+    return sendSuccess(res, { message: 'Usage fetched', data })
   } catch (error) {
     next(error)
   }
@@ -69,7 +132,14 @@ export const renewSubscriptionHandler = async (
 ) => {
   try {
     const userId = getUserId(req)
-    const result = await renewSubscription(userId)
+    const { scope } = validateOrThrow(
+      subscriptionScopeQueryValidator,
+      req.query,
+    )
+    const result =
+      scope === SubscriptionScope.TEAM
+        ? await createTeamRenewalCheckout(userId)
+        : await renewSubscription(userId)
 
     return sendSuccess(res, {
       message: 'Renewal checkout session created',
@@ -87,8 +157,14 @@ export const toggleAutoRenewHandler = async (
 ) => {
   try {
     const userId = getUserId(req)
-    const { enabled } = validateOrThrow(toggleAutoRenewValidator, req.body)
-    const result = await toggleAutoRenew(userId, enabled)
+    const { enabled, scope } = validateOrThrow(
+      toggleAutoRenewValidator,
+      req.body,
+    )
+    const result =
+      scope === SubscriptionScope.TEAM
+        ? await toggleTeamAutoRenew(userId, enabled)
+        : await toggleAutoRenew(userId, enabled)
 
     return sendSuccess(res, {
       message: `Auto-renew ${enabled ? 'enabled' : 'disabled'}`,

@@ -1,4 +1,8 @@
-import { formatPakistanDateTime24, getPakistanYear } from '../../../shared/utils'
+import { escapeHtml } from '../../../shared/utils/html'
+import {
+  formatPakistanDateTime24,
+  getPakistanYear,
+} from '../../../shared/utils'
 
 export const buildMagicLinkSubject = (): string =>
   `Log in to StockPros [${formatPakistanDateTime24()}]`
@@ -39,7 +43,7 @@ export const buildMagicLinkEmailHtml = (
 
       <!-- Header -->
       <div style="text-align: left; margin-bottom: 28px;">
-        <img src="${logoSrc}" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
+        <img src="${escapeHtml(logoSrc)}" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
         <span style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; vertical-align: middle; display: inline-block;">
           Stock<span style="color: #06b6d4;">Pros</span>
         </span>
@@ -51,7 +55,7 @@ export const buildMagicLinkEmailHtml = (
 
       <!-- CTA Button -->
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${link}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0047ab 100%); color: #ffffff; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); text-align: center;">
+        <a href="${escapeHtml(link)}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0047ab 100%); color: #ffffff; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); text-align: center;">
           Continue to StockPros
         </a>
       </div>

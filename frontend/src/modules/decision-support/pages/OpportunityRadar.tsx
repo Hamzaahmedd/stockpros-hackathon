@@ -1,3 +1,4 @@
+import { OrgContextBanner } from "@/shared/components/OrgContextBanner";
 // frontend/src/modules/decision-support/pages/OpportunityRadar.tsx
 import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
@@ -354,7 +355,8 @@ export const OpportunityRadar: React.FC = () => {
 
       <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[1440px] mx-auto space-y-8">
-          
+          <OrgContextBanner />
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

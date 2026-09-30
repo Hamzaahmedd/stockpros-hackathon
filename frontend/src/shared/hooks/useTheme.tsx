@@ -4,7 +4,8 @@ type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  /** `persist: false` applies a default (e.g. workspace theme) without recording it as the user's own choice. */
+  setTheme: (theme: Theme, persist?: boolean) => void;
   toggleTheme: () => void;
 }
 
@@ -22,9 +23,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return getSystemTheme();
   });
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = (newTheme: Theme, persist = true) => {
     setThemeState(newTheme);
-    localStorage.setItem("theme", newTheme);
+    if (persist) localStorage.setItem("theme", newTheme);
   };
 
   const toggleTheme = () => {

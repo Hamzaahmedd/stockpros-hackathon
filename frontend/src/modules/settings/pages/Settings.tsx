@@ -6,6 +6,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { CreditLedgerPanel } from "@/modules/plans/components/CreditLedgerPanel";
+import { QuotaMeter } from "@/modules/plans/components/QuotaMeter";
+import { isPaidPlan } from "@/modules/plans/utils";
+import { PreferencesPanel } from "@/modules/teams/components/PreferencesPanel";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { useTheme } from "@/shared/hooks/useTheme";
 import { notificationService } from "@/modules/notifications/services";
@@ -28,6 +33,7 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   FiCheck,
+  FiCreditCard,
   FiLayout,
   FiMonitor,
   FiMoon,
@@ -116,6 +122,8 @@ const CONFIRMATION_PHRASE = "DELETE MY ACCOUNT";
 
 const Settings: React.FC = () => {
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
+  const hasCredits = isPaidPlan(user?.plan);
   const [activeTab, setActiveTab] = useState("appearance");
 
   // Market & Alert preferences state
@@ -253,6 +261,15 @@ const Settings: React.FC = () => {
                   label: "Market & Alerts",
                   icon: <FiSliders className="text-lg" />,
                 },
+                ...(hasCredits
+                  ? [
+                      {
+                        id: "credits",
+                        label: "Credits",
+                        icon: <FiCreditCard className="text-lg" />,
+                      },
+                    ]
+                  : []),
                 {
                   id: "account",
                   label: "Account",
@@ -398,6 +415,42 @@ const Settings: React.FC = () => {
               )}
 
               {/* --- MARKET & ALERTS PREFERENCES TAB --- */}
+              {activeTab === "appearance" && (
+                <Card className="mt-6 rounded-lg border border-border bg-card shadow-lg">
+                  <CardHeader className="border-b border-border p-8">
+                    <CardTitle className="text-xl font-bold">
+                      Display preferences
+                    </CardTitle>
+                    <CardDescription className="text-sm font-medium">
+                      {user?.plan === "TEAM"
+                        ? "Your choices override your workspace's defaults."
+                        : "Saved to your profile."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-8">
+                    <PreferencesPanel
+                      mode="personal"
+                      inWorkspace={user?.plan === "TEAM"}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === "credits" && hasCredits && (
+                <Card className="rounded-lg border border-border bg-card shadow-lg">
+                  <CardHeader className="border-b border-border p-8">
+                    <CardTitle className="text-xl font-bold">Credits</CardTitle>
+                    <CardDescription className="text-sm font-medium">
+                      Your top-ups and pay-as-you-go usage after your monthly AI quota.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-8 p-8">
+                    <QuotaMeter />
+                    <CreditLedgerPanel scope="USER" />
+                  </CardContent>
+                </Card>
+              )}
+
               {activeTab === "preferences" && (
                 <Card className="rounded-lg border border-border bg-card shadow-lg transition-all duration-300">
                   <CardHeader className="flex flex-row items-center gap-5 border-b border-border mb-6 p-8">

@@ -1,6 +1,7 @@
 import { developmentConfig } from '../development'
 import { productionConfig } from '../production'
-import { buildConfig, readSecrets } from '../index'
+import { testConfig } from '../test'
+import { buildConfig, parseBooleanEnv, readSecrets } from '../index'
 
 describe('readSecrets', () => {
   const originalEnv = process.env
@@ -141,5 +142,84 @@ describe('buildConfig', () => {
       corsOrigins: '',
     })
     expect(withoutOrigins.server.frontendUrl).toBe('http://localhost:5173')
+  })
+})
+
+describe('parseBooleanEnv', () => {
+  it.each([undefined, '', '  ', 'false', 'FALSE', '0', ' False '])(
+    'treats %j as false',
+    (raw) => {
+      expect(parseBooleanEnv('FLAG', raw)).toBe(false)
+    },
+  )
+
+  it.each(['true', 'TRUE', '1', ' True '])('treats %j as true', (raw) => {
+    expect(parseBooleanEnv('FLAG', raw)).toBe(true)
+  })
+
+  it.each(['yes', 'on', '2', 'tru', 'enabled'])(
+    'throws for %j instead of silently reading it as false',
+    (raw) => {
+      expect(() => parseBooleanEnv('FLAG', raw)).toThrow(
+        `Invalid FLAG "${raw}". Expected true, false, 1 or 0.`,
+      )
+    },
+  )
+})
+
+describe('buildConfig — market.emergencyClosed', () => {
+  const original = process.env.EMERGENCY_MARKET_CLOSED
+  const secrets = readSecrets()
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.EMERGENCY_MARKET_CLOSED
+    else process.env.EMERGENCY_MARKET_CLOSED = original
+  })
+
+  it('defaults to false when EMERGENCY_MARKET_CLOSED is unset', () => {
+    delete process.env.EMERGENCY_MARKET_CLOSED
+    expect(buildConfig(developmentConfig, secrets).market.emergencyClosed).toBe(
+      false,
+    )
+  })
+
+  it('reads EMERGENCY_MARKET_CLOSED=true', () => {
+    process.env.EMERGENCY_MARKET_CLOSED = 'true'
+    expect(buildConfig(productionConfig, secrets).market.emergencyClosed).toBe(
+      true,
+    )
+  })
+
+  it('fails startup on an unrecognised value', () => {
+    process.env.EMERGENCY_MARKET_CLOSED = 'yes'
+    expect(() => buildConfig(developmentConfig, secrets)).toThrow(
+      'Invalid EMERGENCY_MARKET_CLOSED "yes"',
+    )
+  })
+})
+
+describe('priorityQueue limits', () => {
+  // The frontend client timeout (frontend/src/shared/api/timeouts.ts) is 40 s:
+  // this 20 s queue wait + 20 s of compute headroom. Change them together.
+  it.each([
+    ['development', developmentConfig],
+    ['production', productionConfig],
+    ['test', testConfig],
+  ])('%s config caps the queue wait at 20 s', (_env, envConfig) => {
+    expect(envConfig.priorityQueue.maxWaitMs).toBe(20_000)
+  })
+
+  it.each([
+    ['development', developmentConfig],
+    ['production', productionConfig],
+    ['test', testConfig],
+  ])('%s config has sane concurrency and depth', (_env, envConfig) => {
+    expect(envConfig.priorityQueue.concurrency).toBeGreaterThan(0)
+    expect(envConfig.priorityQueue.maxQueueDepth).toBeGreaterThan(0)
+  })
+
+  it('is exposed on the assembled config', () => {
+    const built = buildConfig(developmentConfig, readSecrets())
+    expect(built.priorityQueue).toEqual(developmentConfig.priorityQueue)
   })
 })

@@ -2,7 +2,10 @@ import { prisma } from '../../shared/infrastructure/database'
 import { NewsCategory, NewsSentiment, UserStatus } from '@prisma/client'
 import { logger } from '../../shared/infrastructure/logger'
 import { SocketServer } from '../../shared/infrastructure/realtime/socket-server'
-import { transporter, getLogoSrc } from '../../shared/infrastructure/config/email'
+import {
+  transporter,
+  getLogoSrc,
+} from '../../shared/infrastructure/config/email'
 import finnhubClient from '../../shared/infrastructure/clients/finnhub-client'
 import {
   buildPremarketDigestHtml,
@@ -101,11 +104,15 @@ const generateDigestDataForUser = async (
       ? await (async () => {
           const matchedCategories = Array.from(
             new Set(
-              validInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i].categories),
+              validInterests.flatMap(
+                (i) => INTEREST_TO_CATEGORIES[i].categories,
+              ),
             ),
           ) as NewsCategory[]
           const matchedSectors = Array.from(
-            new Set(validInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i].sectors)),
+            new Set(
+              validInterests.flatMap((i) => INTEREST_TO_CATEGORIES[i].sectors),
+            ),
           )
 
           // Exclude articles already included via watchlist to avoid duplicates
@@ -210,7 +217,10 @@ export const sendPremarketDigestToUser = async (
 
   const subject = `StockPros Pre-Market Briefing [${digestData.issuedAtFormatted}]`
   const textContent = buildPremarketDigestText(digestData)
-  const htmlContent = buildPremarketDigestHtml({ ...digestData, logoSrc: getLogoSrc() })
+  const htmlContent = buildPremarketDigestHtml({
+    ...digestData,
+    logoSrc: getLogoSrc(),
+  })
 
   // 1. Deliver Email via configured transport (Gmail SMTP / Resend / Dev Fallback)
   try {

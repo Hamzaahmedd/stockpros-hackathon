@@ -19,6 +19,11 @@ model User {
   phoneNumber                  String?    @unique @map("phone_number")
   phoneVerifiedAt              DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
   plan                         PlanTier   @default(FREE)
+  // Prepaid overage credit pool for individual PRO users (integer paisa).
+  creditBalanceInPaisa         Int        @default(0) @map("credit_balance_in_paisa")
+  // Personal UI preferences (theme, chart layout, indicators), overlaid on the
+  // team's `defaultPreferences` when the user belongs to a workspace.
+  preferences                  Json?
   deletedAt                    DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletionScheduledAt          DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
   createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -40,8 +45,13 @@ model User {
   feedbackEntries   Feedback[]
 
   // ── Payments feature ────────────────────────────────────────────────────────
-  paymentTransactions PaymentTransaction[]
-  subscription        Subscription?
+  // PaymentTransaction / CreditLedger deliberately carry no FK to User: they
+  // are immutable audit records that must outlive the user row.
+  subscription Subscription?
+
+  // ── Teams feature ───────────────────────────────────────────────────────────
+  ownedTeam   Team?
+  teamMembers TeamMember[]
 
   @@index([status], map: "idx_users_status")
   @@index([createdAt], map: "idx_users_created_at")
@@ -463,6 +473,7 @@ enum AiConfidence {
 enum PlanTier {
   FREE
   PRO
+  TEAM
 }
 
 enum PaymentStatus {
@@ -470,6 +481,32 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   CANCELLED
+  REFUNDED
+}
+
+// What a PaymentTransaction buys. TOPUP is deliberately not a PlanTier value:
+// User.plan must never be able to hold it.
+enum PaymentKind {
+  SUBSCRIPTION
+  SEAT_ADDITION
+  TOPUP
+}
+
+enum TeamStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum CreditLedgerType {
+  PURCHASE
+  OVERAGE_CONSUMPTION
+  REFUND
 }
 
 enum SubscriptionPaymentMethod {
@@ -484,43 +521,71 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
-// ─── Safepay Payments (Pro tier checkout) ────────────────────────────────────
+// ─── Safepay Payments (Pro / Team checkout, seat additions, credit top-ups) ───
+// Immutable audit record: no FK to User/Team so history survives deletion.
 
 model PaymentTransaction {
   id                String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   userId            String        @map("user_id") @db.Uuid
+  teamId            String?       @map("team_id") @db.Uuid
   trackerId         String        @unique @map("tracker_id")
+  token             String?
   // Safepay pay-in amounts are integer paisa, e.g. Rs 5,999 -> 599900.
-  amount            Int
+  // Column keeps its original name (`amount`) so `db push` never drops data.
+  amountPaisa       Int           @map("amount")
+  seatCount         Int           @default(1) @map("seat_count")
   currency          String        @default("PKR")
   status            PaymentStatus @default(PENDING)
+  kind              PaymentKind   @default(SUBSCRIPTION)
   paymentMethod     String?       @map("payment_method")
   planTier          PlanTier      @map("plan_tier")
+  metadata          Json?
   rawWebhookPayload Json?         @map("raw_webhook_payload")
   subscriptionId    String?       @map("subscription_id") @db.Uuid
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId], map: "idx_payment_transactions_user_id")
+  @@index([teamId], map: "idx_payment_transactions_team_id")
   @@index([status], map: "idx_payment_transactions_status")
   @@index([trackerId], map: "idx_payment_transactions_tracker_id")
   @@index([subscriptionId], map: "idx_payment_transactions_subscription_id")
   @@map("payment_transactions")
 }
 
-// ─── Subscription (PRO tier billing cycle) ───────────────────────────────────
-// One row per user, tracking the current billing period regardless of payment
-// method — CARD subscriptions auto-renew (see payments/subscription-job.ts,
-// Phase 2 for the actual recurring charge), WALLET subscriptions are a manual
-// 30-day access pass. `PaymentTransaction` rows link back here via
-// `subscriptionId` so the transaction history stays a append-only ledger while
-// this row holds the current renewal/grace/expiry state.
+// Append-only credit audit trail. Signed amounts: PURCHASE/REFUND positive,
+// OVERAGE_CONSUMPTION negative. No FKs, so history survives user/team deletion.
+model CreditLedger {
+  id          String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String?          @map("user_id") @db.Uuid
+  teamId      String?          @map("team_id") @db.Uuid
+  amountPaisa Int              @map("amount_paisa")
+  type        CreditLedgerType
+  description String
+  trackerId   String?          @map("tracker_id")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId], map: "idx_credit_ledger_user_id")
+  @@index([teamId], map: "idx_credit_ledger_team_id")
+  @@index([createdAt], map: "idx_credit_ledger_created_at")
+  @@map("credit_ledger")
+}
+
+// ─── Subscription (PRO / TEAM billing cycle) ─────────────────────────────────
+// One row per user (PRO) or per team (TEAM) — exactly one of userId/teamId is
+// set — tracking the current billing period regardless of payment method.
+// CARD subscriptions auto-renew (see payments/subscription-job.ts), WALLET
+// subscriptions are a manual 30-day access pass. Team subscriptions are always
+// manual-renewal: Safepay's recurring Plan product is fixed-price and cannot
+// express a per-seat amount. `PaymentTransaction` rows link back here via
+// `subscriptionId` so the transaction history stays an append-only ledger
+// while this row holds the current renewal/grace/expiry state.
 model Subscription {
   id                    String                    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId                String                    @unique @map("user_id") @db.Uuid
+  userId                String?                   @unique @map("user_id") @db.Uuid
+  teamId                String?                   @unique @map("team_id") @db.Uuid
   planTier              PlanTier                  @map("plan_tier")
   paymentMethod         SubscriptionPaymentMethod @map("payment_method")
   // Schema default is only the safe fallback — application code always sets
@@ -542,15 +607,156 @@ model Subscription {
   // this row) — set once at subscription-checkout creation time (initially
   // to our own `id` as the `reference` we send Safepay, then overwritten if
   // their webhook echoes back a distinct id of their own). Never set for
-  // WALLET subscriptions.
+  // WALLET or TEAM subscriptions.
   safepaySubscriptionId String?                   @unique @map("safepay_subscription_id")
   createdAt             DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team         Team?                @relation(fields: [teamId], references: [id], onDelete: Cascade)
   transactions PaymentTransaction[]
 
   @@index([status], map: "idx_subscriptions_status")
   @@index([currentPeriodEnd], map: "idx_subscriptions_current_period_end")
   @@map("subscriptions")
+}
+
+// ─── Teams (B2B workspaces) ──────────────────────────────────────────────────
+
+model Team {
+  id                   String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                 String
+  ownerId              String     @unique @map("owner_id") @db.Uuid
+  // Enforced 2..150 in the service layer (Prisma has no CHECK constraints).
+  seatCapacity         Int        @map("seat_capacity")
+  status               TeamStatus @default(ACTIVE)
+  // Workspace-wide AI context appended to forecast/decision responses.
+  orgInstructions      String?    @map("org_instructions")
+  // Workspace default UI preferences; individual User.preferences overlay them.
+  defaultPreferences   Json?      @map("default_preferences")
+  creditBalanceInPaisa Int        @default(0) @map("credit_balance_in_paisa")
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner            User                 @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  domains          TeamDomain[]
+  members          TeamMember[]
+  invites          TeamInvite[]
+  subscription     Subscription?
+  sharedWatchlists SharedWatchlist[]
+  sharedScreeners  SharedScreener[]
+  researchNotes    SharedResearchNote[]
+
+  @@map("teams")
+}
+
+model TeamDomain {
+  id                  String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId              String  @map("team_id") @db.Uuid
+  domain              String  @unique
+  // DNS TXT proof-of-ownership token (see teams/domain-verification.ts).
+  verificationToken   String  @map("verification_token")
+  isVerified          Boolean @default(false) @map("is_verified")
+  restrictOrgCreation Boolean @default(true) @map("restrict_org_creation")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId], map: "idx_team_domains_team_id")
+  @@map("team_domains")
+}
+
+model TeamMember {
+  id                      String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId                  String   @map("team_id") @db.Uuid
+  userId                  String   @map("user_id") @db.Uuid
+  role                    TeamRole
+  // Optional per-user cap on monthly draw from the team's shared credit pool.
+  monthlyCreditLimitPaisa Int?     @map("monthly_credit_limit_paisa")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId], map: "uq_team_members_team_user")
+  // A user belongs to at most one workspace, which keeps plan resolution unambiguous.
+  @@unique([userId], map: "uq_team_members_user")
+  @@map("team_members")
+}
+
+model TeamInvite {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  email     String
+  role      TeamRole @default(MEMBER)
+  // SHA-256 hash of the emailed token; the raw token is never stored.
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId], map: "idx_team_invites_team_id")
+  @@index([email], map: "idx_team_invites_email")
+  @@map("team_invites")
+}
+
+model SharedWatchlist {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  name      String
+  symbols   String[] @default([])
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId], map: "idx_shared_watchlists_team_id")
+  @@map("shared_watchlists")
+}
+
+model SharedScreener {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  name      String
+  criteria  Json
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId], map: "idx_shared_screeners_team_id")
+  @@map("shared_screeners")
+}
+
+model SharedResearchNote {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  symbol    String
+  content   String
+  authorId  String   @map("author_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId], map: "idx_shared_research_notes_team_id")
+  @@index([symbol], map: "idx_shared_research_notes_symbol")
+  @@map("shared_research_notes")
+}
+
+// ─── Metered usage (base-quota counting + team analytics) ────────────────────
+// One row per metered AI action. Also the source of truth for the monthly base
+// quota, so it needs no Redis and survives restarts. No FKs: analytics history
+// is retained after membership changes.
+model UsageEvent {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  teamId    String?  @map("team_id") @db.Uuid
+  feature   String
+  symbol    String?
+  // Paisa drawn from a credit pool for this event; 0 when covered by base quota.
+  costPaisa Int      @default(0) @map("cost_paisa")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt], map: "idx_usage_events_user_created")
+  @@index([teamId, createdAt], map: "idx_usage_events_team_created")
+  @@map("usage_events")
 }

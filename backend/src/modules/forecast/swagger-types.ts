@@ -1,5 +1,15 @@
-import { Controller, Get, Post, Route, Tags, Security, Query, SuccessResponse } from 'tsoa'
-import { ApiResponse } from '../../shared/docs-types'
+import {
+  Controller,
+  Get,
+  Post,
+  Route,
+  Tags,
+  Security,
+  Query,
+  Response,
+  SuccessResponse,
+} from 'tsoa'
+import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +47,10 @@ export class ForecastSwaggerController extends Controller {
    */
   @Get('')
   @Security('bearerAuth')
+  @Response<ApiErrorResponse>(
+    503,
+    'Compute capacity exhausted — queue full or waited too long; retry shortly',
+  )
   @SuccessResponse(200, 'Stock forecast data retrieved successfully.')
   async getStockForecast(
     @Query() symbol: string,

@@ -14,8 +14,15 @@ import { FeedbackList } from "@/modules/feedback";
 import { Forecast } from "@/modules/forecast";
 import { Markets } from "@/modules/markets";
 import { News } from "@/modules/news";
-import { ManageSubscription, PaymentResult, Plans } from "@/modules/plans";
+import { ManageSubscription, PaymentResult, Plans, TopUpModalHost } from "@/modules/plans";
 import { Settings } from "@/modules/settings";
+import {
+  INVITE_ROUTES,
+  InviteEntry,
+  PendingInviteAcceptor,
+  PreferencesApplier,
+  TeamWorkspace,
+} from "@/modules/teams";
 import { Watchlist } from "@/modules/watchlist";
 import { NotFound } from "@/shared/components/NotFound";
 import { POSTHOG_KEY } from "@/shared/config";
@@ -39,6 +46,9 @@ export default function App() {
   return (
     <>
       <PostHogPageviewTracker />
+      <TopUpModalHost />
+      <PendingInviteAcceptor />
+      <PreferencesApplier />
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -98,6 +108,20 @@ export default function App() {
             <Settings />
           </ProtectedRoute>
         } />
+        <Route path="/teams" element={
+          <ProtectedRoute resource="CORE_APP">
+            <TeamWorkspace />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings/team" element={
+          <ProtectedRoute resource="CORE_APP">
+            <TeamWorkspace />
+          </ProtectedRoute>
+        } />
+        {/* Public on purpose: a signed-out visitor's invite token is parked, then accepted after login. */}
+        {INVITE_ROUTES.map((path) => (
+          <Route key={path} path={path} element={<InviteEntry />} />
+        ))}
         <Route path="/plans" element={
           <ProtectedRoute resource="CORE_APP" requirePricingTiersEnabled>
             <Plans />

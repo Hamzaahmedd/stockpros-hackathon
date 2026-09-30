@@ -238,3 +238,7 @@ describe('securityMiddleware', () => {
     expect(cb).toHaveBeenCalledWith(null, false)
   })
 })
+
+// Makes this file a module so its top-level helpers do not collide with other
+// import-less test files in the shared ts-jest program (TS2451).
+export {}

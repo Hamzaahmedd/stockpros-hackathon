@@ -28,7 +28,9 @@ export const assignPermissionsValidator = z.object({
     .array(
       z.object({
         resourceName: z.string().trim().min(1, 'Resource name is required'),
-        actions: z.array(z.string().trim().min(1, 'Permission name is required')),
+        actions: z.array(
+          z.string().trim().min(1, 'Permission name is required'),
+        ),
       }),
     )
     .nonempty(),

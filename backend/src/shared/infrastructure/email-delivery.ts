@@ -19,12 +19,14 @@ const isSmtpError = (err: unknown): err is SmtpError =>
  * burning through `attempts` (and without paging on-call for something a
  * retry can never fix).
  */
-export function rethrowEmailError(err: unknown, to: string): never {
+export function rethrowEmailError(err: unknown): never {
   if (isSmtpError(err) && err.responseCode !== undefined) {
     const code = err.responseCode
     if (code >= 500 && code < 600) {
       const message =
-        err instanceof Error ? err.message : `SMTP ${code} rejecting ${to}`
+        err instanceof Error
+          ? err.message
+          : `SMTP ${code} rejecting the recipient`
       throw new UnrecoverableError(message)
     }
   }

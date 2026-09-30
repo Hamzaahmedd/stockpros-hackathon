@@ -33,6 +33,7 @@ jest.mock('@prisma/client', () => {
       $disconnect: jest.fn().mockResolvedValue(undefined),
       $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
       userSession: { findUnique: jest.fn().mockResolvedValue(null) },
+      teamMember: { findUnique: jest.fn().mockResolvedValue(null) },
       user: {
         findUnique: jest.fn().mockResolvedValue(null),
         update: jest.fn().mockResolvedValue({ plan: 'FREE' }),

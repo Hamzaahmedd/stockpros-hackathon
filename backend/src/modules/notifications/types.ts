@@ -1,5 +1,13 @@
-import type { NewsSentiment, AlertType } from '@prisma/client'
-import type { RenewalReminderVariant } from './email-templates/subscription-renewal'
+import type { NewsSentiment } from '@prisma/client'
+
+// Job payload types are inferred from their zod schemas (single source of truth).
+export type {
+  AuthEmailJobPayload,
+  EmailJobPayload,
+  RenewalReminderEmailJobPayload,
+  TeamInviteEmailJobPayload,
+} from './email-job-schemas'
+
 export interface RawNewsInput {
   symbol: string
   headline: string
@@ -7,29 +15,6 @@ export interface RawNewsInput {
   sentiment: NewsSentiment | null
   source?: string
   url?: string
-}
-
-export interface EmailJobPayload {
-  to: string
-  symbol: string
-  alertType: AlertType
-  title: string
-  body: string
-}
-
-export interface AuthEmailJobPayload {
-  to: string
-  loginLink: string
-  expiryMinutes: number
-}
-
-export interface RenewalReminderEmailJobPayload {
-  to: string
-  userName: string
-  amount: string
-  renewsOn: string
-  manageUrl: string
-  variant: RenewalReminderVariant
 }
 
 export interface NotificationItem {

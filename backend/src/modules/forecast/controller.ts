@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '../auth'
 import { getForecast } from './service'
 import { forecastQueryValidator } from './validation'
 import { validateOrThrow } from '../../shared/errors'
-import { getUserId, sendSuccess } from '../../shared/utils'
+import { getUserId, orgContextExtra, sendSuccess } from '../../shared/utils'
 import { captureEvent, PostHogEvent } from '../../shared/infrastructure/posthog'
 import {
   generateForecastPdfBuffer,
@@ -27,6 +27,7 @@ export const getStockForecast = async (
     return sendSuccess(res, {
       message: 'Stock forecast data retrieved successfully.',
       data: forecastData,
+      extra: orgContextExtra(req),
     })
   } catch (error) {
     next(error)

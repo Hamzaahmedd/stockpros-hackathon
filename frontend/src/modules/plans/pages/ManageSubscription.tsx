@@ -1,4 +1,5 @@
 import { Sidebar } from "@/shared/components/Sidebar";
+import { QuotaMeter } from "../components/QuotaMeter";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -114,6 +115,10 @@ export default function ManageSubscription() {
               View your billing status and renewal settings.
             </p>
           </header>
+
+          <div className="mb-6">
+            <QuotaMeter />
+          </div>
 
           {loading && (
             <Card>

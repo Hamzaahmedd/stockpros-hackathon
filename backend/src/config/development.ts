@@ -43,6 +43,14 @@ export const developmentConfig = {
   groq: {
     model: 'openai/gpt-oss-20b',
   },
+  priorityQueue: {
+    // Max compute-heavy requests (forecast / market decision) running at once per process.
+    concurrency: 8,
+    // Requests allowed to wait; beyond this new ones are shed with a 503.
+    maxQueueDepth: 200,
+    // Longest a request may wait for a slot before being shed with a 503.
+    maxWaitMs: 20_000,
+  },
   features: {
     enableNewsCron: true,
     enableWatchlistCron: true,

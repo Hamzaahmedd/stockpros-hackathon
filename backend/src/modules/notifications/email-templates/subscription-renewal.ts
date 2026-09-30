@@ -1,4 +1,5 @@
 import { getPakistanYear } from '../../../shared/utils'
+import { escapeHtml } from '../../../shared/utils/html'
 
 /**
  * Which of the three renewal states this reminder is for — drives the
@@ -8,7 +9,12 @@ import { getPakistanYear } from '../../../shared/utils'
  *   - wallet:   JazzCash/Easypaisa — no auto-renew capability at all,
  *               always a manual pay-to-extend action
  */
-export type RenewalReminderVariant = 'card-on' | 'card-off' | 'wallet'
+export const RENEWAL_REMINDER_VARIANTS = [
+  'card-on',
+  'card-off',
+  'wallet',
+] as const
+export type RenewalReminderVariant = (typeof RENEWAL_REMINDER_VARIANTS)[number]
 
 export interface RenewalReminderData {
   userName: string
@@ -73,28 +79,28 @@ export const buildRenewalReminderEmailHtml = (
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${COPY[data.variant].subject}</title>
+    <title>${escapeHtml(COPY[data.variant].subject)}</title>
   </head>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #0d1117; color: #e6edf3;">
     <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 36px 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
 
       <!-- Header -->
       <div style="text-align: left; margin-bottom: 28px;">
-        <img src="${logoSrc}" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
+        <img src="${escapeHtml(logoSrc)}" alt="StockPros Logo" style="width: 42px; height: 42px; margin-right: 12px; vertical-align: middle; border-radius: 8px; display: inline-block;" />
         <span style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; vertical-align: middle; display: inline-block;">
           Stock<span style="color: #06b6d4;">Pros</span>
         </span>
       </div>
 
-      <p style="color: #e6edf3; font-size: 16px; margin-bottom: 8px;">Hi ${data.userName},</p>
+      <p style="color: #e6edf3; font-size: 16px; margin-bottom: 8px;">Hi ${escapeHtml(data.userName)},</p>
       <p style="color: #8b949e; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-        ${COPY[data.variant].body(data)}
+        ${escapeHtml(COPY[data.variant].body(data))}
       </p>
 
       <!-- CTA Button -->
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${data.manageUrl}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0047ab 100%); color: #ffffff; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); text-align: center;">
-          ${COPY[data.variant].ctaLabel}
+        <a href="${escapeHtml(data.manageUrl)}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0047ab 100%); color: #ffffff; font-weight: 700; font-size: 16px; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); text-align: center;">
+          ${escapeHtml(COPY[data.variant].ctaLabel)}
         </a>
       </div>
 

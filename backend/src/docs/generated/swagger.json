@@ -347,6 +347,535 @@
         "type": "object",
         "additionalProperties": true
       },
+      "PaidActionResponse": {
+        "description": "Payment Mode returns a checkout to redirect to; Bypass Mode creates the team at once.",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string"
+          },
+          "trackerId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_PaidActionResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaidActionResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreateTeamRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Alpha Fund"
+          },
+          "seatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Seats to buy, 2–150 (Rs 7,499/seat/month).",
+            "minimum": 2,
+            "maximum": 150
+          }
+        },
+        "required": ["name", "seatCount"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "SeatUtilization": {
+        "properties": {
+          "capacity": {
+            "type": "number",
+            "format": "double"
+          },
+          "active": {
+            "type": "number",
+            "format": "double"
+          },
+          "pendingInvites": {
+            "type": "number",
+            "format": "double"
+          },
+          "available": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["capacity", "active", "pendingInvites", "available"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "TeamDomainSummary": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "restrictOrgCreation": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "domain", "isVerified", "restrictOrgCreation"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "TeamResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "CANCELLED"]
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MEMBER"]
+          },
+          "seats": {
+            "$ref": "#/components/schemas/SeatUtilization"
+          },
+          "creditBalanceInPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "orgInstructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/TeamDomainSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "role",
+          "seats",
+          "creditBalanceInPaisa",
+          "orgInstructions",
+          "domains"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_TeamResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TeamResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "AddSeatsRequest": {
+        "properties": {
+          "seatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Extra seats to add (capacity may not exceed 150).",
+            "minimum": 1,
+            "maximum": 150
+          }
+        },
+        "required": ["seatCount"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "TeamMemberResponse": {
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MEMBER"]
+          },
+          "joinedAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "description": "Owners/admins only."
+          },
+          "monthlyCreditLimitPaisa": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "Owners/admins only; null = no cap."
+          }
+        },
+        "required": ["userId", "displayName", "role", "joinedAt"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_TeamMemberResponse-Array_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreateInviteResponse": {
+        "properties": {
+          "invite": {
+            "properties": {
+              "expiresAt": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["expiresAt", "role", "email", "id"],
+            "type": "object"
+          },
+          "inviteLink": {
+            "type": "string",
+            "description": "Shown once — only a hash of the token is stored."
+          },
+          "emailQueued": {
+            "type": "boolean",
+            "description": "False when the email could not be queued (the link above still works)."
+          }
+        },
+        "required": ["invite", "inviteLink", "emailQueued"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_CreateInviteResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CreateInviteResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreateInviteRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "analyst@fund.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["ADMIN", "MEMBER"],
+            "description": "Only the owner may invite an ADMIN.",
+            "example": "MEMBER"
+          }
+        },
+        "required": ["email"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "AcceptInviteRequest": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": ["token"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "SetCreditLimitRequest": {
+        "properties": {
+          "monthlyCreditLimitPaisa": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "Monthly cap on a member's draw from the shared credit pool; null removes the cap."
+          }
+        },
+        "required": ["monthlyCreditLimitPaisa"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "DomainVerificationResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "restrictOrgCreation": {
+            "type": "boolean"
+          },
+          "verification": {
+            "properties": {
+              "recordValue": {
+                "type": "string"
+              },
+              "recordName": {
+                "type": "string",
+                "example": "_stockpros-verify.fund.com"
+              },
+              "recordType": {
+                "type": "string",
+                "enum": ["TXT"],
+                "nullable": false
+              }
+            },
+            "required": ["recordValue", "recordName", "recordType"],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "isVerified",
+          "restrictOrgCreation",
+          "verification"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_DomainVerificationResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DomainVerificationResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "AddDomainRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "example": "fund.com"
+          },
+          "restrictOrgCreation": {
+            "type": "boolean",
+            "description": "Default true."
+          }
+        },
+        "required": ["domain"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "VerifyDomainRequest": {
+        "properties": {
+          "domain": {
+            "type": "string"
+          }
+        },
+        "required": ["domain"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "UpdateInstructionsRequest": {
+        "properties": {
+          "orgInstructions": {
+            "type": "string",
+            "nullable": true,
+            "description": "Appended as `orgContext` to AI forecast/decision responses for team members. Null clears it."
+          }
+        },
+        "required": ["orgInstructions"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "StoredPreferences": {
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": ["LIGHT", "DARK", "SYSTEM"]
+          },
+          "chartLayout": {
+            "type": "string",
+            "enum": ["SINGLE", "SPLIT", "GRID"]
+          },
+          "indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "additionalProperties": true
+      },
+      "PreferencesResponse": {
+        "properties": {
+          "workspace": {
+            "$ref": "#/components/schemas/StoredPreferences"
+          },
+          "personal": {
+            "$ref": "#/components/schemas/StoredPreferences"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/StoredPreferences",
+            "description": "Workspace defaults overlaid by the caller's own preferences."
+          }
+        },
+        "required": ["workspace", "personal", "effective"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_PreferencesResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PreferencesResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "PreferencesRequest": {
+        "description": "Omit a field to leave it alone; send `null` to clear it back to the default.",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": ["LIGHT", "DARK", "SYSTEM", null],
+            "nullable": true
+          },
+          "chartLayout": {
+            "type": "string",
+            "enum": ["SINGLE", "SPLIT", "GRID", null],
+            "nullable": true
+          },
+          "indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": true
+      },
+      "SharedWatchlistRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["name", "symbols"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "Record_string.unknown_": {
+        "properties": {},
+        "additionalProperties": {},
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "SharedScreenerRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/Record_string.unknown_"
+          }
+        },
+        "required": ["name", "criteria"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ResearchNoteRequest": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "AAPL"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": ["symbol", "content"],
+        "type": "object",
+        "additionalProperties": true
+      },
       "SymbolSearchResult": {
         "properties": {
           "symbol": {
@@ -419,13 +948,12 @@
         "type": "object",
         "additionalProperties": true
       },
-      "CreateCheckoutRequest": {
+      "CreateProCheckoutRequest": {
         "properties": {
           "plan": {
             "type": "string",
             "enum": ["PRO"],
             "nullable": false,
-            "description": "Only PRO is purchasable today.",
             "example": "PRO"
           },
           "paymentMethod": {
@@ -438,6 +966,63 @@
         "type": "object",
         "additionalProperties": true
       },
+      "CreateTeamCheckoutRequest": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["TEAM"],
+            "nullable": false,
+            "example": "TEAM"
+          },
+          "seatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Seats to buy, 2–150. Price = seatCount × 749,900 paisa (Rs 7,499/seat/mo),\nderived server-side.",
+            "example": 10,
+            "minimum": 2,
+            "maximum": 150
+          },
+          "teamName": {
+            "type": "string",
+            "example": "Alpha Fund"
+          }
+        },
+        "required": ["plan", "seatCount", "teamName"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreateTopupCheckoutRequest": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["TOPUP"],
+            "nullable": false,
+            "example": "TOPUP"
+          },
+          "packId": {
+            "type": "string",
+            "enum": ["PACK_500", "PACK_1000", "PACK_2500"],
+            "description": "Prepaid credit pack: PACK_500 (Rs 500 = 10 signals), PACK_1000 (Rs 1,000 =\n20), PACK_2500 (Rs 2,500 = 50). Credits the team pool when the caller is a\nteam owner/admin, otherwise the caller's own balance (PRO only).",
+            "example": "PACK_1000"
+          }
+        },
+        "required": ["plan", "packId"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreateCheckoutRequest": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CreateProCheckoutRequest"
+          },
+          {
+            "$ref": "#/components/schemas/CreateTeamCheckoutRequest"
+          },
+          {
+            "$ref": "#/components/schemas/CreateTopupCheckoutRequest"
+          }
+        ]
+      },
       "VerifyTrackerResponse": {
         "properties": {
           "trackerId": {
@@ -445,12 +1030,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["PENDING", "COMPLETED", "FAILED", "CANCELLED"],
+            "enum": ["PENDING", "COMPLETED", "FAILED", "CANCELLED", "REFUNDED"],
             "example": "COMPLETED"
           },
           "plan": {
             "type": "string",
-            "enum": ["FREE", "PRO"],
+            "enum": ["FREE", "PRO", "TEAM"],
             "example": "PRO"
           }
         },
@@ -538,10 +1123,246 @@
         "type": "object",
         "additionalProperties": true
       },
+      "UsageQuotaResponse": {
+        "properties": {
+          "limit": {
+            "type": "number",
+            "format": "double",
+            "description": "AI signals included per billing cycle (Pro 300, Team seat 375)."
+          },
+          "used": {
+            "type": "number",
+            "format": "double"
+          },
+          "remaining": {
+            "type": "number",
+            "format": "double"
+          },
+          "windowStart": {
+            "type": "string"
+          },
+          "windowEnd": {
+            "type": "string",
+            "nullable": true,
+            "description": "When the allowance resets; in the past during a grace period."
+          },
+          "windowSource": {
+            "type": "string",
+            "enum": ["SUBSCRIPTION_PERIOD", "CALENDAR_MONTH"],
+            "example": "SUBSCRIPTION_PERIOD"
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "remaining",
+          "windowStart",
+          "windowEnd",
+          "windowSource"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "UsageCreditsResponse": {
+        "properties": {
+          "pool": {
+            "type": "string",
+            "enum": ["USER", "TEAM"]
+          },
+          "balanceInPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "costPerSignalPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "signalsAvailable": {
+            "type": "number",
+            "format": "double"
+          },
+          "canTopUp": {
+            "type": "boolean",
+            "description": "False for plain team members, who cannot buy credits."
+          }
+        },
+        "required": [
+          "pool",
+          "balanceInPaisa",
+          "costPerSignalPaisa",
+          "signalsAvailable",
+          "canTopUp"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "UsageSpendCapResponse": {
+        "properties": {
+          "monthlyLimitPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "spentPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "remainingPaisa": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["monthlyLimitPaisa", "spentPaisa", "remainingPaisa"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "UsageSummaryResponse": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["FREE", "PRO", "TEAM"]
+          },
+          "metered": {
+            "type": "boolean",
+            "description": "False for FREE (daily quotas apply instead, so there is no monthly meter)."
+          },
+          "quota": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageQuotaResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "credits": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageCreditsResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "spendCap": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageSpendCapResponse"
+              }
+            ],
+            "nullable": true,
+            "description": "Team members with a monthly credit cap only."
+          }
+        },
+        "required": ["plan", "metered", "quota", "credits", "spendCap"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_UsageSummaryResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UsageSummaryResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreditLedgerEntryResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "amountPaisa": {
+            "type": "number",
+            "format": "double",
+            "description": "Signed paisa: purchases/refunds positive, overage consumption negative."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["PURCHASE", "OVERAGE_CONSUMPTION", "REFUND"],
+            "example": "OVERAGE_CONSUMPTION"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "isTeamPool": {
+            "type": "boolean",
+            "description": "True when the movement was on the shared workspace pool."
+          },
+          "memberName": {
+            "type": "string",
+            "description": "Workspace-wide view only."
+          }
+        },
+        "required": [
+          "id",
+          "amountPaisa",
+          "type",
+          "description",
+          "createdAt",
+          "isTeamPool"
+        ],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "CreditLedgerPageResponse": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["USER", "TEAM"]
+          },
+          "balanceInPaisa": {
+            "type": "number",
+            "format": "double"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CreditLedgerEntryResponse"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass back as `cursor` for the next (older) page; null when done."
+          }
+        },
+        "required": ["scope", "balanceInPaisa", "entries", "nextCursor"],
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ApiResponse_CreditLedgerPageResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CreditLedgerPageResponse"
+          }
+        },
+        "required": ["success", "message"],
+        "type": "object",
+        "additionalProperties": true
+      },
       "ToggleAutoRenewRequest": {
         "properties": {
           "enabled": {
             "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["USER", "TEAM"],
+            "description": "`TEAM` targets the caller's workspace subscription (owner/admin only).\nTeam seats are renewed manually, so this only sets the flag — it never\nschedules a charge. Defaults to `USER`."
           }
         },
         "required": ["enabled"],
@@ -1161,12 +1982,6 @@
         "required": ["success", "message"],
         "type": "object",
         "additionalProperties": true
-      },
-      "Record_string.unknown_": {
-        "properties": {},
-        "additionalProperties": {},
-        "type": "object",
-        "description": "Construct a type with a set of properties K of type T"
       },
       "DecisionResult": {
         "properties": {
@@ -2325,6 +3140,837 @@
         ]
       }
     },
+    "/api/v1/teams": {
+      "post": {
+        "operationId": "CreateTeam",
+        "responses": {
+          "201": {
+            "description": "Team request processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PaidActionResponse_"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Restricted domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already part of a workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Creates a workspace; the caller becomes OWNER. Payment Mode returns a\nSafepay checkout (the team exists once the webhook confirms payment);\nBypass Mode creates it immediately. Blocked (403) when the caller's email\ndomain is a verified, restricted domain of another workspace.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTeamRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/me": {
+      "get": {
+        "operationId": "GetMyTeam",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TeamResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Workspace details, seat utilization (e.g. 8/10), domain policies and the caller's role.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/api/v1/teams/seats/add": {
+      "post": {
+        "operationId": "AddSeats",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PaidActionResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Adds seats mid-term (`newSeats × 749,900` paisa); capacity increments when the webhook confirms payment. Owner/admin only.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddSeatsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/members": {
+      "get": {
+        "operationId": "ListMembers",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TeamMemberResponse-Array_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Workspace members. `email` and `monthlyCreditLimitPaisa` are returned to owners/admins only.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/api/v1/teams/invites": {
+      "post": {
+        "operationId": "CreateInvite",
+        "responses": {
+          "201": {
+            "description": "Invite created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CreateInviteResponse_"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No seats available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Issues an invite and queues the invite email; enforces\n`active seats + pending invites < capacity`. The link is also returned\n(`emailQueued` reports whether the email was queued).",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/invites/accept": {
+      "post": {
+        "operationId": "AcceptInvite",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Accepts an invite addressed to the caller's email and joins the workspace.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/members/{userId}": {
+      "delete": {
+        "operationId": "RemoveMember",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Removes a member (hard delete, freeing their seat). Owner/admin only; the owner cannot be removed.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/members/{userId}/credit-limit": {
+      "patch": {
+        "operationId": "SetMemberCreditLimit",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Sets (or clears) a member's monthly cap on spending from the team credit pool.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCreditLimitRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/domains": {
+      "post": {
+        "operationId": "AddDomain",
+        "responses": {
+          "201": {
+            "description": "Domain added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DomainVerificationResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Claims a company domain and attempts DNS TXT verification. Public mailbox providers are rejected.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDomainRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/domains/verify": {
+      "post": {
+        "operationId": "VerifyDomain",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DomainVerificationResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Re-checks the DNS TXT record for a previously added domain.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDomainRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/instructions": {
+      "patch": {
+        "operationId": "UpdateInstructions",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Updates workspace-wide AI instructions (returned as `orgContext` on forecasts/decisions). Owner/admin only.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInstructionsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/preferences": {
+      "get": {
+        "operationId": "GetPreferences",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PreferencesResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Effective preferences: workspace defaults overlaid by the caller's own.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "patch": {
+        "operationId": "UpdateMyPreferences",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PreferencesResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Updates the caller's personal preferences.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/preferences/workspace": {
+      "patch": {
+        "operationId": "UpdateWorkspacePreferences",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PreferencesResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "Updates workspace default preferences. Owner/admin only.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/analytics": {
+      "get": {
+        "operationId": "GetAnalytics",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Aggregate and per-member signal, forecast and search usage, credit spend and active tickers. Owner/admin only.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/api/v1/teams/search": {
+      "get": {
+        "operationId": "Search",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Workspace search across shared watchlists, screeners, research notes and members' saved AI decisions.",
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/watchlists": {
+      "get": {
+        "operationId": "ListWatchlists",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "post": {
+        "operationId": "CreateWatchlist",
+        "responses": {
+          "201": {
+            "description": "Shared watchlist created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedWatchlistRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/watchlists/{id}": {
+      "delete": {
+        "operationId": "DeleteWatchlist",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/screeners": {
+      "get": {
+        "operationId": "ListScreeners",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "post": {
+        "operationId": "CreateScreener",
+        "responses": {
+          "201": {
+            "description": "Shared screener created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedScreenerRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/screeners/{id}": {
+      "delete": {
+        "operationId": "DeleteScreener",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/teams/notes": {
+      "get": {
+        "operationId": "ListNotes",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "CreateNote",
+        "responses": {
+          "201": {
+            "description": "Research note created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchNoteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/notes/{id}": {
+      "delete": {
+        "operationId": "DeleteNote",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Teams"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/search/symbol-lookup": {
       "get": {
         "operationId": "SymbolLookup",
@@ -2392,9 +4038,29 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed (restricted domain, non-admin top-up, FREE top-up)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already part of a team workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
-        "description": "Initiates a Safepay hosted-checkout session for upgrading to Pro.\nOnly registered when `config.features.enablePaymentProcessor` is on\n(Payment Mode) — in Bypass Mode this route does not exist (404) and\n`POST /api/v1/auth/plan` is used directly instead.",
+        "description": "Initiates a Safepay hosted-checkout session for upgrading to Pro, buying\na Team workspace (`plan: TEAM`), or topping up prepaid credits\n(`plan: TOPUP`). Prices are always derived server-side.\nOnly registered when `config.features.enablePaymentProcessor` is on\n(Payment Mode) — in Bypass Mode this route does not exist (404) and\n`POST /api/v1/auth/plan` is used directly instead.",
         "tags": ["Payments"],
         "security": [
           {
@@ -2543,6 +4209,103 @@
         "parameters": []
       }
     },
+    "/api/v1/payments/me/usage": {
+      "get": {
+        "operationId": "GetMyUsage",
+        "responses": {
+          "200": {
+            "description": "Usage fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UsageSummaryResponse_"
+                }
+              }
+            }
+          }
+        },
+        "description": "The caller's allowance for the current cycle: AI signals used vs. included,\nthe credit pool that pays beyond it, and any team spend cap. Same window\nand counting as enforcement. Always registered.",
+        "tags": ["Payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/api/v1/payments/credits/ledger": {
+      "get": {
+        "operationId": "GetCreditLedger",
+        "responses": {
+          "200": {
+            "description": "Credit history fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CreditLedgerPageResponse_"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace history is owner/admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Newest-first credit history. `scope=USER` (default) is the caller's own\nactivity and balance; `scope=TEAM` is the whole workspace pool with member\nnames and is owner/admin only. Cursor-paginated. Always registered.",
+        "tags": ["Payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["USER", "TEAM"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/payments/subscription/renew": {
       "post": {
         "operationId": "RenewSubscription",
@@ -2603,7 +4366,7 @@
             }
           }
         },
-        "description": "Turns recurring card billing on/off. CARD subscriptions only — 400 if\nthe caller's subscription is WALLET (wallets have no recurring\ncapability to toggle).",
+        "description": "Turns recurring card billing on/off. For a personal subscription this is\nCARD only — 400 if it is WALLET (no recurring capability). With\n`scope: TEAM` it flags the workspace subscription (flag only; team seats\nare always renewed manually).",
         "tags": ["Payments"],
         "security": [
           {
@@ -3367,6 +5130,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Compute capacity exhausted — queue full or waited too long; retry shortly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "description": "Generate a GRU-based time-series stock price forecast for a symbol.\nDelegates to the Python AI Service, which trains/loads a GRU model on Tiingo OHLCV data.\nResults are cached in Redis to avoid redundant inference.",
@@ -3540,6 +5313,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Compute capacity exhausted — queue full or waited too long; retry shortly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "description": "Get the market-level trade decision (technicals + analyst ratings + sentiment) for a symbol.",
@@ -3571,6 +5354,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse_unknown_"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute capacity exhausted — queue full or waited too long; retry shortly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }
@@ -4679,7 +6472,11 @@
     },
     {
       "name": "Payments",
-      "description": "Safepay checkout sessions, webhook confirmation, and transaction status for Pro tier upgrades"
+      "description": "Safepay checkout sessions, webhook confirmation, and transaction status for Pro and Team upgrades, seat additions and prepaid credit top-ups"
+    },
+    {
+      "name": "Teams",
+      "description": "B2B team workspaces: seats, invites, domains, shared assets, spend controls and usage analytics"
     },
     {
       "name": "System",

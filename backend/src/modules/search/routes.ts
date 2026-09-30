@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import * as SearchController from './controller'
 import { authTokenMiddleware as authenticate } from '../auth'
+import { trackSearchUsage } from '../../shared/middlewares/usage-tracking'
 
 const router = Router()
 
 router.use(authenticate)
 
-router.get('/symbol-lookup', SearchController.symbolLookup)
+router.get('/symbol-lookup', trackSearchUsage, SearchController.symbolLookup)
 
 export default router

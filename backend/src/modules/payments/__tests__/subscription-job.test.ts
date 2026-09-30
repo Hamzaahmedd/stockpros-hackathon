@@ -4,7 +4,16 @@ jest.mock('../../../shared/infrastructure/database', () => ({
       findMany: jest.fn(),
       update: jest.fn(),
     },
+    $transaction: jest.fn(),
   },
+}))
+
+jest.mock('../../../shared/infrastructure/team-access', () => ({
+  // keep the real, pure role check; only the DB-backed lookups are faked
+  isTeamAdminRole: jest.requireActual(
+    '../../../shared/infrastructure/team-access',
+  ).isTeamAdminRole,
+  resolveFallbackPlan: jest.fn(),
 }))
 
 jest.mock('../../auth', () => ({
@@ -18,6 +27,8 @@ jest.mock('../../notifications/public', () => ({
 import { prisma } from '../../../shared/infrastructure/database'
 import { setMyPlan } from '../../auth'
 import { enqueueRenewalReminderEmail } from '../../notifications/public'
+import { resolveFallbackPlan } from '../../../shared/infrastructure/team-access'
+import { TEAM_EXPIRY_TX_TIMEOUT_MS, TEAM_SEAT_PRICE_PAISA } from '../constants'
 import { runSubscriptionExpiryJob } from '../subscription-job'
 
 const mockFindMany = prisma.subscription.findMany as jest.Mock
@@ -81,6 +92,7 @@ describe('runSubscriptionExpiryJob — day-27 reminder', () => {
     expect(enqueueRenewalReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'user@example.com',
+        subscriptionId: 'sub-1',
         userName: 'Hamza',
         variant: 'card-on',
       }),
@@ -225,5 +237,123 @@ describe('runSubscriptionExpiryJob — per-row isolation', () => {
     )
 
     await expect(runSubscriptionExpiryJob()).resolves.toBeUndefined()
+  })
+})
+
+describe('runSubscriptionExpiryJob — team subscriptions', () => {
+  const teamSubscription = (overrides: Record<string, any> = {}) =>
+    baseSubscription({
+      userId: null,
+      teamId: 'team-1',
+      user: null,
+      paymentMethod: 'WALLET',
+      autoRenew: true,
+      team: {
+        seatCapacity: 4,
+        owner: { email: 'owner@fund.com', displayName: 'Olivia' },
+      },
+      ...overrides,
+    })
+
+  it('reminds the owner with the per-seat total and the manual-renewal wording, even if autoRenew is set', async () => {
+    mockFindMany.mockResolvedValue([teamSubscription()])
+
+    await runSubscriptionExpiryJob()
+
+    expect(enqueueRenewalReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'owner@fund.com',
+        userName: 'Olivia',
+        variant: 'wallet',
+        amount: `Rs ${((4 * TEAM_SEAT_PRICE_PAISA) / 100).toLocaleString('en-PK')}`,
+      }),
+    )
+  })
+
+  it('skips the reminder when the team has no owner to send to', async () => {
+    mockFindMany.mockResolvedValue([
+      teamSubscription({ team: { seatCapacity: 4, owner: null } }),
+    ])
+    await runSubscriptionExpiryJob()
+    expect(enqueueRenewalReminderEmail).not.toHaveBeenCalled()
+  })
+
+  it('cancels the team and restores every member to their fallback plan when grace elapses', async () => {
+    mockFindMany.mockResolvedValue([
+      teamSubscription({
+        status: 'GRACE',
+        gracePeriodEnd: new Date(Date.now() - DAY_MS),
+      }),
+    ])
+    const tx = {
+      teamMember: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ userId: 'u-pro' }, { userId: 'u-free' }]),
+      },
+      team: { update: jest.fn() },
+      user: { update: jest.fn() },
+      subscription: { update: jest.fn() },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) =>
+      fn(tx),
+    )
+    ;(resolveFallbackPlan as jest.Mock).mockImplementation(
+      async (id: string) => (id === 'u-pro' ? 'PRO' : 'FREE'),
+    )
+
+    await runSubscriptionExpiryJob()
+
+    expect(tx.team.update).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+      data: { status: 'CANCELLED' },
+    })
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'u-pro' },
+      data: { plan: 'PRO' },
+    })
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'u-free' },
+      data: { plan: 'FREE' },
+    })
+    expect(tx.subscription.update).toHaveBeenCalledWith({
+      where: { id: 'sub-1' },
+      data: { status: 'EXPIRED' },
+    })
+    expect(setMyPlan).not.toHaveBeenCalled()
+  })
+})
+
+describe('runSubscriptionExpiryJob — ending a large team', () => {
+  it('runs the member-by-member downgrade with a raised transaction timeout (Prisma defaults to 5 s)', async () => {
+    mockFindMany.mockResolvedValue([
+      baseSubscription({
+        userId: null,
+        teamId: 'team-1',
+        user: null,
+        status: 'GRACE',
+        gracePeriodEnd: new Date(Date.now() - DAY_MS),
+        team: {
+          seatCapacity: 150,
+          owner: { email: 'o@fund.com', displayName: 'O' },
+        },
+      }),
+    ])
+    const tx = {
+      teamMember: { findMany: jest.fn().mockResolvedValue([]) },
+      team: { update: jest.fn() },
+      user: { update: jest.fn() },
+      subscription: { update: jest.fn() },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) =>
+      fn(tx),
+    )
+
+    await runSubscriptionExpiryJob()
+
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      timeout: TEAM_EXPIRY_TX_TIMEOUT_MS,
+    })
+    expect(TEAM_EXPIRY_TX_TIMEOUT_MS).toBeGreaterThan(5_000)
   })
 })

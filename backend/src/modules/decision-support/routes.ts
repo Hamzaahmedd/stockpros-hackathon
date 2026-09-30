@@ -1,7 +1,12 @@
 import { Router } from 'express'
 import { upload } from '../../shared/middlewares'
+import { priorityQueue } from '../../shared/middlewares/priority-queue'
+import { MeteredFeature } from '../payments/public'
 import {
+  attachTeamContext,
+  composeHandlers,
   gate,
+  meterPaidAiSignal,
   noTierRestriction,
   requirePlan,
   requireSinglePortfolioForFree,
@@ -15,16 +20,26 @@ const router = Router()
 
 router.use(authenticate)
 
+// Watchlist-membership rule for FREE, then the PRO/TEAM monthly quota + credits.
+const meteredDecisionAccess = composeHandlers(
+  requireWatchlistMembershipOrPro,
+  meterPaidAiSignal(MeteredFeature.AI_DECISION),
+)
+
 // ─── Market Intelligence ─────────────────────────────────────────────────────
 router.get(
   '/market/decision/:symbol',
-  gate(Resource.CORE_APP, Action.READ, requireWatchlistMembershipOrPro),
+  attachTeamContext,
+  gate(Resource.CORE_APP, Action.READ, meteredDecisionAccess),
+  priorityQueue(),
   DecisionController.getMarketBasedTradeDecision,
 )
 
 router.get(
   '/market/radar',
-  gate(Resource.CORE_APP, Action.READ, requireWatchlistMembershipOrPro),
+  attachTeamContext,
+  gate(Resource.CORE_APP, Action.READ, meteredDecisionAccess),
+  priorityQueue(),
   DecisionController.getOpportunityRadarHandler,
 )
 

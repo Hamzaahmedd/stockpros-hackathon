@@ -1,4 +1,5 @@
-import { Queue, Worker } from 'bullmq'
+import { Queue, UnrecoverableError, Worker } from 'bullmq'
+import type { z } from 'zod'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import {
   transporter,
@@ -6,18 +7,35 @@ import {
 } from '../../../shared/infrastructure/config/email'
 import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
 import { logger } from '../../../shared/infrastructure/logger'
+import { redactPii } from '../../../shared/utils/redact'
+import {
+  alertEmailJobSchema,
+  renewalReminderJobSchema,
+  teamInviteJobSchema,
+  type EmailJobPayload,
+  type RenewalReminderEmailJobPayload,
+  type TeamInviteEmailJobPayload,
+} from '../email-job-schemas'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
 import { buildRenewalReminderEmail } from '../email-templates/subscription-renewal'
-import type { EmailJobPayload, RenewalReminderEmailJobPayload } from '../types'
+import { buildTeamInviteEmail } from '../email-templates/team-invite'
 import {
   ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
   ALERT_EMAIL_JOB_NAME,
   ALERT_EMAIL_QUEUE_NAME,
   ALERT_EMAIL_QUEUE_OPTIONS,
   RENEWAL_REMINDER_JOB_NAME,
+  TEAM_INVITE_JOB_NAME,
 } from './alert-email.config'
 
-type EmailQueueJobPayload = EmailJobPayload | RenewalReminderEmailJobPayload
+type EmailQueueJobPayload =
+  EmailJobPayload | RenewalReminderEmailJobPayload | TeamInviteEmailJobPayload
+
+interface JobRef {
+  id?: string
+  name: string
+  data: unknown
+}
 
 // ─── Queue ────────────────────────────────────────────────────────────────────
 
@@ -36,10 +54,39 @@ const getEmailQueue = (): Queue<EmailQueueJobPayload> | null => {
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-let emailWorker: Worker<EmailQueueJobPayload> | null = null
+let emailWorker: Worker | null = null
 
-const sendAlertEmail = async (payload: EmailJobPayload): Promise<void> => {
-  const { to, title, body, symbol } = payload
+/**
+ * Validates what came back out of Redis instead of trusting it. A malformed
+ * job can never succeed on retry, so it fails permanently (no backoff churn)
+ * and is logged by job id and field names only — never by value.
+ */
+const parsePayload = <T>(
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  job: JobRef,
+): T => {
+  const result = schema.safeParse(job.data)
+  if (result.success) return result.data
+
+  logger.error(
+    '[EmailWorker] Dropping job with an invalid payload',
+    undefined,
+    {
+      jobId: job.id,
+      jobName: job.name,
+      fields: result.error.issues
+        .map((issue) => issue.path.join('.'))
+        .join(','),
+    },
+  )
+  throw new UnrecoverableError('Invalid email job payload')
+}
+
+const sendAlertEmail = async (job: JobRef): Promise<void> => {
+  const { to, userId, title, body, symbol } = parsePayload(
+    alertEmailJobSchema,
+    job,
+  )
   try {
     await transporter.sendMail({
       to,
@@ -48,15 +95,18 @@ const sendAlertEmail = async (payload: EmailJobPayload): Promise<void> => {
       html: buildAlertEmail(title, body, symbol, getLogoSrc()),
     })
   } catch (err) {
-    rethrowEmailError(err, to)
+    rethrowEmailError(err)
   }
-  logger.info(`[EmailWorker] Sent "${title}" to ${to}`)
+  logger.info('[EmailWorker] Alert email sent', {
+    jobId: job.id,
+    userId,
+    symbol,
+  })
 }
 
-const sendRenewalReminderEmail = async (
-  payload: RenewalReminderEmailJobPayload,
-): Promise<void> => {
-  const { to, userName, amount, renewsOn, manageUrl, variant } = payload
+const sendRenewalReminderEmail = async (job: JobRef): Promise<void> => {
+  const { to, subscriptionId, userName, amount, renewsOn, manageUrl, variant } =
+    parsePayload(renewalReminderJobSchema, job)
   const { subject, html, text } = buildRenewalReminderEmail(
     { userName, amount, renewsOn, manageUrl, variant },
     getLogoSrc(),
@@ -64,9 +114,41 @@ const sendRenewalReminderEmail = async (
   try {
     await transporter.sendMail({ to, subject, text, html })
   } catch (err) {
-    rethrowEmailError(err, to)
+    rethrowEmailError(err)
   }
-  logger.info(`[EmailWorker] Sent renewal reminder ("${variant}") to ${to}`)
+  logger.info('[EmailWorker] Renewal reminder sent', {
+    jobId: job.id,
+    subscriptionId,
+    variant,
+  })
+}
+
+const sendTeamInviteEmail = async (job: JobRef): Promise<void> => {
+  const {
+    to,
+    inviteId,
+    teamId,
+    inviterName,
+    teamName,
+    inviteUrl,
+    role,
+    expiresAt,
+  } = parsePayload(teamInviteJobSchema, job)
+  const { subject, html, text } = buildTeamInviteEmail(
+    { inviterName, teamName, inviteUrl, role, expiresAt },
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  logger.info('[EmailWorker] Team invite sent', {
+    jobId: job.id,
+    inviteId,
+    teamId,
+    role,
+  })
 }
 
 /**
@@ -82,23 +164,25 @@ export const startEmailWorker = (): void => {
     return
   }
 
-  emailWorker = new Worker<EmailQueueJobPayload>(
+  emailWorker = new Worker(
     ALERT_EMAIL_QUEUE_NAME,
     async (job) => {
       if (job.name === RENEWAL_REMINDER_JOB_NAME) {
-        await sendRenewalReminderEmail(
-          job.data as RenewalReminderEmailJobPayload,
-        )
-        return
+        return sendRenewalReminderEmail(job)
       }
-      await sendAlertEmail(job.data as EmailJobPayload)
+      if (job.name === TEAM_INVITE_JOB_NAME) {
+        return sendTeamInviteEmail(job)
+      }
+      return sendAlertEmail(job)
     },
     { connection, ...ALERT_EMAIL_QUEUE_OPTIONS },
   )
 
+  // Provider errors often echo the recipient ("550 <user@x.com>: rejected");
+  // the logger scrubs addresses from every message as a backstop.
   emailWorker.on('failed', (job, err) =>
     logger.error(
-      `[EmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${err.message}`,
+      `[EmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${redactPii(err.message)}`,
     ),
   )
 
@@ -117,7 +201,7 @@ export const stopEmailWorker = async (): Promise<void> => {
   logger.info('[EmailWorker] Stopped')
 }
 
-// ─── Enqueue Helper ───────────────────────────────────────────────────────────
+// ─── Enqueue Helpers ──────────────────────────────────────────────────────────
 
 /**
  * Add an email notification job to the queue.
@@ -143,6 +227,20 @@ export const enqueueRenewalReminderEmail = async (
   } else {
     logger.warn(
       '[EmailWorker] Skipping renewal reminder enqueue - Redis not connected',
+    )
+  }
+}
+
+/** Add a team-invite email job to the same queue (retries/backoff from the queue defaults). */
+export const enqueueTeamInviteEmail = async (
+  payload: TeamInviteEmailJobPayload,
+): Promise<void> => {
+  const queue = getEmailQueue()
+  if (queue) {
+    await queue.add(TEAM_INVITE_JOB_NAME, payload)
+  } else {
+    logger.warn(
+      '[EmailWorker] Skipping team invite enqueue - Redis not connected',
     )
   }
 }

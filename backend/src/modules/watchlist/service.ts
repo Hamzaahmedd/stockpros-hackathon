@@ -339,8 +339,13 @@ export const updateWatchlistEntry = async (
 
   // Audit log for modifications
   const changes: string[] = []
-  if (data.targetEntryPrice !== undefined && entry.targetEntryPrice !== data.targetEntryPrice) {
-    changes.push(`targetEntry: ${entry.targetEntryPrice} -> ${data.targetEntryPrice}`)
+  if (
+    data.targetEntryPrice !== undefined &&
+    entry.targetEntryPrice !== data.targetEntryPrice
+  ) {
+    changes.push(
+      `targetEntry: ${entry.targetEntryPrice} -> ${data.targetEntryPrice}`,
+    )
   }
   if (data.stopLoss !== undefined && entry.stopLoss !== data.stopLoss) {
     changes.push(`stopLoss: ${entry.stopLoss} -> ${data.stopLoss}`)
@@ -348,7 +353,7 @@ export const updateWatchlistEntry = async (
   if (data.notes !== undefined && entry.notes !== data.notes) {
     changes.push(`notes updated`)
   }
-  
+
   if (changes.length > 0) {
     logger.info(
       `[AUDIT] Watchlist entry updated: userId=${userId}, symbol=${normalizedSymbol}, changes=[${changes.join(', ')}]`,

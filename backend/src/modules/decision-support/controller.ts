@@ -19,7 +19,7 @@ import {
   portfolioRiskMetricsValidator,
   positionSizeValidator,
 } from './validation'
-import { getUserId, sendSuccess } from '../../shared/utils'
+import { getUserId, orgContextExtra, sendSuccess } from '../../shared/utils'
 import {
   generatePortfolioReportPdfBuffer,
   generateTradePlanPdfBuffer,
@@ -37,6 +37,7 @@ export const getMarketBasedTradeDecision = async (
     sendSuccess(res, {
       message: 'Trade decision retrieved successfully.',
       data,
+      extra: orgContextExtra(req),
     })
   } catch (error) {
     next(error)
@@ -57,6 +58,7 @@ export const getOpportunityRadarHandler = async (
 
     sendSuccess(res, {
       message: 'Opportunity radar retrieved successfully.',
+      extra: orgContextExtra(req),
       data,
     })
   } catch (error) {

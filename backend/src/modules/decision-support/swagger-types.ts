@@ -64,6 +64,10 @@ export class DecisionSupportSwaggerController extends Controller {
    */
   @Get('market/decision/{symbol}')
   @Security('bearerAuth')
+  @Response<ApiErrorResponse>(
+    503,
+    'Compute capacity exhausted — queue full or waited too long; retry shortly',
+  )
   @SuccessResponse(200, 'Trade decision retrieved successfully.')
   async getMarketBasedTradeDecision(
     @Path() symbol: string,
@@ -76,6 +80,10 @@ export class DecisionSupportSwaggerController extends Controller {
    */
   @Get('market/radar')
   @Security('bearerAuth')
+  @Response<ApiErrorResponse>(
+    503,
+    'Compute capacity exhausted — queue full or waited too long; retry shortly',
+  )
   @SuccessResponse(200, 'Opportunity radar retrieved successfully.')
   async getOpportunityRadar(
     @Query() timeline?: '1D' | '1W',

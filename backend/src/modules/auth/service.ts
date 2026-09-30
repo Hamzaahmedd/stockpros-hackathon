@@ -1,11 +1,12 @@
 // Consolidated auth service
 import config from '@/config'
-import { PlanTier, Prisma, UserStatus } from '@prisma/client'
+import { PlanTier, Prisma, TeamStatus, UserStatus } from '@prisma/client'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import crypto from 'node:crypto'
 import { uuidv7 } from 'uuidv7'
 import {
+  BadRequestError,
   NotFoundError,
   InternalServerError,
   TooManyRequestsError,
@@ -264,6 +265,18 @@ export async function deleteAccount(userId: string): Promise<void> {
     throw new UnauthorizedError('Account is already deleted')
   }
 
+  // An active workspace can't be orphaned: the owner must let it lapse or
+  // cancel it first, otherwise its members lose their plan with no owner to renew.
+  const ownedTeam = await prisma.team.findUnique({
+    where: { ownerId: userId },
+    select: { status: true },
+  })
+  if (ownedTeam?.status === TeamStatus.ACTIVE) {
+    throw new BadRequestError(
+      'Cancel or transfer your team workspace before deleting your account',
+    )
+  }
+
   captureEvent(userId, PostHogEvent.AccountDeleted)
 
   // Step 2: Immediately revoke ALL active sessions — blocks all future requests
@@ -298,6 +311,12 @@ export async function deleteAccount(userId: string): Promise<void> {
         tx.magicLinkToken.deleteMany({ where: { email: user.email } }),
         // Phone OTP records — purge alongside the rest of this account's PII
         tx.phoneOtp.deleteMany({ where: { userId } }),
+        // Workspace seat (frees the one-team-per-user constraint)
+        tx.teamMember.deleteMany({ where: { userId } }),
+        // Pending invites addressed to this email (the invite row is PII)
+        tx.teamInvite.deleteMany({
+          where: { email: { equals: user.email, mode: 'insensitive' } },
+        }),
 
         // Step 4: Soft-delete the user
         tx.user.update({

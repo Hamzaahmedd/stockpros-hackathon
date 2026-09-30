@@ -17,6 +17,11 @@ jest.mock('../../../shared/infrastructure/database', () => ({
   },
 }))
 
+jest.mock('../fulfillment', () => ({
+  ...jest.requireActual('../fulfillment'),
+  fulfillTeamOrCreditTransaction: jest.fn(),
+}))
+
 jest.mock('../../auth', () => ({
   setMyPlan: jest.fn(),
 }))
@@ -39,6 +44,7 @@ import {
   resumeSafepaySubscription,
 } from '../client'
 import { PLAN_PRICES_PAISA, PAYMENT_CURRENCY } from '../constants'
+import { fulfillTeamOrCreditTransaction } from '../fulfillment'
 import {
   createCheckoutSession,
   getSubscriptionSummary,
@@ -86,7 +92,8 @@ describe('createCheckoutSession', () => {
       data: {
         userId: 'user-1',
         trackerId: 'trk_new',
-        amount: PLAN_PRICES_PAISA.PRO,
+        amountPaisa: PLAN_PRICES_PAISA.PRO,
+        kind: 'SUBSCRIPTION',
         currency: PAYMENT_CURRENCY,
         status: PaymentStatus.PENDING,
         planTier: 'PRO',
@@ -618,5 +625,73 @@ describe('verifyTracker — ownership', () => {
     await expect(verifyTracker('user-1', 'trk_missing')).rejects.toMatchObject({
       statusCode: 404,
     })
+  })
+})
+
+describe('handleWebhookEvent — team & credit transactions', () => {
+  const event = { trackerId: 'trk-1', status: 'COMPLETED' } as const
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it.each([
+    ['TOPUP', 'PRO'],
+    ['SEAT_ADDITION', 'TEAM'],
+    ['SUBSCRIPTION', 'TEAM'],
+  ])(
+    'hands %s/%s transactions to the atomic fulfilment path, not the legacy PRO path',
+    async (kind, planTier) => {
+      ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValue({
+        trackerId: 'trk-1',
+        userId: 'user-1',
+        kind,
+        planTier,
+        status: 'PENDING',
+      })
+      ;(fulfillTeamOrCreditTransaction as jest.Mock).mockResolvedValue(true)
+
+      await handleWebhookEvent(event, { raw: true })
+
+      expect(fulfillTeamOrCreditTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ kind, planTier }),
+        event,
+        PaymentStatus.COMPLETED,
+        { raw: true },
+      )
+      expect(prisma.paymentTransaction.updateMany).not.toHaveBeenCalled()
+      expect(setMyPlan).not.toHaveBeenCalled()
+    },
+  )
+
+  it('is a no-op for a duplicate webhook (fulfilment reports nothing applied)', async () => {
+    ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValue({
+      trackerId: 'trk-1',
+      kind: 'TOPUP',
+      planTier: 'PRO',
+      status: 'COMPLETED',
+    })
+    ;(fulfillTeamOrCreditTransaction as jest.Mock).mockResolvedValue(false)
+
+    await expect(handleWebhookEvent(event, {})).resolves.toBeUndefined()
+    expect(setMyPlan).not.toHaveBeenCalled()
+  })
+})
+
+describe('handleSubscriptionRenewalWebhookEvent — team rows', () => {
+  it('ignores a webhook that resolves to a team subscription (no userId)', async () => {
+    ;(prisma.subscription.findFirst as jest.Mock).mockResolvedValue({
+      id: 'sub-team',
+      userId: null,
+      teamId: 'team-1',
+    })
+
+    await handleSubscriptionRenewalWebhookEvent({
+      type: 'payment.succeeded',
+      reference: 'sub-team',
+    })
+
+    expect(setMyPlan).not.toHaveBeenCalled()
+    expect(prisma.subscription.update).not.toHaveBeenCalled()
   })
 })

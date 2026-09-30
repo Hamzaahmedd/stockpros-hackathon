@@ -365,7 +365,9 @@ export const runSecFilingJob = async (): Promise<void> => {
 
         const latestFiling = data.data[0]
         const filedDate = new Date(latestFiling.filedDate)
-        const oneDayAgo = new Date(Date.now() - (convertToMilliseconds('1d') ?? 0))
+        const oneDayAgo = new Date(
+          Date.now() - (convertToMilliseconds('1d') ?? 0),
+        )
 
         // Only fire if the most recent filing was within the last day
         if (filedDate < oneDayAgo) continue

@@ -1,9 +1,14 @@
-import { Queue, Worker } from 'bullmq'
+import { Queue, UnrecoverableError, Worker } from 'bullmq'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
-import { transporter, getLogoSrc } from '../../../shared/infrastructure/config/email'
+import {
+  transporter,
+  getLogoSrc,
+} from '../../../shared/infrastructure/config/email'
 import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
 import { logger } from '../../../shared/infrastructure/logger'
+import { redactPii } from '../../../shared/utils/redact'
 import { buildMagicLinkEmail } from '../email-templates/index'
+import { authEmailJobSchema } from '../email-job-schemas'
 import type { AuthEmailJobPayload } from '../types'
 import {
   AUTH_EMAIL_DEFAULT_JOB_OPTIONS,
@@ -31,7 +36,7 @@ const getAuthEmailQueue = (): Queue<AuthEmailJobPayload> | null => {
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-let authEmailWorker: Worker<AuthEmailJobPayload> | null = null
+let authEmailWorker: Worker | null = null
 
 /**
  * Start the auth (magic-link) email worker.
@@ -46,26 +51,45 @@ export const startAuthEmailWorker = (): void => {
     return
   }
 
-  authEmailWorker = new Worker<AuthEmailJobPayload>(
+  authEmailWorker = new Worker(
     AUTH_EMAIL_QUEUE_NAME,
     async (job) => {
-      const { to, loginLink, expiryMinutes } = job.data
-      const emailContent = buildMagicLinkEmail(loginLink, expiryMinutes, getLogoSrc())
+      // Redis-borne data is validated, not cast. A malformed job can never
+      // succeed on retry, so it fails permanently; the payload holds a login
+      // link (a credential), so only the field names are logged.
+      const parsed = authEmailJobSchema.safeParse(job.data)
+      if (!parsed.success) {
+        logger.error(
+          '[AuthEmailWorker] Dropping job with an invalid payload',
+          undefined,
+          {
+            jobId: job.id,
+            fields: parsed.error.issues.map((i) => i.path.join('.')).join(','),
+          },
+        )
+        throw new UnrecoverableError('Invalid auth email job payload')
+      }
+      const { to, loginLink, expiryMinutes } = parsed.data
+      const emailContent = buildMagicLinkEmail(
+        loginLink,
+        expiryMinutes,
+        getLogoSrc(),
+      )
 
       try {
         await transporter.sendMail({ to, ...emailContent })
       } catch (err) {
-        rethrowEmailError(err, to)
+        rethrowEmailError(err)
       }
 
-      logger.info(`[AuthEmailWorker] Sent magic link to ${to}`)
+      logger.info('[AuthEmailWorker] Magic link sent', { jobId: job.id })
     },
     { connection, ...AUTH_EMAIL_QUEUE_OPTIONS },
   )
 
   authEmailWorker.on('failed', (job, err) =>
     logger.error(
-      `[AuthEmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${err.message}`,
+      `[AuthEmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${redactPii(err.message)}`,
     ),
   )
 

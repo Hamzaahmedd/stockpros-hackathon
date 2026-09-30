@@ -1,4 +1,4 @@
-export type PlanTier = "FREE" | "PRO";
+export type PlanTier = "FREE" | "PRO" | "TEAM";
 
 export type User = {
   id?: string;

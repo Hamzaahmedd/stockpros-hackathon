@@ -144,6 +144,7 @@ export const dispatchNotification = async (
     if (preferences.emailVolatilityAlertsEnabled) {
       await enqueueEmail({
         to: preferences.email,
+        userId,
         symbol,
         alertType,
         title,

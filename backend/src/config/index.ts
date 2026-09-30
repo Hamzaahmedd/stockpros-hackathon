@@ -59,6 +59,24 @@ const loadEnvConfig = (env: Environment): EnvConfig => {
   }
 }
 
+const TRUE_VALUES = new Set(['true', '1'])
+const FALSE_VALUES = new Set(['false', '0'])
+
+/**
+ * Strict boolean env parsing: unset/empty is false, "true"/"1" and "false"/"0"
+ * (any case) are accepted, anything else throws. Failing loudly matters for
+ * safety switches — a typo like "yes" must not silently mean "off".
+ */
+export const parseBooleanEnv = (
+  name: string,
+  raw: string | undefined,
+): boolean => {
+  const value = raw?.trim().toLowerCase() ?? ''
+  if (value === '' || FALSE_VALUES.has(value)) return false
+  if (TRUE_VALUES.has(value)) return true
+  throw new Error(`Invalid ${name} "${raw}". Expected true, false, 1 or 0.`)
+}
+
 export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
   // Parse comma-separated origins exclusively from process.env.CORS_ORIGINS
   const corsOrigins = secrets.corsOrigins
@@ -160,6 +178,17 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       checkoutBaseUrl: env.safepay.checkoutBaseUrl,
     },
     features: env.features,
+    priorityQueue: env.priorityQueue,
+    market: {
+      // Ops kill-switch for unscheduled exchange halts / ad-hoc closures: when
+      // true the app treats the market as closed regardless of the calendar.
+      // Deliberately an env var (not a code-config file) so it can be flipped
+      // with a redeploy/restart — it is read once at boot.
+      emergencyClosed: parseBooleanEnv(
+        'EMERGENCY_MARKET_CLOSED',
+        process.env.EMERGENCY_MARKET_CLOSED,
+      ),
+    },
     audit: {
       enabled: true,
       retentionDays: env.audit.retentionDays,

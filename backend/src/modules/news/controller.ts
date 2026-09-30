@@ -42,7 +42,10 @@ export const getNewsBySymbol = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req)
-    const symbol = validateOrThrow(symbolParamValidator, req.params).symbol.toUpperCase()
+    const symbol = validateOrThrow(
+      symbolParamValidator,
+      req.params,
+    ).symbol.toUpperCase()
     const query: NewsSymbolQuery = validateOrThrow(
       newsSymbolValidator,
       req.query,

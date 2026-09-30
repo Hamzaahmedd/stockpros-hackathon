@@ -10,6 +10,7 @@ import { newsModule } from './news'
 import { notificationsModule } from './notifications'
 import { paymentsModule } from './payments'
 import { searchModule } from './search'
+import { teamsModule } from './teams'
 import { watchlistModule } from './watchlist'
 
 /** The only place where business modules are assembled into the application. */
@@ -26,6 +27,7 @@ export const modules: readonly AppModule[] = [
   searchModule,
   feedbackModule,
   paymentsModule,
+  teamsModule,
 ]
 
 export type { AppModule } from './module-interface'

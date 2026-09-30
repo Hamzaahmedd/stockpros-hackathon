@@ -239,3 +239,92 @@ describe('logger.error — formatError branches', () => {
     expect(errorArgOf(pinoInstance)).toBe('')
   })
 })
+
+// Makes this file a module so its top-level helpers do not collide with other
+// import-less test files in the shared ts-jest program (TS2451).
+export {}
+
+describe('logger — PII scrubbing backstop and structured context', () => {
+  it.each(['debug', 'info', 'warn'] as const)(
+    '%s scrubs email addresses out of the message',
+    (level) => {
+      const { logger, pinoInstance } = loadLogger()
+      logger[level]('mail to person@fund.com failed (+923001234567)')
+      expect(pinoInstance[level]).toHaveBeenCalledWith(
+        'mail to [redacted-email] failed ([redacted-phone])',
+      )
+    },
+  )
+
+  it.each(['debug', 'info', 'warn'] as const)(
+    '%s passes structured context as the merge object and scrubs string values in it',
+    (level) => {
+      const { logger, pinoInstance } = loadLogger()
+      logger[level]('Sent', {
+        jobId: 'job-1',
+        attempts: 2,
+        ok: true,
+        note: 'echoed person@fund.com',
+        missing: undefined,
+      })
+      expect(pinoInstance[level]).toHaveBeenCalledWith(
+        {
+          jobId: 'job-1',
+          attempts: 2,
+          ok: true,
+          note: 'echoed [redacted-email]',
+          missing: undefined,
+        },
+        'Sent',
+      )
+    },
+  )
+
+  it('error scrubs the message and the formatted error, and merges context', () => {
+    const { logger, pinoInstance } = loadLogger()
+    logger.error(
+      'delivery to person@fund.com failed',
+      new Error('550 <person@fund.com> rejected'),
+      { jobId: 'job-9', to: 'person@fund.com' },
+    )
+
+    const [fields, message] = pinoInstance.error.mock.calls[0]
+    expect(message).toBe('delivery to [redacted-email] failed')
+    expect(fields.jobId).toBe('job-9')
+    expect(fields.to).toBe('[redacted-email]')
+    expect(fields.error).toContain('[redacted-email]')
+    expect(fields.error).not.toContain('person@fund.com')
+  })
+
+  it('error with context but no error object logs the context', () => {
+    const { logger, pinoInstance } = loadLogger()
+    logger.error('Dropped', undefined, { jobId: 'job-2' })
+    expect(pinoInstance.error).toHaveBeenCalledWith(
+      { jobId: 'job-2' },
+      'Dropped',
+    )
+  })
+
+  it('does not treat version strings in stack traces as addresses', () => {
+    const { logger, pinoInstance } = loadLogger()
+    logger.info('loaded pkg@1.2.3 from node_modules/@scope/pkg')
+    expect(pinoInstance.info).toHaveBeenCalledWith(
+      'loaded pkg@1.2.3 from node_modules/@scope/pkg',
+    )
+  })
+
+  it('also redacts contact-detail keys by name via pino redact paths', () => {
+    const { pinoMock } = loadLogger()
+    const { redact } = pinoMock.mock.calls[0][0]
+    expect(redact.paths).toEqual(
+      expect.arrayContaining([
+        'email',
+        '*.email',
+        'to',
+        '*.to',
+        'recipient',
+        '*.recipient',
+      ]),
+    )
+  })
+})

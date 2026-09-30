@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
+import { getActiveMembership } from '../../shared/infrastructure/team-access'
 import {
   convertToMilliseconds,
   getUserId,
@@ -73,6 +74,12 @@ export const updateMyPlan = async (
       throw new ForbiddenError(
         'Upgrading to Pro requires completing payment via Safepay',
       )
+    }
+
+    // A team member's plan is owned by the workspace; letting them flip it
+    // here would desync it from the team subscription.
+    if (await getActiveMembership(userId)) {
+      throw new ForbiddenError('Your plan is managed by your team workspace')
     }
 
     const updatedPlan = await setMyPlan(userId, plan)

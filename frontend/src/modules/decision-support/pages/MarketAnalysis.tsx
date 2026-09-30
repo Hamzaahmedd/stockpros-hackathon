@@ -1,3 +1,4 @@
+import { OrgContextBanner } from "@/shared/components/OrgContextBanner";
 import api from "@/shared/api/axios";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { SmartSearch } from "@/shared/components/SmartSearch";
@@ -195,6 +196,8 @@ const MarketAnalysis: React.FC = () => {
               <p className="text-sm text-muted-foreground mt-1 font-medium">Precision decision support powered by Intelligence Protocols</p>
             </div>
           </div>
+
+          <OrgContextBanner />
 
           {/* SEARCH */}
           <div className="max-w-2xl">

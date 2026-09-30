@@ -50,3 +50,40 @@ describe('buildMagicLinkEmail', () => {
     expect(email.text).toContain('https://app.example/verify?t=abc')
   })
 })
+
+describe('magic link — escaping', () => {
+  it('escapes the link placed in the button href, so a query string cannot break out of the attribute', () => {
+    const html = buildMagicLinkEmailHtml(
+      'https://app.example/auth/verify?token=abc&next="x" onclick="alert(1)',
+      10,
+    )
+    expect(html).toContain(
+      'href="https://app.example/auth/verify?token=abc&amp;next=&quot;x&quot; onclick=&quot;alert(1)"',
+    )
+    expect(html).not.toContain('onclick="alert(1)"')
+  })
+
+  it('keeps a normal login link working (ampersands become entities, which mail clients decode)', () => {
+    const html = buildMagicLinkEmailHtml(
+      'https://app.example/auth/verify?token=abc123&x=1',
+      10,
+    )
+    expect(html).toContain(
+      'href="https://app.example/auth/verify?token=abc123&amp;x=1"',
+    )
+  })
+
+  it('escapes the logo source', () => {
+    const html = buildMagicLinkEmailHtml(
+      'https://app.example/x',
+      10,
+      'x" onerror="alert(1)',
+    )
+    expect(html).not.toContain('onerror="alert(1)')
+  })
+
+  it('leaves the plain-text body unescaped so the link is copy-pasteable as-is', () => {
+    const link = 'https://app.example/auth/verify?token=abc&x=1'
+    expect(buildMagicLinkEmailText(link, 10)).toContain(link)
+  })
+})

@@ -246,4 +246,3 @@ export interface PortfolioPdfPayload {
     }>
   } | null
 }
-

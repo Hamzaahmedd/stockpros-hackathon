@@ -7,10 +7,13 @@ import {
 } from '../notifications/public'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
+import { resolveFallbackPlan } from '../../shared/infrastructure/team-access'
 import {
   PLAN_PRICES_PAISA,
   SUBSCRIPTION_GRACE_PERIOD_MS,
   SUBSCRIPTION_REMINDER_WINDOW_MS,
+  TEAM_EXPIRY_TX_TIMEOUT_MS,
+  TEAM_SEAT_PRICE_PAISA,
 } from './constants'
 
 const formatAmount = (amountPaisa: number): string =>
@@ -22,6 +25,41 @@ const formatDate = (date: Date): string =>
     day: 'numeric',
     year: 'numeric',
   })
+
+/**
+ * Ends a lapsed team workspace: cancels it and sends every member back to the
+ * plan they had before joining (PRO if they still hold a live personal
+ * subscription, otherwise FREE). Atomic so members are never left on TEAM
+ * with a cancelled workspace.
+ */
+const expireTeamSubscription = async (
+  subscriptionId: string,
+  teamId: string,
+): Promise<void> => {
+  await prisma.$transaction(
+    async (tx) => {
+      const members = await tx.teamMember.findMany({
+        where: { teamId },
+        select: { userId: true },
+      })
+      await tx.team.update({
+        where: { id: teamId },
+        data: { status: 'CANCELLED' },
+      })
+      for (const { userId } of members) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { plan: await resolveFallbackPlan(userId, tx) },
+        })
+      }
+      await tx.subscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'EXPIRED' },
+      })
+    },
+    { timeout: TEAM_EXPIRY_TX_TIMEOUT_MS },
+  )
+}
 
 const resolveVariant = (
   paymentMethod: SubscriptionPaymentMethod,
@@ -46,13 +84,23 @@ const resolveVariant = (
 export const runSubscriptionExpiryJob = async (): Promise<void> => {
   const subscriptions = await prisma.subscription.findMany({
     where: { status: { in: ['ACTIVE', 'GRACE'] } },
-    include: { user: { select: { email: true, displayName: true } } },
+    include: {
+      user: { select: { email: true, displayName: true } },
+      team: {
+        select: {
+          seatCapacity: true,
+          owner: { select: { email: true, displayName: true } },
+        },
+      },
+    },
   })
 
   const now = new Date()
   const manageUrl = `${config.server.frontendUrl}/plans`
 
   for (const subscription of subscriptions) {
+    // Exactly one of user/team is set; team reminders go to the workspace owner.
+    const recipient = subscription.user ?? subscription.team?.owner
     try {
       if (subscription.status === 'ACTIVE' && subscription.currentPeriodEnd) {
         if (subscription.currentPeriodEnd <= now) {
@@ -66,7 +114,7 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
             },
           })
           logger.info(
-            `[SubscriptionCron] userId=${subscription.userId} entered grace period`,
+            `[SubscriptionCron] subscriptionId=${subscription.id} entered grace period`,
           )
           continue
         }
@@ -79,24 +127,32 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
           subscription.reminderSentAt !== null &&
           subscription.reminderSentAt >= subscription.currentPeriodStart
 
-        if (reminderDue && !alreadySentThisCycle) {
+        if (reminderDue && !alreadySentThisCycle && recipient) {
           await enqueueRenewalReminderEmail({
-            to: subscription.user.email,
-            userName: subscription.user.displayName,
-            amount: formatAmount(PLAN_PRICES_PAISA.PRO),
+            to: recipient.email,
+            subscriptionId: subscription.id,
+            userName: recipient.displayName,
+            amount: formatAmount(
+              subscription.team
+                ? subscription.team.seatCapacity * TEAM_SEAT_PRICE_PAISA
+                : PLAN_PRICES_PAISA.PRO,
+            ),
             renewsOn: formatDate(subscription.currentPeriodEnd),
             manageUrl,
-            variant: resolveVariant(
-              subscription.paymentMethod,
-              subscription.autoRenew,
-            ),
+            // Team seats are always renewed manually, whatever the flag says.
+            variant: subscription.team
+              ? 'wallet'
+              : resolveVariant(
+                  subscription.paymentMethod,
+                  subscription.autoRenew,
+                ),
           })
           await prisma.subscription.update({
             where: { id: subscription.id },
             data: { reminderSentAt: now },
           })
           logger.info(
-            `[SubscriptionCron] Sent renewal reminder to userId=${subscription.userId}`,
+            `[SubscriptionCron] Sent renewal reminder for subscriptionId=${subscription.id}`,
           )
         }
       } else if (
@@ -104,13 +160,17 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
         subscription.gracePeriodEnd &&
         subscription.gracePeriodEnd <= now
       ) {
-        await setMyPlan(subscription.userId, 'FREE')
-        await prisma.subscription.update({
-          where: { id: subscription.id },
-          data: { status: 'EXPIRED' },
-        })
+        if (subscription.teamId) {
+          await expireTeamSubscription(subscription.id, subscription.teamId)
+        } else if (subscription.userId) {
+          await setMyPlan(subscription.userId, 'FREE')
+          await prisma.subscription.update({
+            where: { id: subscription.id },
+            data: { status: 'EXPIRED' },
+          })
+        }
         logger.info(
-          `[SubscriptionCron] Downgraded userId=${subscription.userId} to FREE (grace period elapsed)`,
+          `[SubscriptionCron] Expired subscriptionId=${subscription.id} (grace period elapsed)`,
         )
       }
     } catch (err) {

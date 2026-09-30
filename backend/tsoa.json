@@ -73,7 +73,11 @@
       },
       {
         "name": "Payments",
-        "description": "Safepay checkout sessions, webhook confirmation, and transaction status for Pro tier upgrades"
+        "description": "Safepay checkout sessions, webhook confirmation, and transaction status for Pro and Team upgrades, seat additions and prepaid credit top-ups"
+      },
+      {
+        "name": "Teams",
+        "description": "B2B team workspaces: seats, invites, domains, shared assets, spend controls and usage analytics"
       },
       {
         "name": "System",

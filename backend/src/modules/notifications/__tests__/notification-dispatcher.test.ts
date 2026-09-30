@@ -133,7 +133,11 @@ describe('dispatchNotification', () => {
     })
     await dispatchNotification('user-1', 'AAPL', 'PRICE_ABOVE', 100, 90)
     expect(enqueueEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'a@example.com', symbol: 'AAPL' }),
+      expect.objectContaining({
+        to: 'a@example.com',
+        userId: 'user-1',
+        symbol: 'AAPL',
+      }),
     )
   })
 

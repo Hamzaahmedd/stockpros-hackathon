@@ -1,3 +1,4 @@
+import { OrgContextBanner } from "@/shared/components/OrgContextBanner";
 // pages/Forecast.tsx
 import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton';
 import { Sidebar } from '@/shared/components/Sidebar';
@@ -307,6 +308,7 @@ const Forecast: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          <OrgContextBanner />
           <ShadcnCard className="p-4">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
               {/* Search */}

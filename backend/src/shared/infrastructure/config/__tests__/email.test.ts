@@ -125,10 +125,10 @@ describe('transporter.sendMail — SMTP path', () => {
       }),
     )
     expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Live email sent to a@b.com via SMTP (ID: msg-1)',
-      ),
+      '[Email] Live email sent via SMTP',
+      { messageId: 'msg-1' },
     )
+    expect(JSON.stringify(mockLogger.info.mock.calls)).not.toContain('a@b.com')
   })
 
   it('falls back to the local logo file when the remote fetch fails', async () => {
@@ -218,10 +218,10 @@ describe('transporter.sendMail — SMTP path', () => {
     )
     expect(mockResendSend).toHaveBeenCalled()
     expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Live email sent to a@b.com via Resend (ID: r-1)',
-      ),
+      '[Email] Live email sent via Resend',
+      { messageId: 'r-1' },
     )
+    expect(JSON.stringify(mockLogger.info.mock.calls)).not.toContain('a@b.com')
   })
 
   it('throws when SMTP fails, there is no Resend fallback, and the environment is not dev', async () => {
@@ -240,13 +240,17 @@ describe('transporter.sendMail — SMTP path', () => {
 
   it('falls back to dev console logging when SMTP fails, no Resend, and the environment is dev', async () => {
     mockSmtpSendMail.mockRejectedValue(new Error('smtp down'))
-    const { transporter } = loadEmailModule({ email: { resendApiKey: '' } })
+    const { transporter } = loadEmailModule({
+      email: { resendApiKey: '' },
+      server: { nodeEnv: 'development' },
+    })
 
     await transporter.sendMail({ to: 'a@b.com', subject: 'Hi', text: 'body' })
 
     expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining('[Email][DEV] To: a@b.com'),
+      expect.stringContaining('[Email][DEV] Subject: Hi'),
     )
+    expect(JSON.stringify(mockLogger.info.mock.calls)).not.toContain('a@b.com')
     expect(mockLogger.info).toHaveBeenCalledWith(
       expect.stringContaining('[Email][DEV] Text: body'),
     )
@@ -265,7 +269,8 @@ describe('transporter.sendMail — Resend-only path', () => {
 
     expect(mockResendSend).toHaveBeenCalled()
     expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining('via Resend (ID: r-2)'),
+      '[Email] Live email sent via Resend',
+      { messageId: 'r-2' },
     )
   })
 
@@ -282,11 +287,9 @@ describe('transporter.sendMail — Resend-only path', () => {
     await transporter.sendMail({ to: 'a@b.com', subject: 'Hi' })
 
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Delivery notice for a@b.com: invalid domain'),
+      '[Resend] Delivery notice: invalid domain',
     )
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining('[Email][DEV] To: a@b.com'),
-    )
+    expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('a@b.com')
   })
 
   it('catches an exception thrown by Resend and falls through to dev logging', async () => {
@@ -309,13 +312,15 @@ describe('transporter.sendMail — no transport configured', () => {
     const { transporter } = loadEmailModule({
       smtp: { user: '', pass: '' },
       email: { resendApiKey: '' },
+      server: { nodeEnv: 'development' },
     })
 
     await transporter.sendMail({ to: 'a@b.com', subject: 'Hi' })
 
     expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining('[Email][DEV] To: a@b.com'),
+      expect.stringContaining('[Email][DEV] Subject: Hi'),
     )
+    expect(JSON.stringify(mockLogger.info.mock.calls)).not.toContain('a@b.com')
   })
 
   it('throws when neither transport is configured and the environment is not dev', async () => {
@@ -328,5 +333,59 @@ describe('transporter.sendMail — no transport configured', () => {
     await expect(
       transporter.sendMail({ to: 'a@b.com', subject: 'Hi' }),
     ).rejects.toThrow('Email delivery failed: no transport succeeded')
+  })
+})
+
+// Makes this file a module so its top-level helpers do not collide with other
+// import-less test files in the shared ts-jest program (TS2451).
+export {}
+
+describe('dev-inbox output is confined to local development', () => {
+  const noProviders = {
+    smtp: { user: '', pass: '' },
+    email: { resendApiKey: '' },
+  }
+
+  it('prints the subject and body (to copy a magic link) but never the recipient', async () => {
+    const { transporter } = loadEmailModule({
+      ...noProviders,
+      server: { nodeEnv: 'development' },
+    })
+
+    await transporter.sendMail({
+      to: 'person@fund.com',
+      subject: 'Your login link',
+      text: 'https://app.example/auth/verify?token=abc',
+    })
+
+    const printed = JSON.stringify(mockLogger.info.mock.calls)
+    expect(printed).toContain('Your login link')
+    expect(printed).toContain('token=abc')
+    expect(printed).not.toContain('person@fund.com')
+  })
+
+  it('prints nothing in the test environment, yet still does not throw', async () => {
+    const { transporter } = loadEmailModule({
+      ...noProviders,
+      server: { nodeEnv: 'test' },
+    })
+
+    await expect(
+      transporter.sendMail({ to: 'a@b.com', subject: 'Hi', text: 'token=abc' }),
+    ).resolves.toBeUndefined()
+
+    expect(mockLogger.info).not.toHaveBeenCalled()
+  })
+
+  it('never prints in production, where the failure is thrown instead', async () => {
+    const { transporter } = loadEmailModule({
+      ...noProviders,
+      server: { nodeEnv: 'production' },
+    })
+
+    await expect(
+      transporter.sendMail({ to: 'a@b.com', subject: 'Hi', text: 'token=abc' }),
+    ).rejects.toThrow('Email delivery failed')
+    expect(mockLogger.info).not.toHaveBeenCalled()
   })
 })

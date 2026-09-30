@@ -1,6 +1,7 @@
 import axios from 'axios'
 import pino from 'pino'
 import { config } from '../../config'
+import { redactPii } from '../utils/redact'
 
 const SENSITIVE_KEY_PATTERN =
   /password|token|apikey|api_key|authorization|cookie|secret|phone|otp|\bcode\b/i
@@ -125,6 +126,13 @@ const pinoLogger = pino(
         '*.otp',
         '*.otpCode',
         '*.code',
+        // Contact details — also caught by redactPii() when they appear inside message text
+        'email',
+        '*.email',
+        'to',
+        '*.to',
+        'recipient',
+        '*.recipient',
         '*.safepaySecretKey',
         '*.safepayWebhookSecret',
         '*.headers["x-sfpy-signature"]',
@@ -138,15 +146,52 @@ const pinoLogger = pino(
   }),
 )
 
+/**
+ * Structured fields for a log line. Primitives only, on purpose: it keeps call
+ * sites to ids and counters and stops anyone passing a whole object (which is
+ * how a stray email or token ends up in the logs).
+ */
+export type LogContext = Record<string, string | number | boolean | undefined>
+
+// Defence in depth: whatever a call site interpolates, emails and phone
+// numbers never reach the log sink. The primary rule still stands — pass ids,
+// not addresses.
+const scrubContext = (context: LogContext): LogContext =>
+  Object.fromEntries(
+    Object.entries(context).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? redactPii(value) : value,
+    ]),
+  )
+
+type Level = 'debug' | 'info' | 'warn'
+
+const write = (level: Level, msg: string, context?: LogContext): void => {
+  if (context) {
+    pinoLogger[level](scrubContext(context), redactPii(msg))
+  } else {
+    pinoLogger[level](redactPii(msg))
+  }
+}
+
 export const logger = {
-  debug: (msg: string) => pinoLogger.debug(msg),
-  info: (msg: string) => pinoLogger.info(msg),
-  warn: (msg: string) => pinoLogger.warn(msg),
-  error: (msg: string, err?: unknown) => {
+  debug: (msg: string, context?: LogContext) => write('debug', msg, context),
+  info: (msg: string, context?: LogContext) => write('info', msg, context),
+  warn: (msg: string, context?: LogContext) => write('warn', msg, context),
+  error: (msg: string, err?: unknown, context?: LogContext) => {
+    const message = redactPii(msg)
     if (err) {
-      pinoLogger.error({ error: formatError(err) }, msg)
+      pinoLogger.error(
+        {
+          ...(context && scrubContext(context)),
+          error: redactPii(String(formatError(err))),
+        },
+        message,
+      )
+    } else if (context) {
+      pinoLogger.error(scrubContext(context), message)
     } else {
-      pinoLogger.error(msg)
+      pinoLogger.error(message)
     }
   },
 }

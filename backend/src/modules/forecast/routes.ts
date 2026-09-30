@@ -1,5 +1,8 @@
 import { Router } from 'express'
+import { priorityQueue } from '../../shared/middlewares/priority-queue'
+import { MeteredFeature } from '../payments/public'
 import {
+  attachTeamContext,
   gate,
   requirePlan,
   requirePlanOrQuota,
@@ -13,7 +16,13 @@ const router = Router()
 router.get(
   '/',
   authTokenMiddleware,
-  gate(Resource.CORE_APP, Action.READ, requirePlanOrQuota('forecast', 1)),
+  attachTeamContext,
+  gate(
+    Resource.CORE_APP,
+    Action.READ,
+    requirePlanOrQuota('forecast', 1, MeteredFeature.AI_FORECAST),
+  ),
+  priorityQueue(),
   getStockForecast,
 )
 router.post(

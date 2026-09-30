@@ -27,6 +27,7 @@ export type MockUser = {
   email?: string;
   displayName?: string;
   phoneVerifiedAt?: string | null;
+  plan?: "FREE" | "PRO" | "TEAM";
 };
 
 /**
@@ -37,15 +38,22 @@ export type MockUser = {
  * authenticated fetchMe branch (see e2e/README.md for why these two
  * requests only fire when refresh-token returns an accessToken).
  */
+/** Feature flags the real /auth/me returns alongside the user (both default off, as in production). */
+export type MockFlags = {
+  pricingTiersEnabled?: boolean;
+  enablePaymentProcessor?: boolean;
+};
+
 export const mockLoggedIn = async (
   page: Page,
   user: MockUser = { userId: "e2e-user-1", email: "e2e-user@example.com" },
+  flags: MockFlags = {},
 ): Promise<void> => {
   await page.route("**/api/v1/auth/refresh-token", (route) =>
     route.fulfill({ status: 200, json: { accessToken: "e2e-fake-access-token" } }),
   );
   await page.route("**/api/v1/auth/me", (route) =>
-    route.fulfill({ status: 200, json: { user } }),
+    route.fulfill({ status: 200, json: { user, ...flags } }),
   );
   await page.route("**/api/v1/rbac/user-screens", (route) =>
     route.fulfill({ status: 200, json: { data: {} } }),

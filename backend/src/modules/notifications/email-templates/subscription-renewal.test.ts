@@ -93,7 +93,9 @@ describe('buildRenewalReminderEmailHtml', () => {
       variant: 'wallet',
     })
     expect(html).toContain('Renew Your Pro Plan Access (JazzCash/Easypaisa)')
-    expect(html).toContain('Pay & Extend for 30 Days')
+    // HTML output is escaped ("&" -> "&amp;"); the plain-text version keeps it literal.
+    expect(html).toContain('Pay &amp; Extend for 30 Days')
+    expect(html).not.toContain('Pay & Extend')
   })
 })
 
@@ -105,5 +107,45 @@ describe('buildRenewalReminderEmail', () => {
     )
     expect(email.html).toContain('Hi Hamza,')
     expect(email.text).toContain('Hi Hamza,')
+  })
+})
+
+describe('renewal reminder — escaping (HTML only)', () => {
+  const hostileName = '<img src=x onerror=alert(1)>"\'&'
+
+  it('escapes the display name and the manage link in the HTML', () => {
+    const html = buildRenewalReminderEmailHtml({
+      ...baseData,
+      userName: hostileName,
+      manageUrl: 'https://app.example/plans?a=1&b="x" onclick="alert(1)',
+    })
+    // No raw tag, and no attribute break-out, made it into the markup.
+    expect(html).not.toContain('<img src=x')
+    expect(html).not.toContain('onerror=alert(1)>')
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).toContain(
+      'href="https://app.example/plans?a=1&amp;b=&quot;x&quot; onclick=&quot;alert(1)"',
+    )
+    expect(html).not.toContain('onclick="alert(1)"')
+  })
+
+  it('escapes the logo source', () => {
+    const html = buildRenewalReminderEmailHtml(baseData, 'x" onerror="alert(1)')
+    expect(html).not.toContain('onerror="alert(1)')
+  })
+
+  it('does NOT escape the plain-text version (entities would show up literally)', () => {
+    const text = buildRenewalReminderEmailText({
+      ...baseData,
+      userName: 'Ann & Bob <ops>',
+    })
+    expect(text).toContain('Hi Ann & Bob <ops>,')
+    expect(text).not.toContain('&amp;')
+  })
+
+  it('renders ordinary values unchanged in the HTML', () => {
+    const html = buildRenewalReminderEmailHtml(baseData)
+    expect(html).toContain('Hi Hamza,')
+    expect(html).toContain('Rs 5,999')
   })
 })

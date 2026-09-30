@@ -3,6 +3,7 @@ import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
 import { logger } from '../../shared/infrastructure/logger'
+import { runTeamInviteCleanupJob } from '../teams/public'
 import { runSubscriptionExpiryJob } from './subscription-job'
 
 const JOB_DEFINITIONS = [
@@ -11,13 +12,19 @@ const JOB_DEFINITIONS = [
     handler: runSubscriptionExpiryJob,
     pattern: '0 7 * * *',
   },
+  {
+    name: 'team-invite-cleanup',
+    handler: runTeamInviteCleanupJob,
+    pattern: '30 7 * * *',
+  },
 ]
 
 const queues: Queue[] = []
 const workers: Worker[] = []
 
 /**
- * Start the subscription billing-cycle cron jobs (reminder/grace/downgrade).
+ * Start the daily billing-cycle cron jobs (reminder/grace/downgrade) and the
+ * expired team-invite cleanup that runs alongside them.
  * Gated behind `config.features.enableSubscriptionCron` — no-op if the flag
  * is off or Redis isn't connected, matching the news/watchlist cron pattern.
  */
@@ -69,4 +76,7 @@ export const startSubscriptionCronJobs = async (): Promise<void> => {
 export const stopSubscriptionCronJobs = async (): Promise<void> => {
   await Promise.all(workers.map((w) => w.close()))
   await Promise.all(queues.map((q) => q.close()))
+  // Forget what was closed so a later start/stop cycle never re-closes stale handles.
+  workers.length = 0
+  queues.length = 0
 }

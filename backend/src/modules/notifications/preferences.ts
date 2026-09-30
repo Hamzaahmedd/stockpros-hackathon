@@ -22,27 +22,52 @@ export const INTEREST_TO_CATEGORIES: Record<
   { categories: NewsCategory[]; sectors: string[] }
 > = {
   ai_tech: {
-    categories: [NewsCategory.ANALYST, NewsCategory.MERGER, NewsCategory.GENERAL],
-    sectors: ['technology', 'tech', 'artificial intelligence', 'semiconductors'],
+    categories: [
+      NewsCategory.ANALYST,
+      NewsCategory.MERGER,
+      NewsCategory.GENERAL,
+    ],
+    sectors: [
+      'technology',
+      'tech',
+      'artificial intelligence',
+      'semiconductors',
+    ],
   },
   energy: {
     categories: [NewsCategory.MACRO, NewsCategory.SECTOR, NewsCategory.GENERAL],
     sectors: ['energy', 'oil', 'gas', 'utilities', 'renewables'],
   },
   finance: {
-    categories: [NewsCategory.EARNINGS, NewsCategory.ANALYST, NewsCategory.FILING],
+    categories: [
+      NewsCategory.EARNINGS,
+      NewsCategory.ANALYST,
+      NewsCategory.FILING,
+    ],
     sectors: ['financials', 'banking', 'insurance', 'fintech'],
   },
   healthcare: {
-    categories: [NewsCategory.EARNINGS, NewsCategory.ANALYST, NewsCategory.GENERAL],
+    categories: [
+      NewsCategory.EARNINGS,
+      NewsCategory.ANALYST,
+      NewsCategory.GENERAL,
+    ],
     sectors: ['healthcare', 'biotech', 'pharmaceuticals', 'medical'],
   },
   growth: {
-    categories: [NewsCategory.EARNINGS, NewsCategory.ANALYST, NewsCategory.MERGER],
+    categories: [
+      NewsCategory.EARNINGS,
+      NewsCategory.ANALYST,
+      NewsCategory.MERGER,
+    ],
     sectors: ['technology', 'consumer discretionary', 'communication services'],
   },
   consumer: {
-    categories: [NewsCategory.EARNINGS, NewsCategory.GENERAL, NewsCategory.SECTOR],
+    categories: [
+      NewsCategory.EARNINGS,
+      NewsCategory.GENERAL,
+      NewsCategory.SECTOR,
+    ],
     sectors: ['consumer staples', 'consumer discretionary', 'retail'],
   },
 }

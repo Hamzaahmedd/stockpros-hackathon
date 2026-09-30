@@ -2,10 +2,7 @@ import { AppError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import { convertToMilliseconds } from '../../shared/utils'
 import type { EnrichedArticle, NewsArticleRow } from './types'
-import {
-  INTEREST_TO_CATEGORIES,
-  MarketInterest,
-} from '../notifications/public'
+import { INTEREST_TO_CATEGORIES, MarketInterest } from '../notifications/public'
 
 export const enrichArticles = async (
   userId: string,

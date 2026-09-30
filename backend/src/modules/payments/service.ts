@@ -1,5 +1,6 @@
 import config from '@/config'
 import {
+  PaymentKind,
   PaymentStatus,
   Prisma,
   Subscription,
@@ -24,8 +25,12 @@ import {
   PLAN_PRICES_PAISA,
   PAYMENT_CURRENCY,
   SUBSCRIPTION_GRACE_PERIOD_MS,
-  SUBSCRIPTION_PERIOD_MS,
 } from './constants'
+import {
+  computeNextPeriodEnd,
+  fulfillTeamOrCreditTransaction,
+  isTeamOrCreditTransaction,
+} from './fulfillment'
 import type {
   CreateCheckoutResult,
   SafepaySubscriptionWebhookEvent,
@@ -103,7 +108,8 @@ export async function createCheckoutSession(
     data: {
       userId,
       trackerId: token,
-      amount: amountPaisa,
+      amountPaisa,
+      kind: PaymentKind.SUBSCRIPTION,
       currency: PAYMENT_CURRENCY,
       status: PaymentStatus.PENDING,
       planTier: 'PRO',
@@ -148,6 +154,23 @@ export async function handleWebhookEvent(
 
   const nextStatus = EVENT_STATUS_MAP[event.status]
 
+  // Team creation/renewal, seat additions and credit top-ups commit their
+  // status change and side effect atomically (see fulfillment.ts).
+  if (isTeamOrCreditTransaction(transaction)) {
+    const applied = await fulfillTeamOrCreditTransaction(
+      transaction,
+      event,
+      nextStatus,
+      rawPayload,
+    )
+    logger.info(
+      applied
+        ? `[Payments] Applied ${transaction.kind} trackerId=${event.trackerId} status=${nextStatus}`
+        : `[Payments] Ignoring webhook for trackerId=${event.trackerId}, already ${transaction.status}`,
+    )
+    return
+  }
+
   const { count } = await prisma.paymentTransaction.updateMany({
     where: { trackerId: event.trackerId, status: PaymentStatus.PENDING },
     data: {
@@ -191,7 +214,9 @@ export async function handleSubscriptionRenewalWebhookEvent(
     },
   })
 
-  if (!subscription) {
+  // Team subscriptions (no userId) are never billed by Safepay's recurring
+  // Plan, so a webhook resolving to one is unexpected and ignored.
+  if (!subscription?.userId) {
     logger.warn(
       `[Payments] Subscription webhook received for unknown reference=${event.reference}`,
     )
@@ -237,11 +262,7 @@ async function extendSubscriptionPeriod(userId: string): Promise<void> {
   const existing = await prisma.subscription.findUnique({ where: { userId } })
   const now = new Date()
 
-  const base =
-    existing?.currentPeriodEnd && existing.currentPeriodEnd > now
-      ? existing.currentPeriodEnd
-      : now
-  const newPeriodEnd = new Date(base.getTime() + SUBSCRIPTION_PERIOD_MS)
+  const newPeriodEnd = computeNextPeriodEnd(existing?.currentPeriodEnd, now)
 
   await prisma.subscription.update({
     where: { userId },

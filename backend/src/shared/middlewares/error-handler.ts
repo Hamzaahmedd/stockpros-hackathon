@@ -7,6 +7,7 @@ import {
   ConflictError,
   InternalServerError,
   NotFoundError,
+  OverageRequiredError,
   PlanRequiredError,
   QuotaExceededError,
   ValidationError,
@@ -105,6 +106,13 @@ const resolveAppError = (err: unknown): AppError => {
   return mapKnownCodeToError(getErrorCode(err), getErrorMessage(err))
 }
 
+// OVERAGE_REQUIRED is a stable, documented code the frontend keys its
+// top-up modal on, so it replaces the class-name default.
+const resolveErrorCode = (error: AppError): string | undefined => {
+  if (error instanceof OverageRequiredError) return error.details.code
+  return error.name !== 'AppError' ? error.name : undefined
+}
+
 export const errorHandler = (
   err: unknown,
   req: Request,
@@ -125,6 +133,7 @@ export const errorHandler = (
   const details =
     error instanceof ValidationError ||
     error instanceof QuotaExceededError ||
+    error instanceof OverageRequiredError ||
     error instanceof PlanRequiredError
       ? error.details
       : undefined
@@ -133,6 +142,6 @@ export const errorHandler = (
     message: error.message,
     statusCode: error.statusCode,
     details,
-    errorCode: error.name !== 'AppError' ? error.name : undefined,
+    errorCode: resolveErrorCode(error),
   })
 }

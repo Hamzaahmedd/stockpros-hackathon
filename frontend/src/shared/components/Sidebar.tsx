@@ -331,6 +331,9 @@ export const Sidebar: React.FC = () => {
     ...(pricingTiersEnabled
       ? [{ to: "/plans", icon: <FiStar />, label: "Plans" }]
       : []),
+    ...(user?.plan === "TEAM"
+      ? [{ to: "/teams", icon: <FiUsers />, label: "Workspace" }]
+      : []),
     { to: "/settings", icon: <FiSettings />, label: "Settings" },
   ];
 

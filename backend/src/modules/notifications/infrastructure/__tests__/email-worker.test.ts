@@ -39,6 +39,29 @@ beforeEach(() => {
   jest.resetModules()
 })
 
+// Realistic payloads: the worker validates what it reads from Redis, so tests
+// must send what a producer really sends.
+const alertJob = (over: Record<string, unknown> = {}) => ({
+  to: 'a@example.com',
+  userId: 'user-1',
+  symbol: 'AAPL',
+  alertType: 'PRICE_ABOVE',
+  title: 'Alert',
+  body: 'body text',
+  ...over,
+})
+
+const renewalJob = (over: Record<string, unknown> = {}) => ({
+  to: 'a@example.com',
+  subscriptionId: 'sub-1',
+  userName: 'Hamza',
+  amount: 'Rs 5,999',
+  renewsOn: 'Oct 15, 2026',
+  manageUrl: 'https://app.example/plans',
+  variant: 'card-on',
+  ...over,
+})
+
 describe('enqueueEmail', () => {
   it('logs and skips enqueuing when Redis is unavailable', async () => {
     mockDeps(null)
@@ -143,12 +166,7 @@ describe('startEmailWorker', () => {
     const { processor } = deps.WorkerMock.mock.results[0].value
     await expect(
       processor({
-        data: {
-          to: 'a@example.com',
-          symbol: 'AAPL',
-          title: 'Alert',
-          body: 'body text',
-        },
+        data: alertJob(),
       }),
     ).resolves.toBeUndefined()
 
@@ -173,12 +191,7 @@ describe('startEmailWorker', () => {
     const { UnrecoverableError } = require('bullmq')
     await expect(
       processor({
-        data: {
-          to: 'a@example.com',
-          symbol: 'AAPL',
-          title: 'Alert',
-          body: 'body',
-        },
+        data: alertJob(),
       }),
     ).rejects.toThrow('550 mailbox unavailable')
   })
@@ -192,14 +205,7 @@ describe('startEmailWorker', () => {
     await expect(
       processor({
         name: 'subscription-renewal-reminder',
-        data: {
-          to: 'a@example.com',
-          userName: 'Hamza',
-          amount: 'Rs 5,999',
-          renewsOn: 'Oct 15, 2026',
-          manageUrl: 'https://app.example/plans',
-          variant: 'card-on',
-        },
+        data: renewalJob(),
       }),
     ).resolves.toBeUndefined()
 
@@ -227,14 +233,7 @@ describe('startEmailWorker', () => {
     await expect(
       processor({
         name: 'subscription-renewal-reminder',
-        data: {
-          to: 'a@example.com',
-          userName: 'Hamza',
-          amount: 'Rs 5,999',
-          renewsOn: 'Oct 15, 2026',
-          manageUrl: 'https://app.example/plans',
-          variant: 'wallet',
-        },
+        data: renewalJob({ variant: 'wallet' }),
       }),
     ).rejects.toThrow('550 mailbox unavailable')
   })
@@ -286,5 +285,335 @@ describe('stopEmailWorker', () => {
 
     expect(workerInstance.close).toHaveBeenCalled()
     expect(queueInstance.close).toHaveBeenCalled()
+  })
+})
+
+describe('team invite emails', () => {
+  const payload = {
+    to: 'new@fund.com',
+    inviteId: 'inv-1',
+    teamId: 'team-1',
+    inviterName: 'Olivia',
+    teamName: 'Alpha Fund',
+    inviteUrl: 'https://app.example/teams/invite?token=abc',
+    role: 'MEMBER',
+    expiresAt: '2026-10-07T00:00:00.000Z',
+  }
+
+  it('logs and skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueueTeamInviteEmail } = require('../email-worker')
+    await expect(enqueueTeamInviteEmail(payload)).resolves.toBeUndefined()
+  })
+
+  it("enqueues under the 'team-invite' job name on the shared email queue", async () => {
+    const { QueueMock } = mockDeps({ host: 'localhost' })
+    const { enqueueTeamInviteEmail } = require('../email-worker')
+
+    await enqueueTeamInviteEmail(payload)
+
+    expect(QueueMock.mock.results[0].value.add).toHaveBeenCalledWith(
+      'team-invite',
+      payload,
+    )
+  })
+
+  it('renders and sends the invite email when the worker processes a team-invite job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await worker.processor({ name: 'team-invite', data: payload })
+
+    expect(transporter.sendMail).toHaveBeenCalledTimes(1)
+    const mail = transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('new@fund.com')
+    expect(mail.subject).toBe(
+      'Olivia invited you to join Alpha Fund on StockPros',
+    )
+    expect(mail.html).toContain(payload.inviteUrl)
+    expect(mail.text).toContain(payload.inviteUrl)
+    expect(mail.to).not.toBe(undefined)
+  })
+
+  it('rethrows delivery failures so BullMQ retries the job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    transporter.sendMail.mockRejectedValueOnce(new Error('smtp down'))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await expect(
+      worker.processor({ name: 'team-invite', data: payload }),
+    ).rejects.toThrow()
+  })
+})
+
+// Makes this file a module so its top-level helpers do not collide with other
+// import-less test files in the shared ts-jest program (TS2451).
+export {}
+
+describe('team invite emails — logging', () => {
+  it("does not write the recipient's email address to the logs (PII)", async () => {
+    const infoSpy = jest.fn()
+    const deps = mockDeps({ host: 'localhost' })
+    jest.doMock('../../../../shared/infrastructure/logger', () => ({
+      logger: {
+        info: infoSpy,
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      },
+    }))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await worker.processor({
+      name: 'team-invite',
+      data: {
+        to: 'private.person@fund.com',
+        inviteId: 'inv-1',
+        teamId: 'team-1',
+        inviterName: 'Olivia',
+        teamName: 'Alpha Fund',
+        inviteUrl: 'https://app.example/teams/invite?token=abc',
+        role: 'MEMBER',
+        expiresAt: '2026-10-07T00:00:00.000Z',
+      },
+    })
+
+    const logged = infoSpy.mock.calls.map((c) => String(c[0])).join('\n')
+    expect(logged).toContain('Team invite sent')
+    expect(logged).not.toContain('private.person@fund.com')
+    expect(logged).not.toMatch(/@/)
+  })
+})
+
+// ─── validation instead of casts, and PII-free logging ───────────────────────
+
+describe('job payload validation (Redis data is not trusted)', () => {
+  const inviteJob = (over: Record<string, unknown> = {}) => ({
+    to: 'new@fund.com',
+    inviteId: 'inv-1',
+    teamId: 'team-1',
+    inviterName: 'Olivia',
+    teamName: 'Alpha Fund',
+    inviteUrl: 'https://app.example/teams/invite?token=abc',
+    role: 'MEMBER',
+    expiresAt: '2026-10-07T00:00:00.000Z',
+    ...over,
+  })
+
+  const start = () => {
+    const logger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    }
+    const deps = mockDeps({ host: 'localhost' })
+    jest.doMock('../../../../shared/infrastructure/logger', () => ({ logger }))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+    const { UnrecoverableError } = require('bullmq')
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    return {
+      processor: deps.WorkerMock.mock.results[0].value.processor,
+      logger,
+      UnrecoverableError,
+      sendMail: emailConfig.transporter.sendMail as jest.Mock,
+    }
+  }
+
+  it.each([
+    ['an alert job', undefined, alertJob({ alertType: 'NOT_A_REAL_TYPE' })],
+    [
+      'an alert job with a bad recipient',
+      undefined,
+      alertJob({ to: 'not-an-email' }),
+    ],
+    [
+      'an alert job without a user id',
+      undefined,
+      alertJob({ userId: undefined }),
+    ],
+    [
+      'a renewal job with an unknown variant',
+      'subscription-renewal-reminder',
+      renewalJob({ variant: 'lifetime' }),
+    ],
+    [
+      'a renewal job with a non-URL link',
+      'subscription-renewal-reminder',
+      renewalJob({ manageUrl: 'javascript:alert(1)x' }),
+    ],
+    [
+      'a renewal job without a subscription id',
+      'subscription-renewal-reminder',
+      renewalJob({ subscriptionId: undefined }),
+    ],
+    [
+      'an invite job with an invalid role',
+      'team-invite',
+      inviteJob({ role: 'SUPERUSER' }),
+    ],
+    [
+      'an invite job with a non-ISO expiry',
+      'team-invite',
+      inviteJob({ expiresAt: 'next week' }),
+    ],
+    [
+      'an invite job without a team id',
+      'team-invite',
+      inviteJob({ teamId: undefined }),
+    ],
+    ['a job with no data at all', undefined, undefined],
+    ['a job whose data is a string', 'team-invite', 'garbage'],
+  ])(
+    'rejects %s permanently, sends nothing, and never logs values',
+    async (_label, name, data) => {
+      const { processor, logger, UnrecoverableError, sendMail } = start()
+
+      await expect(
+        processor({ id: 'job-7', name, data }),
+      ).rejects.toBeInstanceOf(UnrecoverableError)
+
+      expect(sendMail).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledTimes(1)
+      const [message, err, context] = logger.error.mock.calls[0]
+      expect(message).toContain('invalid payload')
+      expect(err).toBeUndefined()
+      expect(context.jobId).toBe('job-7')
+      // Field names only — never the payload values (addresses, links).
+      const everything = JSON.stringify(logger.error.mock.calls)
+      expect(everything).not.toMatch(/@|javascript|garbage|token=/)
+    },
+  )
+
+  it('still accepts valid payloads of every kind', async () => {
+    const { processor, sendMail } = start()
+
+    await processor({ id: 'j1', name: 'send-alert-email', data: alertJob() })
+    await processor({
+      id: 'j2',
+      name: 'subscription-renewal-reminder',
+      data: renewalJob(),
+    })
+    await processor({ id: 'j3', name: 'team-invite', data: inviteJob() })
+
+    expect(sendMail).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('email worker logs carry ids, never addresses', () => {
+  const setup = () => {
+    const logger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    }
+    const deps = mockDeps({ host: 'localhost' })
+    jest.doMock('../../../../shared/infrastructure/logger', () => ({ logger }))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+    return {
+      processor: deps.WorkerMock.mock.results[0].value.processor,
+      logger,
+      deps,
+    }
+  }
+  const logged = (logger: { info: jest.Mock }) =>
+    JSON.stringify(logger.info.mock.calls)
+
+  it('alert email: job id, user id and symbol only', async () => {
+    const { processor, logger } = setup()
+    await processor({
+      id: 'job-1',
+      name: 'send-alert-email',
+      data: alertJob({ to: 'secret.person@fund.com' }),
+    })
+
+    expect(logger.info).toHaveBeenCalledWith('[EmailWorker] Alert email sent', {
+      jobId: 'job-1',
+      userId: 'user-1',
+      symbol: 'AAPL',
+    })
+    expect(logged(logger)).not.toContain('secret.person')
+    expect(logged(logger)).not.toContain('@')
+  })
+
+  it('renewal reminder: job id, subscription id and variant only', async () => {
+    const { processor, logger } = setup()
+    await processor({
+      id: 'job-2',
+      name: 'subscription-renewal-reminder',
+      data: renewalJob({
+        to: 'secret.person@fund.com',
+        userName: 'Secret Person',
+      }),
+    })
+
+    expect(logger.info).toHaveBeenCalledWith(
+      '[EmailWorker] Renewal reminder sent',
+      {
+        jobId: 'job-2',
+        subscriptionId: 'sub-1',
+        variant: 'card-on',
+      },
+    )
+    expect(logged(logger)).not.toContain('Secret')
+    expect(logged(logger)).not.toContain('@')
+  })
+
+  it('team invite: job id, invite id, team id and role only', async () => {
+    const { processor, logger } = setup()
+    await processor({
+      id: 'job-3',
+      name: 'team-invite',
+      data: {
+        to: 'secret.person@fund.com',
+        inviteId: 'inv-9',
+        teamId: 'team-9',
+        inviterName: 'Olivia',
+        teamName: 'Alpha Fund',
+        inviteUrl: 'https://app.example/teams/invite?token=abc',
+        role: 'ADMIN',
+        expiresAt: '2026-10-07T00:00:00.000Z',
+      },
+    })
+
+    expect(logger.info).toHaveBeenCalledWith('[EmailWorker] Team invite sent', {
+      jobId: 'job-3',
+      inviteId: 'inv-9',
+      teamId: 'team-9',
+      role: 'ADMIN',
+    })
+    expect(logged(logger)).not.toContain('@')
+    expect(logged(logger)).not.toContain('token=')
+  })
+
+  it('a failed job whose SMTP error echoes the recipient is logged with the address scrubbed', () => {
+    const { logger, deps } = setup()
+
+    deps.workerHandlers.failed(
+      { id: 'job-4', attemptsMade: 3 },
+      new Error(
+        '550 5.1.1 <secret.person@fund.com>: Recipient address rejected',
+      ),
+    )
+
+    const message = logger.error.mock.calls[0][0] as string
+    expect(message).toContain('job-4')
+    expect(message).toContain('[redacted-email]')
+    expect(message).not.toContain('secret.person')
   })
 })

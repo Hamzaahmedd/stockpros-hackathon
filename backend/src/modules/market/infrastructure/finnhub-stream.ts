@@ -32,7 +32,10 @@ export class FinnhubService extends EventEmitter {
   private closed = false
   private lastCloseWas429 = false
   // In-memory quote cache to avoid rate-limit bans on dashboard refresh
-  private readonly quoteCache = new Map<string, { data: StockQuote; ts: number }>()
+  private readonly quoteCache = new Map<
+    string,
+    { data: StockQuote; ts: number }
+  >()
 
   constructor(private readonly apiKey: string) {
     super()
@@ -131,10 +134,7 @@ export class FinnhubService extends EventEmitter {
     const s = symbol.toUpperCase()
     const cached = this.quoteCache.get(s)
 
-    if (
-      cached &&
-      Date.now() - cached.ts < CACHE_TTL.MARKET.FINNHUB_QUOTE_MS
-    ) {
+    if (cached && Date.now() - cached.ts < CACHE_TTL.MARKET.FINNHUB_QUOTE_MS) {
       return cached.data
     }
 
