@@ -77,6 +77,9 @@ export const developmentConfig = {
   },
   // Internal staff ops panel (/api/v1/admin) hardening switches.
   admin: {
+    // Networks (IPs or CIDR ranges, e.g. an office or VPN) the staff panel accepts; empty = any.
+    // Requires app.ts `trust proxy` to equal the number of reverse proxies in front of the app.
+    ipAllowlist: [] as string[],
     // Absolute staff session lifetime in hours (0 = no limit). Refresh does not extend it.
     sessionMaxAgeHours: 0,
     // Sensitive admin writes need a recent emailed-code re-verification.

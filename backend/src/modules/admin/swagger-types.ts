@@ -100,7 +100,7 @@ export interface MarketEmergencyRequest extends AdminReasonRequest {
 )
 @Response<ApiErrorResponse>(
   403,
-  'Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)',
+  'Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)',
 )
 export class AdminSwaggerController extends Controller {
   /** SUPPORT_AGENT+. Emails a one-time 6-digit code to the signed-in staff member. Sensitive writes then succeed for `stepUpWindowMinutes` (the window slides with each successful write). 60-second resend cooldown; 503 if the email could not be queued. */

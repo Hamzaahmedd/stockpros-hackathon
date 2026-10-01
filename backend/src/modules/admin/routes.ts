@@ -1,6 +1,7 @@
 import { PlatformRole } from '@prisma/client'
 import { Router } from 'express'
 import {
+  requireAllowedIp,
   requirePlatformRole,
   requirePricingTiersEnabled,
   requireStepUp,
@@ -15,7 +16,7 @@ const router = Router()
 
 // Tier-based workflow only: every route (including unknown paths) answers
 // 403 FORBIDDEN_FEATURE_DISABLED while pricingTiersEnabled is false.
-router.use(requirePricingTiersEnabled, adminRateLimiter)
+router.use(requirePricingTiersEnabled, requireAllowedIp, adminRateLimiter)
 
 const support = requirePlatformRole(PlatformRole.SUPPORT_AGENT)
 // Requesting/verifying a step-up code is a staff action in its own right (limited, never itself step-up gated).

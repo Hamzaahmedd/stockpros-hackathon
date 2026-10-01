@@ -10,6 +10,9 @@ import { errorHandler, securityMiddleware } from './shared/middlewares'
 /** Creates the HTTP application without opening sockets or starting workers. */
 export const createApp = () => {
   const app = express()
+  // One reverse-proxy hop. `req.ip` (rate limits, audit rows and the staff IP
+  // allowlist) is only the real client address when this matches the number of
+  // proxies actually in front of the app; with more hops it is a proxy's address.
   app.set('trust proxy', 1)
   securityMiddleware(app)
   app.use(express.json())

@@ -456,3 +456,41 @@ describe('step-up gate on writes', () => {
     expect(res.body.errorCode).not.toBe('STEP_UP_REQUIRED')
   })
 })
+
+describe('staff IP allowlist over HTTP', () => {
+  const admin = config.admin as { ipAllowlist: string[] }
+  const original = admin.ipAllowlist
+
+  beforeEach(() => {
+    ;(config.features as any).pricingTiersEnabled = true
+  })
+  afterEach(() => {
+    admin.ipAllowlist = original
+  })
+
+  const search = (role?: PlatformRole) => call(ENDPOINTS[0], role)
+
+  it('does nothing while the list is empty', async () => {
+    admin.ipAllowlist = []
+    expect((await search(PlatformRole.SUPPORT_AGENT)).status).toBe(200)
+  })
+
+  it('admits a listed client even though Node reports it as IPv4-mapped IPv6', async () => {
+    admin.ipAllowlist = ['127.0.0.1']
+    expect((await search(PlatformRole.SUPPORT_AGENT)).status).toBe(200)
+  })
+
+  it('refuses an unlisted client before authentication, with the stable error code', async () => {
+    admin.ipAllowlist = ['203.0.113.0/24']
+    const res = await search() // no token at all
+    expect(res.status).toBe(403)
+    expect(res.body.errorCode).toBe('ADMIN_IP_NOT_ALLOWED')
+  })
+
+  it('still reports the disabled tier workflow first', async () => {
+    admin.ipAllowlist = ['203.0.113.0/24']
+    ;(config.features as any).pricingTiersEnabled = false
+    const res = await search(PlatformRole.SUPER_ADMIN)
+    expect(res.body.errorCode).toBe('FORBIDDEN_FEATURE_DISABLED')
+  })
+})
