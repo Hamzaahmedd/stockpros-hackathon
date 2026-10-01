@@ -5,13 +5,11 @@ import { ZodError } from 'zod'
 import {
   AppError,
   ConflictError,
-  FeatureDisabledError,
   InternalServerError,
   NotFoundError,
   OverageRequiredError,
   PlanRequiredError,
   QuotaExceededError,
-  StepUpRequiredError,
   ValidationError,
 } from '../errors'
 import { logger } from '../infrastructure/logger'
@@ -112,8 +110,7 @@ const resolveAppError = (err: unknown): AppError => {
 // top-up modal on, so it replaces the class-name default.
 const resolveErrorCode = (error: AppError): string | undefined => {
   if (error instanceof OverageRequiredError) return error.details.code
-  if (error instanceof FeatureDisabledError) return error.code
-  if (error instanceof StepUpRequiredError) return error.code
+  if ('code' in error && typeof error.code === 'string') return error.code
   return error.name !== 'AppError' ? error.name : undefined
 }
 

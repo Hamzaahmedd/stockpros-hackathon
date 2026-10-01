@@ -91,6 +91,10 @@ export interface MarketEmergencyRequest extends AdminReasonRequest {
 @Tags('Admin')
 @Security('bearerAuth')
 @Response<ApiErrorResponse>(
+  401,
+  'Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again',
+)
+@Response<ApiErrorResponse>(
   429,
   'Rate limited: 120 requests/min per IP, 20 writes/min per staff member',
 )

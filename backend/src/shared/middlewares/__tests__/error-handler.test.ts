@@ -3,12 +3,16 @@ import config from '@/config'
 import {
   AppError,
   ConflictError,
+  FeatureDisabledError,
+  ForbiddenError,
   InternalServerError,
   NotFoundError,
   OverageReason,
   OverageRequiredError,
   PlanRequiredError,
   QuotaExceededError,
+  StaffSessionExpiredError,
+  StepUpRequiredError,
   ValidationError,
 } from '../../errors'
 import { errorHandler } from '../error-handler'
@@ -310,5 +314,33 @@ describe('errorHandler — OverageRequiredError', () => {
         },
       }),
     )
+  })
+})
+
+describe('errorHandler — error codes', () => {
+  const respond = (err: unknown) => {
+    const res = mockRes()
+    errorHandler(err, req, res, next)
+    return res.json.mock.calls[0][0]
+  }
+
+  it.each([
+    [
+      'FeatureDisabledError',
+      new FeatureDisabledError(),
+      'FORBIDDEN_FEATURE_DISABLED',
+    ],
+    ['StepUpRequiredError', new StepUpRequiredError(), 'STEP_UP_REQUIRED'],
+    [
+      'StaffSessionExpiredError',
+      new StaffSessionExpiredError(),
+      'STAFF_SESSION_EXPIRED',
+    ],
+  ])('%s exposes its own code', (_name, error, expected) => {
+    expect(respond(error).errorCode).toBe(expected)
+  })
+
+  it('still falls back to the class name for errors without a code', () => {
+    expect(respond(new ForbiddenError()).errorCode).toBe('ForbiddenError')
   })
 })

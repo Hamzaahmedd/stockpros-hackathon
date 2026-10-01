@@ -4,9 +4,11 @@ import { NextFunction, Response } from 'express'
 import {
   FeatureDisabledError,
   ForbiddenError,
+  StaffSessionExpiredError,
   UnauthorizedError,
 } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
+import { logger } from '../../shared/infrastructure/logger'
 import { authTokenMiddleware, AuthenticatedRequest } from '../auth'
 
 /** Ascending privilege order; a role satisfies any requirement at or below its rank. */
@@ -43,6 +45,35 @@ export const requirePricingTiersEnabled = (
   next()
 }
 
+const MS_PER_HOUR = 60 * 60 * 1000
+
+/**
+ * Staff sessions have an absolute lifetime: a refresh token can keep a normal
+ * session alive for weeks, which is too long for a stolen staff session. Past
+ * the limit the session is revoked (so the refresh flow also ends and the
+ * client lands on sign-in) and the request is refused. Tokens minted before
+ * sessions were bound carry no start time and are treated as expired.
+ */
+const enforceStaffSessionAge = async (req: AuthenticatedRequest) => {
+  const maxHours = config.admin.sessionMaxAgeHours
+  if (maxHours <= 0) return
+
+  const startedAt = req.user?.sessionCreatedAt
+  const expired =
+    !startedAt || Date.now() - startedAt.getTime() > maxHours * MS_PER_HOUR
+  if (!expired) return
+
+  const sessionId = req.user?.sessionId
+  if (sessionId) {
+    await prisma.userSession.updateMany({
+      where: { id: sessionId },
+      data: { isRevoked: true },
+    })
+  }
+  logger.info('[Admin] staff session expired', { userId: req.user?.userId })
+  throw new StaffSessionExpiredError()
+}
+
 const assertPlatformRole = async (
   req: AuthenticatedRequest,
   required: PlatformRole,
@@ -58,6 +89,9 @@ const assertPlatformRole = async (
   if (!hasPlatformRole(user?.platformRole, required)) {
     throw new ForbiddenError('Insufficient platform role')
   }
+
+  // Only for confirmed staff: a customer poking at /admin must not lose their session.
+  await enforceStaffSessionAge(req)
 }
 
 /**

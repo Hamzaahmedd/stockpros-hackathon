@@ -1,4 +1,7 @@
-const mockPrisma: any = { user: { findUnique: jest.fn() } }
+const mockPrisma: any = {
+  user: { findUnique: jest.fn() },
+  userSession: { updateMany: jest.fn() },
+}
 
 jest.mock('../../../shared/infrastructure/database', () => ({
   get prisma() {
@@ -16,6 +19,7 @@ import { PlatformRole } from '@prisma/client'
 import {
   FeatureDisabledError,
   ForbiddenError,
+  StaffSessionExpiredError,
   UnauthorizedError,
 } from '../../../shared/errors'
 import {
@@ -202,5 +206,85 @@ describe('logAdminRead', () => {
       resultIds: [],
       filterKeys: [],
     })
+  })
+})
+
+describe('staff session age limit', () => {
+  const HOUR = 60 * 60 * 1000
+  const admin = config.admin as { sessionMaxAgeHours: number }
+  const original = admin.sessionMaxAgeHours
+  const roleCheck = requirePlatformRole(PlatformRole.SUPPORT_AGENT)[2] as any
+
+  const run = async (user: object) => {
+    const next = jest.fn()
+    await roleCheck({ user }, {}, next)
+    return next.mock.calls[0][0]
+  }
+  const startedAgo = (hours: number) => new Date(Date.now() - hours * HOUR)
+
+  beforeEach(() => {
+    admin.sessionMaxAgeHours = 12
+    mockPrisma.user.findUnique.mockResolvedValue({
+      platformRole: PlatformRole.SUPPORT_AGENT,
+    })
+    mockPrisma.userSession.updateMany.mockResolvedValue({ count: 1 })
+  })
+  afterEach(() => {
+    admin.sessionMaxAgeHours = original
+  })
+
+  it('lets a staff session inside the limit through', async () => {
+    const error = await run({
+      userId: 'u1',
+      sessionId: 's1',
+      sessionCreatedAt: startedAgo(11),
+    })
+    expect(error).toBeUndefined()
+    expect(mockPrisma.userSession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('revokes a staff session past the limit and answers 401 STAFF_SESSION_EXPIRED', async () => {
+    const error = await run({
+      userId: 'u1',
+      sessionId: 's1',
+      sessionCreatedAt: startedAgo(13),
+    })
+
+    expect(error).toBeInstanceOf(StaffSessionExpiredError)
+    expect(error.statusCode).toBe(401)
+    expect(error.code).toBe('STAFF_SESSION_EXPIRED')
+    expect(mockPrisma.userSession.updateMany).toHaveBeenCalledWith({
+      where: { id: 's1' },
+      data: { isRevoked: true },
+    })
+  })
+
+  it('treats a legacy token with no session start as expired', async () => {
+    const error = await run({ userId: 'u1' })
+    expect(error).toBeInstanceOf(StaffSessionExpiredError)
+    expect(mockPrisma.userSession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('is off when the limit is 0', async () => {
+    admin.sessionMaxAgeHours = 0
+    const error = await run({
+      userId: 'u1',
+      sessionId: 's1',
+      sessionCreatedAt: startedAgo(500),
+    })
+    expect(error).toBeUndefined()
+  })
+
+  it('never touches the session of a customer who is not staff', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      platformRole: PlatformRole.USER,
+    })
+    const error = await run({
+      userId: 'u1',
+      sessionId: 's1',
+      sessionCreatedAt: startedAgo(500),
+    })
+    expect(error).toBeInstanceOf(ForbiddenError)
+    expect(mockPrisma.userSession.updateMany).not.toHaveBeenCalled()
   })
 })

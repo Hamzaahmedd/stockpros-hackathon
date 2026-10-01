@@ -80,6 +80,8 @@ export const productionConfig = {
   },
   // Internal staff ops panel (/api/v1/admin) hardening switches.
   admin: {
+    // Absolute staff session lifetime in hours (0 = no limit). Refresh does not extend it.
+    sessionMaxAgeHours: 12,
     // Sensitive admin writes need a recent emailed-code re-verification.
     stepUpEnabled: true,
     // How long one verification covers; each successful write extends it.

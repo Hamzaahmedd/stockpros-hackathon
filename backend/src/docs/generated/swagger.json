@@ -8149,6 +8149,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8263,6 +8273,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8324,6 +8344,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -8404,6 +8434,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8466,6 +8506,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -8543,6 +8593,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8609,6 +8669,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8670,6 +8740,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -8740,6 +8820,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8806,6 +8896,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -8868,6 +8968,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -8976,6 +9086,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -9048,6 +9168,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -9158,6 +9288,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -9211,6 +9351,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -9291,6 +9441,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -9338,6 +9498,16 @@
 							}
 						}
 					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
 					"403": {
 						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
@@ -9381,6 +9551,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
@@ -9438,6 +9618,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
 								}
 							}
 						}
