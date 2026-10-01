@@ -1,18 +1,21 @@
 jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     user: { findUnique: jest.fn() },
-    team: { findUnique: jest.fn() },
-    teamMember: { findUnique: jest.fn() },
+    team: { findUnique: jest.fn(), findFirst: jest.fn() },
+    teamMember: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      count: jest.fn(),
+    },
+    teamInvite: { count: jest.fn() },
     subscription: { update: jest.fn() },
     paymentTransaction: { create: jest.fn() },
   },
 }))
 
 jest.mock('../../../shared/infrastructure/team-access', () => ({
-  // keep the real, pure role check; only the DB-backed lookups are faked
-  isTeamAdminRole: jest.requireActual(
-    '../../../shared/infrastructure/team-access',
-  ).isTeamAdminRole,
+  // keep the real, pure helpers (roles, permissions); only the DB-backed lookups are faked
+  ...jest.requireActual('../../../shared/infrastructure/team-access'),
   findRestrictingDomain: jest.fn(),
   getActiveMembership: jest.fn(),
 }))
@@ -50,6 +53,7 @@ const teamFor = (overrides: Record<string, any> = {}) => ({
   id: 'team-1',
   status: 'ACTIVE',
   seatCapacity: 10,
+  scheduledSeatCapacity: null,
   subscription: {
     id: 'sub-1',
     paymentMethod: 'WALLET',
@@ -69,6 +73,8 @@ beforeEach(() => {
   ;(initPaymentSession as jest.Mock).mockResolvedValue({ token: 'trk-1' })
   ;(buildCheckoutUrl as jest.Mock).mockReturnValue('https://pay/trk-1')
   db.paymentTransaction.create.mockResolvedValue({ id: 'txn-1' })
+  db.teamMember.count.mockResolvedValue(0)
+  db.teamInvite.count.mockResolvedValue(0)
 })
 
 const createdData = () => db.paymentTransaction.create.mock.calls[0][0].data
@@ -76,8 +82,8 @@ const createdData = () => db.paymentTransaction.create.mock.calls[0][0].data
 describe('assertCanCreateTeam', () => {
   beforeEach(() => {
     db.user.findUnique.mockResolvedValue({ email: 'a@fund.com' })
-    db.teamMember.findUnique.mockResolvedValue(null)
-    db.team.findUnique.mockResolvedValue(null)
+    db.teamMember.findFirst.mockResolvedValue(null)
+    db.team.findFirst.mockResolvedValue(null)
     ;(findRestrictingDomain as jest.Mock).mockResolvedValue(null)
   })
 
@@ -97,15 +103,29 @@ describe('assertCanCreateTeam', () => {
   })
 
   it('conflicts when the user already belongs to or owns a workspace', async () => {
-    db.teamMember.findUnique.mockResolvedValue({ id: 'm' })
+    db.teamMember.findFirst.mockResolvedValue({ id: 'm' })
     await expect(assertCanCreateTeam('user-1')).rejects.toMatchObject({
       statusCode: 409,
     })
 
-    db.teamMember.findUnique.mockResolvedValue(null)
-    db.team.findUnique.mockResolvedValue({ id: 't' })
+    db.teamMember.findFirst.mockResolvedValue(null)
+    db.team.findFirst.mockResolvedValue({ id: 't' })
     await expect(assertCanCreateTeam('user-1')).rejects.toMatchObject({
       statusCode: 409,
+    })
+  })
+
+  it('only a seat in a LIVE workspace blocks creating one — a lapsed seat is released later', async () => {
+    await assertCanCreateTeam('user-1')
+    expect(db.teamMember.findFirst).toHaveBeenCalledWith({
+      where: { userId: 'user-1', team: { status: 'ACTIVE' } },
+    })
+  })
+
+  it('only an ACTIVE owned workspace blocks a new one — a deleted workspace does not', async () => {
+    await assertCanCreateTeam('user-1')
+    expect(db.team.findFirst).toHaveBeenCalledWith({
+      where: { ownerId: 'user-1', status: 'ACTIVE' },
     })
   })
 
@@ -218,6 +238,35 @@ describe('createTeamRenewalCheckout', () => {
       subscriptionId: 'sub-1',
       kind: 'SUBSCRIPTION',
     })
+  })
+})
+
+describe('createTeamRenewalCheckout — seat reduction', () => {
+  it('bills the scheduled smaller count at renewal', async () => {
+    asMember(
+      TeamRole.OWNER,
+      teamFor({ seatCapacity: 10, scheduledSeatCapacity: 6 }),
+    )
+    db.teamMember.count.mockResolvedValue(4)
+    db.teamInvite.count.mockResolvedValue(1)
+
+    await createTeamRenewalCheckout('user-1')
+
+    expect(initPaymentSession).toHaveBeenCalledWith(6 * TEAM_SEAT_PRICE_PAISA)
+    expect(createdData().seatCount).toBe(6)
+  })
+
+  it('never bills fewer seats than members plus pending invites use', async () => {
+    asMember(
+      TeamRole.OWNER,
+      teamFor({ seatCapacity: 10, scheduledSeatCapacity: 3 }),
+    )
+    db.teamMember.count.mockResolvedValue(4)
+    db.teamInvite.count.mockResolvedValue(2)
+
+    await createTeamRenewalCheckout('user-1')
+
+    expect(createdData().seatCount).toBe(6)
   })
 })
 

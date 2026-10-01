@@ -9,10 +9,8 @@ jest.mock('../../../shared/infrastructure/database', () => ({
 }))
 
 jest.mock('../../../shared/infrastructure/team-access', () => ({
-  // keep the real, pure role check; only the DB-backed lookups are faked
-  isTeamAdminRole: jest.requireActual(
-    '../../../shared/infrastructure/team-access',
-  ).isTeamAdminRole,
+  // keep the real, pure helpers (roles, permissions); only the DB-backed lookups are faked
+  ...jest.requireActual('../../../shared/infrastructure/team-access'),
   resolveFallbackPlan: jest.fn(),
 }))
 
@@ -250,6 +248,8 @@ describe('runSubscriptionExpiryJob — team subscriptions', () => {
       autoRenew: true,
       team: {
         seatCapacity: 4,
+        scheduledSeatCapacity: null,
+        billingEmail: null,
         owner: { email: 'owner@fund.com', displayName: 'Olivia' },
       },
       ...overrides,
@@ -266,6 +266,48 @@ describe('runSubscriptionExpiryJob — team subscriptions', () => {
         userName: 'Olivia',
         variant: 'wallet',
         amount: `Rs ${((4 * TEAM_SEAT_PRICE_PAISA) / 100).toLocaleString('en-PK')}`,
+      }),
+    )
+  })
+
+  it('sends the reminder to the billing contact instead of the owner when one is set', async () => {
+    mockFindMany.mockResolvedValue([
+      teamSubscription({
+        team: {
+          seatCapacity: 4,
+          scheduledSeatCapacity: null,
+          billingEmail: 'billing@fund.com',
+          owner: { email: 'owner@fund.com', displayName: 'Olivia' },
+        },
+      }),
+    ])
+    await runSubscriptionExpiryJob()
+
+    expect(enqueueRenewalReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'billing@fund.com',
+        // Still addressed to the owner by name.
+        userName: 'Olivia',
+      }),
+    )
+  })
+
+  it('quotes the reduced seat count when a reduction is scheduled', async () => {
+    mockFindMany.mockResolvedValue([
+      teamSubscription({
+        team: {
+          seatCapacity: 10,
+          scheduledSeatCapacity: 6,
+          billingEmail: null,
+          owner: { email: 'owner@fund.com', displayName: 'Olivia' },
+        },
+      }),
+    ])
+    await runSubscriptionExpiryJob()
+
+    expect(enqueueRenewalReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: `Rs ${((6 * TEAM_SEAT_PRICE_PAISA) / 100).toLocaleString('en-PK')}`,
       }),
     )
   })
@@ -294,6 +336,7 @@ describe('runSubscriptionExpiryJob — team subscriptions', () => {
       team: { update: jest.fn() },
       user: { update: jest.fn() },
       subscription: { update: jest.fn() },
+      teamAuditLog: { create: jest.fn() },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) =>
       fn(tx),
@@ -319,6 +362,11 @@ describe('runSubscriptionExpiryJob — team subscriptions', () => {
     expect(tx.subscription.update).toHaveBeenCalledWith({
       where: { id: 'sub-1' },
       data: { status: 'EXPIRED' },
+    })
+    expect(tx.teamAuditLog.create.mock.calls[0][0].data).toMatchObject({
+      teamId: 'team-1',
+      action: 'SUBSCRIPTION_EXPIRED',
+      actorUserId: null,
     })
     expect(setMyPlan).not.toHaveBeenCalled()
   })

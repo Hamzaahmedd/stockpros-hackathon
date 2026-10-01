@@ -9,6 +9,29 @@ import type {
 export const isTeamAdmin = (role: TeamRole): boolean =>
   role === "OWNER" || role === "ADMIN";
 
+/**
+ * What a role may do in the UI — mirrors the backend permission table
+ * (shared/infrastructure/team-access.ts). The UI only hides controls; the
+ * server enforces every one of these.
+ */
+export enum TeamAction {
+  MANAGE = "MANAGE", // members, credits, billing, settings, audit log
+  CHANGE_ROLES = "CHANGE_ROLES",
+  TRANSFER_OWNERSHIP = "TRANSFER_OWNERSHIP",
+  DELETE_TEAM = "DELETE_TEAM",
+  EXPORT_TEAM = "EXPORT_TEAM",
+}
+
+const OWNER_ONLY_ACTIONS: ReadonlySet<TeamAction> = new Set([
+  TeamAction.CHANGE_ROLES,
+  TeamAction.TRANSFER_OWNERSHIP,
+  TeamAction.DELETE_TEAM,
+  TeamAction.EXPORT_TEAM,
+]);
+
+export const canDo = (role: TeamRole, action: TeamAction): boolean =>
+  OWNER_ONLY_ACTIONS.has(action) ? role === "OWNER" : role !== "MEMBER";
+
 export { apiErrorMessage } from "@/shared/utils/api-error";
 
 export const PREFERENCE_THEMES: readonly PreferenceTheme[] = ["LIGHT", "DARK", "SYSTEM"];
@@ -72,4 +95,41 @@ export const toAppTheme = (theme: PreferenceTheme): "light" | "dark" => {
   if (theme === "LIGHT") return "light";
   if (theme === "DARK") return "dark";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+/** Readable labels for the audit log's action codes. */
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  MEMBER_INVITED: "Invited a member",
+  INVITE_REVOKED: "Revoked an invite",
+  INVITE_RESENT: "Resent an invite",
+  INVITE_ACCEPTED: "Accepted an invite",
+  MEMBER_REMOVED: "Removed a member",
+  MEMBER_LEFT: "Left the workspace",
+  ROLE_CHANGED: "Changed a role",
+  OWNERSHIP_TRANSFERRED: "Transferred ownership",
+  SETTINGS_UPDATED: "Updated settings",
+  DOMAIN_ADDED: "Added a domain",
+  DOMAIN_VERIFIED: "Verified a domain",
+  SEATS_ADDED: "Added seats",
+  SEAT_REDUCTION_SCHEDULED: "Scheduled a seat reduction",
+  SEAT_REDUCTION_CANCELLED: "Cancelled the seat reduction",
+  CREDIT_LIMIT_SET: "Changed a credit limit",
+  BILLING_CONTACT_UPDATED: "Updated the billing contact",
+  TEAM_RENAMED: "Renamed the workspace",
+  TEAM_DELETED: "Deleted the workspace",
+  TEAM_EXPORTED: "Exported the workspace",
+  SUBSCRIPTION_EXPIRED: "Subscription expired",
+};
+
+export const auditActionLabel = (action: string): string =>
+  AUDIT_ACTION_LABELS[action] ?? action;
+
+/** Saves a Blob as a file through a temporary link. */
+export const saveBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 };

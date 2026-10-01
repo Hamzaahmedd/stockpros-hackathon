@@ -15,10 +15,8 @@ jest.mock('../../../shared/infrastructure/database', () => ({
 }))
 
 jest.mock('../../../shared/infrastructure/team-access', () => ({
-  // keep the real, pure role check; only the DB-backed lookups are faked
-  isTeamAdminRole: jest.requireActual(
-    '../../../shared/infrastructure/team-access',
-  ).isTeamAdminRole,
+  // keep the real, pure helpers (roles, permissions); only the DB-backed lookups are faked
+  ...jest.requireActual('../../../shared/infrastructure/team-access'),
   getActiveMembership: jest.fn(),
   resolveFallbackPlan: jest.fn(),
 }))
@@ -80,7 +78,10 @@ const makeFakeDb = (opts: {
       return [{ id: teamId }]
     },
     team: {
-      findUniqueOrThrow: async () => ({ seatCapacity: opts.capacity }),
+      findUniqueOrThrow: async () => ({
+        seatCapacity: opts.capacity,
+        scheduledSeatCapacity: null,
+      }),
     },
     teamMember: {
       count: async () => {
@@ -109,6 +110,7 @@ const makeFakeDb = (opts: {
       },
     },
     user: { findUnique: async () => null },
+    teamAuditLog: { create: async () => ({}) },
   })
 
   const client = {

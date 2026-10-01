@@ -7,6 +7,8 @@ export type InvitableRole = Exclude<TeamRole, "OWNER">;
 
 export type SeatUtilization = {
   capacity: number;
+  /** Seat count the next renewal bills (a scheduled reduction); invites are already limited to it. */
+  scheduledCapacity: number | null;
   active: number;
   pendingInvites: number;
   available: number;
@@ -34,6 +36,8 @@ export type Team = {
   seats: SeatUtilization;
   creditBalanceInPaisa: number;
   orgInstructions: string | null;
+  /** Owners/admins only; null when unset (receipts then go to the owner). */
+  billingEmail: string | null;
   domains: TeamDomain[];
   subscription: TeamSubscription;
 };
@@ -144,4 +148,61 @@ export type WorkspaceSearchResults = {
     confidence: number;
     run: { id: string; userId: string; runAt: string };
   }[];
+};
+
+export type PendingInvite = {
+  id: string;
+  email: string;
+  role: InvitableRole;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type SeatReduction = {
+  seatCapacity: number;
+  scheduledSeatCapacity: number | null;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  actorUserId: string | null;
+  /** Current display name; null for system actions or deleted users. */
+  actorName: string | null;
+  targetUserId: string | null;
+  targetName: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type AuditLogPage = {
+  entries: AuditLogEntry[];
+  nextCursor: string | null;
+};
+
+export type TeamTransaction = {
+  id: string;
+  referenceNumber: string;
+  kind: "SUBSCRIPTION" | "SEAT_ADDITION" | "TOPUP";
+  description: string;
+  status: "COMPLETED" | "REFUNDED";
+  amountPaisa: number;
+  currency: string;
+  seatCount: number;
+  createdAt: string;
+};
+
+export type TeamTransactionsPage = {
+  entries: TeamTransaction[];
+  nextCursor: string | null;
+};
+
+export type TeamReceipt = Omit<TeamTransaction, "createdAt"> & {
+  /** Per-seat price; null for credit top-ups. */
+  unitPricePaisa: number | null;
+  paymentMethod: string | null;
+  paidAt: string;
+  teamName: string;
+  /** The billing contact, or the owner's email when none is set. */
+  billedTo: string;
 };

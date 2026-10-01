@@ -15,9 +15,17 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { teamService } from "../services";
 import type { Team, TeamMember } from "../types";
-import { apiErrorMessage, formatDate, isTeamAdmin } from "../utils";
+import {
+  apiErrorMessage,
+  canDo,
+  formatDate,
+  isTeamAdmin,
+  parseInvitableRole,
+  TeamAction,
+} from "../utils";
 import { CreditLimitModal } from "./CreditLimitModal";
 import { InviteMemberModal } from "./InviteMemberModal";
+import { PendingInvites } from "./PendingInvites";
 
 interface MembersTabProps {
   team: Team;
@@ -32,6 +40,8 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [removing, setRemoving] = useState<TeamMember | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [invitesKey, setInvitesKey] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +72,35 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
     }
   };
 
+  const handleRoleChange = async (member: TeamMember, value: string) => {
+    const role = parseInvitableRole(value);
+    if (!role || role === member.role) return;
+    try {
+      await teamService.changeMemberRole(member.userId, role);
+      toast.success(`${member.displayName} is now ${role === "ADMIN" ? "an admin" : "a member"}`);
+      refresh();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Failed to change role"));
+    }
+  };
+
+  const handleLeave = async () => {
+    try {
+      await teamService.leave();
+      toast.success("You left the workspace");
+      // A full reload refetches the session, so the plan and navigation update.
+      window.location.assign("/dashboard");
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Failed to leave workspace"));
+    }
+  };
+
+  // Only the owner changes roles; nobody changes the owner's or their own.
+  const canChangeRole = (member: TeamMember): boolean =>
+    canDo(team.role, TeamAction.CHANGE_ROLES) &&
+    member.role !== "OWNER" &&
+    member.userId !== currentUserId;
+
   // Admins can manage plain members; only the owner manages admins; nobody manages the owner or themselves.
   const canManage = (member: TeamMember): boolean =>
     admin &&
@@ -75,11 +114,18 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
         <p className="text-sm text-muted-foreground">
           {team.seats.active} of {team.seats.capacity} seats in use
         </p>
-        {admin && (
-          <Button type="button" onClick={() => setInviteOpen(true)}>
-            Invite member
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {team.role !== "OWNER" && (
+            <Button type="button" variant="outline" onClick={() => setLeaving(true)}>
+              Leave workspace
+            </Button>
+          )}
+          {admin && (
+            <Button type="button" onClick={() => setInviteOpen(true)}>
+              Invite member
+            </Button>
+          )}
+        </div>
       </div>
 
       {members === null ? (
@@ -108,9 +154,21 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
                   </TableCell>
                   {admin && <TableCell>{member.email}</TableCell>}
                   <TableCell>
-                    <Badge variant={member.role === "MEMBER" ? "secondary" : "default"}>
-                      {member.role}
-                    </Badge>
+                    {canChangeRole(member) ? (
+                      <select
+                        aria-label={`Role for ${member.displayName}`}
+                        value={member.role}
+                        onChange={(e) => void handleRoleChange(member, e.target.value)}
+                        className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+                      >
+                        <option value="MEMBER">MEMBER</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    ) : (
+                      <Badge variant={member.role === "MEMBER" ? "secondary" : "default"}>
+                        {member.role}
+                      </Badge>
+                    )}
                   </TableCell>
                   {admin && (
                     <TableCell className="text-right">
@@ -152,17 +210,33 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
         </div>
       )}
 
+      {admin && (
+        <PendingInvites refreshKey={invitesKey} onChanged={reloadTeam} />
+      )}
+
       <InviteMemberModal
         isOpen={inviteOpen}
         onClose={() => setInviteOpen(false)}
         canInviteAdmin={team.role === "OWNER"}
-        onInvited={reloadTeam}
+        onInvited={() => {
+          reloadTeam();
+          setInvitesKey((key) => key + 1);
+        }}
       />
       <CreditLimitModal
         key={editing?.userId ?? "none"}
         member={editing}
         onClose={() => setEditing(null)}
         onSaved={refresh}
+      />
+      <ConfirmationModal
+        isOpen={leaving}
+        title="Leave workspace?"
+        message="You'll lose access to the workspace's shared assets and credits, and your seat becomes available again. You can only rejoin with a new invite."
+        confirmText="Leave"
+        variant="danger"
+        onConfirm={handleLeave}
+        onCancel={() => setLeaving(false)}
       />
       <ConfirmationModal
         isOpen={removing !== null}

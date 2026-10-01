@@ -2,23 +2,31 @@ import { NextFunction, Response } from 'express'
 import { validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
+import * as Admin from './admin-service'
 import * as TeamService from './service'
 import * as Workspace from './workspace-service'
 import {
   acceptInviteValidator,
   addDomainValidator,
   addSeatsValidator,
+  auditLogQueryValidator,
+  billingContactValidator,
+  changeRoleValidator,
   createInviteValidator,
   createTeamValidator,
   creditLimitValidator,
+  deleteTeamValidator,
   idParamValidator,
   notesQueryValidator,
   instructionsValidator,
   preferencesValidator,
+  reduceSeatsValidator,
+  renameTeamValidator,
   researchNoteValidator,
   searchQueryValidator,
   sharedScreenerValidator,
   sharedWatchlistValidator,
+  transferOwnershipValidator,
   userIdParamValidator,
   verifyDomainValidator,
 } from './validation'
@@ -273,4 +281,119 @@ export const deleteNote = handle(
   async (req, userId) => {
     await Workspace.deleteResearchNote(userId, idParam(req))
   },
+)
+
+// ─── Roles, ownership & membership ────────────────────────────────────────────
+
+export const changeMemberRole = handle('Role updated', async (req, userId) => {
+  const { userId: targetUserId } = validateOrThrow(
+    userIdParamValidator,
+    req.params,
+  )
+  const { role } = validateOrThrow(changeRoleValidator, req.body)
+  return { data: await Admin.changeMemberRole(userId, targetUserId, role) }
+})
+
+export const transferOwnership = handle(
+  'Ownership transferred',
+  async (req, userId) => {
+    await Admin.transferOwnership(
+      userId,
+      validateOrThrow(transferOwnershipValidator, req.body).userId,
+    )
+  },
+)
+
+export const leaveTeam = handle(
+  'You left the workspace',
+  async (_r, userId) => {
+    await Admin.leaveTeam(userId)
+  },
+)
+
+export const listInvites = handle('Invites fetched', async (_r, userId) => ({
+  data: await Admin.listInvites(userId),
+}))
+
+export const revokeInvite = handle('Invite revoked', async (req, userId) => {
+  await Admin.revokeInvite(userId, idParam(req))
+})
+
+export const resendInvite = handle('Invite resent', async (req, userId) => ({
+  data: await Admin.resendInvite(userId, idParam(req)),
+}))
+
+// ─── Workspace lifecycle ──────────────────────────────────────────────────────
+
+export const renameTeam = handle('Workspace renamed', async (req, userId) => ({
+  data: await Admin.renameTeam(
+    userId,
+    validateOrThrow(renameTeamValidator, req.body).name,
+  ),
+}))
+
+export const deleteTeam = handle('Workspace deleted', async (req, userId) => {
+  await Admin.deleteTeam(
+    userId,
+    validateOrThrow(deleteTeamValidator, req.body).confirmName,
+  )
+})
+
+/** A download, not an envelope: the file the owner saves. */
+export const exportTeam = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const snapshot = await Admin.exportTeam(getUserId(req))
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="workspace-export.json"',
+    )
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(200).json(snapshot)
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ─── Billing contact & seat reduction ─────────────────────────────────────────
+
+export const updateBillingContact = handle(
+  'Billing contact updated',
+  async (req, userId) => ({
+    data: await Admin.updateBillingContact(
+      userId,
+      validateOrThrow(billingContactValidator, req.body).billingEmail,
+    ),
+  }),
+)
+
+export const scheduleSeatReduction = handle(
+  'Seat reduction scheduled',
+  async (req, userId) => ({
+    data: await Admin.scheduleSeatReduction(
+      userId,
+      validateOrThrow(reduceSeatsValidator, req.body).seatCount,
+    ),
+  }),
+)
+
+export const cancelSeatReduction = handle(
+  'Seat reduction cancelled',
+  async (_r, userId) => ({ data: await Admin.cancelSeatReduction(userId) }),
+)
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+export const listAuditLog = handle(
+  'Audit log fetched',
+  async (req, userId) => ({
+    data: await Admin.listAuditLog(
+      userId,
+      validateOrThrow(auditLogQueryValidator, req.query),
+    ),
+  }),
 )

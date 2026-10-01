@@ -9,6 +9,10 @@ jest.mock('../database', () => ({
 
 import { prisma } from '../database'
 import {
+  releaseLapsedMembership,
+  can,
+  effectiveSeatCapacity,
+  TeamPermission,
   isTeamAdminRole,
   emailDomain,
   findRestrictingDomain,
@@ -147,5 +151,70 @@ describe('isTeamAdminRole', () => {
   it('rejects anything that is not exactly a known admin role (defensive, e.g. bad data)', () => {
     expect(isTeamAdminRole('owner' as unknown as TeamRole)).toBe(false)
     expect(isTeamAdminRole(undefined as unknown as TeamRole)).toBe(false)
+  })
+})
+
+describe('can — the role to permission table', () => {
+  const OWNER_ONLY = [
+    TeamPermission.MEMBERS_CHANGE_ROLE,
+    TeamPermission.ADMINS_MANAGE,
+    TeamPermission.OWNERSHIP_TRANSFER,
+    TeamPermission.TEAM_DELETE,
+    TeamPermission.TEAM_EXPORT,
+  ]
+  const SHARED_WITH_ADMIN = Object.values(TeamPermission).filter(
+    (permission) => !OWNER_ONLY.includes(permission),
+  )
+
+  it.each(Object.values(TeamPermission))('the owner can %s', (permission) => {
+    expect(can(TeamRole.OWNER, permission)).toBe(true)
+  })
+
+  it.each(SHARED_WITH_ADMIN)('an admin can %s', (permission) => {
+    expect(can(TeamRole.ADMIN, permission)).toBe(true)
+  })
+
+  it.each(OWNER_ONLY)('an admin cannot %s (owner only)', (permission) => {
+    expect(can(TeamRole.ADMIN, permission)).toBe(false)
+  })
+
+  it.each(Object.values(TeamPermission))(
+    'a plain member cannot %s',
+    (permission) => {
+      expect(can(TeamRole.MEMBER, permission)).toBe(false)
+    },
+  )
+
+  it('grants nothing to a role outside the enum (bad data)', () => {
+    expect(
+      can('SUPERUSER' as unknown as TeamRole, TeamPermission.MEMBERS_INVITE),
+    ).toBe(false)
+  })
+})
+
+describe('effectiveSeatCapacity', () => {
+  it.each([
+    [10, null, 10],
+    [10, 6, 6],
+    [10, 10, 10],
+    // A stale schedule above the capacity never raises it.
+    [10, 14, 10],
+  ])('capacity %i, scheduled %s -> %i', (seatCapacity, scheduled, expected) => {
+    expect(
+      effectiveSeatCapacity({
+        seatCapacity,
+        scheduledSeatCapacity: scheduled,
+      }),
+    ).toBe(expected)
+  })
+})
+
+describe('releaseLapsedMembership', () => {
+  it("deletes the user's seat only when its workspace is not ACTIVE", async () => {
+    const client = { teamMember: { deleteMany: jest.fn() } }
+    await releaseLapsedMembership(client as never, 'u1')
+    expect(client.teamMember.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', team: { status: { not: 'ACTIVE' } } },
+    })
   })
 })

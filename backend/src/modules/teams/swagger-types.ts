@@ -49,6 +49,8 @@ export interface AddSeatsRequest {
 
 export interface SeatUtilization {
   capacity: number
+  /** Seat count the next renewal bills (a scheduled reduction); null when none. Invites are limited to it already. */
+  scheduledCapacity: number | null
   active: number
   pendingInvites: number
   available: number
@@ -69,6 +71,8 @@ export interface TeamResponse {
   seats: SeatUtilization
   creditBalanceInPaisa: number
   orgInstructions: string | null
+  /** Owners/admins only; null otherwise or when unset (receipts then go to the owner). */
+  billingEmail: string | null
   domains: TeamDomainSummary[]
 }
 
@@ -170,6 +174,75 @@ export interface ResearchNoteRequest {
   /** @example "AAPL" */
   symbol: string
   content: string
+}
+
+export interface ChangeRoleRequest {
+  /** OWNER cannot be set here — use ownership transfer. */
+  role: 'ADMIN' | 'MEMBER'
+}
+
+export interface TransferOwnershipRequest {
+  /** Must be an existing, active member; a pending invite is refused. */
+  userId: string
+}
+
+export interface RenameTeamRequest {
+  /** @example "Alpha Fund" */
+  name: string
+}
+
+export interface DeleteTeamRequest {
+  /** Must equal the workspace name exactly. */
+  confirmName: string
+}
+
+export interface BillingContactRequest {
+  /** Receives renewal reminders and receipts. Null falls back to the owner. */
+  billingEmail: string | null
+}
+
+export interface ReduceSeatsRequest {
+  /**
+   * Seat count to bill from the next renewal; below the current capacity and
+   * not below members plus pending invites.
+   * @isInt
+   * @minimum 2
+   * @maximum 150
+   */
+  seatCount: number
+}
+
+export interface SeatReductionResponse {
+  seatCapacity: number
+  scheduledSeatCapacity: number | null
+}
+
+export interface PendingInviteResponse {
+  id: string
+  email: string
+  role: 'ADMIN' | 'MEMBER'
+  expiresAt: string
+  createdAt: string
+}
+
+export interface AuditLogEntryResponse {
+  id: string
+  /** @example "ROLE_CHANGED" */
+  action: string
+  actorUserId: string | null
+  /** Current display name; null for system actions or deleted users. */
+  actorName: string | null
+  targetUserId: string | null
+  targetName: string | null
+  /** IDs and enum values only — never names or emails. */
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+
+export interface AuditLogPageResponse {
+  entries: AuditLogEntryResponse[]
+  /** Pass back as `cursor` for the next (older) page; null at the end. */
+  nextCursor: string | null
 }
 
 // ─── Controller (TSOA spec-only — not used at runtime) ─────────────────────
@@ -357,6 +430,122 @@ export class TeamsSwaggerController extends Controller {
 
   @Delete('notes/{id}')
   async deleteNote(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Promotes or demotes a member (ADMIN ↔ MEMBER). Owner only; the owner role is never set here. Recorded in the audit log. */
+  @Patch('members/{userId}/role')
+  @Response<ApiErrorResponse>(
+    403,
+    'Owner only / cannot change own or the owner role',
+  )
+  async changeMemberRole(
+    @Path() userId: string,
+    @Body() body: ChangeRoleRequest,
+  ): Promise<ApiResponse<{ userId: string; role: string }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Hands the workspace to an existing active member; the previous owner becomes an admin. Owner only. */
+  @Post('ownership/transfer')
+  @Response<ApiErrorResponse>(
+    404,
+    'Target is not a member of this workspace (e.g. a pending invite)',
+  )
+  async transferOwnership(
+    @Body() body: TransferOwnershipRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Leaves the workspace (seat freed, plan falls back). The owner must transfer ownership first (403). */
+  @Post('leave')
+  async leaveTeam(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Unexpired pending invites. Owner/admin only. */
+  @Get('invites')
+  async listInvites(): Promise<ApiResponse<PendingInviteResponse[]>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Revokes a pending invite, freeing its reserved seat. Admin invites need the owner. */
+  @Delete('invites/{id}')
+  async revokeInvite(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Issues a fresh link and expiry for a pending invite (the old link stops working) and re-queues the email. */
+  @Post('invites/{id}/resend')
+  async resendInvite(
+    @Path() id: string,
+  ): Promise<ApiResponse<CreateInviteResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Renames the workspace. Owner/admin only. */
+  @Patch()
+  async renameTeam(
+    @Body() body: RenameTeamRequest,
+  ): Promise<ApiResponse<{ id: string; name: string }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Deletes the workspace. Owner only, with the exact name as confirmation.
+   * Cancels it, turns auto-renew off, purges shared assets, invites and
+   * domains, hard-deletes every seat (members fall back to their personal plan
+   * and may join another workspace) and forfeits any remaining credit. Payment
+   * history, the credit ledger and the audit log are kept (no personal data).
+   */
+  @Delete()
+  @Response<ApiErrorResponse>(400, 'Confirmation name does not match')
+  async deleteTeam(@Body() body: DeleteTeamRequest): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Owner-only JSON download of the workspace: settings, members (with emails),
+   * domains, shared assets, paid transactions (no gateway payloads) and the
+   * audit log, each capped at 5,000 rows. Served as an attachment, not the
+   * usual envelope. Recorded in the audit log.
+   */
+  @Get('export')
+  async exportTeam(): Promise<Record<string, unknown>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Sets or clears the billing contact. Owner/admin only. */
+  @Patch('billing-contact')
+  async updateBillingContact(
+    @Body() body: BillingContactRequest,
+  ): Promise<ApiResponse<{ billingEmail: string | null }>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Schedules a smaller seat count for the next renewal (no mid-term refund); invites are limited to it immediately. */
+  @Post('seats/reduce')
+  @Response<ApiErrorResponse>(409, 'Below the seats currently in use')
+  async scheduleSeatReduction(
+    @Body() body: ReduceSeatsRequest,
+  ): Promise<ApiResponse<SeatReductionResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Cancels a scheduled seat reduction. */
+  @Delete('seats/reduce')
+  async cancelSeatReduction(): Promise<ApiResponse<SeatReductionResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Newest-first, cursor-paginated admin activity (invites, role changes, removals, settings, billing). Owner/admin only. */
+  @Get('audit-log')
+  async listAuditLog(
+    @Query() limit?: number,
+    @Query() cursor?: string,
+    @Query() action?: string,
+  ): Promise<ApiResponse<AuditLogPageResponse>> {
     throw new Error('tsoa spec-only')
   }
 }

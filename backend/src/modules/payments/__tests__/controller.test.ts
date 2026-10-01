@@ -12,6 +12,11 @@ jest.mock('../ledger', () => ({ getCreditLedger: jest.fn() }))
 
 jest.mock('../usage', () => ({ getMyUsage: jest.fn() }))
 
+jest.mock('../receipts', () => ({
+  getTeamReceipt: jest.fn(),
+  listTeamTransactions: jest.fn(),
+}))
+
 jest.mock('../team-billing', () => ({
   createTeamCheckout: jest.fn(),
   createTeamRenewalCheckout: jest.fn(),
@@ -36,6 +41,7 @@ import {
 } from '../service'
 import { getCreditLedger } from '../ledger'
 import { getMyUsage } from '../usage'
+import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import { verifySafepaySignature } from '../signature'
 import {
   createTeamCheckout,
@@ -567,6 +573,101 @@ describe('getMyUsageHandler', () => {
   it('forwards errors', async () => {
     ;(getMyUsage as jest.Mock).mockRejectedValue(new Error('boom'))
     await controller.getMyUsageHandler(mockReq() as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('listTeamTransactionsHandler', () => {
+  it('applies defaults and returns the page', async () => {
+    ;(listTeamTransactions as jest.Mock).mockResolvedValue({ entries: [] })
+    const res = mockRes()
+    await controller.listTeamTransactionsHandler(mockReq() as any, res, next)
+
+    expect(listTeamTransactions).toHaveBeenCalledWith('user-1', { limit: 25 })
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: 'Billing history fetched',
+        data: { entries: [] },
+      }),
+    )
+  })
+
+  it('coerces the limit and passes the cursor', async () => {
+    ;(listTeamTransactions as jest.Mock).mockResolvedValue({})
+    const cursor = '00000000-0000-0000-0000-000000000009'
+    await controller.listTeamTransactionsHandler(
+      mockReq({ query: { limit: '50', cursor } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(listTeamTransactions).toHaveBeenCalledWith('user-1', {
+      limit: 50,
+      cursor,
+    })
+  })
+
+  it.each([[{ limit: '0' }], [{ limit: '101' }], [{ cursor: 'nope' }]])(
+    'rejects an invalid query %j',
+    async (query) => {
+      await controller.listTeamTransactionsHandler(
+        mockReq({ query }) as any,
+        mockRes(),
+        next,
+      )
+      expect(next).toHaveBeenCalledWith(expect.any(Error))
+      expect(listTeamTransactions).not.toHaveBeenCalled()
+    },
+  )
+
+  it('forwards service errors', async () => {
+    ;(listTeamTransactions as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.listTeamTransactionsHandler(
+      mockReq() as any,
+      mockRes(),
+      next,
+    )
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('getTeamReceiptHandler', () => {
+  const id = '00000000-0000-0000-0000-000000000007'
+
+  it('returns the receipt for a valid id', async () => {
+    ;(getTeamReceipt as jest.Mock).mockResolvedValue({ id })
+    const res = mockRes()
+    await controller.getTeamReceiptHandler(
+      mockReq({ params: { id } }) as any,
+      res,
+      next,
+    )
+    expect(getTeamReceipt).toHaveBeenCalledWith('user-1', id)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Receipt fetched',
+        data: { id },
+      }),
+    )
+  })
+
+  it('rejects a malformed id before touching the service', async () => {
+    await controller.getTeamReceiptHandler(
+      mockReq({ params: { id: 'nope' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+    expect(getTeamReceipt).not.toHaveBeenCalled()
+  })
+
+  it('forwards service errors', async () => {
+    ;(getTeamReceipt as jest.Mock).mockRejectedValue(new Error('gone'))
+    await controller.getTeamReceiptHandler(
+      mockReq({ params: { id } }) as any,
+      mockRes(),
+      next,
+    )
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

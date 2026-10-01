@@ -1,7 +1,11 @@
-import { CreditLedgerType, TeamRole } from '@prisma/client'
+import { CreditLedgerType } from '@prisma/client'
 import { ForbiddenError, NotFoundError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
-import type { ActiveMembership } from '../../shared/infrastructure/team-access'
+import {
+  isTeamAdminRole,
+  TeamPermission,
+  type ActiveMembership,
+} from '../../shared/infrastructure/team-access'
 import {
   recordUsage,
   resolveUsageWindowStart,
@@ -15,10 +19,7 @@ const canManage = (
   membership: ActiveMembership,
   createdBy: string,
   userId: string,
-) =>
-  createdBy === userId ||
-  membership.role === TeamRole.OWNER ||
-  membership.role === TeamRole.ADMIN
+) => createdBy === userId || isTeamAdminRole(membership.role)
 
 // ─── Shared watchlists ────────────────────────────────────────────────────────
 
@@ -183,7 +184,9 @@ export async function searchWorkspace(userId: string, query: string) {
 // ─── Usage analytics ──────────────────────────────────────────────────────────
 
 export async function getTeamAnalytics(userId: string) {
-  const membership = await requireMembership(userId, { admin: true })
+  const membership = await requireMembership(userId, {
+    permission: TeamPermission.ANALYTICS_READ,
+  })
   const { teamId } = membership
   const windowStart = await resolveUsageWindowStart({ userId, membership })
   const inWindow = { teamId, createdAt: { gte: windowStart } }

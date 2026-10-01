@@ -16,6 +16,8 @@ import {
   createCheckoutValidator,
   creditLedgerQueryValidator,
   subscriptionScopeQueryValidator,
+  transactionIdParamValidator,
+  transactionsQueryValidator,
   toggleAutoRenewValidator,
   verifyTrackerValidator,
 } from './validation'
@@ -31,6 +33,7 @@ import {
   SubscriptionScope,
 } from './constants'
 import { getCreditLedger } from './ledger'
+import { getTeamReceipt, listTeamTransactions } from './receipts'
 import { getMyUsage } from './usage'
 import {
   createTeamCheckout,
@@ -90,6 +93,34 @@ export const getSubscription = async (
       message: 'Subscription fetched',
       extra: result,
     })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const listTeamTransactionsHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const query = validateOrThrow(transactionsQueryValidator, req.query)
+    const data = await listTeamTransactions(getUserId(req), query)
+    return sendSuccess(res, { message: 'Billing history fetched', data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getTeamReceiptHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = validateOrThrow(transactionIdParamValidator, req.params)
+    const data = await getTeamReceipt(getUserId(req), id)
+    return sendSuccess(res, { message: 'Receipt fetched', data })
   } catch (error) {
     next(error)
   }

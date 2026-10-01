@@ -1,3 +1,4 @@
+jest.mock('../receipt-email', () => ({ sendTeamReceiptEmail: jest.fn() }))
 jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: { $transaction: jest.fn() },
 }))
@@ -5,6 +6,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
 import { PaymentKind, PaymentStatus, PlanTier } from '@prisma/client'
 import { prisma } from '../../../shared/infrastructure/database'
 import { SUBSCRIPTION_PERIOD_MS } from '../constants'
+import { sendTeamReceiptEmail } from '../receipt-email'
 import {
   computeNextPeriodEnd,
   fulfillTeamOrCreditTransaction,
@@ -44,6 +46,8 @@ const makeTx = () => ({
   },
   user: { update: jest.fn(), updateMany: jest.fn() },
   creditLedger: { create: jest.fn() },
+  teamAuditLog: { create: jest.fn() },
+  teamMember: { deleteMany: jest.fn() },
   subscription: { findUnique: jest.fn(), update: jest.fn() },
 })
 
@@ -181,6 +185,18 @@ describe('SEAT_ADDITION fulfilment', () => {
     })
   })
 
+  it('records who added the seats in the audit trail', async () => {
+    await run(
+      txn({ kind: PaymentKind.SEAT_ADDITION, teamId: 'team-1', seatCount: 3 }),
+    )
+    expect(tx.teamAuditLog.create.mock.calls[0][0].data).toMatchObject({
+      teamId: 'team-1',
+      actorUserId: 'user-1',
+      action: 'SEATS_ADDED',
+      metadata: { seatCount: 3 },
+    })
+  })
+
   it('refuses a seat addition that has no team', async () => {
     await expect(run(txn({ kind: PaymentKind.SEAT_ADDITION }))).rejects.toThrow(
       'Seat addition is missing a team',
@@ -192,6 +208,10 @@ describe('team creation fulfilment', () => {
   it('creates the team, OWNER member and a manual-renewal subscription, then upgrades the owner', async () => {
     await run(txn({ seatCount: 5, metadata: { teamName: 'Alpha Fund' } }))
 
+    // A seat left over from a lapsed workspace is released so the owner can be seated here.
+    expect(tx.teamMember.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', team: { status: { not: 'ACTIVE' } } },
+    })
     const { data } = tx.team.create.mock.calls[0][0]
     expect(data).toMatchObject({
       name: 'Alpha Fund',
@@ -243,7 +263,7 @@ describe('team renewal fulfilment', () => {
     )
     expect(tx.team.update).toHaveBeenCalledWith({
       where: { id: 'team-1' },
-      data: { status: 'ACTIVE' },
+      data: { status: 'ACTIVE', seatCapacity: 1, scheduledSeatCapacity: null },
     })
     expect(tx.user.updateMany).toHaveBeenCalledWith({
       where: { teamMembers: { some: { teamId: 'team-1' } } },
@@ -251,9 +271,51 @@ describe('team renewal fulfilment', () => {
     })
   })
 
+  it('makes the billed seat count the new capacity and clears a scheduled reduction', async () => {
+    tx.subscription.findUnique.mockResolvedValue({ currentPeriodEnd: null })
+
+    await run(txn({ teamId: 'team-1', seatCount: 4 }))
+
+    expect(tx.team.update).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+      data: { status: 'ACTIVE', seatCapacity: 4, scheduledSeatCapacity: null },
+    })
+  })
+
+  it('does not revive a workspace its owner deleted, even if a payment lands late', async () => {
+    tx.subscription.findUnique.mockResolvedValue({
+      status: 'CANCELLED',
+      currentPeriodEnd: null,
+    })
+
+    await run(txn({ teamId: 'team-1' }))
+
+    expect(tx.subscription.update).not.toHaveBeenCalled()
+    expect(tx.team.update).not.toHaveBeenCalled()
+    expect(tx.user.updateMany).not.toHaveBeenCalled()
+  })
+
   it('skips gracefully when the team has no subscription row', async () => {
     tx.subscription.findUnique.mockResolvedValue(null)
     await run(txn({ teamId: 'team-1' }))
     expect(tx.subscription.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('receipt email after fulfilment', () => {
+  it('is queued once the payment has committed as COMPLETED', async () => {
+    await run(txn({ kind: PaymentKind.SEAT_ADDITION, teamId: 'team-1' }))
+    expect(sendTeamReceiptEmail).toHaveBeenCalledWith('txn-1')
+  })
+
+  it('is not queued for a duplicate webhook (nothing was applied)', async () => {
+    tx.paymentTransaction.updateMany.mockResolvedValue({ count: 0 })
+    await run(txn({ kind: PaymentKind.SEAT_ADDITION, teamId: 'team-1' }))
+    expect(sendTeamReceiptEmail).not.toHaveBeenCalled()
+  })
+
+  it('is not queued for a failed payment', async () => {
+    await run(txn({ teamId: 'team-1' }), PaymentStatus.FAILED)
+    expect(sendTeamReceiptEmail).not.toHaveBeenCalled()
   })
 })

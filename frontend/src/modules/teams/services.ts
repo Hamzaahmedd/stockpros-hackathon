@@ -2,19 +2,24 @@ import api from "@/shared/api/axios";
 import { UNEXPECTED_RESPONSE_MESSAGE, unwrapEnvelope } from "@/shared/api/envelope";
 import { isRecord } from "@/shared/utils/type-guards";
 import type {
+  AuditLogPage,
   DomainVerification,
   InvitableRole,
   InviteResult,
   PaidActionResult,
+  PendingInvite,
   PreferencesPatch,
   PreferencesView,
   ResearchNote,
+  SeatReduction,
   SharedScreener,
   SharedWatchlist,
   Team,
   TeamAnalytics,
   TeamMember,
+  TeamReceipt,
   TeamRole,
+  TeamTransactionsPage,
   WorkspaceSearchResults,
 } from "./types";
 
@@ -101,6 +106,73 @@ export const teamService = {
 
   search: async (q: string): Promise<WorkspaceSearchResults> =>
     unwrap(await api.get(`${BASE}/search`, { params: { q } })),
+
+  // ─── Roles, ownership & membership ──────────────────────────────────────────
+  changeMemberRole: async (userId: string, role: InvitableRole): Promise<void> => {
+    await api.patch(`${BASE}/members/${userId}/role`, { role });
+  },
+
+  transferOwnership: async (userId: string): Promise<void> => {
+    await api.post(`${BASE}/ownership/transfer`, { userId });
+  },
+
+  leave: async (): Promise<void> => {
+    await api.post(`${BASE}/leave`);
+  },
+
+  listInvites: async (): Promise<PendingInvite[]> => {
+    const invites = unwrap<PendingInvite[]>(await api.get(`${BASE}/invites`));
+    return Array.isArray(invites) ? invites : [];
+  },
+
+  revokeInvite: async (id: string): Promise<void> => {
+    await api.delete(`${BASE}/invites/${id}`);
+  },
+
+  resendInvite: async (id: string): Promise<InviteResult> =>
+    unwrap(await api.post(`${BASE}/invites/${id}/resend`)),
+
+  // ─── Workspace lifecycle ────────────────────────────────────────────────────
+  rename: async (name: string): Promise<void> => {
+    await api.patch(BASE, { name });
+  },
+
+  deleteWorkspace: async (confirmName: string): Promise<void> => {
+    await api.delete(BASE, { data: { confirmName } });
+  },
+
+  /** The owner's JSON snapshot, as a Blob to save. */
+  exportWorkspace: async (): Promise<Blob> => {
+    const res = await api.get(`${BASE}/export`, { responseType: "blob" });
+    return res.data;
+  },
+
+  // ─── Billing admin ──────────────────────────────────────────────────────────
+  updateBillingContact: async (billingEmail: string | null): Promise<void> => {
+    await api.patch(`${BASE}/billing-contact`, { billingEmail });
+  },
+
+  scheduleSeatReduction: async (seatCount: number): Promise<SeatReduction> =>
+    unwrap(await api.post(`${BASE}/seats/reduce`, { seatCount })),
+
+  cancelSeatReduction: async (): Promise<SeatReduction> =>
+    unwrap(await api.delete(`${BASE}/seats/reduce`)),
+
+  listTransactions: async (cursor?: string): Promise<TeamTransactionsPage> =>
+    unwrap(
+      await api.get("/api/v1/payments/team/transactions", {
+        params: cursor ? { cursor } : undefined,
+      }),
+    ),
+
+  getReceipt: async (id: string): Promise<TeamReceipt> =>
+    unwrap(await api.get(`/api/v1/payments/team/transactions/${id}/receipt`)),
+
+  // ─── Audit log ──────────────────────────────────────────────────────────────
+  listAuditLog: async (cursor?: string): Promise<AuditLogPage> =>
+    unwrap(
+      await api.get(`${BASE}/audit-log`, { params: cursor ? { cursor } : undefined }),
+    ),
 
   // ─── Shared assets ──────────────────────────────────────────────────────────
   listWatchlists: async (): Promise<SharedWatchlist[]> =>

@@ -4,6 +4,7 @@ import type { NewsSentiment } from '@prisma/client'
 export type {
   AuthEmailJobPayload,
   EmailJobPayload,
+  PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
   TeamInviteEmailJobPayload,
 } from './email-job-schemas'

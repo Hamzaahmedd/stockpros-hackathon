@@ -26,9 +26,10 @@ const workspace = (role: "OWNER" | "ADMIN" | "MEMBER") => ({
   name: "Alpha Fund",
   status: "ACTIVE",
   role,
-  seats: { capacity: 5, active: 2, pendingInvites: 0, available: 3 },
+  seats: { capacity: 5, scheduledCapacity: null, active: 2, pendingInvites: 0, available: 3 },
   creditBalanceInPaisa: 100_000,
   orgInstructions: null,
+  billingEmail: null,
   domains: [],
   subscription: null,
 });

@@ -29,6 +29,19 @@ jest.mock('../controller', () => {
     'listNotes',
     'createNote',
     'deleteNote',
+    'changeMemberRole',
+    'transferOwnership',
+    'leaveTeam',
+    'listInvites',
+    'revokeInvite',
+    'resendInvite',
+    'renameTeam',
+    'deleteTeam',
+    'exportTeam',
+    'updateBillingContact',
+    'scheduleSeatReduction',
+    'cancelSeatReduction',
+    'listAuditLog',
   ]
   return Object.fromEntries(names.map((n) => [n, jest.fn()]))
 })
@@ -74,12 +87,25 @@ describe('teams router', () => {
     'GET /notes',
     'POST /notes',
     'DELETE /notes/:id',
+    'PATCH /members/:userId/role',
+    'POST /ownership/transfer',
+    'POST /leave',
+    'GET /invites',
+    'DELETE /invites/:id',
+    'POST /invites/:id/resend',
+    'PATCH /',
+    'DELETE /',
+    'GET /export',
+    'PATCH /billing-contact',
+    'POST /seats/reduce',
+    'DELETE /seats/reduce',
+    'GET /audit-log',
   ])('registers %s', (route) => {
     expect(registered).toContain(route)
   })
 
   it('registers exactly the expected number of routes', () => {
-    expect(registered).toHaveLength(25)
+    expect(registered).toHaveLength(38)
   })
 
   it('applies the auth middleware before any route', () => {

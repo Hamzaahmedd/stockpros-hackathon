@@ -46,6 +46,16 @@ router.get(
   authTokenMiddleware,
   PaymentsController.getCreditLedgerHandler,
 )
+router.get(
+  '/team/transactions',
+  authTokenMiddleware,
+  PaymentsController.listTeamTransactionsHandler,
+)
+router.get(
+  '/team/transactions/:id/receipt',
+  authTokenMiddleware,
+  PaymentsController.getTeamReceiptHandler,
+)
 
 // ─── Webhook & Verification (always registered) ──────────────────────────────
 // A webhook can still arrive after enablePaymentProcessor is flipped off

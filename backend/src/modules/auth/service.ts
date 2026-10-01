@@ -267,11 +267,11 @@ export async function deleteAccount(userId: string): Promise<void> {
 
   // An active workspace can't be orphaned: the owner must let it lapse or
   // cancel it first, otherwise its members lose their plan with no owner to renew.
-  const ownedTeam = await prisma.team.findUnique({
-    where: { ownerId: userId },
-    select: { status: true },
+  const ownedTeam = await prisma.team.findFirst({
+    where: { ownerId: userId, status: TeamStatus.ACTIVE },
+    select: { id: true },
   })
-  if (ownedTeam?.status === TeamStatus.ACTIVE) {
+  if (ownedTeam) {
     throw new BadRequestError(
       'Cancel or transfer your team workspace before deleting your account',
     )
@@ -316,6 +316,11 @@ export async function deleteAccount(userId: string): Promise<void> {
         // Pending invites addressed to this email (the invite row is PII)
         tx.teamInvite.deleteMany({
           where: { email: { equals: user.email, mode: 'insensitive' } },
+        }),
+        // A billing contact the owner chose is personal data too; a lapsed workspace may still hold one
+        tx.team.updateMany({
+          where: { ownerId: userId },
+          data: { billingEmail: null },
         }),
 
         // Step 4: Soft-delete the user

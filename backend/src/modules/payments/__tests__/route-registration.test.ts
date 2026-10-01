@@ -86,4 +86,16 @@ describe('Payments — feature flag off (default test config)', () => {
 
     expect(res.status).toBe(401)
   })
+
+  it.each([
+    '/api/v1/payments/team/transactions',
+    '/api/v1/payments/team/transactions/123e4567-e89b-12d3-a456-426614174000/receipt',
+  ])(
+    'GET %s is always registered and requires auth (401, not 404)',
+    async (path) => {
+      const res = await request(createApp()).get(path)
+
+      expect(res.status).toBe(401)
+    },
+  )
 })

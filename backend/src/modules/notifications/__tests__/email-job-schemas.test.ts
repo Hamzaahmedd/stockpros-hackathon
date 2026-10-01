@@ -1,6 +1,7 @@
 import {
   alertEmailJobSchema,
   authEmailJobSchema,
+  paymentReceiptJobSchema,
   renewalReminderJobSchema,
   teamInviteJobSchema,
 } from '../email-job-schemas'
@@ -152,6 +153,38 @@ describe('field-specific rules', () => {
     expect(
       authEmailJobSchema.safeParse({ ...valid.auth, expiryMinutes: '10' })
         .success,
+    ).toBe(false)
+  })
+})
+
+describe('paymentReceiptJobSchema', () => {
+  const receipt = {
+    to: 'billing@fund.com',
+    transactionId: 'txn-1',
+    teamId: 'team-1',
+    teamName: 'Alpha Fund',
+    referenceNumber: 'SP-2030-000000C1',
+    description: 'Team plan subscription',
+    amount: 'Rs 14,998',
+    seatCount: 2,
+    paidOn: 'Mar 5, 2030',
+    manageUrl: 'https://app.example/teams',
+  }
+
+  it('accepts a real payload', () => {
+    expect(paymentReceiptJobSchema.safeParse(receipt).success).toBe(true)
+  })
+
+  it.each([
+    ['a non-email recipient', { to: 'nope' }],
+    ['a javascript: link', { manageUrl: 'javascript:alert(1)' }],
+    ['a zero seat count', { seatCount: 0 }],
+    ['a fractional seat count', { seatCount: 1.5 }],
+    ['an empty transaction id', { transactionId: '' }],
+    ['an empty team id', { teamId: '' }],
+  ])('rejects %s', (_label, override) => {
+    expect(
+      paymentReceiptJobSchema.safeParse({ ...receipt, ...override }).success,
     ).toBe(false)
   })
 })

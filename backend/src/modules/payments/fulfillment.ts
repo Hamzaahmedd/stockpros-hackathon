@@ -5,13 +5,18 @@ import {
   PlanTier,
   Prisma,
   SubscriptionPaymentMethod,
+  SubscriptionStatus,
+  TeamAuditAction,
   TeamRole,
   type PaymentTransaction,
 } from '@prisma/client'
 import { BadRequestError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
+import { releaseLapsedMembership } from '../../shared/infrastructure/team-access'
+import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import { SUBSCRIPTION_PERIOD_MS } from './constants'
+import { sendTeamReceiptEmail } from './receipt-email'
 import type { SafepayWebhookEvent } from './types'
 
 /**
@@ -52,6 +57,7 @@ async function fulfillTeamCreation(
   transaction: PaymentTransaction,
 ): Promise<void> {
   const now = new Date()
+  await releaseLapsedMembership(tx, transaction.userId)
   const team = await tx.team.create({
     data: {
       name: readTeamName(transaction.metadata),
@@ -91,12 +97,21 @@ async function fulfillTeamCreation(
 async function fulfillTeamRenewal(
   tx: Prisma.TransactionClient,
   teamId: string,
+  billedSeats: number,
 ): Promise<void> {
   const now = new Date()
   const subscription = await tx.subscription.findUnique({ where: { teamId } })
   if (!subscription) {
     logger.warn(
       `[Payments] Team renewal for teamId=${teamId} has no subscription`,
+    )
+    return
+  }
+  // A workspace its owner deleted stays deleted: a payment that lands late is
+  // recorded but must not revive a team whose members and assets are gone.
+  if (subscription.status === SubscriptionStatus.CANCELLED) {
+    logger.warn(
+      `[Payments] Renewal payment for deleted teamId=${teamId} needs a manual refund`,
     )
     return
   }
@@ -114,8 +129,16 @@ async function fulfillTeamRenewal(
       reminderSentAt: null,
     },
   })
-  // A completed payment always wins over a cancelled/expired workspace.
-  await tx.team.update({ where: { id: teamId }, data: { status: 'ACTIVE' } })
+  // A completed payment always wins over a lapsed workspace. The seats it was
+  // billed for become the capacity, which is how a scheduled reduction lands.
+  await tx.team.update({
+    where: { id: teamId },
+    data: {
+      status: 'ACTIVE',
+      seatCapacity: billedSeats,
+      scheduledSeatCapacity: null,
+    },
+  })
   await tx.user.updateMany({
     where: { teamMembers: { some: { teamId } } },
     data: { plan: PlanTier.TEAM },
@@ -132,6 +155,12 @@ async function fulfillSeatAddition(
   await tx.team.update({
     where: { id: transaction.teamId },
     data: { seatCapacity: { increment: transaction.seatCount } },
+  })
+  await recordTeamAudit(tx, {
+    teamId: transaction.teamId,
+    actorUserId: transaction.userId,
+    action: TeamAuditAction.SEATS_ADDED,
+    metadata: { seatCount: transaction.seatCount },
   })
 }
 
@@ -174,7 +203,7 @@ async function applyCompletedTransaction(
     return fulfillSeatAddition(tx, transaction)
   }
   return transaction.teamId
-    ? fulfillTeamRenewal(tx, transaction.teamId)
+    ? fulfillTeamRenewal(tx, transaction.teamId, transaction.seatCount)
     : fulfillTeamCreation(tx, transaction)
 }
 
@@ -190,7 +219,7 @@ export async function fulfillTeamOrCreditTransaction(
   nextStatus: PaymentStatus,
   rawPayload: Prisma.InputJsonValue,
 ): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
+  const applied = await prisma.$transaction(async (tx) => {
     const { count: affectedCount } = await tx.paymentTransaction.updateMany({
       where: { trackerId: event.trackerId, status: PaymentStatus.PENDING },
       data: {
@@ -206,4 +235,9 @@ export async function fulfillTeamOrCreditTransaction(
     }
     return true
   })
+  // After commit and best-effort: the payment stands even if the email cannot be queued.
+  if (applied && nextStatus === PaymentStatus.COMPLETED) {
+    await sendTeamReceiptEmail(transaction.id)
+  }
+  return applied
 }

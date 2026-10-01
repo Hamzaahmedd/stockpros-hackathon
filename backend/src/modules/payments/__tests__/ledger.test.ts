@@ -2,15 +2,13 @@ jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     user: { findUniqueOrThrow: jest.fn(), findMany: jest.fn() },
     team: { findUniqueOrThrow: jest.fn() },
-    creditLedger: { findMany: jest.fn() },
+    creditLedger: { findMany: jest.fn(), findFirst: jest.fn() },
   },
 }))
 
 jest.mock('../../../shared/infrastructure/team-access', () => ({
-  // keep the real, pure role check; only the DB-backed lookups are faked
-  isTeamAdminRole: jest.requireActual(
-    '../../../shared/infrastructure/team-access',
-  ).isTeamAdminRole,
+  // keep the real, pure helpers (roles, permissions); only the DB-backed lookups are faked
+  ...jest.requireActual('../../../shared/infrastructure/team-access'),
   getActiveMembership: jest.fn(),
 }))
 
@@ -128,7 +126,24 @@ describe('pagination', () => {
     expect(page.nextCursor).toBeNull()
   })
 
+  it('rejects a cursor that is not one of this pool’s own entries', async () => {
+    db.creditLedger.findFirst.mockResolvedValue(null)
+    await expect(
+      getCreditLedger('user-1', {
+        scope: SubscriptionScope.USER,
+        limit: 10,
+        cursor: row(9).id,
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 })
+    expect(db.creditLedger.findFirst).toHaveBeenCalledWith({
+      where: { id: row(9).id, userId: 'user-1' },
+      select: { id: true },
+    })
+    expect(db.creditLedger.findMany).not.toHaveBeenCalled()
+  })
+
   it('continues after the cursor, skipping the cursor row itself', async () => {
+    db.creditLedger.findFirst.mockResolvedValue({ id: row(2).id })
     await getCreditLedger('user-1', {
       scope: SubscriptionScope.USER,
       limit: 10,

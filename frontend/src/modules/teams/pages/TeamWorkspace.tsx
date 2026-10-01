@@ -7,15 +7,18 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { CreditLedgerPanel } from "@/modules/plans/components/CreditLedgerPanel";
+import { ActivityTab } from "../components/ActivityTab";
+import { BillingTab } from "../components/BillingTab";
 import { DomainsTab } from "../components/DomainsTab";
 import { MembersTab } from "../components/MembersTab";
 import { OverviewTab } from "../components/OverviewTab";
 import { PreferencesPanel } from "../components/PreferencesPanel";
+import { SettingsTab } from "../components/SettingsTab";
 import { SharedAssetsTab } from "../components/SharedAssetsTab";
 import { WorkspaceSearchTab } from "../components/WorkspaceSearchTab";
 import { teamService } from "../services";
 import type { Team } from "../types";
-import { apiErrorMessage, isTeamAdmin } from "../utils";
+import { apiErrorMessage, canDo, isTeamAdmin, TeamAction } from "../utils";
 
 type WorkspaceTab =
   | "overview"
@@ -24,17 +27,30 @@ type WorkspaceTab =
   | "shared"
   | "search"
   | "preferences"
-  | "credits";
+  | "credits"
+  | "billing"
+  | "activity"
+  | "settings";
 
-const TABS: { id: WorkspaceTab; label: string; adminOnly?: boolean }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "members", label: "Members" },
-  { id: "domains", label: "Domains" },
-  { id: "shared", label: "Shared assets" },
-  { id: "search", label: "Search" },
-  { id: "preferences", label: "Preferences" },
-  { id: "credits", label: "Credits", adminOnly: true },
+// Who sees a tab: everyone, owners and admins, or (owner) only the owner.
+type TabAudience = "all" | "admin" | "owner";
+
+const TABS: { id: WorkspaceTab; label: string; audience: TabAudience }[] = [
+  { id: "overview", label: "Overview", audience: "all" },
+  { id: "members", label: "Members", audience: "all" },
+  { id: "domains", label: "Domains", audience: "all" },
+  { id: "shared", label: "Shared assets", audience: "all" },
+  { id: "search", label: "Search", audience: "all" },
+  { id: "preferences", label: "Preferences", audience: "all" },
+  { id: "credits", label: "Credits", audience: "admin" },
+  { id: "billing", label: "Billing", audience: "admin" },
+  { id: "activity", label: "Activity", audience: "admin" },
+  // Admins can rename; the rest of the tab is owner-only.
+  { id: "settings", label: "Settings", audience: "admin" },
 ];
+
+const canSeeTab = (audience: TabAudience, role: Team["role"]): boolean =>
+  audience === "all" || canDo(role, TeamAction.MANAGE);
 
 export default function TeamWorkspace() {
   const { user } = useAuth();
@@ -89,7 +105,7 @@ export default function TeamWorkspace() {
               </header>
 
               <div role="tablist" aria-label="Workspace sections" className="mb-6 flex flex-wrap gap-2 border-b border-border pb-3">
-                {TABS.filter((t) => !t.adminOnly || isTeamAdmin(team.role)).map((t) => (
+                {TABS.filter((t) => canSeeTab(t.audience, team.role)).map((t) => (
                   <Button
                     key={t.id}
                     type="button"
@@ -140,6 +156,17 @@ export default function TeamWorkspace() {
               )}
               {tab === "credits" && isTeamAdmin(team.role) && (
                 <CreditLedgerPanel scope="TEAM" />
+              )}
+              {tab === "billing" && isTeamAdmin(team.role) && (
+                <BillingTab team={team} reload={load} />
+              )}
+              {tab === "activity" && isTeamAdmin(team.role) && <ActivityTab />}
+              {tab === "settings" && isTeamAdmin(team.role) && (
+                <SettingsTab
+                  team={team}
+                  reload={load}
+                  isOwner={canDo(team.role, TeamAction.DELETE_TEAM)}
+                />
               )}
               {tab === "shared" && (
                 <SharedAssetsTab team={team} currentUserId={user?.userId ?? ""} />

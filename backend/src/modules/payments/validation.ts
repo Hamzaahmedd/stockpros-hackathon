@@ -83,3 +83,12 @@ export const creditLedgerQueryValidator = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().uuid('cursor must be a valid id').optional(),
 })
+
+export const transactionsQueryValidator = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  cursor: z.string().uuid('cursor must be a valid id').optional(),
+})
+
+export const transactionIdParamValidator = z.object({
+  id: z.string().uuid('id must be a valid id'),
+})

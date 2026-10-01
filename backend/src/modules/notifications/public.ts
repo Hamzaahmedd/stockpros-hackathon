@@ -3,6 +3,7 @@
 // router/middleware chain (keeps callers free of circular imports).
 export { enqueueAuthEmail } from './infrastructure/auth-email-worker'
 export {
+  enqueuePaymentReceiptEmail,
   enqueueRenewalReminderEmail,
   enqueueTeamInviteEmail,
 } from './infrastructure/email-worker'
@@ -11,6 +12,7 @@ export { runNotificationCleanupJob } from './notification-cleanup-job'
 export { INTEREST_TO_CATEGORIES } from './preferences'
 export type {
   AuthEmailJobPayload,
+  PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
   TeamInviteEmailJobPayload,
 } from './types'

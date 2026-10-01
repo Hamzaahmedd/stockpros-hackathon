@@ -10,9 +10,11 @@ const mockPrisma: any = {
     findMany: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
+    deleteMany: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  teamAuditLog: { create: jest.fn() },
   teamInvite: {
     count: jest.fn(),
     create: jest.fn(),
@@ -41,10 +43,8 @@ jest.mock('../../../shared/infrastructure/database', () => ({
 }))
 
 jest.mock('../../../shared/infrastructure/team-access', () => ({
-  // keep the real, pure role check; only the DB-backed lookups are faked
-  isTeamAdminRole: jest.requireActual(
-    '../../../shared/infrastructure/team-access',
-  ).isTeamAdminRole,
+  // keep the real, pure helpers (roles, permissions); only the DB-backed lookups are faked
+  ...jest.requireActual('../../../shared/infrastructure/team-access'),
   getActiveMembership: jest.fn(),
   resolveFallbackPlan: jest.fn(),
 }))
@@ -77,6 +77,7 @@ import {
 import {
   getActiveMembership,
   resolveFallbackPlan,
+  TeamPermission,
 } from '../../../shared/infrastructure/team-access'
 import { hashToken } from '../../../shared/utils'
 import {
@@ -132,11 +133,22 @@ describe('requireMembership', () => {
     })
   })
 
-  it('forbids a MEMBER when admin is required', async () => {
+  it('forbids a MEMBER when a management permission is required', async () => {
     setMembership(TeamRole.MEMBER)
     await expect(
-      service.requireMembership('u1', { admin: true }),
+      service.requireMembership('u1', {
+        permission: TeamPermission.SETTINGS_MANAGE,
+      }),
     ).rejects.toBeInstanceOf(ForbiddenError)
+  })
+
+  it('words owner-only permissions as owner-only', async () => {
+    setMembership(TeamRole.ADMIN)
+    await expect(
+      service.requireMembership('u1', {
+        permission: TeamPermission.TEAM_DELETE,
+      }),
+    ).rejects.toThrow('Only the workspace owner can do this')
   })
 
   it.each([TeamRole.OWNER, TeamRole.ADMIN])(
@@ -144,7 +156,9 @@ describe('requireMembership', () => {
     async (role) => {
       setMembership(role)
       await expect(
-        service.requireMembership('u1', { admin: true }),
+        service.requireMembership('u1', {
+          permission: TeamPermission.SETTINGS_MANAGE,
+        }),
       ).resolves.toMatchObject({ role })
     },
   )

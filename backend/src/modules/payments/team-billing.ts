@@ -14,9 +14,11 @@ import {
 } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import {
+  can,
+  effectiveSeatCapacity,
   findRestrictingDomain,
   getActiveMembership,
-  isTeamAdminRole,
+  TeamPermission,
 } from '../../shared/infrastructure/team-access'
 import { buildCheckoutUrl, initPaymentSession } from './client'
 import {
@@ -84,7 +86,7 @@ async function requireTeamAdmin(userId: string) {
     include: { team: { include: { subscription: true } } },
   })
   if (!member) throw new NotFoundError('You are not part of a team workspace')
-  if (!isTeamAdminRole(member.role)) {
+  if (!can(member.role, TeamPermission.BILLING_MANAGE)) {
     throw new ForbiddenError('Only a team owner or admin can do this')
   }
   return member.team
@@ -104,8 +106,13 @@ export async function assertCanCreateTeam(userId: string): Promise<void> {
   }
 
   const [membership, ownedTeam] = await Promise.all([
-    prisma.teamMember.findUnique({ where: { userId } }),
-    prisma.team.findUnique({ where: { ownerId: userId } }),
+    // Only a seat in a live workspace counts; a lapsed one is released when the new team is created.
+    prisma.teamMember.findFirst({
+      where: { userId, team: { status: TeamStatus.ACTIVE } },
+    }),
+    prisma.team.findFirst({
+      where: { ownerId: userId, status: TeamStatus.ACTIVE },
+    }),
   ])
   if (membership || ownedTeam) {
     throw new ConflictError('You already belong to a team workspace')
@@ -157,11 +164,24 @@ export async function createTeamRenewalCheckout(
 ): Promise<CreateCheckoutResult> {
   const team = await requireTeamAdmin(userId)
 
+  // A scheduled reduction bills the smaller count, but never fewer seats than
+  // are already in use (members plus unexpired invites).
+  const [activeSeats, pendingInvites] = await Promise.all([
+    prisma.teamMember.count({ where: { teamId: team.id } }),
+    prisma.teamInvite.count({
+      where: { teamId: team.id, expiresAt: { gt: new Date() } },
+    }),
+  ])
+  const billedSeats = Math.max(
+    effectiveSeatCapacity(team),
+    activeSeats + pendingInvites,
+  )
+
   return startOneTimeCheckout({
     userId,
     teamId: team.id,
-    amountPaisa: team.seatCapacity * TEAM_SEAT_PRICE_PAISA,
-    seatCount: team.seatCapacity,
+    amountPaisa: billedSeats * TEAM_SEAT_PRICE_PAISA,
+    seatCount: billedSeats,
     kind: PaymentKind.SUBSCRIPTION,
     planTier: PlanTier.TEAM,
     subscriptionId: team.subscription?.id,
@@ -180,7 +200,7 @@ export async function createTopupCheckout(
   const membership = await getActiveMembership(userId)
 
   if (membership) {
-    if (!isTeamAdminRole(membership.role)) {
+    if (!can(membership.role, TeamPermission.BILLING_MANAGE)) {
       throw new ForbiddenError(
         'Only a team owner or admin can top up the shared credit pool',
       )

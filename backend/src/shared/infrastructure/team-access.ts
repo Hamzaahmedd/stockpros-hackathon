@@ -10,14 +10,48 @@ import { prisma } from './database'
 
 type DbClient = PrismaClient | Prisma.TransactionClient
 
-const TEAM_ADMIN_ROLES: ReadonlySet<TeamRole> = new Set([
-  TeamRole.OWNER,
-  TeamRole.ADMIN,
-])
+/** Everything a workspace member can be authorised to do. Checked through `can()`, never by comparing role names. */
+export enum TeamPermission {
+  MEMBERS_INVITE = 'MEMBERS_INVITE',
+  ANALYTICS_READ = 'ANALYTICS_READ',
+  MEMBERS_REMOVE = 'MEMBERS_REMOVE',
+  MEMBERS_CHANGE_ROLE = 'MEMBERS_CHANGE_ROLE',
+  ADMINS_MANAGE = 'ADMINS_MANAGE',
+  CREDITS_MANAGE = 'CREDITS_MANAGE',
+  BILLING_MANAGE = 'BILLING_MANAGE',
+  SETTINGS_MANAGE = 'SETTINGS_MANAGE',
+  AUDIT_READ = 'AUDIT_READ',
+  OWNERSHIP_TRANSFER = 'OWNERSHIP_TRANSFER',
+  TEAM_DELETE = 'TEAM_DELETE',
+  TEAM_EXPORT = 'TEAM_EXPORT',
+}
+
+const ADMIN_PERMISSIONS: readonly TeamPermission[] = [
+  TeamPermission.MEMBERS_INVITE,
+  TeamPermission.MEMBERS_REMOVE,
+  TeamPermission.CREDITS_MANAGE,
+  TeamPermission.BILLING_MANAGE,
+  TeamPermission.SETTINGS_MANAGE,
+  TeamPermission.AUDIT_READ,
+  TeamPermission.ANALYTICS_READ,
+]
+
+// A single table, so custom (Enterprise) roles can later be rows instead of code.
+const ROLE_PERMISSIONS: Readonly<
+  Record<TeamRole, ReadonlySet<TeamPermission>>
+> = {
+  [TeamRole.OWNER]: new Set(Object.values(TeamPermission)),
+  [TeamRole.ADMIN]: new Set(ADMIN_PERMISSIONS),
+  [TeamRole.MEMBER]: new Set(),
+}
+
+export const can = (role: TeamRole, permission: TeamPermission): boolean =>
+  // Optional chain: a role outside the enum (bad data) has no permissions.
+  ROLE_PERMISSIONS[role]?.has(permission) ?? false
 
 /** Owners and admins manage a workspace (billing, members, settings); plain members do not. */
 export const isTeamAdminRole = (role: TeamRole): boolean =>
-  TEAM_ADMIN_ROLES.has(role)
+  can(role, TeamPermission.SETTINGS_MANAGE)
 
 export interface ActiveMembership {
   teamId: string
@@ -75,4 +109,31 @@ export async function resolveFallbackPlan(
     (personal.status === SubscriptionStatus.ACTIVE ||
       personal.status === SubscriptionStatus.GRACE)
   return live ? PlanTier.PRO : PlanTier.FREE
+}
+
+/**
+ * Seats the workspace can actually fill: a scheduled reduction takes effect
+ * for invites immediately (it only reaches billing at renewal), so nobody can
+ * schedule a smaller plan and then invite past it.
+ */
+export const effectiveSeatCapacity = (team: {
+  seatCapacity: number
+  scheduledSeatCapacity: number | null
+}): number =>
+  Math.min(team.seatCapacity, team.scheduledSeatCapacity ?? team.seatCapacity)
+
+/**
+ * A seat in a workspace that is no longer ACTIVE (lapsed) still holds the
+ * user's one-workspace slot so a renewal can restore its members. Joining or
+ * creating another workspace releases it first — otherwise those people would
+ * be stuck on a workspace they can neither use nor leave. A renewal then
+ * restores only the members still attached.
+ */
+export async function releaseLapsedMembership(
+  client: DbClient,
+  userId: string,
+): Promise<void> {
+  await client.teamMember.deleteMany({
+    where: { userId, team: { status: { not: TeamStatus.ACTIVE } } },
+  })
 }

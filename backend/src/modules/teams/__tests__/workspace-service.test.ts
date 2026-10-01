@@ -321,7 +321,9 @@ describe('getTeamAnalytics', () => {
     await expect(ws.getTeamAnalytics('u1')).rejects.toBeInstanceOf(
       ForbiddenError,
     )
-    expect(requireMembership).toHaveBeenCalledWith('u1', { admin: true })
+    expect(requireMembership).toHaveBeenCalledWith('u1', {
+      permission: 'ANALYTICS_READ',
+    })
   })
 
   it('aggregates usage, credit spend, top symbols and tracked tickers', async () => {

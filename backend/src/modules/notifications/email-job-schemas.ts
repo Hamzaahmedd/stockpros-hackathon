@@ -58,9 +58,26 @@ export const teamInviteJobSchema = z.object({
   expiresAt: z.string().datetime(),
 })
 
+export const paymentReceiptJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id — never the address. */
+  transactionId: id,
+  teamId: id,
+  teamName: z.string(),
+  referenceNumber: z.string(),
+  description: z.string(),
+  amount: z.string(),
+  seatCount: z.number().int().positive(),
+  paidOn: z.string(),
+  manageUrl: webUrl,
+})
+
 export type EmailJobPayload = z.infer<typeof alertEmailJobSchema>
 export type AuthEmailJobPayload = z.infer<typeof authEmailJobSchema>
 export type RenewalReminderEmailJobPayload = z.infer<
   typeof renewalReminderJobSchema
 >
 export type TeamInviteEmailJobPayload = z.infer<typeof teamInviteJobSchema>
+export type PaymentReceiptEmailJobPayload = z.infer<
+  typeof paymentReceiptJobSchema
+>

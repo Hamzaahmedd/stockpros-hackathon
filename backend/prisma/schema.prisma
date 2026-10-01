@@ -50,7 +50,7 @@ model User {
   subscription Subscription?
 
   // ── Teams feature ───────────────────────────────────────────────────────────
-  ownedTeam   Team?
+  ownedTeams  Team[]
   teamMembers TeamMember[]
 
   @@index([status], map: "idx_users_status")
@@ -503,6 +503,29 @@ enum TeamRole {
   MEMBER
 }
 
+enum TeamAuditAction {
+  MEMBER_INVITED
+  INVITE_REVOKED
+  INVITE_RESENT
+  INVITE_ACCEPTED
+  MEMBER_REMOVED
+  MEMBER_LEFT
+  ROLE_CHANGED
+  OWNERSHIP_TRANSFERRED
+  SETTINGS_UPDATED
+  DOMAIN_ADDED
+  DOMAIN_VERIFIED
+  SEATS_ADDED
+  SEAT_REDUCTION_SCHEDULED
+  SEAT_REDUCTION_CANCELLED
+  CREDIT_LIMIT_SET
+  BILLING_CONTACT_UPDATED
+  TEAM_RENAMED
+  TEAM_DELETED
+  TEAM_EXPORTED
+  SUBSCRIPTION_EXPIRED
+}
+
 enum CreditLedgerType {
   PURCHASE
   OVERAGE_CONSUMPTION
@@ -624,18 +647,22 @@ model Subscription {
 // ─── Teams (B2B workspaces) ──────────────────────────────────────────────────
 
 model Team {
-  id                   String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  name                 String
-  ownerId              String     @unique @map("owner_id") @db.Uuid
+  id                    String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name                  String
+  ownerId               String     @map("owner_id") @db.Uuid
   // Enforced 2..150 in the service layer (Prisma has no CHECK constraints).
-  seatCapacity         Int        @map("seat_capacity")
-  status               TeamStatus @default(ACTIVE)
+  seatCapacity          Int        @map("seat_capacity")
+  status                TeamStatus @default(ACTIVE)
   // Workspace-wide AI context appended to forecast/decision responses.
-  orgInstructions      String?    @map("org_instructions")
+  orgInstructions       String?    @map("org_instructions")
   // Workspace default UI preferences; individual User.preferences overlay them.
-  defaultPreferences   Json?      @map("default_preferences")
-  creditBalanceInPaisa Int        @default(0) @map("credit_balance_in_paisa")
-  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  defaultPreferences    Json?      @map("default_preferences")
+  creditBalanceInPaisa  Int        @default(0) @map("credit_balance_in_paisa")
+  // Receives renewal reminders and receipts; falls back to the owner's email when unset.
+  billingEmail          String?    @map("billing_email")
+  // Seat count the next renewal bills (a scheduled reduction); null = keep seatCapacity.
+  scheduledSeatCapacity Int?       @map("scheduled_seat_capacity")
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   owner            User                 @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   domains          TeamDomain[]
@@ -646,6 +673,8 @@ model Team {
   sharedScreeners  SharedScreener[]
   researchNotes    SharedResearchNote[]
 
+  // Not unique: a deleted (CANCELLED) workspace keeps its owner for history, who may then start a new one.
+  @@index([ownerId])
   @@map("teams")
 }
 
@@ -740,6 +769,22 @@ model SharedResearchNote {
   @@index([teamId], map: "idx_shared_research_notes_team_id")
   @@index([symbol], map: "idx_shared_research_notes_symbol")
   @@map("shared_research_notes")
+}
+
+// ─── Team admin audit trail ─────────────────────────────────────────────────
+// Append-only record of administrative actions. No FKs and no personal data
+// (IDs and enum values only) so it survives member / workspace deletion.
+model TeamAuditLog {
+  id           String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId       String          @map("team_id") @db.Uuid
+  actorUserId  String?         @map("actor_user_id") @db.Uuid
+  action       TeamAuditAction
+  targetUserId String?         @map("target_user_id") @db.Uuid
+  metadata     Json?
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([teamId, createdAt], map: "idx_team_audit_team_created")
+  @@map("team_audit_logs")
 }
 
 // ─── Metered usage (base-quota counting + team analytics) ────────────────────

@@ -356,6 +356,90 @@ describe('team invite emails', () => {
   })
 })
 
+describe('payment receipt emails', () => {
+  const payload = {
+    to: 'billing@fund.com',
+    transactionId: 'txn-1',
+    teamId: 'team-1',
+    teamName: 'Alpha Fund',
+    referenceNumber: 'SP-2030-000000C1',
+    description: 'Team plan subscription',
+    amount: 'Rs 14,998',
+    seatCount: 2,
+    paidOn: 'Mar 5, 2030',
+    manageUrl: 'https://app.example/teams',
+  }
+
+  it('logs and skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueuePaymentReceiptEmail } = require('../email-worker')
+    await expect(enqueuePaymentReceiptEmail(payload)).resolves.toBeUndefined()
+  })
+
+  it("enqueues under the 'payment-receipt' job name on the shared email queue", async () => {
+    const { QueueMock } = mockDeps({ host: 'localhost' })
+    const { enqueuePaymentReceiptEmail } = require('../email-worker')
+
+    await enqueuePaymentReceiptEmail(payload)
+
+    expect(QueueMock.mock.results[0].value.add).toHaveBeenCalledWith(
+      'payment-receipt',
+      payload,
+    )
+  })
+
+  it('renders and sends the receipt when the worker processes the job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await worker.processor({ name: 'payment-receipt', data: payload })
+
+    const mail = transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('billing@fund.com')
+    expect(mail.subject).toBe('Your StockPros payment receipt SP-2030-000000C1')
+    expect(mail.html).toContain('Rs 14,998')
+    expect(mail.text).toContain('Alpha Fund')
+  })
+
+  it('rethrows delivery failures so BullMQ retries the job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    transporter.sendMail.mockRejectedValueOnce(new Error('smtp down'))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await expect(
+      worker.processor({ name: 'payment-receipt', data: payload }),
+    ).rejects.toThrow()
+  })
+
+  it('will not send a job whose payload is malformed (Redis data is not trusted)', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await expect(
+      worker.processor({
+        name: 'payment-receipt',
+        data: { ...payload, manageUrl: 'javascript:alert(1)' },
+      }),
+    ).rejects.toThrow()
+    expect(transporter.sendMail).not.toHaveBeenCalled()
+  })
+})
+
 // Makes this file a module so its top-level helpers do not collide with other
 // import-less test files in the shared ts-jest program (TS2451).
 export {}

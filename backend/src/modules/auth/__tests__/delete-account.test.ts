@@ -27,7 +27,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
       updateMany: jest.fn(),
     },
     team: {
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     $transaction: jest.fn(),
   },
@@ -51,7 +51,7 @@ describe('deleteAccount — payment transaction retention', () => {
     ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
       count: 0,
     })
-    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.team.findFirst as jest.Mock).mockResolvedValue(null)
 
     // Deliberately omits `paymentTransaction` — if service.ts is ever
     // changed to purge payment records, this mock throws and the test fails.
@@ -68,6 +68,7 @@ describe('deleteAccount — payment transaction retention', () => {
       phoneOtp: { deleteMany: jest.fn() },
       teamMember: { deleteMany: jest.fn() },
       teamInvite: { deleteMany: jest.fn() },
+      team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(
@@ -91,21 +92,22 @@ describe('deleteAccount — team workspace guard', () => {
   })
 
   it('refuses to delete the owner of an ACTIVE team, before revoking anything', async () => {
-    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue({
-      status: 'ACTIVE',
-    })
+    ;(prisma.team.findFirst as jest.Mock).mockResolvedValue({ id: 'team-1' })
 
     await expect(deleteAccount('user-1')).rejects.toMatchObject({
       statusCode: 400,
+    })
+    expect(prisma.team.findFirst).toHaveBeenCalledWith({
+      where: { ownerId: 'user-1', status: 'ACTIVE' },
+      select: { id: true },
     })
     expect(prisma.userSession.updateMany).not.toHaveBeenCalled()
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
   it('removes the team seat in the purge transaction and allows a CANCELLED-team owner to delete', async () => {
-    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue({
-      status: 'CANCELLED',
-    })
+    // No ACTIVE workspace is owned (a cancelled or deleted one does not block).
+    ;(prisma.team.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
       count: 0,
     })
@@ -123,6 +125,7 @@ describe('deleteAccount — team workspace guard', () => {
       phoneOtp: deleteMany(),
       teamMember: deleteMany(),
       teamInvite: deleteMany(),
+      team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(
@@ -136,7 +139,7 @@ describe('deleteAccount — team workspace guard', () => {
   })
 
   it("purges pending team invites addressed to the deleted user's email (invite rows are PII), case-insensitively", async () => {
-    ;(prisma.team.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.team.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
       count: 0,
     })
@@ -154,6 +157,7 @@ describe('deleteAccount — team workspace guard', () => {
       phoneOtp: deleteMany(),
       teamMember: deleteMany(),
       teamInvite: deleteMany(),
+      team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(
@@ -162,6 +166,11 @@ describe('deleteAccount — team workspace guard', () => {
 
     await deleteAccount('user-1')
 
+    // The owner's chosen billing contact is personal data: cleared with the account.
+    expect(tx.team.updateMany).toHaveBeenCalledWith({
+      where: { ownerId: 'user-1' },
+      data: { billingEmail: null },
+    })
     expect(tx.teamInvite.deleteMany).toHaveBeenCalledWith({
       where: { email: { equals: 'user@example.com', mode: 'insensitive' } },
     })

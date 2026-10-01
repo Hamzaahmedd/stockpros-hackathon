@@ -1,5 +1,11 @@
 import config from '@/config'
-import { PlanTier, Prisma, TeamRole, TeamStatus } from '@prisma/client'
+import {
+  PlanTier,
+  Prisma,
+  TeamAuditAction,
+  TeamRole,
+  TeamStatus,
+} from '@prisma/client'
 import crypto from 'node:crypto'
 import {
   BadRequestError,
@@ -10,11 +16,16 @@ import {
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import {
+  can,
+  effectiveSeatCapacity,
   getActiveMembership,
   isTeamAdminRole,
+  releaseLapsedMembership,
   resolveFallbackPlan,
+  TeamPermission,
   type ActiveMembership,
 } from '../../shared/infrastructure/team-access'
+import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import { hashToken } from '../../shared/utils'
 import { enqueueTeamInviteEmail } from '../notifications/public'
 import {
@@ -38,16 +49,27 @@ import {
 
 // ─── Access helpers ───────────────────────────────────────────────────────────
 
+const OWNER_ONLY_PERMISSIONS: ReadonlySet<TeamPermission> = new Set([
+  TeamPermission.MEMBERS_CHANGE_ROLE,
+  TeamPermission.OWNERSHIP_TRANSFER,
+  TeamPermission.TEAM_DELETE,
+  TeamPermission.TEAM_EXPORT,
+])
+
 export async function requireMembership(
   userId: string,
-  options: { admin?: boolean } = {},
+  options: { permission?: TeamPermission } = {},
 ): Promise<ActiveMembership> {
   const membership = await getActiveMembership(userId)
   if (!membership) {
     throw new NotFoundError('You are not part of an active team workspace')
   }
-  if (options.admin && !isTeamAdminRole(membership.role)) {
-    throw new ForbiddenError('Only a team owner or admin can do this')
+  if (options.permission && !can(membership.role, options.permission)) {
+    throw new ForbiddenError(
+      OWNER_ONLY_PERMISSIONS.has(options.permission)
+        ? 'Only the workspace owner can do this'
+        : 'Only a team owner or admin can do this',
+    )
   }
   return membership
 }
@@ -74,6 +96,7 @@ export async function createTeam(
   // Bypass Mode: instant creation, mirroring the instant /auth/plan switch.
   await assertCanCreateTeam(userId)
   const team = await prisma.$transaction(async (tx) => {
+    await releaseLapsedMembership(tx, userId)
     const created = await tx.team.create({
       data: {
         name: input.name,
@@ -101,16 +124,27 @@ export async function addSeats(
     return { checkout }
   }
 
-  const { teamId } = await requireMembership(userId, { admin: true })
+  const { teamId } = await requireMembership(userId, {
+    permission: TeamPermission.BILLING_MANAGE,
+  })
   const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId } })
   if (team.seatCapacity + seatCount > TEAM_MAX_SEATS) {
     throw new BadRequestError(
       `A workspace can have at most ${TEAM_MAX_SEATS} seats`,
     )
   }
-  const updated = await prisma.team.update({
-    where: { id: teamId },
-    data: { seatCapacity: { increment: seatCount } },
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.team.update({
+      where: { id: teamId },
+      data: { seatCapacity: { increment: seatCount } },
+    })
+    await recordTeamAudit(tx, {
+      teamId,
+      actorUserId: userId,
+      action: TeamAuditAction.SEATS_ADDED,
+      metadata: { seatCount },
+    })
+    return next
   })
   return { checkout: null, result: { seatCapacity: updated.seatCapacity } }
 }
@@ -154,10 +188,19 @@ export async function getMyTeam(userId: string) {
     role: membership.role,
     seats: {
       capacity: team.seatCapacity,
+      // Takes effect at the next renewal; invites are already limited to it.
+      scheduledCapacity: team.scheduledSeatCapacity,
       active: activeSeats,
       pendingInvites,
-      available: Math.max(team.seatCapacity - activeSeats - pendingInvites, 0),
+      available: Math.max(
+        effectiveSeatCapacity(team) - activeSeats - pendingInvites,
+        0,
+      ),
     },
+    // Billing details are for people who manage billing.
+    billingEmail: can(membership.role, TeamPermission.BILLING_MANAGE)
+      ? team.billingEmail
+      : null,
     creditBalanceInPaisa: team.creditBalanceInPaisa,
     orgInstructions: team.orgInstructions,
     domains: team.domains,
@@ -206,7 +249,7 @@ export async function listMembers(userId: string) {
  * requests queue on the team row's lock until the holder commits, so the
  * capacity count they read is never stale. Released at commit or rollback.
  */
-const lockTeamRow = async (
+export const lockTeamRow = async (
   tx: Prisma.TransactionClient,
   teamId: string,
 ): Promise<void> => {
@@ -217,8 +260,13 @@ export async function createInvite(
   actorId: string,
   input: { email: string; role: 'ADMIN' | 'MEMBER' },
 ) {
-  const membership = await requireMembership(actorId, { admin: true })
-  if (input.role === 'ADMIN' && membership.role !== TeamRole.OWNER) {
+  const membership = await requireMembership(actorId, {
+    permission: TeamPermission.MEMBERS_INVITE,
+  })
+  if (
+    input.role === 'ADMIN' &&
+    !can(membership.role, TeamPermission.ADMINS_MANAGE)
+  ) {
     throw new ForbiddenError('Only the owner can invite an admin')
   }
 
@@ -236,7 +284,7 @@ export async function createInvite(
       [
         tx.team.findUniqueOrThrow({
           where: { id: membership.teamId },
-          select: { seatCapacity: true },
+          select: { seatCapacity: true, scheduledSeatCapacity: true },
         }),
         tx.teamMember.count({ where: { teamId: membership.teamId } }),
         tx.teamInvite.count({
@@ -248,7 +296,13 @@ export async function createInvite(
         }),
         tx.user.findUnique({
           where: { email: input.email },
-          select: { teamMembers: { select: { id: true } } },
+          // Only a seat in a live workspace blocks an invite; a lapsed one is released on accept.
+          select: {
+            teamMembers: {
+              where: { team: { status: TeamStatus.ACTIVE } },
+              select: { id: true },
+            },
+          },
         }),
       ],
     )
@@ -257,7 +311,7 @@ export async function createInvite(
       throw new ConflictError('That user already belongs to a workspace')
     }
     // `pendingInvites` excludes this email, so re-inviting it never double-counts.
-    if (activeSeats + pendingInvites >= team.seatCapacity) {
+    if (activeSeats + pendingInvites >= effectiveSeatCapacity(team)) {
       throw new ConflictError(
         'No seats available — add seats before inviting more people',
       )
@@ -266,7 +320,7 @@ export async function createInvite(
     await tx.teamInvite.deleteMany({
       where: { teamId: membership.teamId, email: input.email },
     })
-    return tx.teamInvite.create({
+    const created = await tx.teamInvite.create({
       data: {
         teamId: membership.teamId,
         email: input.email,
@@ -275,6 +329,13 @@ export async function createInvite(
         expiresAt,
       },
     })
+    await recordTeamAudit(tx, {
+      teamId: membership.teamId,
+      actorUserId: actorId,
+      action: TeamAuditAction.MEMBER_INVITED,
+      metadata: { inviteId: created.id, role: input.role },
+    })
+    return created
   })
 
   const inviteLink = `${config.server.frontendUrl}/teams/invite?token=${rawToken}`
@@ -298,7 +359,7 @@ export async function createInvite(
  * saved and its link returned to the inviter, so a queue/lookup failure is
  * logged and reported as `false` instead of failing the request.
  */
-async function dispatchInviteEmail(
+export async function dispatchInviteEmail(
   inviterId: string,
   invite: {
     id: string
@@ -362,6 +423,7 @@ export async function acceptInvite(userId: string, rawToken: string) {
   await prisma.$transaction(async (tx) => {
     await lockTeamRow(tx, invite.teamId)
 
+    await releaseLapsedMembership(tx, userId)
     if (await tx.teamMember.findUnique({ where: { userId } })) {
       throw new ConflictError('You already belong to a workspace')
     }
@@ -369,11 +431,11 @@ export async function acceptInvite(userId: string, rawToken: string) {
     const [team, seated] = await Promise.all([
       tx.team.findUniqueOrThrow({
         where: { id: invite.teamId },
-        select: { seatCapacity: true },
+        select: { seatCapacity: true, scheduledSeatCapacity: true },
       }),
       tx.teamMember.count({ where: { teamId: invite.teamId } }),
     ])
-    if (seated >= team.seatCapacity) {
+    if (seated >= effectiveSeatCapacity(team)) {
       throw new ConflictError('This workspace has no free seats')
     }
     await tx.teamMember.create({
@@ -384,13 +446,41 @@ export async function acceptInvite(userId: string, rawToken: string) {
       where: { id: userId },
       data: { plan: PlanTier.TEAM },
     })
+    await recordTeamAudit(tx, {
+      teamId: invite.teamId,
+      actorUserId: userId,
+      action: TeamAuditAction.INVITE_ACCEPTED,
+      metadata: { role: invite.role },
+    })
   })
 
   return { teamId: invite.teamId, role: invite.role }
 }
 
+/**
+ * Hard delete: the @@unique([userId]) slot frees immediately so the user can
+ * later join or create another workspace, and they drop back to their
+ * personal plan.
+ */
+export async function detachMember(
+  tx: Prisma.TransactionClient,
+  memberId: string,
+  userId: string,
+): Promise<void> {
+  await tx.teamMember.delete({ where: { id: memberId } })
+  await tx.user.update({
+    where: { id: userId },
+    data: { plan: await resolveFallbackPlan(userId, tx) },
+  })
+}
+
 export async function removeMember(actorId: string, targetUserId: string) {
-  const actor = await requireMembership(actorId, { admin: true })
+  const actor = await requireMembership(actorId, {
+    permission: TeamPermission.MEMBERS_REMOVE,
+  })
+  if (targetUserId === actorId) {
+    throw new ForbiddenError('Use "Leave workspace" to remove yourself')
+  }
   const target = await prisma.teamMember.findUnique({
     where: { userId: targetUserId },
   })
@@ -400,17 +490,21 @@ export async function removeMember(actorId: string, targetUserId: string) {
   if (target.role === TeamRole.OWNER) {
     throw new ForbiddenError('The workspace owner cannot be removed')
   }
-  if (target.role === TeamRole.ADMIN && actor.role !== TeamRole.OWNER) {
+  if (
+    target.role === TeamRole.ADMIN &&
+    !can(actor.role, TeamPermission.ADMINS_MANAGE)
+  ) {
     throw new ForbiddenError('Only the owner can remove an admin')
   }
 
   await prisma.$transaction(async (tx) => {
-    // Hard delete: the @@unique([userId]) slot frees immediately so the user
-    // can later join or create another workspace.
-    await tx.teamMember.delete({ where: { id: target.id } })
-    await tx.user.update({
-      where: { id: targetUserId },
-      data: { plan: await resolveFallbackPlan(targetUserId, tx) },
+    await detachMember(tx, target.id, targetUserId)
+    await recordTeamAudit(tx, {
+      teamId: actor.teamId,
+      actorUserId: actorId,
+      action: TeamAuditAction.MEMBER_REMOVED,
+      targetUserId,
+      metadata: { role: target.role },
     })
   })
 }
@@ -421,45 +515,69 @@ export async function addDomain(
   actorId: string,
   input: { domain: string; restrictOrgCreation: boolean },
 ) {
-  const { teamId } = await requireMembership(actorId, { admin: true })
+  const { teamId } = await requireMembership(actorId, {
+    permission: TeamPermission.SETTINGS_MANAGE,
+  })
   if (PUBLIC_EMAIL_DOMAINS.has(input.domain)) {
     throw new BadRequestError('Public email providers cannot be claimed')
   }
 
-  const record = await prisma.teamDomain.create({
-    data: {
+  const record = await prisma.$transaction(async (tx) => {
+    const created = await tx.teamDomain.create({
+      data: {
+        teamId,
+        domain: input.domain,
+        restrictOrgCreation: input.restrictOrgCreation,
+        verificationToken: crypto.randomBytes(16).toString('hex'),
+      },
+    })
+    await recordTeamAudit(tx, {
       teamId,
-      domain: input.domain,
-      restrictOrgCreation: input.restrictOrgCreation,
-      verificationToken: crypto.randomBytes(16).toString('hex'),
-    },
+      actorUserId: actorId,
+      action: TeamAuditAction.DOMAIN_ADDED,
+      metadata: { domainId: created.id },
+    })
+    return created
   })
-  return verifyAndDescribe(record)
+  return verifyAndDescribe(record, { teamId, actorId })
 }
 
 export async function verifyDomain(actorId: string, domain: string) {
-  const { teamId } = await requireMembership(actorId, { admin: true })
+  const { teamId } = await requireMembership(actorId, {
+    permission: TeamPermission.SETTINGS_MANAGE,
+  })
   const record = await prisma.teamDomain.findFirst({
     where: { teamId, domain },
   })
   if (!record) throw new NotFoundError('Domain not found in your workspace')
-  return verifyAndDescribe(record)
+  return verifyAndDescribe(record, { teamId, actorId })
 }
 
-async function verifyAndDescribe(record: {
-  id: string
-  domain: string
-  verificationToken: string
-  isVerified: boolean
-  restrictOrgCreation: boolean
-}) {
+async function verifyAndDescribe(
+  record: {
+    id: string
+    domain: string
+    verificationToken: string
+    isVerified: boolean
+    restrictOrgCreation: boolean
+  },
+  context: { teamId: string; actorId: string },
+) {
   const verified =
     record.isVerified ||
     (await checkDomainTxtRecord(record.domain, record.verificationToken))
   if (verified && !record.isVerified) {
-    await prisma.teamDomain.update({
-      where: { id: record.id },
-      data: { isVerified: true },
+    await prisma.$transaction(async (tx) => {
+      await tx.teamDomain.update({
+        where: { id: record.id },
+        data: { isVerified: true },
+      })
+      await recordTeamAudit(tx, {
+        teamId: context.teamId,
+        actorUserId: context.actorId,
+        action: TeamAuditAction.DOMAIN_VERIFIED,
+        metadata: { domainId: record.id },
+      })
     })
   }
   return {
@@ -482,13 +600,23 @@ export async function updateInstructions(
   actorId: string,
   orgInstructions: string | null,
 ) {
-  const { teamId } = await requireMembership(actorId, { admin: true })
-  const team = await prisma.team.update({
-    where: { id: teamId },
-    data: { orgInstructions: orgInstructions || null },
-    select: { orgInstructions: true },
+  const { teamId } = await requireMembership(actorId, {
+    permission: TeamPermission.SETTINGS_MANAGE,
   })
-  return team
+  return prisma.$transaction(async (tx) => {
+    const team = await tx.team.update({
+      where: { id: teamId },
+      data: { orgInstructions: orgInstructions || null },
+      select: { orgInstructions: true },
+    })
+    await recordTeamAudit(tx, {
+      teamId,
+      actorUserId: actorId,
+      action: TeamAuditAction.SETTINGS_UPDATED,
+      metadata: { setting: 'orgInstructions' },
+    })
+    return team
+  })
 }
 
 export async function setMemberCreditLimit(
@@ -496,19 +624,39 @@ export async function setMemberCreditLimit(
   targetUserId: string,
   monthlyCreditLimitPaisa: number | null,
 ) {
-  const { teamId } = await requireMembership(actorId, { admin: true })
+  const actor = await requireMembership(actorId, {
+    permission: TeamPermission.CREDITS_MANAGE,
+  })
   const target = await prisma.teamMember.findUnique({
     where: { userId: targetUserId },
   })
-  if (target?.teamId !== teamId) {
+  if (target?.teamId !== actor.teamId) {
     throw new NotFoundError('Member not found in your workspace')
   }
-  const updated = await prisma.teamMember.update({
-    where: { id: target.id },
-    data: { monthlyCreditLimitPaisa },
-    select: { userId: true, monthlyCreditLimitPaisa: true },
+  if (target.role === TeamRole.OWNER) {
+    throw new ForbiddenError('The workspace owner has no credit limit')
+  }
+  if (
+    target.role === TeamRole.ADMIN &&
+    !can(actor.role, TeamPermission.ADMINS_MANAGE)
+  ) {
+    throw new ForbiddenError('Only the owner can set an admin credit limit')
+  }
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.teamMember.update({
+      where: { id: target.id },
+      data: { monthlyCreditLimitPaisa },
+      select: { userId: true, monthlyCreditLimitPaisa: true },
+    })
+    await recordTeamAudit(tx, {
+      teamId: actor.teamId,
+      actorUserId: actorId,
+      action: TeamAuditAction.CREDIT_LIMIT_SET,
+      targetUserId,
+      metadata: { unlimited: monthlyCreditLimitPaisa === null },
+    })
+    return updated
   })
-  return updated
 }
 
 // Anything that is not a preferences object (null, a string, an array…) reads as empty.
@@ -570,19 +718,29 @@ export async function updateWorkspacePreferences(
   actorId: string,
   patch: PreferencesPatch,
 ) {
-  const { teamId } = await requireMembership(actorId, { admin: true })
+  const { teamId } = await requireMembership(actorId, {
+    permission: TeamPermission.SETTINGS_MANAGE,
+  })
   const team = await prisma.team.findUniqueOrThrow({
     where: { id: teamId },
     select: { defaultPreferences: true },
   })
-  await prisma.team.update({
-    where: { id: teamId },
-    data: {
-      defaultPreferences: applyPreferencePatch(
-        asPreferences(team.defaultPreferences),
-        patch,
-      ),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.team.update({
+      where: { id: teamId },
+      data: {
+        defaultPreferences: applyPreferencePatch(
+          asPreferences(team.defaultPreferences),
+          patch,
+        ),
+      },
+    })
+    await recordTeamAudit(tx, {
+      teamId,
+      actorUserId: actorId,
+      action: TeamAuditAction.SETTINGS_UPDATED,
+      metadata: { setting: 'defaultPreferences' },
+    })
   })
   return getPreferences(actorId)
 }

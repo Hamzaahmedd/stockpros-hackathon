@@ -32,3 +32,6 @@ export enum ChartLayout {
   SPLIT = 'SPLIT',
   GRID = 'GRID',
 }
+
+/** Deleting a workspace touches every member and asset row; allow more than Prisma's 5 s default. */
+export const TEAM_DELETE_TX_TIMEOUT_MS = 30_000

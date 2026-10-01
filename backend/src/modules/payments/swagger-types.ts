@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Path,
   Post,
   Query,
   Response,
@@ -159,6 +160,42 @@ export interface ToggleAutoRenewRequest {
 
 // ─── Controller (TSOA spec-only — not used at runtime) ─────────────────────
 
+export interface TeamTransactionResponse {
+  id: string
+  /** @example "SP-2030-456789AB" */
+  referenceNumber: string
+  kind: 'SUBSCRIPTION' | 'SEAT_ADDITION' | 'TOPUP'
+  description: string
+  status: 'COMPLETED' | 'REFUNDED'
+  amountPaisa: number
+  currency: string
+  seatCount: number
+  createdAt: string
+}
+
+export interface TeamTransactionsPageResponse {
+  entries: TeamTransactionResponse[]
+  nextCursor: string | null
+}
+
+export interface TeamReceiptResponse {
+  id: string
+  referenceNumber: string
+  kind: 'SUBSCRIPTION' | 'SEAT_ADDITION' | 'TOPUP'
+  description: string
+  status: 'COMPLETED' | 'REFUNDED'
+  amountPaisa: number
+  currency: string
+  seatCount: number
+  /** Per-seat price; null for credit top-ups. */
+  unitPricePaisa: number | null
+  paymentMethod: string | null
+  paidAt: string
+  teamName: string
+  /** The billing contact, or the owner's email when none is set. */
+  billedTo: string
+}
+
 @Route('api/v1/payments')
 @Tags('Payments')
 export class PaymentsSwaggerController extends Controller {
@@ -293,6 +330,30 @@ export class PaymentsSwaggerController extends Controller {
   async toggleAutoRenew(
     @Body() body: ToggleAutoRenewRequest,
   ): Promise<ApiResponse<SubscriptionSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * The workspace's paid transactions, newest first, cursor-paginated. Owner/admin
+   * only. Gateway payloads and tokens are never returned. Always registered.
+   */
+  @Get('team/transactions')
+  @Security('bearerAuth')
+  @Response<ApiErrorResponse>(403, 'Owner/admin only')
+  async listTeamTransactions(
+    @Query() limit?: number,
+    @Query() cursor?: string,
+  ): Promise<ApiResponse<TeamTransactionsPageResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** A receipt for one paid workspace transaction (404 for another workspace's). Owner/admin only. */
+  @Get('team/transactions/{id}/receipt')
+  @Security('bearerAuth')
+  @Response<ApiErrorResponse>(404, 'Receipt not found')
+  async getTeamReceipt(
+    @Path() id: string,
+  ): Promise<ApiResponse<TeamReceiptResponse>> {
     throw new Error('tsoa spec-only')
   }
 }

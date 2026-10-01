@@ -1,5 +1,5 @@
 import config from '@/config'
-import { SubscriptionPaymentMethod } from '@prisma/client'
+import { SubscriptionPaymentMethod, TeamAuditAction } from '@prisma/client'
 import { setMyPlan } from '../auth'
 import {
   enqueueRenewalReminderEmail,
@@ -7,7 +7,11 @@ import {
 } from '../notifications/public'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
-import { resolveFallbackPlan } from '../../shared/infrastructure/team-access'
+import {
+  effectiveSeatCapacity,
+  resolveFallbackPlan,
+} from '../../shared/infrastructure/team-access'
+import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import {
   PLAN_PRICES_PAISA,
   SUBSCRIPTION_GRACE_PERIOD_MS,
@@ -56,6 +60,10 @@ const expireTeamSubscription = async (
         where: { id: subscriptionId },
         data: { status: 'EXPIRED' },
       })
+      await recordTeamAudit(tx, {
+        teamId,
+        action: TeamAuditAction.SUBSCRIPTION_EXPIRED,
+      })
     },
     { timeout: TEAM_EXPIRY_TX_TIMEOUT_MS },
   )
@@ -89,6 +97,8 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
       team: {
         select: {
           seatCapacity: true,
+          scheduledSeatCapacity: true,
+          billingEmail: true,
           owner: { select: { email: true, displayName: true } },
         },
       },
@@ -100,7 +110,12 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
 
   for (const subscription of subscriptions) {
     // Exactly one of user/team is set; team reminders go to the workspace owner.
-    const recipient = subscription.user ?? subscription.team?.owner
+    const owner = subscription.user ?? subscription.team?.owner
+    // A workspace can name a billing contact; reminders go there instead of to the owner.
+    const recipient =
+      owner && subscription.team?.billingEmail
+        ? { ...owner, email: subscription.team.billingEmail }
+        : owner
     try {
       if (subscription.status === 'ACTIVE' && subscription.currentPeriodEnd) {
         if (subscription.currentPeriodEnd <= now) {
@@ -134,7 +149,8 @@ export const runSubscriptionExpiryJob = async (): Promise<void> => {
             userName: recipient.displayName,
             amount: formatAmount(
               subscription.team
-                ? subscription.team.seatCapacity * TEAM_SEAT_PRICE_PAISA
+                ? effectiveSeatCapacity(subscription.team) *
+                    TEAM_SEAT_PRICE_PAISA
                 : PLAN_PRICES_PAISA.PRO,
             ),
             renewsOn: formatDate(subscription.currentPeriodEnd),

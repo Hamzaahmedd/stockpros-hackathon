@@ -1,5 +1,9 @@
 import type { CreditLedgerType } from '@prisma/client'
-import { ForbiddenError, NotFoundError } from '../../shared/errors'
+import {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+} from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import {
   getActiveMembership,
@@ -76,6 +80,15 @@ export async function getCreditLedger(
   query: LedgerQuery,
 ): Promise<LedgerPage> {
   const target = await resolveTarget(userId, query.scope)
+
+  if (query.cursor) {
+    // A cursor must be one of the viewed pool's own entries, never another workspace's.
+    const own = await prisma.creditLedger.findFirst({
+      where: { id: query.cursor, ...target.where },
+      select: { id: true },
+    })
+    if (!own) throw new BadRequestError('Invalid cursor')
+  }
 
   // One extra row tells us whether another page exists without a count query.
   const rows = await prisma.creditLedger.findMany({

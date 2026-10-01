@@ -1,3 +1,4 @@
+jest.mock('../receipt-email', () => ({ sendTeamReceiptEmail: jest.fn() }))
 import { PaymentStatus } from '@prisma/client'
 import config from '@/config'
 

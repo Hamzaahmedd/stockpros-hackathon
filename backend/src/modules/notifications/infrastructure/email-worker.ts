@@ -10,12 +10,15 @@ import { logger } from '../../../shared/infrastructure/logger'
 import { redactPii } from '../../../shared/utils/redact'
 import {
   alertEmailJobSchema,
+  paymentReceiptJobSchema,
   renewalReminderJobSchema,
   teamInviteJobSchema,
   type EmailJobPayload,
+  type PaymentReceiptEmailJobPayload,
   type RenewalReminderEmailJobPayload,
   type TeamInviteEmailJobPayload,
 } from '../email-job-schemas'
+import { buildPaymentReceiptEmail } from '../email-templates/payment-receipt'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
 import { buildRenewalReminderEmail } from '../email-templates/subscription-renewal'
 import { buildTeamInviteEmail } from '../email-templates/team-invite'
@@ -24,12 +27,16 @@ import {
   ALERT_EMAIL_JOB_NAME,
   ALERT_EMAIL_QUEUE_NAME,
   ALERT_EMAIL_QUEUE_OPTIONS,
+  PAYMENT_RECEIPT_JOB_NAME,
   RENEWAL_REMINDER_JOB_NAME,
   TEAM_INVITE_JOB_NAME,
 } from './alert-email.config'
 
 type EmailQueueJobPayload =
-  EmailJobPayload | RenewalReminderEmailJobPayload | TeamInviteEmailJobPayload
+  | EmailJobPayload
+  | RenewalReminderEmailJobPayload
+  | TeamInviteEmailJobPayload
+  | PaymentReceiptEmailJobPayload
 
 interface JobRef {
   id?: string
@@ -151,6 +158,27 @@ const sendTeamInviteEmail = async (job: JobRef): Promise<void> => {
   })
 }
 
+const sendPaymentReceiptEmail = async (job: JobRef): Promise<void> => {
+  const { to, transactionId, teamId, ...receipt } = parsePayload(
+    paymentReceiptJobSchema,
+    job,
+  )
+  const { subject, html, text } = buildPaymentReceiptEmail(
+    receipt,
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  logger.info('[EmailWorker] Payment receipt sent', {
+    jobId: job.id,
+    transactionId,
+    teamId,
+  })
+}
+
 /**
  * Start the email worker.
  * Call once at server boot alongside startCronScheduler.
@@ -169,6 +197,9 @@ export const startEmailWorker = (): void => {
     async (job) => {
       if (job.name === RENEWAL_REMINDER_JOB_NAME) {
         return sendRenewalReminderEmail(job)
+      }
+      if (job.name === PAYMENT_RECEIPT_JOB_NAME) {
+        return sendPaymentReceiptEmail(job)
       }
       if (job.name === TEAM_INVITE_JOB_NAME) {
         return sendTeamInviteEmail(job)
@@ -241,6 +272,20 @@ export const enqueueTeamInviteEmail = async (
   } else {
     logger.warn(
       '[EmailWorker] Skipping team invite enqueue - Redis not connected',
+    )
+  }
+}
+
+/** Add a team payment receipt job to the same queue. */
+export const enqueuePaymentReceiptEmail = async (
+  payload: PaymentReceiptEmailJobPayload,
+): Promise<void> => {
+  const queue = getEmailQueue()
+  if (queue) {
+    await queue.add(PAYMENT_RECEIPT_JOB_NAME, payload)
+  } else {
+    logger.warn(
+      '[EmailWorker] Skipping payment receipt enqueue - Redis not connected',
     )
   }
 }

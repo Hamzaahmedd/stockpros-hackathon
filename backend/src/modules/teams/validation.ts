@@ -1,3 +1,4 @@
+import { TeamAuditAction } from '@prisma/client'
 import { z } from 'zod'
 import {
   seatCountValidator,
@@ -145,3 +146,44 @@ export const notesQueryValidator = z.object({
 export const searchQueryValidator = z.object({
   q: z.string().trim().min(2, 'Query must be at least 2 characters').max(100),
 })
+
+export const changeRoleValidator = z.object({
+  role: z.enum(['ADMIN', 'MEMBER']),
+})
+
+export const transferOwnershipValidator = z.object({
+  userId: z.string().uuid('userId must be a valid id'),
+})
+
+export const renameTeamValidator = z.object({ name: teamNameValidator })
+
+export const deleteTeamValidator = z.object({
+  confirmName: z.string({ required_error: 'confirmName is required' }),
+})
+
+export const billingContactValidator = z.object({
+  billingEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('A valid email is required')
+    .max(254)
+    .nullable(),
+})
+
+// A reduction must go below the current seats, so the floor is the 2-seat minimum.
+export const reduceSeatsValidator = z.object({
+  seatCount: z
+    .number({ required_error: 'seatCount is required' })
+    .int('seatCount must be a whole number')
+    .min(2, 'A workspace needs at least 2 seats')
+    .max(TEAM_MAX_SEATS),
+})
+
+export const auditLogQueryValidator = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  cursor: z.string().uuid('cursor must be a valid id').optional(),
+  action: z.nativeEnum(TeamAuditAction).optional(),
+})
+
+export type AuditLogQuery = z.infer<typeof auditLogQueryValidator>
