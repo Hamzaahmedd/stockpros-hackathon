@@ -20,8 +20,11 @@ jest.mock('../../../shared/infrastructure/database', () => ({
 }))
 
 const mockEnqueue = jest.fn()
+const mockEnqueueAlert = jest.fn()
 jest.mock('../../notifications/public', () => ({
   enqueueStaffStepUpEmail: (...args: unknown[]) => mockEnqueue(...args),
+  enqueueAdminActionAlertEmail: (...args: unknown[]) =>
+    mockEnqueueAlert(...args),
 }))
 
 const mockLogger = { info: jest.fn(), warn: jest.fn() }
@@ -35,6 +38,7 @@ import {
   TooManyRequestsError,
   UnauthorizedError,
 } from '../../../shared/errors'
+import config from '@/config'
 import { hashToken } from '../../../shared/utils'
 import { requestStepUp, verifyStepUp } from '../step-up-service'
 
@@ -197,5 +201,46 @@ describe('verifyStepUp', () => {
 
   it('rejects when no code is pending', async () => {
     await expect(verifyStepUp(actor, CODE)).rejects.toThrow(/No pending code/)
+  })
+})
+
+describe('verifyStepUp — lockout alert', () => {
+  const alerts = config.admin as { alertEmails: string[] }
+  const original = alerts.alertEmails
+
+  beforeEach(() => {
+    alerts.alertEmails = ['security@venturedive.com']
+    mockEnqueueAlert.mockResolvedValue(undefined)
+    mockPrisma.adminStepUp.findFirst.mockResolvedValue(challenge())
+  })
+  afterEach(() => {
+    alerts.alertEmails = original
+  })
+
+  it('alerts security when the fifth wrong code uses up the attempts', async () => {
+    mockPrisma.adminStepUp.update.mockResolvedValueOnce({ attempts: 5 })
+
+    await expect(verifyStepUp(actor, '000000')).rejects.toBeInstanceOf(
+      UnauthorizedError,
+    )
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(mockEnqueueAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'STEP_UP_LOCKOUT',
+        adminId: 'staff-1',
+        targetType: 'USER',
+        targetId: 'staff-1',
+      }),
+    )
+  })
+
+  it('stays quiet for earlier wrong attempts', async () => {
+    mockPrisma.adminStepUp.update.mockResolvedValueOnce({ attempts: 4 })
+    await expect(verifyStepUp(actor, '000000')).rejects.toBeInstanceOf(
+      UnauthorizedError,
+    )
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(mockEnqueueAlert).not.toHaveBeenCalled()
   })
 })

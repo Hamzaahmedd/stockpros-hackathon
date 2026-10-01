@@ -42,7 +42,10 @@ jest.mock('../../payments/public', () => ({
   replayStoredWebhook: jest.fn(),
   getSubscriptionQueues: jest.fn(() => []),
 }))
+const mockEnqueueAlert = jest.fn().mockResolvedValue(undefined)
 jest.mock('../../notifications/public', () => ({
+  enqueueAdminActionAlertEmail: (...args: unknown[]) =>
+    mockEnqueueAlert(...args),
   getEmailQueue: jest.fn(),
   getAuthEmailQueue: jest.fn(),
 }))
@@ -492,5 +495,153 @@ describe('staff IP allowlist over HTTP', () => {
     ;(config.features as any).pricingTiersEnabled = false
     const res = await search(PlatformRole.SUPER_ADMIN)
     expect(res.body.errorCode).toBe('FORBIDDEN_FEATURE_DISABLED')
+  })
+})
+
+describe('alerts on risky staff actions', () => {
+  const admin = config.admin as {
+    alertEmails: string[]
+    alertCreditThresholdPaisa: number
+  }
+  const original = { ...admin }
+
+  beforeEach(() => {
+    ;(config.features as any).pricingTiersEnabled = true
+    admin.alertEmails = ['security@venturedive.com']
+    admin.alertCreditThresholdPaisa = 5_000_000
+    mockEnqueueAlert.mockClear()
+  })
+  afterEach(() => Object.assign(admin, original))
+
+  const as = (
+    role: PlatformRole,
+    method: 'post' | 'delete',
+    path: string,
+    body: object,
+  ) =>
+    request(app)
+      [method](`/api/v1/admin${path}`)
+      .set('x-user-id', role)
+      .send(body)
+
+  const flush = () => new Promise((resolve) => setImmediate(resolve))
+  const sent = () => mockEnqueueAlert.mock.calls.map((call) => call[0])
+
+  it.each([
+    [
+      'plan override',
+      'post',
+      `/users/${ID}/plan-override`,
+      { plan: 'PRO', reason: REASON },
+      'PLAN_OVERRIDE',
+      ID,
+    ],
+    [
+      'session invalidation',
+      'post',
+      `/users/${ID}/sessions/invalidate`,
+      { reason: REASON },
+      'USER_SESSION_INVALIDATED',
+      ID,
+    ],
+    [
+      'market emergency',
+      'post',
+      '/system/market-emergency',
+      { closed: true, reason: REASON },
+      'EMERGENCY_MARKET_TOGGLED',
+      'market-emergency',
+    ],
+  ] as const)(
+    '%s alerts with identifiers only',
+    async (_label, method, path, body, action, targetId) => {
+      const res = await as(PlatformRole.SUPER_ADMIN, method, path, {
+        ...body,
+        ticketRef: 'INC-204',
+      })
+      expect(res.status).toBe(200)
+      await flush()
+
+      expect(sent()).toEqual([
+        expect.objectContaining({
+          to: 'security@venturedive.com',
+          action,
+          adminId: PlatformRole.SUPER_ADMIN,
+          targetId,
+          ticketRef: 'INC-204',
+        }),
+      ])
+      expect(JSON.stringify(sent())).not.toContain(REASON)
+    },
+  )
+
+  it('alerts when a member is force-removed', async () => {
+    await as(PlatformRole.PLATFORM_ADMIN, 'delete', `/teams/members/${ID}`, {
+      reason: REASON,
+    })
+    await flush()
+    expect(sent()).toEqual([
+      expect.objectContaining({ action: 'MEMBER_FORCE_REMOVED', targetId: ID }),
+    ])
+  })
+
+  it('alerts for a large credit adjustment but not a small one', async () => {
+    const adjust = (amountPaisa: number) =>
+      as(PlatformRole.PLATFORM_ADMIN, 'post', '/billing/credits/adjust', {
+        target: 'TEAM',
+        targetId: ID,
+        amountPaisa,
+        reason: REASON,
+      })
+
+    await adjust(100)
+    await flush()
+    expect(sent()).toEqual([])
+
+    await adjust(-5_000_000)
+    await flush()
+    expect(sent()).toEqual([
+      expect.objectContaining({
+        action: 'CREDIT_INJECTION',
+        targetType: 'TEAM',
+        targetId: ID,
+      }),
+    ])
+  })
+
+  it('does not alert for routine writes', async () => {
+    await as(
+      PlatformRole.PLATFORM_ADMIN,
+      'post',
+      `/teams/domains/${ID}/verify`,
+      { reason: REASON },
+    )
+    await flush()
+    expect(sent()).toEqual([])
+  })
+
+  it('does not alert when the action is refused', async () => {
+    const res = await as(
+      PlatformRole.SUPPORT_AGENT,
+      'post',
+      `/users/${ID}/plan-override`,
+      {
+        plan: 'PRO',
+        reason: REASON,
+      },
+    )
+    expect(res.status).toBe(403)
+    await flush()
+    expect(sent()).toEqual([])
+  })
+
+  it('does not alert when nobody is configured to receive alerts', async () => {
+    admin.alertEmails = []
+    await as(PlatformRole.SUPER_ADMIN, 'post', `/users/${ID}/plan-override`, {
+      plan: 'PRO',
+      reason: REASON,
+    })
+    await flush()
+    expect(sent()).toEqual([])
   })
 })

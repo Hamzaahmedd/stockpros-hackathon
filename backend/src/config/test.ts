@@ -72,6 +72,10 @@ export const testConfig = {
   },
   // Internal staff ops panel (/api/v1/admin) hardening switches.
   admin: {
+    // Security recipients told about risky staff actions (identifiers only). Empty = no alerts.
+    alertEmails: [] as string[],
+    // Credit adjustments of at least this size (paisa, either direction) also alert.
+    alertCreditThresholdPaisa: 5_000_000,
     // Networks (IPs or CIDR ranges, e.g. an office or VPN) the staff panel accepts; empty = any.
     // Requires app.ts `trust proxy` to equal the number of reverse proxies in front of the app.
     ipAllowlist: [] as string[],

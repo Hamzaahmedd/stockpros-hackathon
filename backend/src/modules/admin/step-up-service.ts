@@ -9,6 +9,11 @@ import {
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
 import { hashToken } from '../../shared/utils'
+import {
+  AdminTargetType,
+  alertAdminAction,
+  STEP_UP_LOCKOUT_ALERT,
+} from '../access-control'
 import { enqueueStaffStepUpEmail } from '../notifications/public'
 import {
   STEP_UP_CODE_TTL_MS,
@@ -125,6 +130,14 @@ export async function verifyStepUp(actor: StepUpActor, code: string) {
       userId: actor.userId,
       attempts,
     })
+    if (attempts >= STEP_UP_MAX_ATTEMPTS) {
+      void alertAdminAction({
+        adminId: actor.userId,
+        action: STEP_UP_LOCKOUT_ALERT,
+        targetType: AdminTargetType.USER,
+        targetId: actor.userId,
+      })
+    }
     throw new UnauthorizedError('Incorrect verification code')
   }
 

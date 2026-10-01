@@ -9,6 +9,11 @@ export {
   requirePricingTiersEnabled,
 } from './platform-role'
 export { AdminTargetType, logAdminAction, logAdminRead } from './admin-audit'
+export {
+  alertAdminAction,
+  RISKY_ADMIN_ACTIONS,
+  STEP_UP_LOCKOUT_ALERT,
+} from './admin-alert'
 export { requireAllowedIp } from './ip-allowlist'
 export { requireStepUp } from './step-up'
 export type { AdminAuditEvent } from './admin-audit'

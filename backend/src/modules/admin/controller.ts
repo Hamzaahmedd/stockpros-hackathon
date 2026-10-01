@@ -1,6 +1,8 @@
+import { AdminAuditAction } from '@prisma/client'
 import { NextFunction, Response } from 'express'
 import { UnauthorizedError, validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
+import { AdminTargetType, alertAdminAction } from '../access-control'
 import { AuthenticatedRequest } from '../auth'
 import * as Billing from './billing-service'
 import * as System from './system-service'
@@ -8,6 +10,7 @@ import * as StepUp from './step-up-service'
 import * as Teams from './teams-service'
 import * as Telemetry from './telemetry-service'
 import * as Timeline from './timeline-service'
+import { AdminCreditTarget, MARKET_EMERGENCY_TARGET_ID } from './constants'
 import type { AdminReadContext, AdminWriteContext } from './types'
 import * as Users from './users-service'
 import {
@@ -65,13 +68,25 @@ export const searchUsers = handle('Users fetched', (req) => {
   return Users.searchUsers(readContext(req), q, limit)
 })
 
-export const overridePlan = handle('Plan overridden', (req) => {
+export const overridePlan = handle('Plan overridden', async (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
   const { plan, reason, ticketRef } = validateOrThrow(
     planOverrideValidator,
     req.body,
   )
-  return Users.overridePlan(writeContext(req, reason, ticketRef), id, plan)
+  const result = await Users.overridePlan(
+    writeContext(req, reason, ticketRef),
+    id,
+    plan,
+  )
+  void alertAdminAction({
+    adminId: getUserId(req),
+    action: AdminAuditAction.PLAN_OVERRIDE,
+    targetType: AdminTargetType.USER,
+    targetId: id,
+    ticketRef,
+  })
+  return result
 })
 
 export const getUserTimeline = handle('Timeline fetched', (req) => {
@@ -104,11 +119,25 @@ export const revealUser = handle('Customer data revealed', (req) => {
   return Users.revealUser(writeContext(req, reason, ticketRef), id)
 })
 
-export const invalidateSessions = handle('Sessions invalidated', (req) => {
-  const { id } = validateOrThrow(idParamValidator, req.params)
-  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
-  return Users.invalidateSessions(writeContext(req, reason, ticketRef), id)
-})
+export const invalidateSessions = handle(
+  'Sessions invalidated',
+  async (req) => {
+    const { id } = validateOrThrow(idParamValidator, req.params)
+    const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+    const result = await Users.invalidateSessions(
+      writeContext(req, reason, ticketRef),
+      id,
+    )
+    void alertAdminAction({
+      adminId: getUserId(req),
+      action: AdminAuditAction.USER_SESSION_INVALIDATED,
+      targetType: AdminTargetType.USER,
+      targetId: id,
+      ticketRef,
+    })
+    return result
+  },
+)
 
 // ─── Teams ───────────────────────────────────────────────────────────────────
 export const searchTeams = handle('Teams fetched', (req) => {
@@ -135,10 +164,21 @@ export const forceVerifyDomain = handle('Domain verified', (req) => {
   return Teams.forceVerifyDomain(writeContext(req, reason, ticketRef), id)
 })
 
-export const forceRemoveMember = handle('Member removed', (req) => {
+export const forceRemoveMember = handle('Member removed', async (req) => {
   const { userId } = validateOrThrow(userIdParamValidator, req.params)
   const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
-  return Teams.forceRemoveMember(writeContext(req, reason, ticketRef), userId)
+  const result = await Teams.forceRemoveMember(
+    writeContext(req, reason, ticketRef),
+    userId,
+  )
+  void alertAdminAction({
+    adminId: getUserId(req),
+    action: AdminAuditAction.MEMBER_FORCE_REMOVED,
+    targetType: AdminTargetType.USER,
+    targetId: userId,
+    ticketRef,
+  })
+  return result
 })
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
@@ -155,12 +195,27 @@ export const retryWebhook = handle('Webhook reprocessed', (req) => {
   return Billing.retryWebhook(writeContext(req, reason, ticketRef), id)
 })
 
-export const adjustCredits = handle('Credits adjusted', (req) => {
+export const adjustCredits = handle('Credits adjusted', async (req) => {
   const { reason, ticketRef, ...input } = validateOrThrow(
     creditAdjustmentValidator,
     req.body,
   )
-  return Billing.adjustCredits(writeContext(req, reason, ticketRef), input)
+  const result = await Billing.adjustCredits(
+    writeContext(req, reason, ticketRef),
+    input,
+  )
+  void alertAdminAction({
+    adminId: getUserId(req),
+    action: AdminAuditAction.CREDIT_INJECTION,
+    targetType:
+      input.target === AdminCreditTarget.USER
+        ? AdminTargetType.USER
+        : AdminTargetType.TEAM,
+    targetId: input.targetId,
+    ticketRef,
+    amountPaisa: input.amountPaisa,
+  })
+  return result
 })
 
 export const extendSubscription = handle('Subscription extended', (req) => {
@@ -193,13 +248,27 @@ export const getMarketStatus = handle('Market status fetched', () =>
   System.getMarketStatus(),
 )
 
-export const setMarketEmergency = handle('Market emergency updated', (req) => {
-  const { closed, reason, ticketRef } = validateOrThrow(
-    marketEmergencyValidator,
-    req.body,
-  )
-  return System.setMarketEmergency(writeContext(req, reason, ticketRef), closed)
-})
+export const setMarketEmergency = handle(
+  'Market emergency updated',
+  async (req) => {
+    const { closed, reason, ticketRef } = validateOrThrow(
+      marketEmergencyValidator,
+      req.body,
+    )
+    const result = await System.setMarketEmergency(
+      writeContext(req, reason, ticketRef),
+      closed,
+    )
+    void alertAdminAction({
+      adminId: getUserId(req),
+      action: AdminAuditAction.EMERGENCY_MARKET_TOGGLED,
+      targetType: AdminTargetType.SYSTEM,
+      targetId: MARKET_EMERGENCY_TARGET_ID,
+      ticketRef,
+    })
+    return result
+  },
+)
 
 export const listAuditLogs = handle('Audit logs fetched', (req) =>
   System.listAuditLogs(validateOrThrow(auditLogQueryValidator, req.query)),
