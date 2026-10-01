@@ -138,7 +138,7 @@ describe('SocketServer — authenticateSocket', () => {
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 
-  it('rejects when the token has no jti claim', async () => {
+  it('rejects when the token has no sid claim', async () => {
     const middleware = setup()
     mockVerifyAccessToken.mockReturnValue({})
     const next = jest.fn()
@@ -148,7 +148,7 @@ describe('SocketServer — authenticateSocket', () => {
 
   it('rejects when the session does not exist', async () => {
     const middleware = setup()
-    mockVerifyAccessToken.mockReturnValue({ jti: 'j1' })
+    mockVerifyAccessToken.mockReturnValue({ sub: 'user-1', sid: 's1' })
     mockFindUniqueSession.mockResolvedValue(null)
     const next = jest.fn()
     await middleware(fakeSocket({ handshake: { auth: { token: 't1' } } }), next)
@@ -157,8 +157,9 @@ describe('SocketServer — authenticateSocket', () => {
 
   it('rejects a revoked session', async () => {
     const middleware = setup()
-    mockVerifyAccessToken.mockReturnValue({ jti: 'j1' })
+    mockVerifyAccessToken.mockReturnValue({ sub: 'user-1', sid: 's1' })
     mockFindUniqueSession.mockResolvedValue({
+      userId: 'user-1',
       isRevoked: true,
       expiresAt: new Date(Date.now() + 100000),
       user: { plan: 'FREE' },
@@ -170,8 +171,9 @@ describe('SocketServer — authenticateSocket', () => {
 
   it('rejects an expired session', async () => {
     const middleware = setup()
-    mockVerifyAccessToken.mockReturnValue({ jti: 'j1' })
+    mockVerifyAccessToken.mockReturnValue({ sub: 'user-1', sid: 's1' })
     mockFindUniqueSession.mockResolvedValue({
+      userId: 'user-1',
       isRevoked: false,
       expiresAt: new Date(Date.now() - 1000),
       user: { plan: 'FREE' },
@@ -183,8 +185,9 @@ describe('SocketServer — authenticateSocket', () => {
 
   it('accepts a valid session and attaches the plan', async () => {
     const middleware = setup()
-    mockVerifyAccessToken.mockReturnValue({ jti: 'j1' })
+    mockVerifyAccessToken.mockReturnValue({ sub: 'user-1', sid: 's1' })
     mockFindUniqueSession.mockResolvedValue({
+      userId: 'user-1',
       isRevoked: false,
       expiresAt: new Date(Date.now() + 100000),
       user: { plan: 'PRO' },
@@ -193,7 +196,24 @@ describe('SocketServer — authenticateSocket', () => {
     const next = jest.fn()
     await middleware(socket, next)
     expect(socket.data.plan).toBe('PRO')
+    expect(mockFindUniqueSession).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 's1' } }),
+    )
     expect(next).toHaveBeenCalledWith()
+  })
+
+  it('rejects a session that belongs to a different user than the token subject', async () => {
+    const middleware = setup()
+    mockVerifyAccessToken.mockReturnValue({ sub: 'user-1', sid: 's1' })
+    mockFindUniqueSession.mockResolvedValue({
+      userId: 'someone-else',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 100000),
+      user: { plan: 'PRO' },
+    })
+    const next = jest.fn()
+    await middleware(fakeSocket({ handshake: { auth: { token: 't1' } } }), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 
   it('rejects when token verification throws', async () => {

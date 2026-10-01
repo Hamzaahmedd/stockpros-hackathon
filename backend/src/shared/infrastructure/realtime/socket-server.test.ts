@@ -48,8 +48,8 @@ const deps = {
   evaluateAlertsForTick: jest.fn().mockResolvedValue(undefined),
 }
 
-function signToken(jti: string): string {
-  return jwt.sign({ sub: 'user-1', jti }, ACCESS_TOKEN_SECRET, {
+function signToken(sid: string): string {
+  return jwt.sign({ sub: 'user-1', sid }, ACCESS_TOKEN_SECRET, {
     expiresIn: '1h',
   })
 }
@@ -60,6 +60,7 @@ function mockSession(overrides?: {
   plan?: 'FREE' | 'PRO'
 }) {
   ;(prisma.userSession.findUnique as jest.Mock).mockResolvedValue({
+    userId: 'user-1',
     isRevoked: overrides?.isRevoked ?? false,
     expiresAt: overrides?.expiresAt ?? new Date(Date.now() + 60 * 60 * 1000),
     user: { plan: overrides?.plan ?? 'FREE' },

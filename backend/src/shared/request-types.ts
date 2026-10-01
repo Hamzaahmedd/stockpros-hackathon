@@ -10,7 +10,10 @@ import type { ActiveMembership } from './infrastructure/team-access'
 export interface AuthenticatedRequest extends express.Request {
   user?: {
     userId: string
-    jti?: string
+    /** The session this request authenticated with (absent for legacy pre-`sid` tokens). */
+    sessionId?: string
+    /** When that session began; stable across refresh rotation, so usable as an absolute age. */
+    sessionCreatedAt?: Date
     roleId?: string
     plan: PlanTier
   }

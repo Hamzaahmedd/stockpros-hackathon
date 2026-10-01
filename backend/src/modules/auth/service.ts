@@ -67,11 +67,20 @@ async function getDefaultRole(database: DatabaseClient) {
   return configuration.defaultRole
 }
 
-export async function generateTokens(userId: string): Promise<AuthTokens> {
+/**
+ * Issues an access/refresh pair for one session. The access token carries the
+ * session's stable id (`sid`) so every request can be checked against the
+ * session row — revoking a session takes effect on its very next request, not
+ * when the token expires. The refresh `jti` rotates; the session id never does.
+ */
+export async function generateTokens(
+  userId: string,
+  sessionId: string,
+): Promise<AuthTokens> {
   const refreshJti = uuidv7()
 
   const accessToken = signToken(
-    { sub: userId },
+    { sub: userId, sid: sessionId },
     ACCESS_TOKEN_SECRET,
     ACCESS_TOKEN_EXPIRY as SignOptions['expiresIn'],
   )
@@ -131,7 +140,10 @@ export async function refreshAccessToken(refreshToken: string) {
           accessToken,
           refreshToken: freshRefreshToken,
           jti: freshJti,
-        } = await generateTokens(recentRotatedSession.user.id)
+        } = await generateTokens(
+          recentRotatedSession.user.id,
+          recentRotatedSession.id,
+        )
 
         await prisma.userSession.update({
           where: { id: recentRotatedSession.id },
@@ -178,7 +190,7 @@ export async function refreshAccessToken(refreshToken: string) {
       accessToken,
       refreshToken: newRefreshToken,
       jti: newJti,
-    } = await generateTokens(session.user.id)
+    } = await generateTokens(session.user.id, session.id)
 
     const newHashedJti = hashToken(newJti)
 
@@ -636,7 +648,11 @@ export async function verifyMagicLink(
 
   // 5. Jump to current session management setup:
   // Generate access and refresh tokens
-  const { accessToken, refreshToken, jti } = await generateTokens(user.id)
+  const sessionId = uuidv7()
+  const { accessToken, refreshToken, jti } = await generateTokens(
+    user.id,
+    sessionId,
+  )
 
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
@@ -644,6 +660,7 @@ export async function verifyMagicLink(
   // Create active session in database with hashed token
   await prisma.userSession.create({
     data: {
+      id: sessionId,
       userId: user.id,
       jti: hashToken(jti),
       ipAddress: ip,
@@ -723,12 +740,17 @@ export async function completeOnboarding(
   })
 
   // Generate session tokens now that signup is complete
-  const { accessToken, refreshToken, jti } = await generateTokens(user.id)
+  const sessionId = uuidv7()
+  const { accessToken, refreshToken, jti } = await generateTokens(
+    user.id,
+    sessionId,
+  )
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
   await prisma.userSession.create({
     data: {
+      id: sessionId,
       userId: user.id,
       jti: hashToken(jti),
       ipAddress: ip,
@@ -984,12 +1006,17 @@ export async function googleLogin(
     throw new UnauthorizedError('Account is inactive or suspended')
   }
 
-  const { accessToken, refreshToken, jti } = await generateTokens(user.id)
+  const sessionId = uuidv7()
+  const { accessToken, refreshToken, jti } = await generateTokens(
+    user.id,
+    sessionId,
+  )
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
 
   await prisma.userSession.create({
     data: {
+      id: sessionId,
       userId: user.id,
       jti: hashToken(jti),
       ipAddress: ip,

@@ -80,6 +80,7 @@ flowchart LR
 
 - **Modular Monolith**: Node.js backend separated into domain modules with enforced boundary checks (`npm run architecture:check`): modules talk only through each other's `index.ts`/`public.ts`, and the `shared/` layer may not import any module (module collaborators, e.g. the Socket.io server's market feed and alert evaluator, are injected from `src/index.ts`).
 - **Event-Driven & Decoupled Workers**: BullMQ queues handle email notifications and asynchronous alert tasks.
+- **Session-Bound Access Tokens**: every access token carries the id of its session (`sid`), and the auth middleware (and the Socket.io handshake) validate that session on each request, so logout, breach response and staff "invalidate sessions" take effect on the very next call instead of when the token expires. Tokens minted before this change are still honoured for one access-token lifetime (see `resolveLegacyUser` in `backend/src/modules/auth/middleware.ts`, to be deleted afterwards).
 - **Real-Time Streaming**: Finnhub WebSocket trades streamed via Socket.io directly to connected clients.
 - **Shared Runtime State**: rate limiters use Redis whenever it is connected (chosen per request, falling back to memory), and the emergency market halt is synced across instances through Redis (`shared/infrastructure/emergency-sync.ts`).
 - **AI Proxy Pattern**: Python FastAPI service isolates heavy GRU ML inference and caching behind the backend.

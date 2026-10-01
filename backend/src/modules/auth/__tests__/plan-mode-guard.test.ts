@@ -68,12 +68,24 @@ import request from 'supertest'
 import { createApp } from '../../../app'
 import { prisma } from '../../../shared/infrastructure/database'
 
-// Signed without a `jti` claim — authTokenMiddleware only hits the DB for
-// session lookup when a jti is present, defaulting plan to FREE otherwise.
-// That's irrelevant here since the guard being tested runs regardless of the
-// caller's current plan.
-const bearerToken = jwt.sign({ sub: 'user-1' }, 'test-access-secret', {
-  expiresIn: '1h',
+// authTokenMiddleware validates the session named by the `sid` claim on every
+// request, so the token is bound to a (mocked) live session. The plan itself
+// is irrelevant here: the guard under test runs whatever the caller's plan.
+const bearerToken = jwt.sign(
+  { sub: 'user-1', sid: 'session-1' },
+  'test-access-secret',
+  { expiresIn: '1h' },
+)
+
+beforeEach(() => {
+  ;(prisma.userSession.findUnique as jest.Mock).mockResolvedValue({
+    id: 'session-1',
+    userId: 'user-1',
+    isRevoked: false,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    createdAt: new Date(),
+    user: { plan: 'FREE' },
+  })
 })
 
 describe('POST /api/v1/auth/plan — Payment Mode guard', () => {

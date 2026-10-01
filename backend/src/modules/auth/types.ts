@@ -24,7 +24,8 @@ export interface JwtPayload {
   sub: string
   iat: number
   exp: number
-  jti?: string
+  /** Id of the `UserSession` this access token belongs to. Absent on tokens issued before session binding. */
+  sid?: string
 }
 
 /** Minimal claims read from onboarding / access tokens after verification. */

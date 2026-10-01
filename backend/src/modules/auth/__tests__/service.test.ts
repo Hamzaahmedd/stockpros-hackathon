@@ -88,6 +88,11 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
     expect(decoded.sub).toBe(userId)
     expect(decoded.jti).not.toBe(oldJti)
 
+    // The session id is the stable anchor: both new tokens keep pointing at it,
+    // so refreshing neither orphans nor re-keys the session.
+    const access = jwt.decode(result.accessToken) as { sid: string }
+    expect(access.sid).toBe(mockSession.id)
+
     // Ensure prisma.userSession.update was called with hashed jti and old hash in previousJti
     expect(prisma.userSession.update).toHaveBeenCalledWith({
       where: { id: mockSession.id },
@@ -136,6 +141,9 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
     // of the already-consumed one — replaying it would misfire the breach
     // detector once this grace window has also elapsed.
     expect(result.refreshToken).not.toBe(validRefreshToken)
+    expect((jwt.decode(result.accessToken) as { sid: string }).sid).toBe(
+      recentSession.id,
+    )
     expect(prisma.userSession.update).toHaveBeenCalledWith({
       where: { id: recentSession.id },
       data: expect.objectContaining({

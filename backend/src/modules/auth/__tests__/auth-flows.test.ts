@@ -100,9 +100,18 @@ beforeEach(() => {
   ;(enqueueAuthEmail as jest.Mock).mockResolvedValue(true)
 })
 
+/** The session row created at login must be the one the access token points at. */
+const expectSessionBoundTo = (accessToken: string | null) => {
+  const { sid } = jwt.decode(accessToken as string) as { sid: string }
+  expect(sid).toEqual(expect.any(String))
+  expect(mockPrisma.userSession.create).toHaveBeenCalledWith({
+    data: expect.objectContaining({ id: sid }),
+  })
+}
+
 describe('generateTokens', () => {
   it('issues an access token, a refresh token, and the refresh jti used to sign it', async () => {
-    const result = await generateTokens('user-1')
+    const result = await generateTokens('user-1', 'session-1')
     expect(result.accessToken).toEqual(expect.any(String))
     expect(result.refreshToken).toEqual(expect.any(String))
     const decoded = jwt.decode(result.refreshToken) as {
@@ -111,6 +120,19 @@ describe('generateTokens', () => {
     }
     expect(decoded.sub).toBe('user-1')
     expect(decoded.jti).toBe(result.jti)
+  })
+
+  it('binds the access token to the session through a stable sid claim', async () => {
+    const result = await generateTokens('user-1', 'session-1')
+    const access = jwt.decode(result.accessToken) as {
+      sub: string
+      sid: string
+      jti?: string
+    }
+    expect(access.sub).toBe('user-1')
+    expect(access.sid).toBe('session-1')
+    // The rotating refresh jti must never leak into the access token.
+    expect(access.jti).toBeUndefined()
   })
 })
 
@@ -426,6 +448,7 @@ describe('verifyMagicLink', () => {
     expect(result.requiresOnboarding).toBe(false)
     if (!result.requiresOnboarding) {
       expect(result.requiresPhoneVerification).toBe(false)
+      expectSessionBoundTo(result.accessToken)
     }
     expect(mockPrisma.userSession.create).toHaveBeenCalled()
     expect(mockPrisma.magicLinkToken.deleteMany).toHaveBeenCalledWith({
@@ -466,7 +489,7 @@ describe('completeOnboarding', () => {
     )
     expect(result.user.email).toBe('new@example.com')
     expect(result.accessToken).toEqual(expect.any(String))
-    expect(mockPrisma.userSession.create).toHaveBeenCalled()
+    expectSessionBoundTo(result.accessToken)
   })
 
   it('throws when the system has no default role configured', async () => {
@@ -738,6 +761,6 @@ describe('googleLogin', () => {
 
     const result = await googleLogin('id-token', ip, userAgent)
     expect(result.requiresOnboarding).toBe(false)
-    expect(mockPrisma.userSession.create).toHaveBeenCalled()
+    expectSessionBoundTo(result.accessToken)
   })
 })

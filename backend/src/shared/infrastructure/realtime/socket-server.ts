@@ -29,7 +29,10 @@ export interface RealtimeTrade {
  * transport never imports business modules.
  */
 export interface RealtimeDeps {
-  verifyAccessToken: (token: string, secret: string) => { jti?: string }
+  verifyAccessToken: (
+    token: string,
+    secret: string,
+  ) => { sub?: string; sid?: string }
   marketFeed: {
     subscribe(symbol: string): void
     unsubscribe(symbol: string): void
@@ -95,13 +98,23 @@ export class SocketServer {
         token,
         config.auth.accessTokenSecret,
       )
-      if (!payload.jti) return next(new Error('Unauthorized'))
+      if (!payload.sid || !payload.sub) return next(new Error('Unauthorized'))
 
       const session = await prisma.userSession.findUnique({
-        where: { jti: payload.jti },
-        include: { user: { select: { plan: true } } },
+        where: { id: payload.sid },
+        select: {
+          userId: true,
+          isRevoked: true,
+          expiresAt: true,
+          user: { select: { plan: true } },
+        },
       })
-      if (!session || session.isRevoked || new Date() > session.expiresAt) {
+      if (
+        !session ||
+        session.userId !== payload.sub ||
+        session.isRevoked ||
+        new Date() > session.expiresAt
+      ) {
         return next(new Error('Unauthorized'))
       }
 
