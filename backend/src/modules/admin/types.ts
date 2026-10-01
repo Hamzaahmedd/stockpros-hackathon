@@ -2,6 +2,8 @@
 export interface AdminWriteContext {
   adminId: string
   reason: string
+  /** Support ticket the request cites; required when `config.admin.requireTicketRef` is on. */
+  ticketRef?: string
   ipAddress?: string
 }
 

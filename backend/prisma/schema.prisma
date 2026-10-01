@@ -842,6 +842,8 @@ model AdminAuditLog {
   targetType String           @map("target_type") // USER | TEAM | SUBSCRIPTION | PAYMENT | SYSTEM
   targetId   String           @map("target_id")
   reason     String
+  // Support-ticket reference (e.g. SUP-1234) tying the action to its request.
+  ticketRef  String?          @map("ticket_ref")
   metadata   Json?
   ipAddress  String?          @map("ip_address")
   createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -851,6 +853,7 @@ model AdminAuditLog {
   @@index([adminId], map: "idx_admin_audit_admin_id")
   @@index([targetId], map: "idx_admin_audit_target_id")
   @@index([action], map: "idx_admin_audit_action")
+  @@index([ticketRef], map: "idx_admin_audit_ticket_ref")
   @@index([createdAt], map: "idx_admin_audit_created_at")
   @@map("admin_audit_logs")
 }

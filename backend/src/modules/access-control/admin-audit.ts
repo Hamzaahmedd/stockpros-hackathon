@@ -27,6 +27,8 @@ export interface AdminAuditEvent {
   targetType: AdminTargetType
   targetId: string
   reason: string
+  /** Support ticket this action answers, when the requester supplied one. */
+  ticketRef?: string
   metadata?: Prisma.InputJsonObject
   ipAddress?: string
 }
@@ -58,6 +60,7 @@ export async function logAdminAction(
       targetType: event.targetType,
       targetId: event.targetId,
       reason: redactPii(event.reason),
+      ticketRef: event.ticketRef,
       metadata: event.metadata,
       ipAddress: event.ipAddress,
     },
@@ -68,6 +71,7 @@ export async function logAdminAction(
     action: event.action,
     targetType: event.targetType,
     targetId: event.targetId,
+    ...(event.ticketRef ? { ticketRef: event.ticketRef } : {}),
   })
 }
 

@@ -4,7 +4,7 @@ import { Input } from "@/shared/components/ui/input";
 import { useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { ADMIN_MAX_REASON_LENGTH, ADMIN_MIN_REASON_LENGTH } from "../constants";
-import { apiErrorMessage, isValidReason } from "../utils";
+import { apiErrorMessage, isValidReason, isValidTicketRef } from "../utils";
 
 interface Props {
   title: string;
@@ -15,7 +15,7 @@ interface Props {
   children?: ReactNode;
   /** False while the extra fields are invalid; keeps the confirm button disabled. */
   canSubmit?: boolean;
-  onSubmit: (reason: string) => Promise<void>;
+  onSubmit: (reason: string, ticketRef?: string) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
   destructive?: boolean;
@@ -35,13 +35,14 @@ export function ReasonModal({
   destructive = false,
 }: Readonly<Props>) {
   const [reason, setReason] = useState("");
+  const [ticketRef, setTicketRef] = useState("");
   const [busy, setBusy] = useState(false);
-  const ready = canSubmit && isValidReason(reason) && !busy;
+  const ready = canSubmit && isValidReason(reason) && isValidTicketRef(ticketRef) && !busy;
 
   const submit = async () => {
     setBusy(true);
     try {
-      await onSubmit(reason.trim());
+      await onSubmit(reason.trim(), ticketRef.trim() || undefined);
       toast.success(successMessage);
       onDone();
       onClose();
@@ -69,6 +70,21 @@ export function ReasonModal({
           />
           <p className="mt-1 text-xs text-muted-foreground">
             At least {ADMIN_MIN_REASON_LENGTH} characters. Stored in the immutable audit log.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="admin-ticket" className="mb-1 block text-sm font-medium">
+            Support ticket
+          </label>
+          <Input
+            id="admin-ticket"
+            value={ticketRef}
+            placeholder="SUP-1234"
+            aria-invalid={!isValidTicketRef(ticketRef)}
+            onChange={(event) => setTicketRef(event.target.value.toUpperCase())}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Links this action to its ticket (e.g. SUP-1234). Required in production.
           </p>
         </div>
         <div className="flex justify-end gap-2">

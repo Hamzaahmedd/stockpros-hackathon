@@ -105,6 +105,7 @@ const TEAM = '0191e4a0-0000-7000-8000-0000000000cc'
 const ctx = {
   adminId: ADMIN,
   reason: 'Approved by finance, ticket 4821',
+  ticketRef: 'SUP-4821',
   ipAddress: '10.0.0.7',
 }
 
@@ -137,6 +138,7 @@ const expectOneAudit = (
     targetType,
     targetId,
     reason: ctx.reason,
+    ticketRef: 'SUP-4821',
     ipAddress: ctx.ipAddress,
   })
   return data
@@ -781,6 +783,7 @@ describe('system', () => {
       action: AdminAuditAction.PLAN_OVERRIDE,
       targetType: 'USER',
       targetId: TARGET,
+      ticketRef: 'SUP-4821',
     })
 
     expect(result.total).toBe(1)
@@ -793,6 +796,7 @@ describe('system', () => {
           action: 'PLAN_OVERRIDE',
           targetType: 'USER',
           targetId: TARGET,
+          ticketRef: 'SUP-4821',
         },
       }),
     )

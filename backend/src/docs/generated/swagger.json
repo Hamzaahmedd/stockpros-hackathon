@@ -3516,6 +3516,12 @@
 						"minLength": 10,
 						"maxLength": 500
 					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
+					},
 					"plan": {
 						"type": "string",
 						"enum": [
@@ -3541,6 +3547,12 @@
 						"example": "Customer escalation #4821, approved by finance",
 						"minLength": 10,
 						"maxLength": 500
+					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
 					}
 				},
 				"required": [
@@ -3557,6 +3569,12 @@
 						"example": "Customer escalation #4821, approved by finance",
 						"minLength": 10,
 						"maxLength": 500
+					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
 					},
 					"seatCapacity": {
 						"type": "integer",
@@ -3581,6 +3599,12 @@
 						"example": "Customer escalation #4821, approved by finance",
 						"minLength": 10,
 						"maxLength": 500
+					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
 					},
 					"target": {
 						"type": "string",
@@ -3619,6 +3643,12 @@
 						"minLength": 10,
 						"maxLength": 500
 					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
+					},
 					"currentPeriodEnd": {
 						"type": "string",
 						"format": "date-time"
@@ -3642,6 +3672,12 @@
 						"example": "Customer escalation #4821, approved by finance",
 						"minLength": 10,
 						"maxLength": 500
+					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this action answers (uppercase key, dash, number). Optional\nunless `config.admin.requireTicketRef` is on (production); the format is\nvalidated whenever it is supplied. A blank string counts as absent.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
 					},
 					"closed": {
 						"type": "boolean",
@@ -9218,6 +9254,14 @@
 					{
 						"in": "query",
 						"name": "targetId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "ticketRef",
 						"required": false,
 						"schema": {
 							"type": "string"

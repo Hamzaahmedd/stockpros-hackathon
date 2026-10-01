@@ -178,7 +178,9 @@ export function BillingTab({ role }: Readonly<{ role: PlatformRole }>) {
           description={`Replays the stored payload for ${action.retry.trackerId}. Already-settled transactions are a safe no-op.`}
           confirmLabel="Retry"
           successMessage="Webhook reprocessed"
-          onSubmit={(reason) => adminService.retryWebhook(action.retry.id, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.retryWebhook(action.retry.id, reason, ticketRef)
+          }
           onClose={() => setAction(null)}
           onDone={() => void load()}
         />
@@ -191,12 +193,13 @@ export function BillingTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel="Apply adjustment"
           successMessage="Credits adjusted"
           canSubmit={creditsValid}
-          onSubmit={(reason) =>
+          onSubmit={(reason, ticketRef) =>
             adminService.adjustCredits({
               target: creditTarget,
               targetId: creditTargetId.trim(),
               amountPaisa: paisaValue,
               reason,
+              ticketRef,
             })
           }
           onClose={() => setAction(null)}
@@ -236,11 +239,12 @@ export function BillingTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel="Extend"
           successMessage="Subscription extended"
           canSubmit={extendValid}
-          onSubmit={(reason) =>
+          onSubmit={(reason, ticketRef) =>
             adminService.extendSubscription(subscriptionId.trim(), {
               currentPeriodEnd: toIso(periodEnd),
               gracePeriodEnd: toIso(graceEnd),
               reason,
+              ticketRef,
             })
           }
           onClose={() => setAction(null)}

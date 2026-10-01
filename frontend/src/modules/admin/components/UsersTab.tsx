@@ -134,7 +134,9 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
           description={`Sets ${action.user.email} directly, bypassing Safepay. Leaving TEAM removes a non-owner member from their workspace; owners must transfer ownership first.`}
           confirmLabel="Override plan"
           successMessage="Plan overridden"
-          onSubmit={(reason) => adminService.overridePlan(action.user.id, plan, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.overridePlan(action.user.id, plan, reason, ticketRef)
+          }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}
         >
@@ -163,7 +165,9 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel="Revoke sessions"
           successMessage="Sessions revoked"
           destructive
-          onSubmit={(reason) => adminService.invalidateSessions(action.user.id, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.invalidateSessions(action.user.id, reason, ticketRef)
+          }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}
         />

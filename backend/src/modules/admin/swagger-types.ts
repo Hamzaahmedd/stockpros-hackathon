@@ -31,6 +31,14 @@ export interface AdminReasonRequest {
    * @example "Customer escalation #4821, approved by finance"
    */
   reason: string
+  /**
+   * Support ticket this action answers (uppercase key, dash, number). Optional
+   * unless `config.admin.requireTicketRef` is on (production); the format is
+   * validated whenever it is supplied. A blank string counts as absent.
+   * @pattern ^[A-Z][A-Z0-9]{1,9}-\d{1,8}$
+   * @example "SUP-1234"
+   */
+  ticketRef?: string
 }
 
 export interface PlanOverrideRequest extends AdminReasonRequest {
@@ -234,6 +242,7 @@ export class AdminSwaggerController extends Controller {
     @Query() action?: string,
     @Query() targetType?: string,
     @Query() targetId?: string,
+    @Query() ticketRef?: string,
   ): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }

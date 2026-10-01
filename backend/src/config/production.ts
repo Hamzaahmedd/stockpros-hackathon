@@ -78,6 +78,11 @@ export const productionConfig = {
     // constants (CHECKOUT_PRODUCTION vs API_URL_PRODUCTION).
     checkoutBaseUrl: 'https://getsafepay.com/checkout/pay',
   },
+  // Internal staff ops panel (/api/v1/admin) hardening switches.
+  admin: {
+    // Every admin write must cite a support ticket (format-validated whenever supplied).
+    requireTicketRef: true,
+  },
   audit: {
     retentionDays: 30,
   },

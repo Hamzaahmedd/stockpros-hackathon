@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { actionLabel, formatDateTime, hasPlatformRole, isStaffRole, isValidReason } from "./utils";
+import {
+  actionLabel,
+  formatDateTime,
+  hasPlatformRole,
+  isStaffRole,
+  isValidReason,
+  isValidTicketRef,
+} from "./utils";
 
 describe("hasPlatformRole", () => {
   it("orders roles from USER up to SUPER_ADMIN", () => {
@@ -30,6 +37,21 @@ describe("isValidReason", () => {
     expect(isValidReason("too short")).toBe(false);
     expect(isValidReason("   padded   ")).toBe(false);
     expect(isValidReason("Ticket #4821 approved")).toBe(true);
+  });
+});
+
+describe("isValidTicketRef", () => {
+  it("allows a blank field (the API decides whether a ticket is required)", () => {
+    expect(isValidTicketRef("")).toBe(true);
+    expect(isValidTicketRef("   ")).toBe(true);
+  });
+
+  it.each(["SUP-1234", "INC9-204", "  AB-1  "])("accepts %s", (value) => {
+    expect(isValidTicketRef(value)).toBe(true);
+  });
+
+  it.each(["sup-1234", "SUP1234", "S-1", "SUP-", "SUP-12 34"])("rejects %s", (value) => {
+    expect(isValidTicketRef(value)).toBe(false);
   });
 });
 

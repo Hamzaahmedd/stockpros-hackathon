@@ -107,6 +107,7 @@ export async function retryWebhook(
     targetType: AdminTargetType.PAYMENT,
     targetId: transactionId,
     reason: ctx.reason,
+    ticketRef: ctx.ticketRef,
     ipAddress: ctx.ipAddress,
     metadata: { statusBefore: before.status, statusAfter: after.status },
   })
@@ -209,6 +210,7 @@ export async function adjustCredits(
           : AdminTargetType.TEAM,
       targetId: input.targetId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: { amountPaisa: input.amountPaisa, target: input.target },
     })
@@ -283,6 +285,7 @@ export async function extendSubscription(
       targetType: AdminTargetType.SUBSCRIPTION,
       targetId: subscriptionId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: {
         previousPeriodEnd: subscription.currentPeriodEnd?.toISOString() ?? null,

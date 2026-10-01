@@ -15,7 +15,13 @@ import { toast } from "react-toastify";
 import { ADMIN_AUDIT_ACTIONS } from "../constants";
 import { adminService } from "../services";
 import type { AdminAuditAction, AdminAuditEntry, AdminPage } from "../types";
-import { actionLabel, apiErrorMessage, formatDateTime, hasPlatformRole } from "../utils";
+import {
+  actionLabel,
+  apiErrorMessage,
+  formatDateTime,
+  hasPlatformRole,
+  isValidTicketRef,
+} from "../utils";
 import { Pager } from "./Pager";
 import { ReasonModal } from "./ReasonModal";
 
@@ -25,6 +31,7 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
   const [confirming, setConfirming] = useState(false);
   const [action, setAction] = useState<AdminAuditAction | "">("");
   const [targetId, setTargetId] = useState("");
+  const [ticket, setTicket] = useState("");
   const [page, setPage] = useState(1);
   const [logs, setLogs] = useState<AdminPage<AdminAuditEntry> | null>(null);
   const canToggle = hasPlatformRole(role, "SUPER_ADMIN");
@@ -41,7 +48,11 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
     try {
       setLogs(
         await adminService.listAuditLogs(
-          { action: action || undefined, targetId: targetId.trim() || undefined },
+          {
+            action: action || undefined,
+            targetId: targetId.trim() || undefined,
+            ticketRef: isValidTicketRef(ticket) ? ticket.trim() || undefined : undefined,
+          },
           page,
         ),
       );
@@ -49,7 +60,7 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
       toast.error(apiErrorMessage(err, "Failed to load audit log"));
       setLogs((current) => current ?? { items: [], total: 0, page: 1, limit: 25 });
     }
-  }, [action, targetId, page]);
+  }, [action, targetId, ticket, page]);
 
   useEffect(() => {
     void loadStatus();
@@ -118,6 +129,17 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
               setPage(1);
             }}
           />
+          <Input
+            aria-label="Ticket"
+            className="max-w-[10rem]"
+            placeholder="Ticket (SUP-1234)"
+            value={ticket}
+            aria-invalid={!isValidTicketRef(ticket)}
+            onChange={(event) => {
+              setTicket(event.target.value.toUpperCase());
+              setPage(1);
+            }}
+          />
         </div>
 
         {logs && logs.items.length === 0 && (
@@ -132,6 +154,7 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
                   <TableHead>Admin</TableHead>
                   <TableHead>Action</TableHead>
                   <TableHead>Target</TableHead>
+                  <TableHead>Ticket</TableHead>
                   <TableHead>Reason</TableHead>
                 </TableRow>
               </TableHeader>
@@ -145,6 +168,7 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
                       <div className="text-xs">{entry.targetType}</div>
                       <div className="font-mono text-[10px] text-muted-foreground">{entry.targetId}</div>
                     </TableCell>
+                    <TableCell>{entry.ticketRef ?? "—"}</TableCell>
                     <TableCell className="max-w-xs whitespace-pre-wrap">{entry.reason}</TableCell>
                   </TableRow>
                 ))}
@@ -166,7 +190,9 @@ export function SystemTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel={closed ? "Resume market" : "Halt market"}
           successMessage={closed ? "Market resumed" : "Market halted"}
           destructive={!closed}
-          onSubmit={(reason) => adminService.setMarketEmergency(!closed, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.setMarketEmergency(!closed, reason, ticketRef)
+          }
           onClose={() => setConfirming(false)}
           onDone={() => {
             void loadStatus();

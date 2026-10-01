@@ -75,6 +75,11 @@ export const developmentConfig = {
     baseUrl: 'https://sandbox.api.getsafepay.com',
     checkoutBaseUrl: 'https://sandbox.api.getsafepay.com/checkout/pay',
   },
+  // Internal staff ops panel (/api/v1/admin) hardening switches.
+  admin: {
+    // Every admin write must cite a support ticket (format-validated whenever supplied).
+    requireTicketRef: false,
+  },
   audit: {
     retentionDays: 30,
   },

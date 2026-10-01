@@ -107,9 +107,12 @@ test.describe("role-gated controls", () => {
     await page.getByLabel("Reason (audited)").fill("too short");
     await expect(confirm).toBeDisabled();
     await page.getByLabel("Reason (audited)").fill(REASON);
+    await page.getByLabel("Support ticket").fill("sup-4821");
     await confirm.click();
 
-    await expect.poll(() => body).toEqual({ plan: "TEAM", reason: REASON });
+    await expect
+      .poll(() => body)
+      .toEqual({ plan: "TEAM", reason: REASON, ticketRef: "SUP-4821" });
     await expect(page.getByText("Plan overridden")).toBeVisible();
   });
 

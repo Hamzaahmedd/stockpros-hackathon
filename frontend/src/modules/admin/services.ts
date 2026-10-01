@@ -28,43 +28,54 @@ export const adminService = {
   // Users
   searchUsers: async (q: string): Promise<AdminUser[]> =>
     unwrap(await api.get(`${BASE}/users/search`, { params: { q } })),
-  overridePlan: async (userId: string, plan: PlanTier, reason: string): Promise<void> => {
-    await api.post(`${BASE}/users/${userId}/plan-override`, { plan, reason });
+  overridePlan: async (
+    userId: string,
+    plan: PlanTier,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/users/${userId}/plan-override`, { plan, reason, ticketRef });
   },
-  invalidateSessions: async (userId: string, reason: string): Promise<void> => {
-    await api.post(`${BASE}/users/${userId}/sessions/invalidate`, { reason });
+  invalidateSessions: async (userId: string, reason: string, ticketRef?: string): Promise<void> => {
+    await api.post(`${BASE}/users/${userId}/sessions/invalidate`, { reason, ticketRef });
   },
 
   // Teams
   searchTeams: async (q: string): Promise<AdminTeam[]> =>
     unwrap(await api.get(`${BASE}/teams/search`, { params: { q } })),
-  setSeatCapacity: async (teamId: string, seatCapacity: number, reason: string): Promise<void> => {
-    await api.patch(`${BASE}/teams/${teamId}/capacity`, { seatCapacity, reason });
+  setSeatCapacity: async (
+    teamId: string,
+    seatCapacity: number,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.patch(`${BASE}/teams/${teamId}/capacity`, { seatCapacity, reason, ticketRef });
   },
-  verifyDomain: async (domainId: string, reason: string): Promise<void> => {
-    await api.post(`${BASE}/teams/domains/${domainId}/verify`, { reason });
+  verifyDomain: async (domainId: string, reason: string, ticketRef?: string): Promise<void> => {
+    await api.post(`${BASE}/teams/domains/${domainId}/verify`, { reason, ticketRef });
   },
-  removeMember: async (userId: string, reason: string): Promise<void> => {
-    await api.delete(`${BASE}/teams/members/${userId}`, { data: { reason } });
+  removeMember: async (userId: string, reason: string, ticketRef?: string): Promise<void> => {
+    await api.delete(`${BASE}/teams/members/${userId}`, { data: { reason, ticketRef } });
   },
 
   // Billing
   listWebhooks: async (filters: WebhookFilters, page: number): Promise<AdminPage<AdminWebhook>> =>
     unwrap(await api.get(`${BASE}/billing/webhooks`, { params: compact({ ...filters, page }) })),
-  retryWebhook: async (transactionId: string, reason: string): Promise<void> => {
-    await api.post(`${BASE}/billing/webhooks/${transactionId}/retry`, { reason });
+  retryWebhook: async (transactionId: string, reason: string, ticketRef?: string): Promise<void> => {
+    await api.post(`${BASE}/billing/webhooks/${transactionId}/retry`, { reason, ticketRef });
   },
   adjustCredits: async (input: {
     target: CreditTarget;
     targetId: string;
     amountPaisa: number;
     reason: string;
+    ticketRef?: string;
   }): Promise<void> => {
     await api.post(`${BASE}/billing/credits/adjust`, input);
   },
   extendSubscription: async (
     subscriptionId: string,
-    input: { currentPeriodEnd?: string; gracePeriodEnd?: string; reason: string },
+    input: { currentPeriodEnd?: string; gracePeriodEnd?: string; reason: string; ticketRef?: string },
   ): Promise<void> => {
     await api.post(`${BASE}/subscriptions/${subscriptionId}/extend`, input);
   },
@@ -78,8 +89,8 @@ export const adminService = {
   // System
   getMarketStatus: async (): Promise<{ emergencyClosed: boolean }> =>
     unwrap(await api.get(`${BASE}/system/market-status`)),
-  setMarketEmergency: async (closed: boolean, reason: string): Promise<void> => {
-    await api.post(`${BASE}/system/market-emergency`, { closed, reason });
+  setMarketEmergency: async (closed: boolean, reason: string, ticketRef?: string): Promise<void> => {
+    await api.post(`${BASE}/system/market-emergency`, { closed, reason, ticketRef });
   },
   listAuditLogs: async (filters: AuditFilters, page: number): Promise<AdminPage<AdminAuditEntry>> =>
     unwrap(await api.get(`${BASE}/system/audit-logs`, { params: compact({ ...filters, page }) })),

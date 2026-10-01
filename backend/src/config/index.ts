@@ -178,6 +178,7 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       checkoutBaseUrl: env.safepay.checkoutBaseUrl,
     },
     features: env.features,
+    admin: env.admin,
     priorityQueue: env.priorityQueue,
     market: {
       // Ops kill-switch for unscheduled exchange halts / ad-hoc closures: when

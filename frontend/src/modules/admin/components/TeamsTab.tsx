@@ -165,8 +165,8 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel="Set capacity"
           successMessage="Seat capacity updated"
           canSubmit={capacityValid}
-          onSubmit={(reason) =>
-            adminService.setSeatCapacity(action.team.id, capacityValue, reason)
+          onSubmit={(reason, ticketRef) =>
+            adminService.setSeatCapacity(action.team.id, capacityValue, reason, ticketRef)
           }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}
@@ -189,7 +189,9 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
           description={`Marks ${action.domain} verified without a DNS TXT check.`}
           confirmLabel="Force verify"
           successMessage="Domain verified"
-          onSubmit={(reason) => adminService.verifyDomain(action.domainId, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.verifyDomain(action.domainId, reason, ticketRef)
+          }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}
         />
@@ -202,7 +204,9 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
           confirmLabel="Remove member"
           successMessage="Member removed"
           destructive
-          onSubmit={(reason) => adminService.removeMember(action.userId, reason)}
+          onSubmit={(reason, ticketRef) =>
+            adminService.removeMember(action.userId, reason, ticketRef)
+          }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}
         />

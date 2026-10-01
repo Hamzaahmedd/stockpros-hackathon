@@ -96,6 +96,7 @@ export interface AdminAuditEntry {
   targetType: string;
   targetId: string;
   reason: string;
+  ticketRef: string | null;
   ipAddress: string | null;
   createdAt: string;
   admin: { id: string; displayName: string | null };
@@ -116,4 +117,5 @@ export interface WebhookFilters {
 export interface AuditFilters {
   action?: AdminAuditAction;
   targetId?: string;
+  ticketRef?: string;
 }

@@ -275,3 +275,56 @@ describe('RBAC matrix (pricingTiersEnabled: true)', () => {
     expect(badId.status).toBe(400)
   })
 })
+
+describe('ticketRef over HTTP', () => {
+  const originalRequired = config.admin.requireTicketRef
+  const setRequired = (value: boolean) => {
+    ;(config.admin as { requireTicketRef: boolean }).requireTicketRef = value
+  }
+
+  beforeEach(() => {
+    ;(config.features as any).pricingTiersEnabled = true
+    jest.clearAllMocks()
+  })
+  afterEach(() => setRequired(originalRequired))
+
+  const overridePlan = (body: object) =>
+    request(app)
+      .post(`/api/v1/admin/users/${ID}/plan-override`)
+      .set('x-user-id', PlatformRole.SUPER_ADMIN)
+      .send({ plan: 'PRO', reason: REASON, ...body })
+
+  it('passes the ticket to the service in the write context', async () => {
+    setRequired(false)
+    const res = await overridePlan({ ticketRef: 'SUP-1234' })
+    expect(res.status).toBe(200)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { overridePlan: service } = require('../users-service')
+    expect(service).toHaveBeenCalledWith(
+      expect.objectContaining({ ticketRef: 'SUP-1234', reason: REASON }),
+      ID,
+      'PRO',
+    )
+  })
+
+  it('does not demand a ticket when the switch is off', async () => {
+    setRequired(false)
+    expect((await overridePlan({})).status).toBe(200)
+  })
+
+  it('rejects a missing ticket when the switch is on', async () => {
+    setRequired(true)
+    const res = await overridePlan({})
+    expect(res.status).toBe(400)
+    expect(res.body.message).toContain('ticketRef is required')
+  })
+
+  it('rejects a malformed ticket whether or not tickets are required', async () => {
+    for (const required of [false, true]) {
+      setRequired(required)
+      const res = await overridePlan({ ticketRef: 'lowercase-1' })
+      expect(res.status).toBe(400)
+      expect(res.body.message).toContain('ticketRef must look like')
+    }
+  })
+})

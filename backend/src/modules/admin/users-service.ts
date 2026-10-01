@@ -139,6 +139,7 @@ export async function overridePlan(
       targetType: AdminTargetType.USER,
       targetId: userId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: {
         fromPlan: user.plan,
@@ -174,6 +175,7 @@ export async function invalidateSessions(
       targetType: AdminTargetType.USER,
       targetId: userId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: { revokedSessions: count },
     })

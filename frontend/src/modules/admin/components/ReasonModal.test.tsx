@@ -49,10 +49,31 @@ describe("ReasonModal", () => {
     await userEvent.type(screen.getByLabelText("Reason (audited)"), `  ${REASON}  `);
     await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith(REASON));
+    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith(REASON, undefined));
     expect(toast.success).toHaveBeenCalledWith("Done");
     expect(props.onDone).toHaveBeenCalled();
     expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("sends the ticket along with the reason, normalised to upper case", async () => {
+    const props = setup();
+    await userEvent.type(screen.getByLabelText("Reason (audited)"), REASON);
+    await userEvent.type(screen.getByLabelText("Support ticket"), "sup-1234");
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith(REASON, "SUP-1234"));
+  });
+
+  it("blocks a malformed ticket but allows leaving it blank", async () => {
+    setup();
+    await userEvent.type(screen.getByLabelText("Reason (audited)"), REASON);
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
+
+    await userEvent.type(screen.getByLabelText("Support ticket"), "not a ticket");
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+
+    await userEvent.clear(screen.getByLabelText("Support ticket"));
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
   });
 
   it("shows the server's message and stays open when the action fails", async () => {

@@ -1,5 +1,10 @@
 import type { PlatformRole } from "@/modules/auth/types";
-import { ADMIN_MIN_REASON_LENGTH, PLATFORM_ROLE_RANK, STAFF_ROLES } from "./constants";
+import {
+  ADMIN_MIN_REASON_LENGTH,
+  PLATFORM_ROLE_RANK,
+  STAFF_ROLES,
+  TICKET_REF_PATTERN,
+} from "./constants";
 
 export { apiErrorMessage } from "@/shared/utils/api-error";
 export { formatPaisa } from "@/modules/plans/utils";
@@ -16,6 +21,10 @@ export const isStaffRole = (role: PlatformRole | undefined): boolean =>
 
 export const isValidReason = (reason: string): boolean =>
   reason.trim().length >= ADMIN_MIN_REASON_LENGTH;
+
+/** A blank ticket field is fine (the API decides whether one is required); anything typed must be well formed. */
+export const isValidTicketRef = (value: string): boolean =>
+  value.trim() === "" || TICKET_REF_PATTERN.test(value.trim());
 
 export const formatDateTime = (value: string | null): string =>
   value

@@ -72,6 +72,7 @@ describe("UsersTab", () => {
       screen.getByLabelText("Reason (audited)"),
       "Enterprise pilot approved by sales",
     );
+    await userEvent.type(screen.getByLabelText("Support ticket"), "SUP-77");
     await userEvent.click(screen.getByRole("button", { name: "Override plan" }));
 
     await waitFor(() =>
@@ -79,6 +80,7 @@ describe("UsersTab", () => {
         USER.id,
         "TEAM",
         "Enterprise pilot approved by sales",
+        "SUP-77",
       ),
     );
     // The list is refreshed after a successful write.

@@ -1,5 +1,6 @@
 import { AdminAuditAction, PaymentStatus, PlanTier } from '@prisma/client'
 import { z } from 'zod'
+import config from '@/config'
 import { TEAM_MIN_SEATS } from '../payments/public'
 import {
   ADMIN_DEFAULT_PAGE_SIZE,
@@ -10,6 +11,7 @@ import {
   ADMIN_SEARCH_MIN_QUERY_LENGTH,
   ADMIN_TEAM_MAX_SEATS,
   AdminCreditTarget,
+  TICKET_REF_PATTERN,
 } from './constants'
 
 /** Mandatory justification stored on the audit row of every write. */
@@ -22,7 +24,43 @@ export const reasonSchema = z
   )
   .max(ADMIN_MAX_REASON_LENGTH)
 
-export const reasonBodyValidator = z.object({ reason: reasonSchema })
+/**
+ * Optional support-ticket reference. An empty string (a blank form field) counts
+ * as absent; anything else must match the ticket format, whether or not tickets
+ * are required.
+ */
+export const ticketRefSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z
+    .string()
+    .trim()
+    .regex(TICKET_REF_PATTERN, 'ticketRef must look like SUP-1234')
+    .optional(),
+)
+
+/** Fields every admin write carries. */
+const writeFields = { reason: reasonSchema, ticketRef: ticketRefSchema }
+
+/**
+ * Makes ticketRef mandatory when `config.admin.requireTicketRef` is on. Read at
+ * parse time (not import time) so the switch can change without a rebuild.
+ */
+const requireTicketWhenConfigured = (
+  data: { ticketRef?: string },
+  ctx: z.RefinementCtx,
+): void => {
+  if (config.admin.requireTicketRef && !data.ticketRef) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ticketRef'],
+      message: 'ticketRef is required',
+    })
+  }
+}
+
+export const reasonBodyValidator = z
+  .object(writeFields)
+  .superRefine(requireTicketWhenConfigured)
 
 export const idParamValidator = z.object({
   id: z.string().uuid('id must be a valid id'),
@@ -50,20 +88,21 @@ export const searchQueryValidator = z.object({
   limit: pageQuery.limit,
 })
 
-export const planOverrideValidator = z.object({
-  plan: z.nativeEnum(PlanTier),
-  reason: reasonSchema,
-})
+export const planOverrideValidator = z
+  .object({ plan: z.nativeEnum(PlanTier), ...writeFields })
+  .superRefine(requireTicketWhenConfigured)
 
 // ─── Teams ───────────────────────────────────────────────────────────────────
-export const capacityValidator = z.object({
-  seatCapacity: z
-    .number({ required_error: 'seatCapacity is required' })
-    .int('seatCapacity must be a whole number')
-    .min(TEAM_MIN_SEATS)
-    .max(ADMIN_TEAM_MAX_SEATS),
-  reason: reasonSchema,
-})
+export const capacityValidator = z
+  .object({
+    seatCapacity: z
+      .number({ required_error: 'seatCapacity is required' })
+      .int('seatCapacity must be a whole number')
+      .min(TEAM_MIN_SEATS)
+      .max(ADMIN_TEAM_MAX_SEATS),
+    ...writeFields,
+  })
+  .superRefine(requireTicketWhenConfigured)
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
 export const webhookQueryValidator = z.object({
@@ -74,30 +113,33 @@ export const webhookQueryValidator = z.object({
   to: z.coerce.date().optional(),
 })
 
-export const creditAdjustmentValidator = z.object({
-  target: z.nativeEnum(AdminCreditTarget),
-  targetId: z.string().uuid('targetId must be a valid id'),
-  amountPaisa: z
-    .number({ required_error: 'amountPaisa is required' })
-    .int('amountPaisa must be a whole number of paisa')
-    .refine((value) => value !== 0, 'amountPaisa must not be zero')
-    .refine(
-      (value) => Math.abs(value) <= ADMIN_MAX_CREDIT_ADJUSTMENT_PAISA,
-      `amountPaisa must be within ±${ADMIN_MAX_CREDIT_ADJUSTMENT_PAISA}`,
-    ),
-  reason: reasonSchema,
-})
+export const creditAdjustmentValidator = z
+  .object({
+    target: z.nativeEnum(AdminCreditTarget),
+    targetId: z.string().uuid('targetId must be a valid id'),
+    amountPaisa: z
+      .number({ required_error: 'amountPaisa is required' })
+      .int('amountPaisa must be a whole number of paisa')
+      .refine((value) => value !== 0, 'amountPaisa must not be zero')
+      .refine(
+        (value) => Math.abs(value) <= ADMIN_MAX_CREDIT_ADJUSTMENT_PAISA,
+        `amountPaisa must be within ±${ADMIN_MAX_CREDIT_ADJUSTMENT_PAISA}`,
+      ),
+    ...writeFields,
+  })
+  .superRefine(requireTicketWhenConfigured)
 
 export const extendSubscriptionValidator = z
   .object({
     currentPeriodEnd: z.coerce.date().optional(),
     gracePeriodEnd: z.coerce.date().optional(),
-    reason: reasonSchema,
+    ...writeFields,
   })
   .refine(
     (value) => value.currentPeriodEnd || value.gracePeriodEnd,
     'Provide currentPeriodEnd and/or gracePeriodEnd',
   )
+  .superRefine(requireTicketWhenConfigured)
 
 // ─── Telemetry & system ──────────────────────────────────────────────────────
 export const usageQueryValidator = z.object({
@@ -108,10 +150,12 @@ export const usageQueryValidator = z.object({
   feature: z.string().trim().min(1).max(100).optional(),
 })
 
-export const marketEmergencyValidator = z.object({
-  closed: z.boolean({ required_error: 'closed is required' }),
-  reason: reasonSchema,
-})
+export const marketEmergencyValidator = z
+  .object({
+    closed: z.boolean({ required_error: 'closed is required' }),
+    ...writeFields,
+  })
+  .superRefine(requireTicketWhenConfigured)
 
 export const auditLogQueryValidator = z.object({
   ...pageQuery,
@@ -119,4 +163,5 @@ export const auditLogQueryValidator = z.object({
   action: z.nativeEnum(AdminAuditAction).optional(),
   targetType: z.string().trim().min(1).max(50).optional(),
   targetId: z.string().trim().min(1).max(100).optional(),
+  ticketRef: ticketRefSchema,
 })

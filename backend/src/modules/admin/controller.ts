@@ -42,9 +42,11 @@ const handle =
 const writeContext = (
   req: AuthenticatedRequest,
   reason: string,
+  ticketRef?: string,
 ): AdminWriteContext => ({
   adminId: getUserId(req),
   reason,
+  ticketRef,
   ipAddress: req.ip,
 })
 
@@ -61,14 +63,17 @@ export const searchUsers = handle('Users fetched', (req) => {
 
 export const overridePlan = handle('Plan overridden', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { plan, reason } = validateOrThrow(planOverrideValidator, req.body)
-  return Users.overridePlan(writeContext(req, reason), id, plan)
+  const { plan, reason, ticketRef } = validateOrThrow(
+    planOverrideValidator,
+    req.body,
+  )
+  return Users.overridePlan(writeContext(req, reason, ticketRef), id, plan)
 })
 
 export const invalidateSessions = handle('Sessions invalidated', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { reason } = validateOrThrow(reasonBodyValidator, req.body)
-  return Users.invalidateSessions(writeContext(req, reason), id)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  return Users.invalidateSessions(writeContext(req, reason, ticketRef), id)
 })
 
 // ─── Teams ───────────────────────────────────────────────────────────────────
@@ -79,20 +84,27 @@ export const searchTeams = handle('Teams fetched', (req) => {
 
 export const setSeatCapacity = handle('Seat capacity updated', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { seatCapacity, reason } = validateOrThrow(capacityValidator, req.body)
-  return Teams.setSeatCapacity(writeContext(req, reason), id, seatCapacity)
+  const { seatCapacity, reason, ticketRef } = validateOrThrow(
+    capacityValidator,
+    req.body,
+  )
+  return Teams.setSeatCapacity(
+    writeContext(req, reason, ticketRef),
+    id,
+    seatCapacity,
+  )
 })
 
 export const forceVerifyDomain = handle('Domain verified', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { reason } = validateOrThrow(reasonBodyValidator, req.body)
-  return Teams.forceVerifyDomain(writeContext(req, reason), id)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  return Teams.forceVerifyDomain(writeContext(req, reason, ticketRef), id)
 })
 
 export const forceRemoveMember = handle('Member removed', (req) => {
   const { userId } = validateOrThrow(userIdParamValidator, req.params)
-  const { reason } = validateOrThrow(reasonBodyValidator, req.body)
-  return Teams.forceRemoveMember(writeContext(req, reason), userId)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  return Teams.forceRemoveMember(writeContext(req, reason, ticketRef), userId)
 })
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
@@ -105,25 +117,29 @@ export const listWebhooks = handle('Webhooks fetched', (req) =>
 
 export const retryWebhook = handle('Webhook reprocessed', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { reason } = validateOrThrow(reasonBodyValidator, req.body)
-  return Billing.retryWebhook(writeContext(req, reason), id)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  return Billing.retryWebhook(writeContext(req, reason, ticketRef), id)
 })
 
 export const adjustCredits = handle('Credits adjusted', (req) => {
-  const { reason, ...input } = validateOrThrow(
+  const { reason, ticketRef, ...input } = validateOrThrow(
     creditAdjustmentValidator,
     req.body,
   )
-  return Billing.adjustCredits(writeContext(req, reason), input)
+  return Billing.adjustCredits(writeContext(req, reason, ticketRef), input)
 })
 
 export const extendSubscription = handle('Subscription extended', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
-  const { reason, ...input } = validateOrThrow(
+  const { reason, ticketRef, ...input } = validateOrThrow(
     extendSubscriptionValidator,
     req.body,
   )
-  return Billing.extendSubscription(writeContext(req, reason), id, input)
+  return Billing.extendSubscription(
+    writeContext(req, reason, ticketRef),
+    id,
+    input,
+  )
 })
 
 // ─── Telemetry ───────────────────────────────────────────────────────────────
@@ -144,8 +160,11 @@ export const getMarketStatus = handle('Market status fetched', () =>
 )
 
 export const setMarketEmergency = handle('Market emergency updated', (req) => {
-  const { closed, reason } = validateOrThrow(marketEmergencyValidator, req.body)
-  return System.setMarketEmergency(writeContext(req, reason), closed)
+  const { closed, reason, ticketRef } = validateOrThrow(
+    marketEmergencyValidator,
+    req.body,
+  )
+  return System.setMarketEmergency(writeContext(req, reason, ticketRef), closed)
 })
 
 export const listAuditLogs = handle('Audit logs fetched', (req) =>

@@ -16,6 +16,7 @@ export interface AuditLogQuery {
   action?: AdminAuditAction
   targetType?: string
   targetId?: string
+  ticketRef?: string
 }
 
 export const getMarketStatus = () => ({ emergencyClosed: isEmergencyClosed() })
@@ -36,6 +37,7 @@ export async function setMarketEmergency(
     targetType: AdminTargetType.SYSTEM,
     targetId: MARKET_EMERGENCY_TARGET_ID,
     reason: ctx.reason,
+    ticketRef: ctx.ticketRef,
     ipAddress: ctx.ipAddress,
     metadata: { previous, closed },
   })
@@ -50,6 +52,7 @@ export async function listAuditLogs(query: AuditLogQuery) {
     ...(query.action ? { action: query.action } : {}),
     ...(query.targetType ? { targetType: query.targetType } : {}),
     ...(query.targetId ? { targetId: query.targetId } : {}),
+    ...(query.ticketRef ? { ticketRef: query.ticketRef } : {}),
   }
   const [total, items] = await Promise.all([
     prisma.adminAuditLog.count({ where }),

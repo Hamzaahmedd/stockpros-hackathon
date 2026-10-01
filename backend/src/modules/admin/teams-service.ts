@@ -121,6 +121,7 @@ export async function setSeatCapacity(
       targetType: AdminTargetType.TEAM,
       targetId: teamId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: {
         previousCapacity: team.seatCapacity,
@@ -159,6 +160,7 @@ export async function forceVerifyDomain(
       targetType: AdminTargetType.TEAM_DOMAIN,
       targetId: domainId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: { teamId: domain.teamId, domain: domain.domain },
     })
@@ -197,6 +199,7 @@ export async function forceRemoveMember(
       targetType: AdminTargetType.USER,
       targetId: userId,
       reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
       ipAddress: ctx.ipAddress,
       metadata: { teamId: member.teamId, role: member.role },
     })

@@ -15,6 +15,9 @@ export const STAFF_ROLES: readonly PlatformRole[] = ["SUPPORT_AGENT", "PLATFORM_
 export const ADMIN_MIN_REASON_LENGTH = 10;
 export const ADMIN_MAX_REASON_LENGTH = 500;
 
+/** Support-ticket reference, e.g. SUP-1234. Mirrors the API's `TICKET_REF_PATTERN`. */
+export const TICKET_REF_PATTERN = /^[A-Z][A-Z0-9]{1,9}-\d{1,8}$/;
+
 /** Ids the admin API accepts (UUIDs); used to disable submit on malformed input. */
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
