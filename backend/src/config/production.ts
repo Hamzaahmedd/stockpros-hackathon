@@ -80,6 +80,10 @@ export const productionConfig = {
   },
   // Internal staff ops panel (/api/v1/admin) hardening switches.
   admin: {
+    // Sensitive admin writes need a recent emailed-code re-verification.
+    stepUpEnabled: true,
+    // How long one verification covers; each successful write extends it.
+    stepUpWindowMinutes: 15,
     // Hide customer email/name in staff views until a reveal is requested (audited).
     maskCustomerPii: true,
     // Every admin write must cite a support ticket (format-validated whenever supplied).

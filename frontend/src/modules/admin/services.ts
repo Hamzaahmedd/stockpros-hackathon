@@ -27,6 +27,14 @@ const compact = (params: object): Record<string, string | number> =>
   );
 
 export const adminService = {
+  // Step-up verification
+  requestStepUp: async (): Promise<void> => {
+    await api.post(`${BASE}/step-up/request`, {});
+  },
+  verifyStepUp: async (code: string): Promise<void> => {
+    await api.post(`${BASE}/step-up/verify`, { code });
+  },
+
   // Users
   searchUsers: async (q: string): Promise<AdminUser[]> =>
     unwrap(await api.get(`${BASE}/users/search`, { params: { q } })),

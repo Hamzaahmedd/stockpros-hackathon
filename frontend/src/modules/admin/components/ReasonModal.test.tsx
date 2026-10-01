@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("react-toastify", () => ({ toast }));
+const service = vi.hoisted(() => ({ requestStepUp: vi.fn(), verifyStepUp: vi.fn() }));
+vi.mock("../services", () => ({ adminService: service }));
 
 import { ReasonModal } from "./ReasonModal";
 
@@ -88,5 +90,47 @@ describe("ReasonModal", () => {
     expect(props.onClose).not.toHaveBeenCalled();
     expect(props.onDone).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
+  });
+});
+
+describe("ReasonModal — step-up", () => {
+  const stepUpRequired = {
+    response: { data: { message: "Verify your identity to continue", errorCode: "STEP_UP_REQUIRED" } },
+  };
+
+  it("pauses for an identity check instead of failing, then retries the same action", async () => {
+    service.verifyStepUp.mockResolvedValue(undefined);
+    service.requestStepUp.mockResolvedValue(undefined);
+    const onSubmit = vi.fn().mockRejectedValueOnce(stepUpRequired).mockResolvedValueOnce(undefined);
+    const props = setup({ onSubmit });
+
+    await userEvent.type(screen.getByLabelText("Reason (audited)"), REASON);
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    // No error toast: the user is asked to verify instead.
+    expect(await screen.findByText("Verify it's you")).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Email me a code" }));
+    await userEvent.type(await screen.findByLabelText("Verification code"), "482913");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+    expect(onSubmit).toHaveBeenLastCalledWith(REASON, undefined);
+    await waitFor(() => expect(props.onDone).toHaveBeenCalled());
+    expect(toast.success).toHaveBeenCalledWith("Done");
+  });
+
+  it("returns to the form with the reason intact when the identity check is cancelled", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(stepUpRequired);
+    setup({ onSubmit });
+
+    await userEvent.type(screen.getByLabelText("Reason (audited)"), REASON);
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await screen.findByText("Verify it's you");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByLabelText("Reason (audited)")).toHaveValue(REASON);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

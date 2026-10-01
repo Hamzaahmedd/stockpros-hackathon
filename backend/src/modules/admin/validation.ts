@@ -97,6 +97,13 @@ export const planOverrideValidator = z
   .object({ plan: z.nativeEnum(PlanTier), ...writeFields })
   .superRefine(requireTicketWhenConfigured)
 
+export const stepUpVerifyValidator = z.object({
+  code: z
+    .string({ required_error: 'code is required' })
+    .trim()
+    .regex(/^\d{6}$/, 'code must be the 6-digit number from your email'),
+})
+
 export const timelineQueryValidator = z.object({
   limit: pageQuery.limit,
   before: z.coerce.date().optional(),

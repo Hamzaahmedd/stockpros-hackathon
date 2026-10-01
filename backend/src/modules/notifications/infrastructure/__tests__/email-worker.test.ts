@@ -701,3 +701,133 @@ describe('email worker logs carry ids, never addresses', () => {
     expect(message).not.toContain('secret.person')
   })
 })
+
+describe('staff security emails', () => {
+  const stepUp = {
+    to: 'staff@venturedive.com',
+    userId: 'staff-1',
+    code: '123456',
+    expiryMinutes: 5,
+  }
+  const alert = {
+    to: 'security@venturedive.com',
+    action: 'PLAN_OVERRIDE',
+    adminId: 'staff-1',
+    targetType: 'USER',
+    targetId: 'user-9',
+    ticketRef: 'SUP-77',
+    at: '2026-10-01T10:00:00.000Z',
+  }
+
+  const start = (name: string, data: unknown) => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+    const worker = deps.WorkerMock.mock.results[0].value
+    return { transporter, process: () => worker.processor({ name, data }) }
+  }
+
+  describe('enqueueStaffStepUpEmail', () => {
+    it('reports false and skips enqueuing when Redis is unavailable', async () => {
+      mockDeps(null)
+      const { enqueueStaffStepUpEmail } = require('../email-worker')
+      await expect(enqueueStaffStepUpEmail(stepUp)).resolves.toBe(false)
+    })
+
+    it("enqueues under the 'staff-step-up' job name and reports true", async () => {
+      const { QueueMock } = mockDeps({ host: 'localhost' })
+      const { enqueueStaffStepUpEmail } = require('../email-worker')
+
+      await expect(enqueueStaffStepUpEmail(stepUp)).resolves.toBe(true)
+
+      expect(QueueMock.mock.results[0].value.add).toHaveBeenCalledWith(
+        'staff-step-up',
+        stepUp,
+      )
+    })
+  })
+
+  describe('enqueueAdminActionAlertEmail', () => {
+    it('skips quietly when Redis is unavailable', async () => {
+      mockDeps(null)
+      const { enqueueAdminActionAlertEmail } = require('../email-worker')
+      await expect(enqueueAdminActionAlertEmail(alert)).resolves.toBeUndefined()
+    })
+
+    it("enqueues under the 'admin-action-alert' job name", async () => {
+      const { QueueMock } = mockDeps({ host: 'localhost' })
+      const { enqueueAdminActionAlertEmail } = require('../email-worker')
+
+      await enqueueAdminActionAlertEmail(alert)
+
+      expect(QueueMock.mock.results[0].value.add).toHaveBeenCalledWith(
+        'admin-action-alert',
+        alert,
+      )
+    })
+  })
+
+  it('sends the step-up code email', async () => {
+    const { transporter, process } = start('staff-step-up', stepUp)
+    await process()
+    const mail = transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('staff@venturedive.com')
+    expect(mail.subject).toBe('Your StockPros staff verification code')
+    expect(mail.text).toContain('123456')
+    expect(mail.html).toContain('123456')
+  })
+
+  it('sends the risky-action alert with identifiers only', async () => {
+    const { transporter, process } = start('admin-action-alert', alert)
+    await process()
+    const mail = transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('security@venturedive.com')
+    expect(mail.subject).toBe('[StockPros staff] Plan override')
+    expect(mail.text).toContain('SUP-77')
+    expect(mail.text).toContain('user-9')
+  })
+
+  it.each([
+    ['staff-step-up', stepUp],
+    ['admin-action-alert', alert],
+  ])(
+    'rethrows delivery failures for %s so BullMQ retries',
+    async (name, data) => {
+      const { transporter, process } = start(name, data)
+      transporter.sendMail.mockRejectedValueOnce(new Error('smtp down'))
+      await expect(process()).rejects.toThrow()
+    },
+  )
+
+  it.each([
+    ['staff-step-up', { ...stepUp, code: '12ab56' }],
+    ['staff-step-up', { ...stepUp, to: 'not-an-email' }],
+    ['admin-action-alert', { ...alert, at: 'yesterday' }],
+  ])('drops a malformed %s payload permanently', async (name, data) => {
+    const { transporter, process } = start(name, data)
+    await expect(process()).rejects.toThrow()
+    expect(transporter.sendMail).not.toHaveBeenCalled()
+  })
+
+  it('never writes the code or the recipient to the logs', async () => {
+    const infoSpy = jest.fn()
+    jest.doMock('../../../../shared/infrastructure/logger', () => ({
+      logger: {
+        info: infoSpy,
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      },
+    }))
+    const { process } = start('staff-step-up', stepUp)
+    await process()
+
+    const logged = JSON.stringify(infoSpy.mock.calls)
+    expect(logged).toContain('Staff step-up code sent')
+    expect(logged).not.toContain('123456')
+    expect(logged).not.toContain('staff@venturedive.com')
+  })
+})

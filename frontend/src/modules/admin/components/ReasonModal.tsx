@@ -3,8 +3,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
-import { ADMIN_MAX_REASON_LENGTH, ADMIN_MIN_REASON_LENGTH } from "../constants";
+import { apiErrorBody } from "@/shared/utils/api-error";
+import { ADMIN_MAX_REASON_LENGTH, ADMIN_MIN_REASON_LENGTH, STEP_UP_REQUIRED_CODE } from "../constants";
 import { apiErrorMessage, isValidReason, isValidTicketRef } from "../utils";
+import { StepUpModal } from "./StepUpModal";
 
 interface Props {
   title: string;
@@ -37,6 +39,7 @@ export function ReasonModal({
   const [reason, setReason] = useState("");
   const [ticketRef, setTicketRef] = useState("");
   const [busy, setBusy] = useState(false);
+  const [stepUpNeeded, setStepUpNeeded] = useState(false);
   const ready = canSubmit && isValidReason(reason) && isValidTicketRef(ticketRef) && !busy;
 
   const submit = async () => {
@@ -47,11 +50,28 @@ export function ReasonModal({
       onDone();
       onClose();
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Action failed"));
+      // A stale identity check is not a failure: verify, then run the same action again.
+      if (apiErrorBody(err).errorCode === STEP_UP_REQUIRED_CODE) {
+        setStepUpNeeded(true);
+      } else {
+        toast.error(apiErrorMessage(err, "Action failed"));
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  if (stepUpNeeded) {
+    return (
+      <StepUpModal
+        onClose={() => setStepUpNeeded(false)}
+        onVerified={() => {
+          setStepUpNeeded(false);
+          void submit();
+        }}
+      />
+    );
+  }
 
   return (
     <Modal isOpen onClose={onClose} title={title} description={description}>

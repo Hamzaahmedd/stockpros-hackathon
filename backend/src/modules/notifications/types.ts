@@ -2,10 +2,12 @@ import type { NewsSentiment } from '@prisma/client'
 
 // Job payload types are inferred from their zod schemas (single source of truth).
 export type {
+  AdminActionAlertEmailJobPayload,
   AuthEmailJobPayload,
   EmailJobPayload,
   PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
+  StaffStepUpEmailJobPayload,
   TeamInviteEmailJobPayload,
 } from './email-job-schemas'
 

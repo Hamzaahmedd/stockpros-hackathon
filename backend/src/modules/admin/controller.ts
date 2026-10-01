@@ -1,9 +1,10 @@
 import { NextFunction, Response } from 'express'
-import { validateOrThrow } from '../../shared/errors'
+import { UnauthorizedError, validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
 import * as Billing from './billing-service'
 import * as System from './system-service'
+import * as StepUp from './step-up-service'
 import * as Teams from './teams-service'
 import * as Telemetry from './telemetry-service'
 import * as Timeline from './timeline-service'
@@ -19,6 +20,7 @@ import {
   planOverrideValidator,
   reasonBodyValidator,
   searchQueryValidator,
+  stepUpVerifyValidator,
   timelineQueryValidator,
   creditLedgerQueryValidator,
   userIdParamValidator,
@@ -77,6 +79,24 @@ export const getUserTimeline = handle('Timeline fetched', (req) => {
   const query = validateOrThrow(timelineQueryValidator, req.query)
   return Timeline.getUserTimeline(readContext(req), id, query)
 })
+
+/** The authenticated staff member and the session this request belongs to. */
+const stepUpActor = (req: AuthenticatedRequest): StepUp.StepUpActor => {
+  const sessionId = req.user?.sessionId
+  if (!sessionId) throw new UnauthorizedError('Please sign in again')
+  return { userId: getUserId(req), sessionId }
+}
+
+export const requestStepUp = handle('Verification code sent', (req) =>
+  StepUp.requestStepUp(stepUpActor(req)),
+)
+
+export const verifyStepUp = handle('Identity verified', (req) =>
+  StepUp.verifyStepUp(
+    stepUpActor(req),
+    validateOrThrow(stepUpVerifyValidator, req.body).code,
+  ),
+)
 
 export const revealUser = handle('Customer data revealed', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)

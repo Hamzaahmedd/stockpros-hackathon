@@ -3,6 +3,7 @@ import { Router } from 'express'
 import {
   requirePlatformRole,
   requirePricingTiersEnabled,
+  requireStepUp,
 } from '../access-control'
 import {
   adminRateLimiter,
@@ -17,17 +18,25 @@ const router = Router()
 router.use(requirePricingTiersEnabled, adminRateLimiter)
 
 const support = requirePlatformRole(PlatformRole.SUPPORT_AGENT)
-// Revealing customer data is audited like a write, so it shares the write limiter.
-const supportWrite = [...support, adminWriteLimiter]
+// Requesting/verifying a step-up code is a staff action in its own right (limited, never itself step-up gated).
+const stepUpAccess = [...support, adminWriteLimiter]
+// Revealing customer data is audited like a write, so it is step-up gated and write limited.
+const supportWrite = [...support, requireStepUp, adminWriteLimiter]
 // Writes also pass the per-staff-member limiter, which needs the authenticated user.
 const platformAdmin = [
   ...requirePlatformRole(PlatformRole.PLATFORM_ADMIN),
+  requireStepUp,
   adminWriteLimiter,
 ]
 const superAdmin = [
   ...requirePlatformRole(PlatformRole.SUPER_ADMIN),
+  requireStepUp,
   adminWriteLimiter,
 ]
+
+// ─── Step-up verification ────────────────────────────────────────────────────
+router.post('/step-up/request', ...stepUpAccess, AdminController.requestStepUp)
+router.post('/step-up/verify', ...stepUpAccess, AdminController.verifyStepUp)
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 router.get('/users/search', ...support, AdminController.searchUsers)

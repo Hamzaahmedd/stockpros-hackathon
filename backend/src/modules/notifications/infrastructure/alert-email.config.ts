@@ -18,6 +18,10 @@ export const TEAM_INVITE_JOB_NAME = 'team-invite'
 // Payment receipts for team workspaces ride the same queue too.
 export const PAYMENT_RECEIPT_JOB_NAME = 'payment-receipt'
 
+// Staff security emails (step-up codes, risky-action alerts) ride the same queue.
+export const STAFF_STEP_UP_JOB_NAME = 'staff-step-up'
+export const ADMIN_ACTION_ALERT_JOB_NAME = 'admin-action-alert'
+
 // BullMQ settings shared by the alert email Queue and Worker.
 export const ALERT_EMAIL_QUEUE_OPTIONS = {
   skipVersionCheck: true,

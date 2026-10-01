@@ -72,12 +72,35 @@ export const paymentReceiptJobSchema = z.object({
   manageUrl: webUrl,
 })
 
+export const staffStepUpJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id (the staff user) — never the address or the code. */
+  userId: id,
+  code: z.string().regex(/^\d{6}$/),
+  expiryMinutes: z.number().positive(),
+})
+
+export const adminActionAlertJobSchema = z.object({
+  to: recipient,
+  action: id,
+  adminId: id,
+  targetType: id,
+  targetId: id,
+  ticketRef: z.string().optional(),
+  /** ISO 8601 — jobs are JSON-serialised, so no Date objects. */
+  at: z.string().datetime(),
+})
+
 export type EmailJobPayload = z.infer<typeof alertEmailJobSchema>
 export type AuthEmailJobPayload = z.infer<typeof authEmailJobSchema>
 export type RenewalReminderEmailJobPayload = z.infer<
   typeof renewalReminderJobSchema
 >
 export type TeamInviteEmailJobPayload = z.infer<typeof teamInviteJobSchema>
+export type StaffStepUpEmailJobPayload = z.infer<typeof staffStepUpJobSchema>
+export type AdminActionAlertEmailJobPayload = z.infer<
+  typeof adminActionAlertJobSchema
+>
 export type PaymentReceiptEmailJobPayload = z.infer<
   typeof paymentReceiptJobSchema
 >

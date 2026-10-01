@@ -4,7 +4,10 @@
  * Services are mocked — these tests exercise the middleware chain, validation
  * and the error envelope only.
  */
-const mockPrisma: any = { user: { findUnique: jest.fn() } }
+const mockPrisma: any = {
+  user: { findUnique: jest.fn() },
+  userSession: { findUnique: jest.fn(), updateMany: jest.fn() },
+}
 
 jest.mock('../../../shared/infrastructure/database', () => ({
   get prisma() {
@@ -23,7 +26,7 @@ jest.mock('../../auth', () => ({
       const { UnauthorizedError } = require('../../../shared/errors')
       return next(new UnauthorizedError('Access token missing'))
     }
-    req.user = { userId, plan: 'FREE' }
+    req.user = { userId, sessionId: `session-${userId}`, plan: 'FREE' }
     next()
   },
 }))
@@ -63,6 +66,10 @@ jest.mock('../billing-service', () => ({
   retryWebhook: mockResolved(),
   adjustCredits: mockResolved(),
   extendSubscription: mockResolved(),
+}))
+jest.mock('../step-up-service', () => ({
+  requestStepUp: mockResolved(),
+  verifyStepUp: mockResolved(),
 }))
 jest.mock('../timeline-service', () => ({
   getUserTimeline: mockResolved(),
@@ -160,6 +167,13 @@ const ENDPOINTS: readonly Endpoint[] = [
     method: 'get',
     path: `/users/${ID}/timeline?limit=20`,
     min: 'SUPPORT_AGENT',
+  },
+  { method: 'post', path: '/step-up/request', min: 'SUPPORT_AGENT', body: {} },
+  {
+    method: 'post',
+    path: '/step-up/verify',
+    min: 'SUPPORT_AGENT',
+    body: { code: '123456' },
   },
   {
     method: 'post',
@@ -341,5 +355,104 @@ describe('ticketRef over HTTP', () => {
       expect(res.status).toBe(400)
       expect(res.body.message).toContain('ticketRef must look like')
     }
+  })
+})
+
+describe('step-up gate on writes', () => {
+  const admin = config.admin as {
+    stepUpEnabled: boolean
+    stepUpWindowMinutes: number
+  }
+  const original = admin.stepUpEnabled
+
+  beforeEach(() => {
+    ;(config.features as any).pricingTiersEnabled = true
+    admin.stepUpEnabled = true
+    mockPrisma.userSession.findUnique.mockReset()
+    mockPrisma.userSession.updateMany.mockReset()
+    mockPrisma.userSession.updateMany.mockResolvedValue({ count: 1 })
+  })
+  afterEach(() => {
+    admin.stepUpEnabled = original
+  })
+
+  const verifiedAgo = (minutes: number) => ({
+    stepUpVerifiedAt: new Date(Date.now() - minutes * 60_000),
+  })
+  const writes = ENDPOINTS.filter(
+    (e) => e.method !== 'get' && !e.path.startsWith('/step-up'),
+  )
+  const reads = ENDPOINTS.filter((e) => e.method === 'get')
+
+  it.each(writes)(
+    '$method $path demands step-up when the session has not verified',
+    async (endpoint) => {
+      mockPrisma.userSession.findUnique.mockResolvedValue({
+        stepUpVerifiedAt: null,
+      })
+      const res = await call(endpoint, PlatformRole.SUPER_ADMIN)
+      expect(res.status).toBe(403)
+      expect(res.body.errorCode).toBe('STEP_UP_REQUIRED')
+    },
+  )
+
+  it.each(writes)(
+    '$method $path succeeds inside the verification window and extends it',
+    async (endpoint) => {
+      mockPrisma.userSession.findUnique.mockResolvedValue(verifiedAgo(3))
+      const res = await call(endpoint, PlatformRole.SUPER_ADMIN)
+      expect(res.status).toBe(200)
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(mockPrisma.userSession.updateMany).toHaveBeenCalledWith({
+        where: { id: 'session-SUPER_ADMIN' },
+        data: { stepUpVerifiedAt: expect.any(Date) },
+      })
+    },
+  )
+
+  it('rejects a verification that is older than the window', async () => {
+    mockPrisma.userSession.findUnique.mockResolvedValue(verifiedAgo(16))
+    const res = await call(writes[0], PlatformRole.SUPER_ADMIN)
+    expect(res.status).toBe(403)
+    expect(res.body.errorCode).toBe('STEP_UP_REQUIRED')
+  })
+
+  it.each(reads)(
+    '$method $path (a read) never needs step-up',
+    async (endpoint) => {
+      mockPrisma.userSession.findUnique.mockResolvedValue({
+        stepUpVerifiedAt: null,
+      })
+      const res = await call(endpoint, PlatformRole.SUPER_ADMIN)
+      expect(res.status).toBe(200)
+    },
+  )
+
+  it('lets staff reach the step-up endpoints without already being verified', async () => {
+    mockPrisma.userSession.findUnique.mockResolvedValue({
+      stepUpVerifiedAt: null,
+    })
+    const requestRes = await call(
+      ENDPOINTS.find((e) => e.path === '/step-up/request')!,
+      PlatformRole.SUPPORT_AGENT,
+    )
+    expect(requestRes.status).toBe(200)
+  })
+
+  it('validates the code format before touching the service', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/step-up/verify')
+      .set('x-user-id', PlatformRole.SUPPORT_AGENT)
+      .send({ code: '12ab56' })
+    expect(res.status).toBe(400)
+  })
+
+  it('checks the role before step-up, so a support agent is told 403 for the right reason', async () => {
+    mockPrisma.userSession.findUnique.mockResolvedValue({
+      stepUpVerifiedAt: null,
+    })
+    const res = await call(writes[0], PlatformRole.SUPPORT_AGENT)
+    expect(res.status).toBe(403)
+    expect(res.body.errorCode).not.toBe('STEP_UP_REQUIRED')
   })
 })

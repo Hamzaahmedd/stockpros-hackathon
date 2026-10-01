@@ -41,6 +41,11 @@ export interface AdminReasonRequest {
   ticketRef?: string
 }
 
+export interface StepUpVerifyRequest {
+  /** @pattern ^\d{6}$ */
+  code: string
+}
+
 export interface PlanOverrideRequest extends AdminReasonRequest {
   /** @example "PRO" */
   plan: 'FREE' | 'PRO' | 'TEAM'
@@ -91,9 +96,22 @@ export interface MarketEmergencyRequest extends AdminReasonRequest {
 )
 @Response<ApiErrorResponse>(
   403,
-  'Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role',
+  'Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)',
 )
 export class AdminSwaggerController extends Controller {
+  /** SUPPORT_AGENT+. Emails a one-time 6-digit code to the signed-in staff member. Sensitive writes then succeed for `stepUpWindowMinutes` (the window slides with each successful write). 60-second resend cooldown; 503 if the email could not be queued. */
+  @Post('step-up/request')
+  async requestStepUp(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Checks the emailed code (5 attempts, 5-minute expiry) and starts the verification window. Writes made without a valid window answer `403 STEP_UP_REQUIRED`. */
+  @Post('step-up/verify')
+  @Response<ApiErrorResponse>(401, 'Wrong, expired or missing code')
+  async verifyStepUp(@Body() body: StepUpVerifyRequest): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, active sessions, subscription. */
   @Get('users/search')
   async searchUsers(

@@ -339,6 +339,8 @@ export async function deleteAccount(userId: string): Promise<void> {
 
         // Staff access ends with the account, and a staff member's own audit rows lose
         // their IP address (the rows stay, keyed by user id only).
+        // One-time staff verification codes are credentials; none outlive the account.
+        tx.adminStepUp.deleteMany({ where: { userId } }),
         tx.adminAuditLog.updateMany({
           where: { adminId: userId },
           data: { ipAddress: null },

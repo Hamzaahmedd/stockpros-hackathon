@@ -9,31 +9,43 @@ import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery
 import { logger } from '../../../shared/infrastructure/logger'
 import { redactPii } from '../../../shared/utils/redact'
 import {
+  adminActionAlertJobSchema,
   alertEmailJobSchema,
   paymentReceiptJobSchema,
   renewalReminderJobSchema,
+  staffStepUpJobSchema,
   teamInviteJobSchema,
+  type AdminActionAlertEmailJobPayload,
   type EmailJobPayload,
   type PaymentReceiptEmailJobPayload,
   type RenewalReminderEmailJobPayload,
+  type StaffStepUpEmailJobPayload,
   type TeamInviteEmailJobPayload,
 } from '../email-job-schemas'
 import { buildPaymentReceiptEmail } from '../email-templates/payment-receipt'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
 import { buildRenewalReminderEmail } from '../email-templates/subscription-renewal'
+import {
+  buildAdminActionAlertEmail,
+  buildStaffStepUpEmail,
+} from '../email-templates/staff-security'
 import { buildTeamInviteEmail } from '../email-templates/team-invite'
 import {
+  ADMIN_ACTION_ALERT_JOB_NAME,
   ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
   ALERT_EMAIL_JOB_NAME,
   ALERT_EMAIL_QUEUE_NAME,
   ALERT_EMAIL_QUEUE_OPTIONS,
   PAYMENT_RECEIPT_JOB_NAME,
   RENEWAL_REMINDER_JOB_NAME,
+  STAFF_STEP_UP_JOB_NAME,
   TEAM_INVITE_JOB_NAME,
 } from './alert-email.config'
 
 type EmailQueueJobPayload =
   | EmailJobPayload
+  | StaffStepUpEmailJobPayload
+  | AdminActionAlertEmailJobPayload
   | RenewalReminderEmailJobPayload
   | TeamInviteEmailJobPayload
   | PaymentReceiptEmailJobPayload
@@ -179,6 +191,44 @@ const sendPaymentReceiptEmail = async (job: JobRef): Promise<void> => {
   })
 }
 
+const sendStaffStepUpEmail = async (job: JobRef): Promise<void> => {
+  const { to, userId, code, expiryMinutes } = parsePayload(
+    staffStepUpJobSchema,
+    job,
+  )
+  const { subject, html, text } = buildStaffStepUpEmail(
+    { code, expiryMinutes },
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  // The code is a credential: log the job and the staff user, never the code.
+  logger.info('[EmailWorker] Staff step-up code sent', {
+    jobId: job.id,
+    userId,
+  })
+}
+
+const sendAdminActionAlertEmail = async (job: JobRef): Promise<void> => {
+  const { to, ...alert } = parsePayload(adminActionAlertJobSchema, job)
+  const { subject, html, text } = buildAdminActionAlertEmail(
+    alert,
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  logger.info('[EmailWorker] Admin action alert sent', {
+    jobId: job.id,
+    action: alert.action,
+  })
+}
+
 /**
  * Start the email worker.
  * Call once at server boot alongside startCronScheduler.
@@ -203,6 +253,12 @@ export const startEmailWorker = (): void => {
       }
       if (job.name === TEAM_INVITE_JOB_NAME) {
         return sendTeamInviteEmail(job)
+      }
+      if (job.name === STAFF_STEP_UP_JOB_NAME) {
+        return sendStaffStepUpEmail(job)
+      }
+      if (job.name === ADMIN_ACTION_ALERT_JOB_NAME) {
+        return sendAdminActionAlertEmail(job)
       }
       return sendAlertEmail(job)
     },
@@ -286,6 +342,38 @@ export const enqueuePaymentReceiptEmail = async (
   } else {
     logger.warn(
       '[EmailWorker] Skipping payment receipt enqueue - Redis not connected',
+    )
+  }
+}
+
+/**
+ * Queue a staff step-up code. Returns false when Redis is unavailable so the
+ * caller can tell the staff member instead of silently never delivering it.
+ */
+export const enqueueStaffStepUpEmail = async (
+  payload: StaffStepUpEmailJobPayload,
+): Promise<boolean> => {
+  const queue = getEmailQueue()
+  if (!queue) {
+    logger.warn(
+      '[EmailWorker] Staff step-up code was not enqueued - Redis not connected',
+    )
+    return false
+  }
+  await queue.add(STAFF_STEP_UP_JOB_NAME, payload)
+  return true
+}
+
+/** Queue a risky-staff-action alert (best effort: callers never block on it). */
+export const enqueueAdminActionAlertEmail = async (
+  payload: AdminActionAlertEmailJobPayload,
+): Promise<void> => {
+  const queue = getEmailQueue()
+  if (queue) {
+    await queue.add(ADMIN_ACTION_ALERT_JOB_NAME, payload)
+  } else {
+    logger.warn(
+      '[EmailWorker] Skipping admin action alert enqueue - Redis not connected',
     )
   }
 }

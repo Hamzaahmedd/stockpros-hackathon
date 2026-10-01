@@ -201,3 +201,50 @@ test.describe("role-gated controls", () => {
     await expect(page.getByRole("button", { name: "Halt market" })).toHaveCount(0);
   });
 });
+
+test.describe("step-up verification", () => {
+  test("a write that needs a fresh identity check prompts for an emailed code, then completes", async ({
+    page,
+  }) => {
+    await openAdmin(page, "SUPER_ADMIN");
+    let attempts = 0;
+    await page.route("**/api/v1/admin/users/*/plan-override", (route) => {
+      attempts += 1;
+      return attempts === 1
+        ? route.fulfill({
+            status: 403,
+            json: {
+              success: false,
+              message: "Verify your identity to continue",
+              statusCode: 403,
+              errorCode: "STEP_UP_REQUIRED",
+            },
+          })
+        : ok(route, { plan: "TEAM" });
+    });
+    const calls: string[] = [];
+    await page.route("**/api/v1/admin/step-up/request", (route) => {
+      calls.push("request");
+      return ok(route, { expiresInSeconds: 300 });
+    });
+    await page.route("**/api/v1/admin/step-up/verify", (route) => {
+      calls.push(`verify:${route.request().postDataJSON().code}`);
+      return ok(route, { verifiedUntil: "2099-01-01T00:00:00.000Z" });
+    });
+
+    await page.getByLabel("Search users").fill("sam");
+    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("button", { name: "Change plan" }).click();
+    await page.getByLabel("Reason (audited)").fill(REASON);
+    await page.getByRole("button", { name: "Override plan" }).click();
+
+    await expect(page.getByText("Verify it's you")).toBeVisible();
+    await page.getByRole("button", { name: "Email me a code" }).click();
+    await page.getByLabel("Verification code").fill("482913");
+    await page.getByRole("button", { name: "Verify" }).click();
+
+    await expect(page.getByText("Plan overridden")).toBeVisible();
+    expect(attempts).toBe(2);
+    expect(calls).toEqual(["request", "verify:482913"]);
+  });
+});

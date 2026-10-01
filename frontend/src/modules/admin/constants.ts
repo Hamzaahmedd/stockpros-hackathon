@@ -21,6 +21,12 @@ export const ADMIN_MAX_REASON_LENGTH = 500;
 /** Support-ticket reference, e.g. SUP-1234. Mirrors the API's `TICKET_REF_PATTERN`. */
 export const TICKET_REF_PATTERN = /^[A-Z][A-Z0-9]{1,9}-\d{1,8}$/;
 
+/** Error code the API answers with when a write needs a fresh emailed-code verification. */
+export const STEP_UP_REQUIRED_CODE = "STEP_UP_REQUIRED";
+
+/** The 6-digit code from the step-up email. */
+export const STEP_UP_CODE_PATTERN = /^\d{6}$/;
+
 /** Ids the admin API accepts (UUIDs); used to disable submit on malformed input. */
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

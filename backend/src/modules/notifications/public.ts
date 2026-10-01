@@ -6,9 +6,11 @@ export {
   getAuthEmailQueue,
 } from './infrastructure/auth-email-worker'
 export {
+  enqueueAdminActionAlertEmail,
   enqueuePaymentReceiptEmail,
   getEmailQueue,
   enqueueRenewalReminderEmail,
+  enqueueStaffStepUpEmail,
   enqueueTeamInviteEmail,
 } from './infrastructure/email-worker'
 export { sendDailyDigestsToAllSubscribers } from './digest-service'

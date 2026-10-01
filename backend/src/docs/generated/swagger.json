@@ -3507,6 +3507,19 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"StepUpVerifyRequest": {
+				"properties": {
+					"code": {
+						"type": "string",
+						"pattern": "^\\d{6}$"
+					}
+				},
+				"required": [
+					"code"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"PlanOverrideRequest": {
 				"properties": {
 					"reason": {
@@ -8122,6 +8135,120 @@
 				}
 			}
 		},
+		"/api/v1/admin/step-up/request": {
+			"post": {
+				"operationId": "RequestStepUp",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Emails a one-time 6-digit code to the signed-in staff member. Sensitive writes then succeed for `stepUpWindowMinutes` (the window slides with each successful write). 60-second resend cooldown; 503 if the email could not be queued.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/admin/step-up/verify": {
+			"post": {
+				"operationId": "VerifyStepUp",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Wrong, expired or missing code",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Checks the emailed code (5 attempts, 5-minute expiry) and starts the verification window. Writes made without a valid window answer `403 STEP_UP_REQUIRED`.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/StepUpVerifyRequest"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/v1/admin/users/search": {
 			"get": {
 				"operationId": "SearchUsers",
@@ -8137,7 +8264,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8202,7 +8329,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8278,7 +8405,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8344,7 +8471,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8417,7 +8544,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8483,7 +8610,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8548,7 +8675,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8614,7 +8741,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8680,7 +8807,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8746,7 +8873,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8850,7 +8977,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8926,7 +9053,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9032,7 +9159,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9089,7 +9216,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9165,7 +9292,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9212,7 +9339,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9259,7 +9386,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -9316,7 +9443,7 @@
 						}
 					},
 					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, or step-up verification needed on a write (STEP_UP_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
