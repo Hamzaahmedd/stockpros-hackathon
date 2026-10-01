@@ -14,6 +14,7 @@ import {
   logAdminRead,
 } from '../access-control'
 import { UUID_PATTERN } from './constants'
+import { maskIdentity } from './masking'
 import { detachMemberTx } from './team-members'
 import type { AdminReadContext, AdminWriteContext } from './types'
 
@@ -72,7 +73,7 @@ export async function searchUsers(
   })
 
   return users.map(({ _count, teamMembers, ...user }) => ({
-    ...user,
+    ...maskIdentity(user),
     activeSessions: _count.userSessions,
     team: teamMembers[0] ?? null,
   }))
@@ -181,5 +182,40 @@ export async function invalidateSessions(
     })
 
     return { userId, revokedSessions: count }
+  })
+}
+
+/** Customer fields a reveal returns, recorded on the audit row. */
+const REVEALED_FIELDS = ['email', 'displayName', 'phoneNumber'] as const
+
+/**
+ * Returns a customer's real identifiers to a staff member who asked for them.
+ * Revealing is audited like a write: reason, ticket and the fields shown.
+ */
+export async function revealUser(ctx: AdminWriteContext, userId: string) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        phoneNumber: true,
+      },
+    })
+    if (!user) throw new NotFoundError('User not found')
+
+    await logAdminAction(tx, {
+      adminId: ctx.adminId,
+      action: AdminAuditAction.CUSTOMER_DATA_REVEALED,
+      targetType: AdminTargetType.USER,
+      targetId: userId,
+      reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
+      ipAddress: ctx.ipAddress,
+      metadata: { fields: [...REVEALED_FIELDS] },
+    })
+
+    return user
   })
 }

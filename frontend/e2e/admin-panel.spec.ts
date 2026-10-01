@@ -76,6 +76,49 @@ test.describe("route guards", () => {
   });
 });
 
+test.describe("customer PII masking", () => {
+  const MASKED_USER = {
+    ...USER_ROW,
+    displayName: "S*** L***",
+    email: "s***@f***.com",
+    piiMasked: true,
+  };
+
+  test("search results are masked and a support agent can reveal them with an audited reason", async ({
+    page,
+  }) => {
+    await openAdmin(page, "SUPPORT_AGENT");
+    await page.route("**/api/v1/admin/users/search**", (route) => ok(route, [MASKED_USER]));
+    let body: unknown;
+    await page.route("**/api/v1/admin/users/*/reveal", (route) => {
+      body = route.request().postDataJSON();
+      return ok(route, {
+        id: USER_ROW.id,
+        email: "sam@fund.com",
+        displayName: "Sam Lee",
+        phoneNumber: "+923001234567",
+      });
+    });
+
+    await page.getByLabel("Search users").fill("sam");
+    await page.getByRole("button", { name: "Search" }).click();
+    await expect(page.getByText("s***@f***.com")).toBeVisible();
+    await expect(page.getByText("sam@fund.com")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Reveal" }).click();
+    await page.getByLabel("Reason (audited)").fill(REASON);
+    await page.getByLabel("Support ticket").fill("SUP-9");
+    await page.getByRole("dialog").getByRole("button", { name: "Reveal" }).click();
+
+    await expect.poll(() => body).toEqual({ reason: REASON, ticketRef: "SUP-9" });
+    await expect(page.getByText("sam@fund.com")).toBeVisible();
+    await expect(page.getByText("+923001234567")).toBeVisible();
+
+    await page.getByRole("button", { name: "Hide" }).click();
+    await expect(page.getByText("sam@fund.com")).toHaveCount(0);
+  });
+});
+
 test.describe("role-gated controls", () => {
   test("a support agent can search but has no write actions", async ({ page }) => {
     await openAdmin(page, "SUPPORT_AGENT");

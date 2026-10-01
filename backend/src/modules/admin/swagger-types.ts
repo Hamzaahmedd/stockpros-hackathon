@@ -122,6 +122,15 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
+  /** SUPPORT_AGENT+. Returns a customer's real email, name and phone number. Search results mask these by default (`piiMasked: true`); every reveal is audited as CUSTOMER_DATA_REVEALED with the reason and ticket. */
+  @Post('users/{id}/reveal')
+  async revealUser(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members, orgInstructions. */
   @Get('teams/search')
   async searchTeams(

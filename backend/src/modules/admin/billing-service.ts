@@ -18,6 +18,7 @@ import {
 } from '../access-control'
 import { replayStoredWebhook } from '../payments/public'
 import { AdminCreditTarget } from './constants'
+import { maskPayload } from './masking'
 import type { AdminReadContext, AdminWriteContext } from './types'
 
 export interface WebhookQuery {
@@ -83,7 +84,7 @@ export async function listWebhooks(ctx: AdminReadContext, query: WebhookQuery) {
     ...row,
     webhookReceived: rawWebhookPayload !== null,
     signatureVerified: rawWebhookPayload !== null,
-    payload: rawWebhookPayload,
+    payload: maskPayload(rawWebhookPayload),
   }))
   return { items, total, page: query.page, limit: query.limit }
 }

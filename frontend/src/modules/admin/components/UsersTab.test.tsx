@@ -24,6 +24,7 @@ const USER: AdminUser = {
   creditBalanceInPaisa: 250_000,
   activeSessions: 2,
   deletedAt: null,
+  piiMasked: false,
   subscription: null,
   team: null,
 };

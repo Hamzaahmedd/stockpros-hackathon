@@ -70,6 +70,12 @@ export const overridePlan = handle('Plan overridden', (req) => {
   return Users.overridePlan(writeContext(req, reason, ticketRef), id, plan)
 })
 
+export const revealUser = handle('Customer data revealed', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  return Users.revealUser(writeContext(req, reason, ticketRef), id)
+})
+
 export const invalidateSessions = handle('Sessions invalidated', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
   const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)

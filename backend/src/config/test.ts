@@ -72,6 +72,8 @@ export const testConfig = {
   },
   // Internal staff ops panel (/api/v1/admin) hardening switches.
   admin: {
+    // Hide customer email/name in staff views until a reveal is requested (audited).
+    maskCustomerPii: false,
     // Every admin write must cite a support ticket (format-validated whenever supplied).
     requireTicketRef: false,
   },

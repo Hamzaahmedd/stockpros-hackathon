@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { adminService } from "../services";
 import type { AdminTeam } from "../types";
 import { apiErrorMessage, formatPaisa, hasPlatformRole } from "../utils";
+import { CustomerIdentity } from "./CustomerIdentity";
 import { ReasonModal } from "./ReasonModal";
 import { SearchBar } from "./SearchBar";
 
@@ -84,7 +85,12 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
             <div>
               <dt className="text-muted-foreground">Owner</dt>
               <dd>
-                {team.owner.displayName ?? "—"} · {team.owner.email}
+                <CustomerIdentity
+                  userId={team.owner.id}
+                  displayName={team.owner.displayName}
+                  email={team.owner.email}
+                  masked={team.piiMasked}
+                />
               </dd>
             </div>
             <div>
@@ -136,9 +142,12 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
             <ul className="space-y-1">
               {team.members.map((member) => (
                 <li key={member.user.id} className="flex items-center gap-2 text-sm">
-                  <span>
-                    {member.user.displayName ?? "—"} · {member.user.email}
-                  </span>
+                  <CustomerIdentity
+                    userId={member.user.id}
+                    displayName={member.user.displayName}
+                    email={member.user.email}
+                    masked={team.piiMasked}
+                  />
                   <Badge variant="secondary">{member.role}</Badge>
                   {canWrite && member.role !== "OWNER" && (
                     <Button

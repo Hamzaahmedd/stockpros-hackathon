@@ -556,6 +556,7 @@ enum AdminAuditAction {
   PLATFORM_ROLE_GRANTED
   WEBHOOK_RETRIED
   CUSTOMER_DATA_VIEWED
+  CUSTOMER_DATA_REVEALED
 }
 
 enum SubscriptionPaymentMethod {

@@ -49,6 +49,7 @@ jest.mock('../users-service', () => ({
   searchUsers: mockResolved(),
   overridePlan: mockResolved(),
   invalidateSessions: mockResolved(),
+  revealUser: mockResolved(),
 }))
 jest.mock('../teams-service', () => ({
   searchTeams: mockResolved(),
@@ -152,6 +153,12 @@ const ENDPOINTS: readonly Endpoint[] = [
     body: { closed: true, reason: REASON },
   },
   { method: 'get', path: '/system/audit-logs', min: 'SUPPORT_AGENT' },
+  {
+    method: 'post',
+    path: `/users/${ID}/reveal`,
+    min: 'SUPPORT_AGENT',
+    body: { reason: REASON },
+  },
 ]
 
 const app = express()

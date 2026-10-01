@@ -17,6 +17,8 @@ const router = Router()
 router.use(requirePricingTiersEnabled, adminRateLimiter)
 
 const support = requirePlatformRole(PlatformRole.SUPPORT_AGENT)
+// Revealing customer data is audited like a write, so it shares the write limiter.
+const supportWrite = [...support, adminWriteLimiter]
 // Writes also pass the per-staff-member limiter, which needs the authenticated user.
 const platformAdmin = [
   ...requirePlatformRole(PlatformRole.PLATFORM_ADMIN),
@@ -29,6 +31,7 @@ const superAdmin = [
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 router.get('/users/search', ...support, AdminController.searchUsers)
+router.post('/users/:id/reveal', ...supportWrite, AdminController.revealUser)
 router.post(
   '/users/:id/plan-override',
   ...superAdmin,

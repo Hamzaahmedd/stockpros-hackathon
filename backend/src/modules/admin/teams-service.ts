@@ -14,6 +14,7 @@ import {
 } from '../access-control'
 import { TEAM_MIN_SEATS } from '../payments/public'
 import { UUID_PATTERN } from './constants'
+import { isMaskingEnabled, maskIdentity } from './masking'
 import { detachMemberTx } from './team-members'
 import type { AdminReadContext, AdminWriteContext } from './types'
 
@@ -66,6 +67,12 @@ export async function searchTeams(
     const capacity = effectiveSeatCapacity(team)
     return {
       ...team,
+      owner: maskIdentity(team.owner),
+      members: team.members.map((member) => ({
+        ...member,
+        user: maskIdentity(member.user),
+      })),
+      piiMasked: isMaskingEnabled(),
       seatsUsed: team.members.length,
       effectiveSeatCapacity: capacity,
       seatUtilization: `${team.members.length}/${capacity}`,

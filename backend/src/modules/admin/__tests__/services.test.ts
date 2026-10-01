@@ -98,6 +98,7 @@ import * as System from '../system-service'
 import * as Teams from '../teams-service'
 import * as Telemetry from '../telemetry-service'
 import * as Users from '../users-service'
+import config from '@/config'
 
 const ADMIN = '0191e4a0-0000-7000-8000-0000000000aa'
 const TARGET = '0191e4a0-0000-7000-8000-0000000000bb'
@@ -802,5 +803,103 @@ describe('system', () => {
     )
     await System.listAuditLogs({ page: 1, limit: 20 })
     expect(mockPrisma.adminAuditLog.findMany.mock.calls[1][0].where).toEqual({})
+  })
+})
+
+describe('PII masking and reveal', () => {
+  const setMasking = (value: boolean) => {
+    ;(config.admin as { maskCustomerPii: boolean }).maskCustomerPii = value
+  }
+  const original = config.admin.maskCustomerPii
+  beforeEach(() => setMasking(true))
+  afterEach(() => setMasking(original))
+
+  it('masks customer identity in user search and flags it', async () => {
+    mockPrisma.user.findMany = jest.fn().mockResolvedValue([
+      {
+        id: TARGET,
+        email: 'sam@fund.com',
+        displayName: 'Sam Lee',
+        teamMembers: [],
+        _count: { userSessions: 0 },
+      },
+    ])
+    const [row] = await Users.searchUsers(readCtx, 'sam', 10)
+    expect(row).toMatchObject({
+      email: 's***@f***.com',
+      displayName: 'S*** L***',
+      piiMasked: true,
+    })
+  })
+
+  it('masks the owner and members of a searched team', async () => {
+    mockPrisma.team.findMany = jest.fn().mockResolvedValue([
+      {
+        id: TEAM,
+        seatCapacity: 5,
+        scheduledSeatCapacity: null,
+        owner: {
+          id: 'o1',
+          email: 'owner@fund.com',
+          displayName: 'Olive Owner',
+        },
+        members: [
+          {
+            role: 'MEMBER',
+            user: {
+              id: 'm1',
+              email: 'mia@fund.com',
+              displayName: 'Mia Member',
+            },
+          },
+        ],
+      },
+    ])
+    const [team] = await Teams.searchTeams(readCtx, 'fund', 5)
+    expect(team.piiMasked).toBe(true)
+    expect(team.owner.email).toBe('o***@f***.com')
+    expect(team.members[0].user).toMatchObject({
+      email: 'm***@f***.com',
+      displayName: 'M*** M***',
+    })
+  })
+
+  it('scrubs customer details out of stored webhook payloads', async () => {
+    mockPrisma.paymentTransaction.count.mockResolvedValue(1)
+    mockPrisma.paymentTransaction.findMany.mockResolvedValue([
+      { id: 'a', rawWebhookPayload: { customer: 'jane@example.com' } },
+    ])
+    const page = await Billing.listWebhooks(readCtx, { page: 1, limit: 10 })
+    expect(JSON.stringify(page.items[0].payload)).not.toContain(
+      'jane@example.com',
+    )
+  })
+
+  it('reveals the real identifiers and records exactly which fields', async () => {
+    mockTx.user.findUnique.mockResolvedValue({
+      id: TARGET,
+      email: 'sam@fund.com',
+      displayName: 'Sam Lee',
+      phoneNumber: '+923001234567',
+    })
+
+    const user = await Users.revealUser(ctx, TARGET)
+
+    expect(user).toMatchObject({
+      email: 'sam@fund.com',
+      phoneNumber: '+923001234567',
+    })
+    expect(
+      expectOneAudit(AdminAuditAction.CUSTOMER_DATA_REVEALED, 'USER', TARGET)
+        .metadata,
+    ).toEqual({ fields: ['email', 'displayName', 'phoneNumber'] })
+  })
+
+  it('reveals nothing and audits nothing for an unknown user', async () => {
+    mockTx.user.findUnique.mockResolvedValue(null)
+    await expect(Users.revealUser(ctx, TARGET)).rejects.toBeInstanceOf(
+      NotFoundError,
+    )
+    expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
   })
 })

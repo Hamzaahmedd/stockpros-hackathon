@@ -15,6 +15,7 @@ import { ADMIN_PLANS } from "../constants";
 import { adminService } from "../services";
 import type { AdminUser } from "../types";
 import { apiErrorMessage, formatDateTime, formatPaisa, hasPlatformRole } from "../utils";
+import { CustomerIdentity } from "./CustomerIdentity";
 import { ReasonModal } from "./ReasonModal";
 import { SearchBar } from "./SearchBar";
 
@@ -76,8 +77,12 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
               {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
-                    <div className="font-medium">{user.displayName ?? "—"}</div>
-                    <div className="text-xs text-muted-foreground">{user.email}</div>
+                    <CustomerIdentity
+                      userId={user.id}
+                      displayName={user.displayName}
+                      email={user.email}
+                      masked={user.piiMasked}
+                    />
                     <div className="font-mono text-[10px] text-muted-foreground">{user.id}</div>
                     {user.platformRole !== "USER" && (
                       <Badge variant="secondary" className="mt-1">

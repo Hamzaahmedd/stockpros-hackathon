@@ -21,6 +21,8 @@ export interface AdminUser {
   creditBalanceInPaisa: number;
   activeSessions: number;
   deletedAt: string | null;
+  /** True when the API masked email/name; a Reveal (audited) shows the real values. */
+  piiMasked: boolean;
   subscription: {
     id: string;
     planTier: PlanTier;
@@ -41,6 +43,7 @@ export interface AdminTeam {
   effectiveSeatCapacity: number;
   seatsUsed: number;
   seatUtilization: string;
+  piiMasked: boolean;
   orgInstructions: string | null;
   creditBalanceInPaisa: number;
   owner: { id: string; displayName: string | null; email: string };
@@ -89,6 +92,13 @@ export type AdminQueueHealth =
         failedAt: string | null;
       }[];
     };
+
+export interface RevealedUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  phoneNumber: string | null;
+}
 
 export interface AdminAuditEntry {
   id: string;

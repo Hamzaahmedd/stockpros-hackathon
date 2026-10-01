@@ -13,6 +13,9 @@ export const STAFF_ROLES: readonly PlatformRole[] = ["SUPPORT_AGENT", "PLATFORM_
 
 /** Minimum characters of justification the API requires on every write. */
 export const ADMIN_MIN_REASON_LENGTH = 10;
+
+/** How long revealed customer details stay on screen before they are masked again. */
+export const REVEAL_VISIBLE_MS = 60_000;
 export const ADMIN_MAX_REASON_LENGTH = 500;
 
 /** Support-ticket reference, e.g. SUP-1234. Mirrors the API's `TICKET_REF_PATTERN`. */
@@ -51,4 +54,5 @@ export const ADMIN_AUDIT_ACTIONS = [
   "PLATFORM_ROLE_GRANTED",
   "WEBHOOK_RETRIED",
   "CUSTOMER_DATA_VIEWED",
+  "CUSTOMER_DATA_REVEALED",
 ] as const;
