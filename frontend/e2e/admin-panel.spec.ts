@@ -68,7 +68,7 @@ test.describe("route guards", () => {
       "User lookup & plans",
       "Team workspaces",
       "Billing, credits & webhooks",
-      "Telemetry & queues",
+      "Queue health",
       "System & audit log",
     ]) {
       await expect(page.getByRole("tab", { name })).toBeVisible();
@@ -164,6 +164,9 @@ test.describe("role-gated controls", () => {
   }) => {
     await openAdmin(page, "PLATFORM_ADMIN");
     await page.route("**/api/v1/admin/billing/webhooks**", (route) =>
+      ok(route, { items: [], total: 0, page: 1, limit: 25 }),
+    );
+    await page.route("**/api/v1/admin/billing/credit-ledger**", (route) =>
       ok(route, { items: [], total: 0, page: 1, limit: 25 }),
     );
     let body: unknown;

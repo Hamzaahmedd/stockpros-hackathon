@@ -8911,6 +8911,102 @@
 				}
 			}
 		},
+		"/api/v1/admin/billing/credit-ledger": {
+			"get": {
+				"operationId": "ListCreditLedger",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Credit-pool movements (top-ups, overage deductions, refunds, manual adjustments) filtered by user, team or type. Transactional billing record only; product-usage analytics live in PostHog. Read-audited.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "userId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "teamId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"PURCHASE",
+								"OVERAGE_CONSUMPTION",
+								"REFUND",
+								"MANUAL_ADJUSTMENT"
+							]
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/admin/billing/credits/adjust": {
 			"post": {
 				"operationId": "AdjustCredits",
@@ -9052,104 +9148,6 @@
 						}
 					}
 				}
-			}
-		},
-		"/api/v1/admin/telemetry/usage": {
-			"get": {
-				"operationId": "SearchUsage",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
-								}
-							}
-						}
-					},
-					"403": {
-						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					},
-					"429": {
-						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ApiErrorResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "SUPPORT_AGENT+. Searches UsageEvent rows.",
-				"tags": [
-					"Admin"
-				],
-				"security": [
-					{
-						"bearerAuth": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "page",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "userId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "teamId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "symbol",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "feature",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
 			}
 		},
 		"/api/v1/admin/telemetry/queues": {

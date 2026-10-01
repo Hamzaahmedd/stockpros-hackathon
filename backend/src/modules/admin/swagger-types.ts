@@ -20,7 +20,7 @@ import { ApiErrorResponse, ApiResponse } from '../../shared/docs-types'
 // (`pricingTiersEnabled: true`); otherwise it answers
 // `403 FORBIDDEN_FEATURE_DISABLED`. Every write requires a `reason` and appends
 // one immutable `admin_audit_logs` row. Searches that return customer data
-// (users, teams, webhooks, usage) append a `CUSTOMER_DATA_VIEWED` row listing
+// (users, teams, webhooks, credit ledger) append a `CUSTOMER_DATA_VIEWED` row listing
 // the ids returned, never the search text.
 
 export interface AdminReasonRequest {
@@ -200,6 +200,19 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
+  /** SUPPORT_AGENT+. Credit-pool movements (top-ups, overage deductions, refunds, manual adjustments) filtered by user, team or type. Transactional billing record only; product-usage analytics live in PostHog. Read-audited. */
+  @Get('billing/credit-ledger')
+  async listCreditLedger(
+    @Query() page?: number,
+    @Query() limit?: number,
+    @Query() userId?: string,
+    @Query() teamId?: string,
+    @Query()
+    type?: 'PURCHASE' | 'OVERAGE_CONSUMPTION' | 'REFUND' | 'MANUAL_ADJUSTMENT',
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** PLATFORM_ADMIN+. Injects/deducts paisa and appends a MANUAL_ADJUSTMENT ledger row. */
   @Post('billing/credits/adjust')
   @Response<ApiErrorResponse>(400, 'Deduction exceeds balance')
@@ -215,19 +228,6 @@ export class AdminSwaggerController extends Controller {
   async extendSubscription(
     @Path() id: string,
     @Body() body: ExtendSubscriptionRequest,
-  ): Promise<ApiResponse> {
-    throw new Error('tsoa spec-only')
-  }
-
-  /** SUPPORT_AGENT+. Searches UsageEvent rows. */
-  @Get('telemetry/usage')
-  async searchUsage(
-    @Query() page?: number,
-    @Query() limit?: number,
-    @Query() userId?: string,
-    @Query() teamId?: string,
-    @Query() symbol?: string,
-    @Query() feature?: string,
   ): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }

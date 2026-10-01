@@ -9,11 +9,11 @@ import type {
   AdminPage,
   AdminQueueHealth,
   AdminTeam,
-  AdminUsageEvent,
+  CreditLedgerEntry,
   AdminUser,
   AdminWebhook,
   AuditFilters,
-  UsageFilters,
+  CreditLedgerFilters,
   WebhookFilters,
 } from "./types";
 
@@ -86,9 +86,13 @@ export const adminService = {
     await api.post(`${BASE}/subscriptions/${subscriptionId}/extend`, input);
   },
 
-  // Telemetry
-  searchUsage: async (filters: UsageFilters, page: number): Promise<AdminPage<AdminUsageEvent>> =>
-    unwrap(await api.get(`${BASE}/telemetry/usage`, { params: compact({ ...filters, page }) })),
+  listCreditLedger: async (
+    filters: CreditLedgerFilters,
+    page: number,
+  ): Promise<AdminPage<CreditLedgerEntry>> =>
+    unwrap(await api.get(`${BASE}/billing/credit-ledger`, { params: compact({ ...filters, page }) })),
+
+  // System health
   getQueueHealth: async (): Promise<AdminQueueHealth[]> =>
     unwrap(await api.get(`${BASE}/telemetry/queues`)),
 

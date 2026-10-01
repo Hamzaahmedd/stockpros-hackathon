@@ -59,6 +59,7 @@ jest.mock('../teams-service', () => ({
 }))
 jest.mock('../billing-service', () => ({
   listWebhooks: mockResolved(),
+  listCreditLedger: mockResolved(),
   retryWebhook: mockResolved(),
   adjustCredits: mockResolved(),
   extendSubscription: mockResolved(),
@@ -67,7 +68,6 @@ jest.mock('../timeline-service', () => ({
   getUserTimeline: mockResolved(),
 }))
 jest.mock('../telemetry-service', () => ({
-  searchUsage: mockResolved(),
   getQueueHealth: mockResolved(),
 }))
 jest.mock('../system-service', () => ({
@@ -146,7 +146,7 @@ const ENDPOINTS: readonly Endpoint[] = [
     min: 'PLATFORM_ADMIN',
     body: { currentPeriodEnd: '2030-01-01T00:00:00.000Z', reason: REASON },
   },
-  { method: 'get', path: '/telemetry/usage', min: 'SUPPORT_AGENT' },
+  { method: 'get', path: '/billing/credit-ledger', min: 'SUPPORT_AGENT' },
   { method: 'get', path: '/telemetry/queues', min: 'SUPPORT_AGENT' },
   { method: 'get', path: '/system/market-status', min: 'SUPPORT_AGENT' },
   {

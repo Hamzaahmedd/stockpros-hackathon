@@ -20,7 +20,7 @@ import {
   reasonBodyValidator,
   searchQueryValidator,
   timelineQueryValidator,
-  usageQueryValidator,
+  creditLedgerQueryValidator,
   userIdParamValidator,
   webhookQueryValidator,
 } from './validation'
@@ -157,10 +157,10 @@ export const extendSubscription = handle('Subscription extended', (req) => {
 })
 
 // ─── Telemetry ───────────────────────────────────────────────────────────────
-export const searchUsage = handle('Usage events fetched', (req) =>
-  Telemetry.searchUsage(
+export const listCreditLedger = handle('Credit ledger fetched', (req) =>
+  Billing.listCreditLedger(
     readContext(req),
-    validateOrThrow(usageQueryValidator, req.query),
+    validateOrThrow(creditLedgerQueryValidator, req.query),
   ),
 )
 

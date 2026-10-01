@@ -35,7 +35,6 @@ const mockPrisma: any = {
     findMany: jest.fn(),
     count: jest.fn(),
   },
-  usageEvent: { findMany: jest.fn(), count: jest.fn() },
   adminAuditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
   $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(mockTx)),
 }
@@ -649,41 +648,62 @@ describe('billing', () => {
   })
 })
 
-describe('telemetry', () => {
-  it('searches usage with every filter', async () => {
-    mockPrisma.usageEvent.count.mockResolvedValue(1)
-    mockPrisma.usageEvent.findMany.mockResolvedValue([
-      { id: 'e1', userId: 'u-1' },
-      { id: 'e2', userId: 'u-1' },
-    ])
+describe('credit ledger search', () => {
+  const row = (id: string, description: string) => ({
+    id,
+    userId: TARGET,
+    teamId: null,
+    amountPaisa: -400,
+    type: 'OVERAGE_CONSUMPTION',
+    description,
+    createdAt: new Date('2026-01-01T10:00:00.000Z'),
+  })
 
-    const result = await Telemetry.searchUsage(readCtx, {
+  it('filters, paginates, scrubs descriptions and audits the read', async () => {
+    mockPrisma.creditLedger = {
+      count: jest.fn().mockResolvedValue(2),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([
+          row('l1', 'forecast for jane@example.com'),
+          row('l2', 'ok'),
+        ]),
+    }
+
+    const result = await Billing.listCreditLedger(readCtx, {
       page: 3,
       limit: 5,
       userId: TARGET,
-      teamId: TEAM,
-      symbol: 'aapl',
-      feature: 'forecast',
+      type: 'OVERAGE_CONSUMPTION' as never,
     })
 
-    expect(result).toMatchObject({ total: 1, page: 3, limit: 5 })
-    expect(expectReadAudit('USAGE', ['u-1']).metadata.filterKeys).toEqual(
-      expect.arrayContaining(['userId', 'teamId', 'symbol', 'feature']),
-    )
-    expect(mockPrisma.usageEvent.findMany).toHaveBeenCalledWith(
+    expect(result).toMatchObject({ total: 2, page: 3, limit: 5 })
+    expect(result.items[0].description).not.toContain('jane@example.com')
+    expect(mockPrisma.creditLedger.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         skip: 10,
         take: 5,
-        where: {
-          userId: TARGET,
-          teamId: TEAM,
-          symbol: { equals: 'aapl', mode: 'insensitive' },
-          feature: 'forecast',
-        },
+        where: { userId: TARGET, type: 'OVERAGE_CONSUMPTION' },
       }),
     )
+    const audited = expectReadAudit('CREDIT_LEDGER', ['l1', 'l2'])
+    expect(audited.metadata.filterKeys).toEqual(
+      expect.arrayContaining(['userId', 'type']),
+    )
+    expect(audited.metadata.filterKeys).not.toContain('page')
   })
 
+  it('searches the whole ledger when no filter is given', async () => {
+    mockPrisma.creditLedger = {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    }
+    await Billing.listCreditLedger(readCtx, { page: 1, limit: 10 })
+    expect(mockPrisma.creditLedger.findMany.mock.calls[0][0].where).toEqual({})
+  })
+})
+
+describe('telemetry', () => {
   it('reports queue health, failures (redacted) and missing Redis', async () => {
     const queue = (name: string) => ({
       name,

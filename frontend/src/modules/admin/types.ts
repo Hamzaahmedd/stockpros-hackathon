@@ -1,5 +1,5 @@
 import type { PlanTier, PlatformRole } from "@/modules/auth/types";
-import type { ADMIN_AUDIT_ACTIONS, PAYMENT_STATUSES } from "./constants";
+import type { ADMIN_AUDIT_ACTIONS, CREDIT_LEDGER_TYPES, PAYMENT_STATUSES } from "./constants";
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
@@ -68,13 +68,15 @@ export interface AdminWebhook {
   createdAt: string;
 }
 
-export interface AdminUsageEvent {
+export type CreditLedgerType = (typeof CREDIT_LEDGER_TYPES)[number];
+
+export interface CreditLedgerEntry {
   id: string;
-  userId: string;
+  userId: string | null;
   teamId: string | null;
-  feature: string;
-  symbol: string | null;
-  costPaisa: number;
+  amountPaisa: number;
+  type: CreditLedgerType;
+  description: string;
   createdAt: string;
 }
 
@@ -126,11 +128,10 @@ export interface AdminAuditEntry {
   admin: { id: string; displayName: string | null };
 }
 
-export interface UsageFilters {
+export interface CreditLedgerFilters {
   userId?: string;
   teamId?: string;
-  symbol?: string;
-  feature?: string;
+  type?: CreditLedgerType;
 }
 
 export interface WebhookFilters {

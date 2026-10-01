@@ -14,7 +14,7 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: AdminTab.USERS, label: "User lookup & plans" },
   { id: AdminTab.TEAMS, label: "Team workspaces" },
   { id: AdminTab.BILLING, label: "Billing, credits & webhooks" },
-  { id: AdminTab.TELEMETRY, label: "Telemetry & queues" },
+  { id: AdminTab.TELEMETRY, label: "Queue health" },
   { id: AdminTab.SYSTEM, label: "System & audit log" },
 ];
 

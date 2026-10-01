@@ -116,6 +116,64 @@ export async function retryWebhook(
   return { transactionId, trackerId: after.trackerId, status: after.status }
 }
 
+export interface CreditLedgerQuery {
+  page: number
+  limit: number
+  userId?: string
+  teamId?: string
+  type?: CreditLedgerType
+}
+
+/**
+ * Credit-pool movements (top-ups, overage deductions, refunds, manual
+ * adjustments). This is the transactional usage record staff need for billing
+ * disputes; general product-usage analytics are PostHog's job.
+ */
+export async function listCreditLedger(
+  ctx: AdminReadContext,
+  query: CreditLedgerQuery,
+) {
+  const where: Prisma.CreditLedgerWhereInput = {
+    ...(query.userId ? { userId: query.userId } : {}),
+    ...(query.teamId ? { teamId: query.teamId } : {}),
+    ...(query.type ? { type: query.type } : {}),
+  }
+  const [total, rows] = await Promise.all([
+    prisma.creditLedger.count({ where }),
+    prisma.creditLedger.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+      select: {
+        id: true,
+        userId: true,
+        teamId: true,
+        amountPaisa: true,
+        type: true,
+        description: true,
+        createdAt: true,
+      },
+    }),
+  ])
+
+  await logAdminRead(prisma, {
+    adminId: ctx.adminId,
+    ipAddress: ctx.ipAddress,
+    targetType: AdminTargetType.CREDIT_LEDGER,
+    resultIds: rows.map((row) => row.id),
+    filterKeys: Object.keys(query).filter(
+      (key) => key !== 'page' && key !== 'limit',
+    ),
+  })
+
+  const items = rows.map((row) => ({
+    ...row,
+    description: redactPii(row.description),
+  }))
+  return { items, total, page: query.page, limit: query.limit }
+}
+
 interface BalanceTarget {
   field: 'userId' | 'teamId'
   update: (

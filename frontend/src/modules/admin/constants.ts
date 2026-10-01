@@ -39,6 +39,13 @@ export enum CreditTarget {
   TEAM = "TEAM",
 }
 
+export const CREDIT_LEDGER_TYPES = [
+  "PURCHASE",
+  "OVERAGE_CONSUMPTION",
+  "REFUND",
+  "MANUAL_ADJUSTMENT",
+] as const;
+
 export const PAYMENT_STATUSES = ["PENDING", "COMPLETED", "FAILED", "CANCELLED"] as const;
 
 export const ADMIN_AUDIT_ACTIONS = [

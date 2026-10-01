@@ -69,6 +69,11 @@ router.post(
   ...platformAdmin,
   AdminController.retryWebhook,
 )
+router.get(
+  '/billing/credit-ledger',
+  ...support,
+  AdminController.listCreditLedger,
+)
 router.post(
   '/billing/credits/adjust',
   ...platformAdmin,
@@ -81,7 +86,6 @@ router.post(
 )
 
 // ─── Telemetry ───────────────────────────────────────────────────────────────
-router.get('/telemetry/usage', ...support, AdminController.searchUsage)
 router.get('/telemetry/queues', ...support, AdminController.getQueueHealth)
 
 // ─── System ──────────────────────────────────────────────────────────────────

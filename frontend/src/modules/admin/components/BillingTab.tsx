@@ -16,6 +16,7 @@ import { CreditTarget, PAYMENT_STATUSES, UUID_PATTERN } from "../constants";
 import { adminService } from "../services";
 import type { AdminPage, AdminWebhook, PaymentStatus } from "../types";
 import { apiErrorMessage, formatDateTime, formatPaisa, hasPlatformRole } from "../utils";
+import { CreditLedgerSection } from "./CreditLedgerSection";
 import { Pager } from "./Pager";
 import { ReasonModal } from "./ReasonModal";
 
@@ -155,6 +156,8 @@ export function BillingTab({ role }: Readonly<{ role: PlatformRole }>) {
         )}
         {result && <Pager result={result} onPage={setPage} />}
       </section>
+
+      <CreditLedgerSection />
 
       {canWrite && (
         <section aria-labelledby="interventions-heading" className="space-y-3">

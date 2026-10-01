@@ -1,4 +1,9 @@
-import { AdminAuditAction, PaymentStatus, PlanTier } from '@prisma/client'
+import {
+  AdminAuditAction,
+  CreditLedgerType,
+  PaymentStatus,
+  PlanTier,
+} from '@prisma/client'
 import { z } from 'zod'
 import config from '@/config'
 import { TEAM_MIN_SEATS } from '../payments/public'
@@ -147,12 +152,11 @@ export const extendSubscriptionValidator = z
   .superRefine(requireTicketWhenConfigured)
 
 // ─── Telemetry & system ──────────────────────────────────────────────────────
-export const usageQueryValidator = z.object({
+export const creditLedgerQueryValidator = z.object({
   ...pageQuery,
   userId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
-  symbol: z.string().trim().min(1).max(20).optional(),
-  feature: z.string().trim().min(1).max(100).optional(),
+  type: z.nativeEnum(CreditLedgerType).optional(),
 })
 
 export const marketEmergencyValidator = z
