@@ -68,6 +68,7 @@ describe('deleteAccount — payment transaction retention', () => {
       phoneOtp: { deleteMany: jest.fn() },
       teamMember: { deleteMany: jest.fn() },
       teamInvite: { deleteMany: jest.fn() },
+      adminAuditLog: { updateMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
@@ -78,6 +79,51 @@ describe('deleteAccount — payment transaction retention', () => {
     await expect(deleteAccount('user-1')).resolves.toBeUndefined()
 
     expect('paymentTransaction' in tx).toBe(false)
+  })
+
+  it("ends staff access and strips the IP from the deleted user's own admin audit rows", async () => {
+    ;(prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      status: UserStatus.ACTIVE,
+    })
+    ;(prisma.userSession.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    })
+    ;(prisma.team.findFirst as jest.Mock).mockResolvedValue(null)
+    const deleteMany = () => ({ deleteMany: jest.fn() })
+    const tx = {
+      watchlistAlert: deleteMany(),
+      watchlist: deleteMany(),
+      notification: deleteMany(),
+      newsReadState: deleteMany(),
+      newsSavedArticle: deleteMany(),
+      decisionRun: deleteMany(),
+      portfolio: deleteMany(),
+      userRole: deleteMany(),
+      magicLinkToken: deleteMany(),
+      phoneOtp: deleteMany(),
+      teamMember: deleteMany(),
+      teamInvite: deleteMany(),
+      adminAuditLog: { updateMany: jest.fn() },
+      team: { updateMany: jest.fn() },
+      user: { update: jest.fn().mockResolvedValue({}) },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
+    )
+
+    await deleteAccount('user-1')
+
+    expect(tx.adminAuditLog.updateMany).toHaveBeenCalledWith({
+      where: { adminId: 'user-1' },
+      data: { ipAddress: null },
+    })
+    expect(tx.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ platformRole: 'USER' }),
+      }),
+    )
   })
 })
 
@@ -125,6 +171,7 @@ describe('deleteAccount — team workspace guard', () => {
       phoneOtp: deleteMany(),
       teamMember: deleteMany(),
       teamInvite: deleteMany(),
+      adminAuditLog: { updateMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
@@ -157,6 +204,7 @@ describe('deleteAccount — team workspace guard', () => {
       phoneOtp: deleteMany(),
       teamMember: deleteMany(),
       teamInvite: deleteMany(),
+      adminAuditLog: { updateMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }

@@ -2,7 +2,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
-import type { ScreenPermissions } from "../types";
+import type { PlatformRole, ScreenPermissions } from "../types";
 
 interface Props {
   children: React.ReactNode;
@@ -16,9 +16,11 @@ interface Props {
   requirePricingTiersEnabled?: boolean;
   /** Requires config.features.enablePaymentProcessor to be on; otherwise redirects away (e.g. /plans/manage, since Subscription rows only exist in Payment Mode). */
   requireEnablePaymentProcessor?: boolean;
+  /** Internal staff gate: the signed-in user's platformRole must be one of these (e.g. the /admin ops panel); otherwise redirects away. */
+  requirePlatformRole?: readonly PlatformRole[];
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements, requirePricingTiersEnabled, requireEnablePaymentProcessor }) => {
+export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "canRead", requirements, requirePricingTiersEnabled, requireEnablePaymentProcessor, requirePlatformRole }) => {
   const { user, loading, can, pricingTiersEnabled, enablePaymentProcessor } = useAuth();
   const requiredPermissions = requirements ?? (resource ? [{ resource, action }] : []);
 
@@ -36,6 +38,10 @@ export const ProtectedRoute: React.FC<Props> = ({ children, resource, action = "
   if (!user) return <Navigate to="/login" replace />;
 
   if (requirePricingTiersEnabled && !pricingTiersEnabled) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requirePlatformRole && !requirePlatformRole.includes(user.platformRole ?? "USER")) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -5,6 +5,7 @@ import { ZodError } from 'zod'
 import {
   AppError,
   ConflictError,
+  FeatureDisabledError,
   InternalServerError,
   NotFoundError,
   OverageRequiredError,
@@ -110,6 +111,7 @@ const resolveAppError = (err: unknown): AppError => {
 // top-up modal on, so it replaces the class-name default.
 const resolveErrorCode = (error: AppError): string | undefined => {
   if (error instanceof OverageRequiredError) return error.details.code
+  if (error instanceof FeatureDisabledError) return error.code
   return error.name !== 'AppError' ? error.name : undefined
 }
 

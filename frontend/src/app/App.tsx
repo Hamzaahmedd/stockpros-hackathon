@@ -1,5 +1,6 @@
 // src/App.tsx
 import { Roles, Users } from "@/modules/access-control";
+import { AdminDashboard, STAFF_ROLES } from "@/modules/admin";
 import {
   Login,
   Onboarding,
@@ -158,6 +159,13 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Internal staff ops panel: tier-based workflow only, staff platform roles only. */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute requirePlatformRole={STAFF_ROLES} requirePricingTiersEnabled>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
 
         {/* Access Control Routes */}
         <Route path="/access-control/users" element={

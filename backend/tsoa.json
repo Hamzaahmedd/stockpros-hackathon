@@ -80,6 +80,10 @@
         "description": "B2B team workspaces: seats, invites, domains, shared assets, spend controls and usage analytics"
       },
       {
+        "name": "Admin",
+        "description": "Internal staff ops panel (tier-based workflow only): tenant search, plan/credit/seat overrides, webhook diagnostics, telemetry and system controls, all audit-logged"
+      },
+      {
         "name": "System",
         "description": "Platform health and operational readiness"
       }

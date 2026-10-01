@@ -116,6 +116,40 @@ export const phoneOtpVerifyLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+// Internal staff ops panel (/api/v1/admin). Reads are capped per IP before
+// authentication; writes are capped per signed-in staff member, so one
+// compromised or scripted staff account cannot bulk-modify customer records.
+export const adminRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  limit: 120, // Allow up to 120 admin requests per IP per minute
+  store: createRateLimitStore('rl:admin:'),
+  message: {
+    success: false,
+    message: 'Too many admin requests. Please slow down.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})
+
+export const adminWriteLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  limit: 20, // Allow up to 20 admin writes per staff member per minute
+  store: createRateLimitStore('rl:admin-write:'),
+  keyGenerator: (req: Request): string => {
+    const userId = (req as { user?: { userId?: string } }).user?.userId
+    return `admin-write:${userId || req.ip || 'unknown'}`
+  },
+  message: {
+    success: false,
+    message: 'Too many admin changes. Please slow down.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  validate: {
+    keyGeneratorIpFallback: false,
+  },
+})
+
 export const securityMiddleware = (app: Application): void => {
   // Global Rate Limiting
   app.use(

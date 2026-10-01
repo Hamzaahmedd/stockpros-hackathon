@@ -7,6 +7,44 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"ApiErrorResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [
+							false
+						],
+						"nullable": false
+					},
+					"message": {
+						"type": "string"
+					},
+					"errors": {
+						"items": {
+							"properties": {
+								"message": {
+									"type": "string"
+								},
+								"field": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"message",
+								"field"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"WatchlistEntry": {
 				"properties": {
 					"id": {
@@ -121,44 +159,6 @@
 					},
 					"data": {
 						"$ref": "#/components/schemas/WatchlistEntry"
-					}
-				},
-				"required": [
-					"success",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"ApiErrorResponse": {
-				"properties": {
-					"success": {
-						"type": "boolean",
-						"enum": [
-							false
-						],
-						"nullable": false
-					},
-					"message": {
-						"type": "string"
-					},
-					"errors": {
-						"items": {
-							"properties": {
-								"message": {
-									"type": "string"
-								},
-								"field": {
-									"type": "string"
-								}
-							},
-							"required": [
-								"message",
-								"field"
-							],
-							"type": "object"
-						},
-						"type": "array"
 					}
 				},
 				"required": [
@@ -3270,6 +3270,17 @@
 						],
 						"description": "Subscription tier. Set directly (Bypass Mode) or via Safepay-confirmed checkout (Payment Mode) depending on `enablePaymentProcessor`.",
 						"example": "FREE"
+					},
+					"platformRole": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"SUPPORT_AGENT",
+							"PLATFORM_ADMIN",
+							"SUPER_ADMIN"
+						],
+						"description": "Internal staff access level; USER for regular customers.",
+						"example": "USER"
 					}
 				},
 				"required": [
@@ -3277,7 +3288,8 @@
 					"email",
 					"displayName",
 					"userRoles",
-					"plan"
+					"plan",
+					"platformRole"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -3491,6 +3503,154 @@
 				},
 				"required": [
 					"code"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"PlanOverrideRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO",
+							"TEAM"
+						],
+						"example": "PRO"
+					}
+				},
+				"required": [
+					"reason",
+					"plan"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AdminReasonRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					}
+				},
+				"required": [
+					"reason"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SeatCapacityRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"seatCapacity": {
+						"type": "integer",
+						"format": "int32",
+						"description": "New seat ceiling for an enterprise deal (2–10000). Also clears any\nscheduled seat reduction.",
+						"minimum": 2,
+						"maximum": 10000
+					}
+				},
+				"required": [
+					"reason",
+					"seatCapacity"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"CreditAdjustmentRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"target": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"TEAM"
+						],
+						"description": "Whose pool to adjust."
+					},
+					"targetId": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"amountPaisa": {
+						"type": "integer",
+						"format": "int32",
+						"description": "Signed whole paisa: positive injects, negative deducts (never below zero).",
+						"example": 500000
+					}
+				},
+				"required": [
+					"reason",
+					"target",
+					"targetId",
+					"amountPaisa"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ExtendSubscriptionRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"currentPeriodEnd": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"gracePeriodEnd": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"reason"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MarketEmergencyRequest": {
+				"properties": {
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"example": "Customer escalation #4821, approved by finance",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"closed": {
+						"type": "boolean",
+						"description": "true halts the market (in-memory, this process only)."
+					}
+				},
+				"required": [
+					"reason",
+					"closed"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -7926,6 +8086,1146 @@
 				}
 			}
 		},
+		"/api/v1/admin/users/search": {
+			"get": {
+				"operationId": "SearchUsers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, active sessions, subscription.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/admin/users/{id}/plan-override": {
+			"post": {
+				"operationId": "OverridePlan",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "User owns a workspace",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPER_ADMIN. Overrides a plan (bypasses Safepay). Downgrading TEAM removes non-owner members; owners get 409.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PlanOverrideRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/users/{id}/sessions/invalidate": {
+			"post": {
+				"operationId": "InvalidateSessions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPER_ADMIN. Force-revokes all active sessions.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/teams/search": {
+			"get": {
+				"operationId": "SearchTeams",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members, orgInstructions.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/admin/teams/{id}/capacity": {
+			"patch": {
+				"operationId": "SetSeatCapacity",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Overrides seat capacity beyond the 150-seat self-serve cap and clears scheduledSeatCapacity.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SeatCapacityRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/teams/domains/{id}/verify": {
+			"post": {
+				"operationId": "ForceVerifyDomain",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Force-verifies a TeamDomain, bypassing DNS TXT.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/teams/members/{userId}": {
+			"delete": {
+				"operationId": "ForceRemoveMember",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Hard-removes a member, freeing the seat instantly. The owner cannot be removed (409).",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/billing/webhooks": {
+			"get": {
+				"operationId": "ListWebhooks",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Safepay webhook diagnostics from PaymentTransaction (stored payloads are signature-verified).",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"PENDING",
+								"COMPLETED",
+								"FAILED",
+								"CANCELLED"
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "trackerId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/admin/billing/webhooks/{id}/retry": {
+			"post": {
+				"operationId": "RetryWebhook",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "No stored webhook payload",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Idempotently replays the stored webhook payload.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/billing/credits/adjust": {
+			"post": {
+				"operationId": "AdjustCredits",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Deduction exceeds balance",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Injects/deducts paisa and appends a MANUAL_ADJUSTMENT ledger row.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreditAdjustmentRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/subscriptions/{id}/extend": {
+			"post": {
+				"operationId": "ExtendSubscription",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Subscription is cancelled or expired",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Adjusts currentPeriodEnd and/or gracePeriodEnd.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ExtendSubscriptionRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/telemetry/usage": {
+			"get": {
+				"operationId": "SearchUsage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Searches UsageEvent rows.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "userId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "teamId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "symbol",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "feature",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/admin/telemetry/queues": {
+			"get": {
+				"operationId": "GetQueueHealth",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Job counts, recent failures and retry attempts for the email and subscription cron queues.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/admin/system/market-status": {
+			"get": {
+				"operationId": "GetMarketStatus",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Current in-memory emergency-close state.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/admin/system/market-emergency": {
+			"post": {
+				"operationId": "SetMarketEmergency",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPER_ADMIN. Toggles the emergency market halt in memory (no restart; this process only).",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MarketEmergencyRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/system/audit-logs": {
+			"get": {
+				"operationId": "ListAuditLogs",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. Paginated search across all staff actions.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "adminId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "action",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "targetType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "targetId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/rbac/user-screens": {
 			"get": {
 				"operationId": "GetUserScreenPermissions",
@@ -8366,6 +9666,10 @@
 		{
 			"name": "Teams",
 			"description": "B2B team workspaces: seats, invites, domains, shared assets, spend controls and usage analytics"
+		},
+		{
+			"name": "Admin",
+			"description": "Internal staff ops panel (tier-based workflow only): tenant search, plan/credit/seat overrides, webhook diagnostics, telemetry and system controls, all audit-logged"
 		},
 		{
 			"name": "System",

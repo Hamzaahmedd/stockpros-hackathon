@@ -1,6 +1,7 @@
 import { LogoutModal, useAuth } from "@/modules/auth";
 import { FeedbackWidget } from "@/modules/feedback";
 import { UnifiedNotifications } from "@/modules/notifications";
+import { isStaffRole } from "@/modules/admin/utils";
 import { preloader } from "@/shared/utils/preloader";
 import React, { useEffect, useState } from "react";
 import {
@@ -291,6 +292,9 @@ export const Sidebar: React.FC = () => {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
   const { user, can, logout, pricingTiersEnabled } = useAuth();
+  // Staff ops panel exists only in the tier-based workflow, for staff platform roles.
+  const showStaffOps =
+    pricingTiersEnabled && isStaffRole(user?.platformRole);
 
   const canReadCoreApp = can("CORE_APP", "canRead");
   const canReadPortfolio = can("PORTFOLIO", "canRead");
@@ -334,6 +338,7 @@ export const Sidebar: React.FC = () => {
     ...(user?.plan === "TEAM"
       ? [{ to: "/teams", icon: <FiUsers />, label: "Workspace" }]
       : []),
+    ...(showStaffOps ? [{ to: "/admin", icon: <FiShield />, label: "Staff ops" }] : []),
     { to: "/settings", icon: <FiSettings />, label: "Settings" },
   ];
 

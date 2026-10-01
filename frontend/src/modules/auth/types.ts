@@ -1,5 +1,8 @@
 export type PlanTier = "FREE" | "PRO" | "TEAM";
 
+/** Internal staff access level; `USER` for regular customers. Mirrors the backend `PlatformRole` enum. */
+export type PlatformRole = "USER" | "SUPPORT_AGENT" | "PLATFORM_ADMIN" | "SUPER_ADMIN";
+
 export type User = {
   id?: string;
   userId: string;
@@ -9,6 +12,7 @@ export type User = {
   userRoles?: any[];
   phoneVerifiedAt?: string | null;
   plan?: PlanTier;
+  platformRole?: PlatformRole;
 } | null;
 
 export type ScreenPermissions = {

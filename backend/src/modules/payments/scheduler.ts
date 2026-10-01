@@ -73,6 +73,9 @@ export const startSubscriptionCronJobs = async (): Promise<void> => {
   }
 }
 
+/** Live queue handles for admin queue-health inspection (empty when cron is disabled). */
+export const getSubscriptionQueues = (): readonly Queue[] => queues
+
 export const stopSubscriptionCronJobs = async (): Promise<void> => {
   await Promise.all(workers.map((w) => w.close()))
   await Promise.all(queues.map((q) => q.close()))

@@ -1,4 +1,4 @@
-import type { PlanTier, UserStatus } from '@prisma/client'
+import type { PlanTier, PlatformRole, UserStatus } from '@prisma/client'
 import type * as express from 'express'
 import type { SignOptions } from 'jsonwebtoken'
 import type { ActiveMembership } from '../../shared/infrastructure/team-access'
@@ -43,6 +43,7 @@ export interface MeProfile {
   phoneVerifiedAt: Date | null
   userRoles: Array<{ role: { name: string } }>
   plan: PlanTier
+  platformRole: PlatformRole
 }
 
 export interface AuthenticatedRequest extends express.Request {

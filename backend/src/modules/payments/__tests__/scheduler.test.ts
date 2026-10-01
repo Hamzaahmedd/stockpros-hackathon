@@ -100,3 +100,10 @@ describe('startSubscriptionCronJobs', () => {
     expect(queueClose).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('getSubscriptionQueues', () => {
+  it('exposes the live cron queues for admin queue-health inspection', async () => {
+    const { getSubscriptionQueues } = await import('../scheduler')
+    expect(Array.isArray(getSubscriptionQueues())).toBe(true)
+  })
+})

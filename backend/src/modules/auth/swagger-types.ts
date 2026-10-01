@@ -25,6 +25,8 @@ export interface UserProfile {
   userRoles: Array<{ role: { name: string } }>
   /** Subscription tier. Set directly (Bypass Mode) or via Safepay-confirmed checkout (Payment Mode) depending on `enablePaymentProcessor`. @example "FREE" */
   plan: 'FREE' | 'PRO'
+  /** Internal staff access level; USER for regular customers. @example "USER" */
+  platformRole: 'USER' | 'SUPPORT_AGENT' | 'PLATFORM_ADMIN' | 'SUPER_ADMIN'
 }
 
 export interface SetPlanRequest {

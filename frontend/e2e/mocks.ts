@@ -28,6 +28,7 @@ export type MockUser = {
   displayName?: string;
   phoneVerifiedAt?: string | null;
   plan?: "FREE" | "PRO" | "TEAM";
+  platformRole?: "USER" | "SUPPORT_AGENT" | "PLATFORM_ADMIN" | "SUPER_ADMIN";
 };
 
 /**

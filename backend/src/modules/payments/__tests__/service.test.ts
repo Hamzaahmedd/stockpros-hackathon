@@ -52,6 +52,7 @@ import {
   handleSubscriptionRenewalWebhookEvent,
   handleWebhookEvent,
   renewSubscription,
+  replayStoredWebhook,
   toggleAutoRenew,
   verifyTracker,
 } from '../service'
@@ -694,5 +695,65 @@ describe('handleSubscriptionRenewalWebhookEvent — team rows', () => {
 
     expect(setMyPlan).not.toHaveBeenCalled()
     expect(prisma.subscription.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('replayStoredWebhook', () => {
+  const paidPayload = {
+    data: { token: 'trk_1', notification: { state: 'PAID' } },
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(prisma.paymentTransaction as any).findUniqueOrThrow = jest.fn()
+  })
+
+  it('replays the stored payload through the idempotent handler', async () => {
+    ;(prisma.paymentTransaction.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'tx1',
+        rawWebhookPayload: paidPayload,
+      })
+      // handleWebhookEvent's own lookup: unknown tracker -> safe no-op
+      .mockResolvedValueOnce(null)
+    ;(prisma.paymentTransaction as any).findUniqueOrThrow.mockResolvedValue({
+      trackerId: 'trk_1',
+      status: PaymentStatus.COMPLETED,
+    })
+
+    const result = await replayStoredWebhook('tx1')
+
+    expect(result).toEqual({
+      trackerId: 'trk_1',
+      status: PaymentStatus.COMPLETED,
+    })
+    expect(prisma.paymentTransaction.findUnique).toHaveBeenNthCalledWith(2, {
+      where: { trackerId: 'trk_1' },
+    })
+  })
+
+  it('404s an unknown transaction', async () => {
+    ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValue(null)
+    await expect(replayStoredWebhook('tx1')).rejects.toThrow(
+      'Payment transaction not found',
+    )
+  })
+
+  it('409s when no payload was stored or it has no tracker id', async () => {
+    ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'tx1',
+      rawWebhookPayload: null,
+    })
+    await expect(replayStoredWebhook('tx1')).rejects.toThrow(
+      'No stored webhook payload to reprocess',
+    )
+
+    ;(prisma.paymentTransaction.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'tx1',
+      rawWebhookPayload: { data: {} },
+    })
+    await expect(replayStoredWebhook('tx1')).rejects.toThrow(
+      'Stored webhook payload has no tracker id',
+    )
   })
 })

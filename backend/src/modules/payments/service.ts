@@ -9,6 +9,7 @@ import {
 import { setMyPlan } from '../auth'
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
 } from '../../shared/errors'
@@ -31,6 +32,7 @@ import {
   fulfillTeamOrCreditTransaction,
   isTeamOrCreditTransaction,
 } from './fulfillment'
+import { parseSafepayWebhookPayload } from './webhook-parser'
 import type {
   CreateCheckoutResult,
   SafepaySubscriptionWebhookEvent,
@@ -366,4 +368,33 @@ export async function verifyTracker(
     status: transaction.status,
     plan: transaction.planTier,
   }
+}
+
+/**
+ * Admin-triggered reprocessing of a webhook whose fulfilment never landed.
+ * Replays the stored raw payload through the same idempotent handler the live
+ * webhook uses, so an already-terminal transaction is a safe no-op.
+ */
+export async function replayStoredWebhook(
+  transactionId: string,
+): Promise<{ trackerId: string; status: PaymentStatus }> {
+  const transaction = await prisma.paymentTransaction.findUnique({
+    where: { id: transactionId },
+  })
+  if (!transaction) throw new NotFoundError('Payment transaction not found')
+  if (!transaction.rawWebhookPayload) {
+    throw new ConflictError('No stored webhook payload to reprocess')
+  }
+
+  const event = parseSafepayWebhookPayload(transaction.rawWebhookPayload)
+  if (!event.trackerId) {
+    throw new ConflictError('Stored webhook payload has no tracker id')
+  }
+  await handleWebhookEvent(event, transaction.rawWebhookPayload)
+
+  const refreshed = await prisma.paymentTransaction.findUniqueOrThrow({
+    where: { id: transactionId },
+    select: { trackerId: true, status: true },
+  })
+  return refreshed
 }

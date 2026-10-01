@@ -8,32 +8,35 @@ generator client {
 }
 
 model User {
-  id                           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  displayName                  String     @map("display_name")
-  email                        String     @unique
-  status                       UserStatus @default(ACTIVE)
-  marketInterests              String[]   @default([]) @map("market_interests")
-  inAppAlertsEnabled           Boolean    @default(true) @map("in_app_alerts_enabled")
-  emailVolatilityAlertsEnabled Boolean    @default(true) @map("email_volatility_alerts_enabled")
-  dailyDigestEnabled           Boolean    @default(true) @map("daily_digest_enabled")
-  phoneNumber                  String?    @unique @map("phone_number")
-  phoneVerifiedAt              DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
-  plan                         PlanTier   @default(FREE)
+  id                           String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  displayName                  String       @map("display_name")
+  email                        String       @unique
+  status                       UserStatus   @default(ACTIVE)
+  marketInterests              String[]     @default([]) @map("market_interests")
+  inAppAlertsEnabled           Boolean      @default(true) @map("in_app_alerts_enabled")
+  emailVolatilityAlertsEnabled Boolean      @default(true) @map("email_volatility_alerts_enabled")
+  dailyDigestEnabled           Boolean      @default(true) @map("daily_digest_enabled")
+  phoneNumber                  String?      @unique @map("phone_number")
+  phoneVerifiedAt              DateTime?    @map("phone_verified_at") @db.Timestamptz(6)
+  plan                         PlanTier     @default(FREE)
+  // Internal staff access level (admin ops panel). USER = regular customer.
+  platformRole                 PlatformRole @default(USER) @map("platform_role")
   // Prepaid overage credit pool for individual PRO users (integer paisa).
-  creditBalanceInPaisa         Int        @default(0) @map("credit_balance_in_paisa")
+  creditBalanceInPaisa         Int          @default(0) @map("credit_balance_in_paisa")
   // Personal UI preferences (theme, chart layout, indicators), overlaid on the
   // team's `defaultPreferences` when the user belongs to a workspace.
   preferences                  Json?
-  deletedAt                    DateTime?  @map("deleted_at") @db.Timestamptz(6)
-  deletionScheduledAt          DateTime?  @map("deletion_scheduled_at") @db.Timestamptz(6)
-  createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                    DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  deletionScheduledAt          DateTime?    @map("deletion_scheduled_at") @db.Timestamptz(6)
+  createdAt                    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   userSessions      UserSession[]
+  adminAuditLogs    AdminAuditLog[] @relation("AdminActions")
   phoneOtps         PhoneOtp[]
   portfolios        Portfolio[]
-  assignedUserRoles UserRole[]    @relation("AssignedRoles")
-  userRoles         UserRole[]    @relation("UserRoles")
+  assignedUserRoles UserRole[]      @relation("AssignedRoles")
+  userRoles         UserRole[]      @relation("UserRoles")
 
   // ── Watchlist feature ──────────────────────────────────────────────────────
   watchlistItems    Watchlist[]
@@ -530,6 +533,29 @@ enum CreditLedgerType {
   PURCHASE
   OVERAGE_CONSUMPTION
   REFUND
+  MANUAL_ADJUSTMENT
+}
+
+enum PlatformRole {
+  USER
+  SUPPORT_AGENT
+  PLATFORM_ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminAuditAction {
+  PLAN_OVERRIDE
+  CREDIT_INJECTION
+  SUBSCRIPTION_EXTENDED
+  DOMAIN_FORCE_VERIFIED
+  SEAT_CAPACITY_OVERRIDE
+  MEMBER_FORCE_REMOVED
+  USER_SESSION_INVALIDATED
+  FEATURE_FLAG_TOGGLED
+  EMERGENCY_MARKET_TOGGLED
+  PLATFORM_ROLE_GRANTED
+  WEBHOOK_RETRIED
+  CUSTOMER_DATA_VIEWED
 }
 
 enum SubscriptionPaymentMethod {
@@ -804,4 +830,27 @@ model UsageEvent {
   @@index([userId, createdAt], map: "idx_usage_events_user_created")
   @@index([teamId, createdAt], map: "idx_usage_events_team_created")
   @@map("usage_events")
+}
+
+// ─── Internal staff admin audit trail ────────────────────────────────────────
+// Immutable record of every write performed through /api/v1/admin. Restrict
+// keeps a staff user from being deleted while audit rows still reference them.
+model AdminAuditLog {
+  id         String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  adminId    String           @map("admin_id") @db.Uuid
+  action     AdminAuditAction
+  targetType String           @map("target_type") // USER | TEAM | SUBSCRIPTION | PAYMENT | SYSTEM
+  targetId   String           @map("target_id")
+  reason     String
+  metadata   Json?
+  ipAddress  String?          @map("ip_address")
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  admin User @relation("AdminActions", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([adminId], map: "idx_admin_audit_admin_id")
+  @@index([targetId], map: "idx_admin_audit_target_id")
+  @@index([action], map: "idx_admin_audit_action")
+  @@index([createdAt], map: "idx_admin_audit_created_at")
+  @@map("admin_audit_logs")
 }

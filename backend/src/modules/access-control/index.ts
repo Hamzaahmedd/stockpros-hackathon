@@ -2,6 +2,14 @@
 // may be reached while another feature module is initializing.
 export { allRbacMiddleware, rbacMiddleware } from './middleware'
 export { Action, Resource } from './permissions'
+export {
+  hasPlatformRole,
+  PLATFORM_ROLE_RANK,
+  requirePlatformRole,
+  requirePricingTiersEnabled,
+} from './platform-role'
+export { AdminTargetType, logAdminAction, logAdminRead } from './admin-audit'
+export type { AdminAuditEvent } from './admin-audit'
 
 import router from './routes'
 import { defineModule } from '../module-interface'

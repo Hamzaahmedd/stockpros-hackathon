@@ -1,6 +1,7 @@
 export * from './app-error'
 export * from './bad-request-error'
 export * from './conflict-error'
+export * from './feature-disabled-error'
 export * from './forbidden-error'
 export * from './internal-server-error'
 export * from './not-found-error'

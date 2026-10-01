@@ -48,7 +48,7 @@ interface JobRef {
 
 let _emailQueue: Queue<EmailQueueJobPayload> | null = null
 
-const getEmailQueue = (): Queue<EmailQueueJobPayload> | null => {
+export const getEmailQueue = (): Queue<EmailQueueJobPayload> | null => {
   const connection = getRedisClient()
   if (!connection) return null
   _emailQueue ??= new Queue<EmailQueueJobPayload>(ALERT_EMAIL_QUEUE_NAME, {

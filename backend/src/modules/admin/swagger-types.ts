@@ -1,0 +1,240 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Path,
+  Post,
+  Query,
+  Response,
+  Route,
+  Security,
+  Tags,
+} from 'tsoa'
+
+import { ApiErrorResponse, ApiResponse } from '../../shared/docs-types'
+
+// ─── Internal staff ops panel models ────────────────────────────────────────
+// Every route below exists ONLY in the tier-based workflow
+// (`pricingTiersEnabled: true`); otherwise it answers
+// `403 FORBIDDEN_FEATURE_DISABLED`. Every write requires a `reason` and appends
+// one immutable `admin_audit_logs` row. Searches that return customer data
+// (users, teams, webhooks, usage) append a `CUSTOMER_DATA_VIEWED` row listing
+// the ids returned, never the search text.
+
+export interface AdminReasonRequest {
+  /**
+   * Justification stored on the audit row.
+   * @minLength 10
+   * @maxLength 500
+   * @example "Customer escalation #4821, approved by finance"
+   */
+  reason: string
+}
+
+export interface PlanOverrideRequest extends AdminReasonRequest {
+  /** @example "PRO" */
+  plan: 'FREE' | 'PRO' | 'TEAM'
+}
+
+export interface SeatCapacityRequest extends AdminReasonRequest {
+  /**
+   * New seat ceiling for an enterprise deal (2–10000). Also clears any
+   * scheduled seat reduction.
+   * @isInt
+   * @minimum 2
+   * @maximum 10000
+   */
+  seatCapacity: number
+}
+
+export interface CreditAdjustmentRequest extends AdminReasonRequest {
+  /** Whose pool to adjust. */
+  target: 'USER' | 'TEAM'
+  /** @format uuid */
+  targetId: string
+  /**
+   * Signed whole paisa: positive injects, negative deducts (never below zero).
+   * @isInt
+   * @example 500000
+   */
+  amountPaisa: number
+}
+
+export interface ExtendSubscriptionRequest extends AdminReasonRequest {
+  /** @format date-time */
+  currentPeriodEnd?: string
+  /** @format date-time */
+  gracePeriodEnd?: string
+}
+
+export interface MarketEmergencyRequest extends AdminReasonRequest {
+  /** true halts the market (in-memory, this process only). */
+  closed: boolean
+}
+
+@Route('api/v1/admin')
+@Tags('Admin')
+@Security('bearerAuth')
+@Response<ApiErrorResponse>(
+  429,
+  'Rate limited: 120 requests/min per IP, 20 writes/min per staff member',
+)
+@Response<ApiErrorResponse>(
+  403,
+  'Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED) or insufficient platform role',
+)
+export class AdminSwaggerController extends Controller {
+  /** SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, active sessions, subscription. */
+  @Get('users/search')
+  async searchUsers(
+    @Query() q: string,
+    @Query() limit?: number,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPER_ADMIN. Overrides a plan (bypasses Safepay). Downgrading TEAM removes non-owner members; owners get 409. */
+  @Post('users/{id}/plan-override')
+  @Response<ApiErrorResponse>(409, 'User owns a workspace')
+  async overridePlan(
+    @Path() id: string,
+    @Body() body: PlanOverrideRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPER_ADMIN. Force-revokes all active sessions. */
+  @Post('users/{id}/sessions/invalidate')
+  async invalidateSessions(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members, orgInstructions. */
+  @Get('teams/search')
+  async searchTeams(
+    @Query() q: string,
+    @Query() limit?: number,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Overrides seat capacity beyond the 150-seat self-serve cap and clears scheduledSeatCapacity. */
+  @Patch('teams/{id}/capacity')
+  async setSeatCapacity(
+    @Path() id: string,
+    @Body() body: SeatCapacityRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Force-verifies a TeamDomain, bypassing DNS TXT. */
+  @Post('teams/domains/{id}/verify')
+  async forceVerifyDomain(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Hard-removes a member, freeing the seat instantly. The owner cannot be removed (409). */
+  @Delete('teams/members/{userId}')
+  async forceRemoveMember(
+    @Path() userId: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Safepay webhook diagnostics from PaymentTransaction (stored payloads are signature-verified). */
+  @Get('billing/webhooks')
+  async listWebhooks(
+    @Query() page?: number,
+    @Query() limit?: number,
+    @Query() status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED',
+    @Query() trackerId?: string,
+    @Query() from?: string,
+    @Query() to?: string,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Idempotently replays the stored webhook payload. */
+  @Post('billing/webhooks/{id}/retry')
+  @Response<ApiErrorResponse>(409, 'No stored webhook payload')
+  async retryWebhook(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Injects/deducts paisa and appends a MANUAL_ADJUSTMENT ledger row. */
+  @Post('billing/credits/adjust')
+  @Response<ApiErrorResponse>(400, 'Deduction exceeds balance')
+  async adjustCredits(
+    @Body() body: CreditAdjustmentRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN+. Adjusts currentPeriodEnd and/or gracePeriodEnd. */
+  @Post('subscriptions/{id}/extend')
+  @Response<ApiErrorResponse>(409, 'Subscription is cancelled or expired')
+  async extendSubscription(
+    @Path() id: string,
+    @Body() body: ExtendSubscriptionRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Searches UsageEvent rows. */
+  @Get('telemetry/usage')
+  async searchUsage(
+    @Query() page?: number,
+    @Query() limit?: number,
+    @Query() userId?: string,
+    @Query() teamId?: string,
+    @Query() symbol?: string,
+    @Query() feature?: string,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Job counts, recent failures and retry attempts for the email and subscription cron queues. */
+  @Get('telemetry/queues')
+  async getQueueHealth(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Current in-memory emergency-close state. */
+  @Get('system/market-status')
+  async getMarketStatus(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPER_ADMIN. Toggles the emergency market halt in memory (no restart; this process only). */
+  @Post('system/market-emergency')
+  async setMarketEmergency(
+    @Body() body: MarketEmergencyRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT+. Paginated search across all staff actions. */
+  @Get('system/audit-logs')
+  async listAuditLogs(
+    @Query() page?: number,
+    @Query() limit?: number,
+    @Query() adminId?: string,
+    @Query() action?: string,
+    @Query() targetType?: string,
+    @Query() targetId?: string,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+}

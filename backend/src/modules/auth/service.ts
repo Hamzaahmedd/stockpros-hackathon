@@ -1,6 +1,12 @@
 // Consolidated auth service
 import config from '@/config'
-import { PlanTier, Prisma, TeamStatus, UserStatus } from '@prisma/client'
+import {
+  PlanTier,
+  PlatformRole,
+  Prisma,
+  TeamStatus,
+  UserStatus,
+} from '@prisma/client'
 import { OAuth2Client } from 'google-auth-library'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import crypto from 'node:crypto'
@@ -323,6 +329,13 @@ export async function deleteAccount(userId: string): Promise<void> {
           data: { billingEmail: null },
         }),
 
+        // Staff access ends with the account, and a staff member's own audit rows lose
+        // their IP address (the rows stay, keyed by user id only).
+        tx.adminAuditLog.updateMany({
+          where: { adminId: userId },
+          data: { ipAddress: null },
+        }),
+
         // Step 4: Soft-delete the user
         tx.user.update({
           where: { id: userId },
@@ -335,6 +348,7 @@ export async function deleteAccount(userId: string): Promise<void> {
             email: `deleted+${userId}@stockpros.invalid`,
             phoneNumber: null,
             phoneVerifiedAt: null,
+            platformRole: PlatformRole.USER,
           },
         }),
       ])
@@ -357,6 +371,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
       displayName: true,
       phoneVerifiedAt: true,
       plan: true,
+      platformRole: true,
       userRoles: {
         include: {
           role: {
@@ -378,6 +393,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
     phoneVerifiedAt: user.phoneVerifiedAt,
     userRoles: user.userRoles,
     plan: user.plan,
+    platformRole: user.platformRole,
   }
 }
 

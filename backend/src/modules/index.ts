@@ -1,5 +1,6 @@
 import type { AppModule } from './module-interface'
 import { accessControlModule } from './access-control'
+import { adminModule } from './admin'
 import { authModule } from './auth'
 import { dashboardModule } from './dashboard'
 import { decisionSupportModule } from './decision-support'
@@ -15,6 +16,7 @@ import { watchlistModule } from './watchlist'
 
 /** The only place where business modules are assembled into the application. */
 export const modules: readonly AppModule[] = [
+  adminModule,
   authModule,
   forecastModule,
   marketModule,

@@ -21,7 +21,7 @@ import {
 
 let _authEmailQueue: Queue<AuthEmailJobPayload> | null = null
 
-const getAuthEmailQueue = (): Queue<AuthEmailJobPayload> | null => {
+export const getAuthEmailQueue = (): Queue<AuthEmailJobPayload> | null => {
   const connection = getRedisClient()
   if (!connection) return null
   if (!_authEmailQueue) {
