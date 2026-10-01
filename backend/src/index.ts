@@ -6,7 +6,10 @@ if (!__filename.endsWith('.ts')) require('module-alias/register')
 import config from '@/config'
 import http from 'node:http'
 import { createApp } from './app'
+import { verifyAccessToken } from './modules/auth'
+import { priceCache, updatePriceCache } from './modules/market'
 import { finnhubService } from './modules/market/infrastructure/finnhub-stream'
+import { evaluateAlertsForTick } from './modules/watchlist'
 import {
   startNewsCronJobs,
   stopNewsCronJobs,
@@ -32,18 +35,29 @@ import {
   connectPrismaWithRetry,
   prisma,
 } from './shared/infrastructure/database'
+import {
+  startEmergencySync,
+  stopEmergencySync,
+} from './shared/infrastructure/emergency-sync'
 import { logger } from './shared/infrastructure/logger'
 import { posthogClient } from './shared/infrastructure/posthog'
 import { SocketServer } from './shared/infrastructure/realtime/socket-server'
 
 export const httpServer = http.createServer(createApp())
 
-export const socketServer = new SocketServer(httpServer)
+export const socketServer = new SocketServer(httpServer, {
+  verifyAccessToken,
+  marketFeed: finnhubService,
+  priceCache,
+  updatePriceCache,
+  evaluateAlertsForTick,
+})
 
 const shutdown = async () => {
   logger.info('Shutdown requested, closing connections...')
   await finnhubService.close()
   await closeRedis()
+  stopEmergencySync()
   stopCronScheduler()
   await stopNewsCronJobs()
   await stopSubscriptionCronJobs()
@@ -70,6 +84,7 @@ const startServer = async () => {
     connectRedis()
       .then(async () => {
         logger.info('Redis connected successfully')
+        startEmergencySync()
         await startCronScheduler()
         await startNewsCronJobs()
         await startSubscriptionCronJobs()

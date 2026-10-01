@@ -78,9 +78,10 @@ flowchart LR
 
 #### Key Architectural Patterns
 
-- **Modular Monolith**: Node.js backend separated into 11 domain modules with enforced boundary checks.
+- **Modular Monolith**: Node.js backend separated into domain modules with enforced boundary checks (`npm run architecture:check`): modules talk only through each other's `index.ts`/`public.ts`, and the `shared/` layer may not import any module (module collaborators, e.g. the Socket.io server's market feed and alert evaluator, are injected from `src/index.ts`).
 - **Event-Driven & Decoupled Workers**: BullMQ queues handle email notifications and asynchronous alert tasks.
 - **Real-Time Streaming**: Finnhub WebSocket trades streamed via Socket.io directly to connected clients.
+- **Shared Runtime State**: rate limiters use Redis whenever it is connected (chosen per request, falling back to memory), and the emergency market halt is synced across instances through Redis (`shared/infrastructure/emergency-sync.ts`).
 - **AI Proxy Pattern**: Python FastAPI service isolates heavy GRU ML inference and caching behind the backend.
 - **Multi-Tier Caching**: In-memory and Redis TTL caching for stock quotes, logos, and ML forecasts.
 
@@ -267,12 +268,17 @@ python tools/convert.py <input_model_path> <output_model_path>
 | Backend    | `npm run tsoa:spec`              | Regenerate `src/docs/generated/swagger.json` from the TSOA spec files |
 | Backend    | `npm run admin:grant -- <email> <ROLE>` | Grant/revoke an internal staff `PlatformRole` (`USER`, `SUPPORT_AGENT`, `PLATFORM_ADMIN`, `SUPER_ADMIN`) |
 | Backend    | `npm run rbac:seed`              | Seed default roles/permissions                              |
-| Backend    | `npm run db:sync`                | Push the Prisma schema to the database and regenerate the client |
+| Backend    | `npm run db:sync`                | Push the Prisma schema to the database and regenerate the client (throwaway/dev databases; see below for migrations) |
+| Backend    | `npm run db:migrate:dev -- --name <change>` | Create and apply a reviewed SQL migration (prepared, not yet adopted; see `backend/docs/migrations.md`) |
+| Backend    | `npm run db:migrate:deploy`      | Apply committed migrations in order (staging/production once adopted) |
+| Backend    | `npm run db:migrate:status` / `db:migrate:check` | Show applied migrations / fail if the schema drifted from the migration history |
 | Frontend   | `npm run dev`                     | Start Vite dev server                                       |
 | Frontend   | `npm run build`                   | Production build                                            |
 | Frontend   | `npm run preview`                 | Preview production build                                    |
 | Frontend   | `npm run typecheck`               | Type-check without emitting                                 |
-| Frontend   | `npm run lint`                    | Run ESLint                                                   |
+| Frontend   | `npm run lint`                    | Run ESLint (`any` is an error in `modules/admin` and `src/test`, a warning elsewhere) |
+| Frontend   | `npm test`                        | Run Vitest unit/component tests (`npm run test:watch` to watch) |
+| Frontend   | `npm run test:e2e`                | Run Playwright e2e specs (network mocked) |
 | AI Service | `uvicorn app.main:app --reload`  | Start dev server                                             |
 | AI Service | `python tools/train_script.py`   | Train a GRU model, convert to ONNX, upload to Supabase       |
 | AI Service | `python tools/convert.py`        | Convert an existing Keras model to ONNX                      |

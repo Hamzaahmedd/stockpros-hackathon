@@ -21,3 +21,19 @@ export { seatCountValidator, teamNameValidator } from './validation'
 export { resolveUsageWindowStart } from './credits'
 export { replayStoredWebhook } from './service'
 export { getSubscriptionQueues } from './scheduler'
+export {
+  attachTeamContext,
+  composeHandlers,
+  gate,
+  meterPaidAiSignal,
+  noTierRestriction,
+  QUEUE_PRIORITY_HEADER,
+  QueuePriority,
+  requireAlertTypeAllowedForPlan,
+  requirePlan,
+  requirePlanOrQuota,
+  requireSinglePortfolioForFree,
+  requireWatchlistLimitForFree,
+  requireWatchlistMembershipOrPro,
+} from './plan-gating'
+export { trackSearchUsage } from './usage-tracking'

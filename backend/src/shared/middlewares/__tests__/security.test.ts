@@ -1,10 +1,10 @@
 /**
- * security.ts constructs its rate limiters (and picks Redis vs in-memory
- * storage) at MODULE LOAD TIME, not per-request — so exercising both branches
- * of that choice means re-importing the module fresh, with a differently
- * mocked `getRawRedisClient` each time. `jest.doMock` + `jest.resetModules`
- * inside each test (rather than static top-level `jest.mock`) is what makes
- * that possible.
+ * security.ts constructs its rate limiters at MODULE LOAD TIME (their Redis vs
+ * in-memory storage is resolved per request by LazyRateLimitStore, covered in
+ * its own test) — so inspecting how each limiter is built means re-importing
+ * the module fresh with its collaborators mocked. `jest.doMock` +
+ * `jest.resetModules` inside each test (rather than static top-level
+ * `jest.mock`) is what makes that possible.
  */
 
 const mockRateLimitDeps = (
@@ -24,6 +24,9 @@ const mockRateLimitDeps = (
         corsOrigins: configOverrides.corsOrigins ?? [],
       },
     },
+  }))
+  jest.doMock('../../infrastructure/logger', () => ({
+    logger: { warn: jest.fn() },
   }))
   jest.doMock('../../infrastructure/cache', () => ({
     getRawRedisClient: jest.fn().mockReturnValue(redisClient),
@@ -53,34 +56,37 @@ beforeEach(() => {
 })
 
 describe('rate limiter store selection', () => {
-  it('backs every limiter with RedisSlidingWindowStore when a Redis client is available at load time', () => {
-    mockRateLimitDeps({ id: 'fake-redis-client' })
-    const security = require('../security')
-
-    expect(security.emailMagicLinkLimiter.store).toMatchObject({
-      __kind: 'redis',
-      prefix: 'rl:magic:',
-    })
-    expect(security.loginLimiter.store).toMatchObject({
-      __kind: 'redis',
-      prefix: 'rl:login:',
-    })
-    expect(security.phoneOtpRequestLimiter.store).toMatchObject({
-      __kind: 'redis',
-      prefix: 'rl:phone-otp-request:',
-    })
-    expect(security.phoneOtpVerifyLimiter.store).toMatchObject({
-      __kind: 'redis',
-      prefix: 'rl:phone-otp-verify:',
-    })
-  })
-
-  it('falls back to MemoryStore for every limiter when no Redis client is available', () => {
+  // Limiters are created at import, before Redis connects, so each one gets a
+  // store that picks Redis or memory per request (see lazy-rate-limit-store).
+  it('backs every limiter with a lazily-resolving store carrying its own prefix', () => {
     mockRateLimitDeps(null)
     const security = require('../security')
 
-    expect(security.emailMagicLinkLimiter.store).toEqual({ __kind: 'memory' })
-    expect(security.loginLimiter.store).toEqual({ __kind: 'memory' })
+    expect(security.emailMagicLinkLimiter.store).toMatchObject({
+      prefix: 'rl:magic:',
+    })
+    expect(security.loginLimiter.store).toMatchObject({ prefix: 'rl:login:' })
+    expect(security.phoneOtpRequestLimiter.store).toMatchObject({
+      prefix: 'rl:phone-otp-request:',
+    })
+    expect(security.phoneOtpVerifyLimiter.store).toMatchObject({
+      prefix: 'rl:phone-otp-verify:',
+    })
+    expect(security.adminRateLimiter.store).toMatchObject({
+      prefix: 'rl:admin:',
+    })
+    expect(security.adminWriteLimiter.store).toMatchObject({
+      prefix: 'rl:admin-write:',
+    })
+  })
+
+  it('gives each limiter its own store instance', () => {
+    mockRateLimitDeps({ id: 'fake-redis-client' })
+    const security = require('../security')
+
+    expect(security.emailMagicLinkLimiter.store).not.toBe(
+      security.loginLimiter.store,
+    )
   })
 })
 

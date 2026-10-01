@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest } from '../../modules/auth/types'
+import type { AuthenticatedRequest } from '../request-types'
 
 /**
  * Response extras carrying the workspace's org instructions for team members

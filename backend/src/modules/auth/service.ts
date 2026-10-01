@@ -29,12 +29,8 @@ import {
   captureEvent,
   PostHogEvent,
 } from '../../shared/infrastructure/posthog'
-import {
-  convertToMilliseconds,
-  hashToken,
-  signToken,
-  verifyRefreshToken,
-} from '../../shared/utils'
+import { convertToMilliseconds, hashToken } from '../../shared/utils'
+import { signToken, verifyRefreshToken } from './utils/jwt'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
 import { enqueueAuthEmail } from '../notifications/public'
 import { AuthTokens, MeProfile, TokenClaims, UserData } from './types'

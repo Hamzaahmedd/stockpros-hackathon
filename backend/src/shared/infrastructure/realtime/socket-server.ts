@@ -2,13 +2,6 @@ import config from '@/config'
 import type { PlanTier } from '@prisma/client'
 import * as http from 'http'
 import { Server as IOServer, Socket as BaseSocket } from 'socket.io'
-import { verifyAccessToken } from '../../../modules/auth/utils/jwt'
-import {
-  priceCache,
-  updatePriceCache,
-} from '../../../modules/market/caches/price-cache'
-import { finnhubService } from '../../../modules/market/infrastructure/finnhub-stream'
-import { evaluateAlertsForTick } from '../../../modules/watchlist/evaluators/alert-evaluator'
 import { prisma } from '../database'
 import { logger } from '../logger'
 import { SocketEvent } from './socket-events'
@@ -24,12 +17,42 @@ interface SocketData {
 
 type Socket = BaseSocket<any, any, any, SocketData>
 
+export interface RealtimeTrade {
+  s: string
+  p: number
+  v?: number
+}
+
+/**
+ * What the socket server needs from the auth, market and watchlist modules.
+ * The composition root (src/index.ts) supplies them, so this shared
+ * transport never imports business modules.
+ */
+export interface RealtimeDeps {
+  verifyAccessToken: (token: string, secret: string) => { jti?: string }
+  marketFeed: {
+    subscribe(symbol: string): void
+    unsubscribe(symbol: string): void
+    getQuote(symbol: string): Promise<{ c: number }>
+    on(event: 'trade', listener: (trade: RealtimeTrade) => void): unknown
+    on(event: 'error', listener: (err: unknown) => void): unknown
+  }
+  priceCache: {
+    get(symbol: string): { price: number; volume: number } | undefined
+  }
+  updatePriceCache(symbol: string, price: number, volume: number): void
+  evaluateAlertsForTick(symbol: string, price: number): Promise<unknown>
+}
+
 export class SocketServer {
   private static instance: SocketServer
   public io: IOServer
   private readonly delayedTimers = new Map<string, NodeJS.Timeout>()
 
-  constructor(server: http.Server) {
+  constructor(
+    server: http.Server,
+    private readonly deps: RealtimeDeps,
+  ) {
     this.io = new IOServer(server, {
       cors: {
         origin: config.server.frontendUrl,
@@ -68,7 +91,10 @@ export class SocketServer {
       const token = socket.handshake.auth?.token as string | undefined
       if (!token) return next(new Error('Unauthorized'))
 
-      const payload = verifyAccessToken(token, config.auth.accessTokenSecret)
+      const payload = this.deps.verifyAccessToken(
+        token,
+        config.auth.accessTokenSecret,
+      )
       if (!payload.jti) return next(new Error('Unauthorized'))
 
       const session = await prisma.userSession.findUnique({
@@ -142,11 +168,11 @@ export class SocketServer {
 
     // Subscribe to Finnhub WS — shared upstream feed backs both the live and
     // delayed rooms for this symbol.
-    finnhubService.subscribe(symbol)
+    this.deps.marketFeed.subscribe(symbol)
 
     // Send initial snapshot quote
     try {
-      const snapshot = await finnhubService.getQuote(symbol)
+      const snapshot = await this.deps.marketFeed.getQuote(symbol)
       socket.emit(SocketEvent.Trade, {
         s: symbol,
         p: snapshot.c,
@@ -170,7 +196,7 @@ export class SocketServer {
   private ensureDelayedTimer(symbol: string): void {
     if (this.delayedTimers.has(symbol)) return
     const timer = setInterval(() => {
-      const cached = priceCache.get(symbol)
+      const cached = this.deps.priceCache.get(symbol)
       if (!cached) return
       this.io.to(delayedRoom(symbol)).emit(SocketEvent.Trade, {
         s: symbol,
@@ -219,7 +245,7 @@ export class SocketServer {
 
     this.clearDelayedTimerIfEmpty(symbol)
     if (this.totalSubscriberCount(symbol) === 0) {
-      finnhubService.unsubscribe(symbol)
+      this.deps.marketFeed.unsubscribe(symbol)
       logger.info(`Unsubscribed ${symbol} from Finnhub (no active sockets)`)
     }
   }
@@ -239,7 +265,7 @@ export class SocketServer {
 
       this.clearDelayedTimerIfEmpty(symbol)
       if (this.totalSubscriberCount(symbol) <= 1) {
-        finnhubService.unsubscribe(symbol)
+        this.deps.marketFeed.unsubscribe(symbol)
         logger.info(
           `Unsubscribed ${symbol} from Finnhub (no active sockets after disconnect)`,
         )
@@ -253,18 +279,22 @@ export class SocketServer {
 
   // REPLACE handleFinnhubEvents with this:
   private handleFinnhubEvents(): void {
-    finnhubService.on('trade', (trade) => {
+    this.deps.marketFeed.on('trade', (trade) => {
       try {
         const symbol = String(trade.s).toUpperCase()
-        updatePriceCache(symbol, trade.p, trade.v ?? 0) // M2 — already there
+        this.deps.updatePriceCache(symbol, trade.p, trade.v ?? 0) // M2 — already there
         this.io.to(symbol).emit(SocketEvent.Trade, trade) // already there
 
         // M6: Evaluate alert rules for this tick — fire-and-forget,
         // errors are caught inside evaluateAlertsForTick so the pipeline
         // is never blocked or crashed
-        evaluateAlertsForTick(symbol, trade.p).catch((err) =>
-          logger.error('[AlertEvaluator] Unhandled rejection: ' + err.message),
-        )
+        this.deps
+          .evaluateAlertsForTick(symbol, trade.p)
+          .catch((err: Error) =>
+            logger.error(
+              '[AlertEvaluator] Unhandled rejection: ' + err.message,
+            ),
+          )
       } catch (err) {
         logger.error('Error forwarding trade: ' + (err as Error).message)
       }
@@ -272,7 +302,7 @@ export class SocketServer {
   }
 
   private handleFinnhubErrors(): void {
-    finnhubService.on('error', (err) => {
+    this.deps.marketFeed.on('error', (err) => {
       logger.error('Finnhub WS error: ' + (err as Error).message)
     })
   }

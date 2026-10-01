@@ -67,6 +67,11 @@ jest.mock('../../notifications/public', () => ({
 }))
 
 const mockMarket = { closed: false }
+const mockPersistEmergency = jest.fn()
+jest.mock('../../../shared/infrastructure/emergency-sync', () => ({
+  persistEmergencyClosed: (...args: unknown[]) => mockPersistEmergency(...args),
+}))
+
 jest.mock('../../../shared/utils/market-hours', () => ({
   isEmergencyClosed: () => mockMarket.closed,
   setEmergencyClosed: (value: boolean) => {
@@ -730,9 +735,15 @@ describe('read auditing is fail-closed', () => {
 
 describe('system', () => {
   it('toggles the market emergency flag and audits first', async () => {
+    mockPersistEmergency.mockResolvedValue(true)
     const result = await System.setMarketEmergency(ctx, true)
 
-    expect(result).toEqual({ emergencyClosed: true, previous: false })
+    expect(mockPersistEmergency).toHaveBeenCalledWith(true)
+    expect(result).toEqual({
+      emergencyClosed: true,
+      previous: false,
+      sharedAcrossInstances: true,
+    })
     expect(System.getMarketStatus()).toEqual({ emergencyClosed: true })
     expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1)
     expect(mockPrisma.adminAuditLog.create.mock.calls[0][0].data).toMatchObject(
@@ -742,6 +753,13 @@ describe('system', () => {
         metadata: { previous: false, closed: true },
       },
     )
+  })
+
+  it('still halts this instance and says so when Redis cannot share it', async () => {
+    mockPersistEmergency.mockResolvedValue(false)
+    const result = await System.setMarketEmergency(ctx, true)
+    expect(result.sharedAcrossInstances).toBe(false)
+    expect(mockMarket.closed).toBe(true)
   })
 
   it('does not flip the flag when the audit write fails', async () => {

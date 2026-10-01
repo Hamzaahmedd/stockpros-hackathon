@@ -1,22 +1,19 @@
 import config from '@/config'
 import { AlertType, PlanTier } from '@prisma/client'
 import { NextFunction, RequestHandler, Response } from 'express'
-import { Action, rbacMiddleware, Resource } from '../../modules/access-control'
-import { AuthenticatedRequest } from '../../modules/auth'
-import { PlanRequiredError, QuotaExceededError } from '../errors'
-import { prisma } from '../infrastructure/database'
-import { incrementAndCheckQuota } from '../infrastructure/usage-quota'
+import { Action, rbacMiddleware, Resource } from '../access-control'
+import { AuthenticatedRequest } from '../auth'
+import { PlanRequiredError, QuotaExceededError } from '../../shared/errors'
+import { prisma } from '../../shared/infrastructure/database'
+import { incrementAndCheckQuota } from '../../shared/infrastructure/usage-quota'
 import {
   getActiveMembership,
   type ActiveMembership,
-} from '../infrastructure/team-access'
-import {
-  consumeAiSignal,
-  MeteredFeature,
-  type MeterActor,
-} from '../../modules/payments/public'
-import { hasPaidPlan } from '../utils/plan'
-import { isMarketSpikeWindow } from '../utils/market-hours'
+} from '../../shared/infrastructure/team-access'
+import { MeteredFeature } from './constants'
+import { consumeAiSignal, type MeterActor } from './credits'
+import { hasPaidPlan } from '../../shared/utils/plan'
+import { isMarketSpikeWindow } from '../../shared/utils/market-hours'
 
 /**
  * Route-registration-time switch between the existing RBAC check and a

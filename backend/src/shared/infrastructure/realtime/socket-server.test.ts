@@ -24,24 +24,29 @@ jest.mock('@prisma/client', () => {
   }
 })
 
-jest.mock('../../../modules/market/infrastructure/finnhub-stream', () => ({
-  finnhubService: {
-    subscribe: jest.fn(),
-    unsubscribe: jest.fn(),
-    on: jest.fn(),
-    getQuote: jest.fn().mockResolvedValue({ c: 100 }),
-  },
-}))
-
 import config from '@/config'
 import * as http from 'http'
 import jwt from 'jsonwebtoken'
 import { AddressInfo } from 'net'
 import { io as ioClient, Socket as ClientSocket } from 'socket.io-client'
+import { verifyAccessToken } from '../../../modules/auth/utils/jwt'
 import { prisma } from '../database'
 import { SocketServer } from './socket-server'
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string
+
+const deps = {
+  verifyAccessToken,
+  marketFeed: {
+    subscribe: jest.fn(),
+    unsubscribe: jest.fn(),
+    on: jest.fn(),
+    getQuote: jest.fn().mockResolvedValue({ c: 100 }),
+  },
+  priceCache: new Map(),
+  updatePriceCache: jest.fn(),
+  evaluateAlertsForTick: jest.fn().mockResolvedValue(undefined),
+}
 
 function signToken(jti: string): string {
   return jwt.sign({ sub: 'user-1', jti }, ACCESS_TOKEN_SECRET, {
@@ -67,7 +72,7 @@ async function startServer(): Promise<{
   port: number
 }> {
   const httpServer = http.createServer()
-  const socketServer = new SocketServer(httpServer)
+  const socketServer = new SocketServer(httpServer, deps)
   await new Promise<void>((resolve) => httpServer.listen(0, resolve))
   const port = (httpServer.address() as AddressInfo).port
   return { httpServer, socketServer, port }

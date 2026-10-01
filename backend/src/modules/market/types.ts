@@ -1,13 +1,4 @@
-export interface StockQuote {
-  c: number
-  d: number
-  dp: number
-  h: number
-  l: number
-  o: number
-  pc: number
-  t: number
-}
+export type { StockQuote } from '../../shared/infrastructure/clients/quote-types'
 
 export interface RankedStockRow {
   rank: number

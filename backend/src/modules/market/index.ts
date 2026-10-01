@@ -12,6 +12,7 @@ export {
   getCurrentPrice,
   MAX_WATCHLIST_ITEMS,
   priceCache,
+  updatePriceCache,
 } from './caches/price-cache'
 export { finnhubService } from './infrastructure/finnhub-stream'
 export { getCompanySectors, getLivePrices, getRankedTopStocks } from './service'

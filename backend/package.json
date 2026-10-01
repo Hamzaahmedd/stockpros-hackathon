@@ -18,6 +18,10 @@
     "admin:grant": "ts-node -r tsconfig-paths/register scripts/grant-platform-role.ts",
     "rbac:seed": "ts-node -r tsconfig-paths/register scripts/seed-rbac.ts",
     "seed:dev-fixtures": "ts-node -r tsconfig-paths/register scripts/seed-fixtures.ts",
+    "db:migrate:dev": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:migrate:check": "node scripts/check-migration-drift.cjs",
     "db:sync": "npx ts-node scripts/convert-schema-to-snakecase.ts && npx prettier --write prisma/schema.prisma && prisma db push && npx prisma generate"
   },
   "_moduleAliases": {

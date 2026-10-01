@@ -1,6 +1,6 @@
 import config from '@/config'
 import { NextFunction, RequestHandler, Response } from 'express'
-import type { AuthenticatedRequest } from '../../modules/auth/types'
+import type { AuthenticatedRequest } from '../request-types'
 import { ServiceUnavailableError } from '../errors'
 import { logger } from '../infrastructure/logger'
 

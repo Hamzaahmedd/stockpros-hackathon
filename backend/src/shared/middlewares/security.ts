@@ -1,24 +1,17 @@
 import config from '@/config'
 import cors from 'cors'
 import { Application, Request } from 'express'
-import rateLimit, { MemoryStore } from 'express-rate-limit'
+import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
-import { RedisSlidingWindowStore } from '../infrastructure/redis-sliding-window-store'
-import { getRawRedisClient } from '../infrastructure/cache'
+import { LazyRateLimitStore } from '../infrastructure/lazy-rate-limit-store'
 
 /**
- * Creates a rate limit store backed by Redis (sliding window log) when available,
- * falling back gracefully to in-memory store if Redis is unconfigured or offline.
+ * Creates a rate limit store that uses Redis (sliding window log) whenever it is
+ * connected and falls back to memory when it is not. The choice is made per
+ * request because limiters are created before Redis connects.
  */
 function createRateLimitStore(prefix: string) {
-  const client = getRawRedisClient()
-  if (client) {
-    return new RedisSlidingWindowStore({
-      client,
-      prefix,
-    })
-  }
-  return new MemoryStore()
+  return new LazyRateLimitStore(prefix)
 }
 
 // Rate limiter for passwordless magic link requests — keyed by EMAIL address

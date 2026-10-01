@@ -1,5 +1,5 @@
 import YahooFinance from 'yahoo-finance2'
-import { StockQuote } from '../../../modules/market/types'
+import { StockQuote } from './quote-types'
 
 // Single shared instance — suppresses the survey notice
 const yahoo = new YahooFinance({ suppressNotices: ['yahooSurvey'] })

@@ -175,9 +175,10 @@ const isEarlyCloseDay = (year: number, month: number, day: number): boolean => {
 // ─── Emergency halt (runtime kill-switch) ────────────────────────────────────
 // Seeded once from EMERGENCY_MARKET_CLOSED (config.market.emergencyClosed) and
 // then held in memory, so it can be flipped at runtime — e.g. by an admin
-// endpoint — without a restart. The state lives in this process's memory,
-// which is all a single-instance deployment needs; it is lost on restart and
-// falls back to the env-seeded value above.
+// endpoint — without a restart. Each process reads its own in-memory copy
+// (fast, synchronous). Other instances are kept in step by
+// shared/infrastructure/emergency-sync.ts through Redis; without Redis the
+// flag is per-process, and it falls back to the env-seeded value on restart.
 let emergencyClosed = config.market.emergencyClosed
 
 /** True while ops have declared the market closed regardless of the calendar. */

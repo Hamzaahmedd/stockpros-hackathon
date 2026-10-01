@@ -1,12 +1,10 @@
 import { PlanTier } from '@prisma/client'
 import { NextFunction, RequestHandler, Response } from 'express'
-import type { AuthenticatedRequest } from '../../modules/auth'
-import {
-  recordUsage,
-  SEARCH_USAGE_FEATURE,
-} from '../../modules/payments/public'
-import { logger } from '../infrastructure/logger'
-import { getActiveMembership } from '../infrastructure/team-access'
+import type { AuthenticatedRequest } from '../../shared/request-types'
+import { SEARCH_USAGE_FEATURE } from './constants'
+import { recordUsage } from './credits'
+import { logger } from '../../shared/infrastructure/logger'
+import { getActiveMembership } from '../../shared/infrastructure/team-access'
 
 /**
  * Records symbol-lookup searches by team members for the workspace analytics

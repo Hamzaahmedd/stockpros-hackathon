@@ -1,17 +1,19 @@
-jest.mock('../../infrastructure/team-access', () => ({
+jest.mock('../../../shared/infrastructure/team-access', () => ({
   getActiveMembership: jest.fn(),
 }))
-jest.mock('../../../modules/payments/public', () => ({
+jest.mock('../credits', () => ({
   recordUsage: jest.fn(),
+}))
+jest.mock('../constants', () => ({
   SEARCH_USAGE_FEATURE: 'search',
 }))
-jest.mock('../../infrastructure/logger', () => ({
+jest.mock('../../../shared/infrastructure/logger', () => ({
   logger: { warn: jest.fn() },
 }))
 
-import { recordUsage } from '../../../modules/payments/public'
-import { logger } from '../../infrastructure/logger'
-import { getActiveMembership } from '../../infrastructure/team-access'
+import { recordUsage } from '../credits'
+import { logger } from '../../../shared/infrastructure/logger'
+import { getActiveMembership } from '../../../shared/infrastructure/team-access'
 import { trackSearchUsage } from '../usage-tracking'
 
 const membership = { teamId: 't1', role: 'MEMBER' }

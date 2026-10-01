@@ -1,7 +1,5 @@
 import type { PlanTier, PlatformRole, UserStatus } from '@prisma/client'
-import type * as express from 'express'
 import type { SignOptions } from 'jsonwebtoken'
-import type { ActiveMembership } from '../../shared/infrastructure/team-access'
 
 export type TokenExpiry = SignOptions['expiresIn']
 
@@ -46,19 +44,4 @@ export interface MeProfile {
   platformRole: PlatformRole
 }
 
-export interface AuthenticatedRequest extends express.Request {
-  user?: {
-    userId: string
-    jti?: string
-    roleId?: string
-    plan: PlanTier
-  }
-  file?: Express.Multer.File
-  /** Set by `attachTeamContext`: workspace membership + queue priority. */
-  teamContext?: {
-    membership: ActiveMembership | null
-    priority: 'HIGH' | 'NORMAL'
-    /** True when this request should jump the compute queue (Team member in a market spike window). */
-    isHighPriority: boolean
-  }
-}
+export type { AuthenticatedRequest } from '../../shared/request-types'

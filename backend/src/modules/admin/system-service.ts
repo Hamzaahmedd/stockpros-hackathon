@@ -4,6 +4,7 @@ import {
   isEmergencyClosed,
   setEmergencyClosed,
 } from '../../shared/utils/market-hours'
+import { persistEmergencyClosed } from '../../shared/infrastructure/emergency-sync'
 import { AdminTargetType, logAdminAction } from '../access-control'
 import { MARKET_EMERGENCY_TARGET_ID } from './constants'
 import type { AdminWriteContext } from './types'
@@ -39,7 +40,8 @@ export async function setMarketEmergency(
     metadata: { previous, closed },
   })
   setEmergencyClosed(closed)
-  return { emergencyClosed: closed, previous }
+  const sharedAcrossInstances = await persistEmergencyClosed(closed)
+  return { emergencyClosed: closed, previous, sharedAcrossInstances }
 }
 
 export async function listAuditLogs(query: AuditLogQuery) {

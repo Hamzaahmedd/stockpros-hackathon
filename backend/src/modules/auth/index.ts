@@ -2,6 +2,7 @@
 // contract available to modules that are imported while route modules load.
 export { authTokenMiddleware } from './middleware'
 export type { AuthenticatedRequest } from './types'
+export { verifyAccessToken } from './utils/jwt'
 // Public cross-module surface — other modules (e.g. payments, to apply a
 // webhook-confirmed plan upgrade) must import setMyPlan from here, never
 // from './service' directly (enforced by scripts/check-module-boundaries.cjs).

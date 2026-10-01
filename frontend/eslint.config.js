@@ -29,5 +29,13 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "warn",
     },
+  },
+  // Ratchet: code written to the current standard may not add `any`. Widen
+  // this list as older modules are cleaned up.
+  {
+    files: ["src/modules/admin/**/*.{ts,tsx}", "src/test/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
   }
 );

@@ -1,12 +1,12 @@
 import { Router } from 'express'
 import { priorityQueue } from '../../shared/middlewares/priority-queue'
-import { MeteredFeature } from '../payments/public'
 import {
   attachTeamContext,
   gate,
   requirePlan,
   requirePlanOrQuota,
-} from '../../shared/middlewares/plan-gating'
+  MeteredFeature,
+} from '../payments/public'
 import { Action, Resource } from '../access-control'
 import { authTokenMiddleware } from '../auth'
 import { exportForecastPdf, getStockForecast } from './controller'

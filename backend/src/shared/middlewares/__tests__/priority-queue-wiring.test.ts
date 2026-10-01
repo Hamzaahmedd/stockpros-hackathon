@@ -11,7 +11,8 @@ jest.mock('../priority-queue', () => ({
   priorityQueue: jest.fn(() => QUEUE_MARKER),
 }))
 
-jest.mock('../plan-gating', () => ({
+jest.mock('../../../modules/payments/public', () => ({
+  MeteredFeature: { AI_FORECAST: 'ai_forecast', AI_DECISION: 'ai_decision' },
   attachTeamContext: TEAM_CONTEXT_MARKER,
   gate: jest.fn(() => GATE_MARKER),
   noTierRestriction: jest.fn(),
@@ -30,10 +31,9 @@ jest.mock('../../../modules/access-control', () => ({
   Action: { READ: 'read', WRITE: 'write' },
   Resource: { CORE_APP: 'core_app', PORTFOLIO: 'portfolio' },
 }))
-jest.mock('../../../modules/payments/public', () => ({
-  MeteredFeature: { AI_FORECAST: 'ai_forecast', AI_DECISION: 'ai_decision' },
+jest.mock('../upload', () => ({
+  upload: { single: jest.fn(() => jest.fn()) },
 }))
-jest.mock('../upload', () => ({ upload: { single: jest.fn(() => jest.fn()) } }))
 jest.mock('../../../modules/forecast/controller', () => ({
   getStockForecast: jest.fn(),
   exportForecastPdf: jest.fn(),

@@ -51,6 +51,19 @@ for (const file of files) {
 
     const sourceParts = path.relative(src, file).split(path.sep)
     const targetParts = path.relative(src, target).split(path.sep)
+    // shared/ is the layer beneath the business modules: it must not depend on
+    // them (tests may, to exercise real collaborators). Module collaborators
+    // are injected from the composition root instead (see SocketServer).
+    const isTestFile = /\.test\.ts$|__tests__/.test(file)
+    if (
+      !isTestFile &&
+      sourceParts[0] === 'shared' &&
+      targetParts[0] === 'modules'
+    ) {
+      violations.push(
+        `shared layer imports a business module: ${path.relative(root, file)} -> ${path.relative(root, target)}`,
+      )
+    }
     if (
       sourceParts.length > 2 &&
       targetParts.length > 2 &&

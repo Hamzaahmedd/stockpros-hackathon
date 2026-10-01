@@ -1,5 +1,5 @@
 import { UnauthorizedError } from '../errors'
-import type { AuthenticatedRequest } from '../../modules/auth/types'
+import type { AuthenticatedRequest } from '../request-types'
 
 export const getUserId = (req: AuthenticatedRequest): string => {
   const userId = req.user?.userId

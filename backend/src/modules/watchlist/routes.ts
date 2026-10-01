@@ -4,7 +4,7 @@ import {
   noTierRestriction,
   requireAlertTypeAllowedForPlan,
   requireWatchlistLimitForFree,
-} from '../../shared/middlewares/plan-gating'
+} from '../payments/public'
 import { Action, Resource } from '../access-control'
 import { authTokenMiddleware as authenticate } from '../auth'
 import * as WatchlistController from './controller'

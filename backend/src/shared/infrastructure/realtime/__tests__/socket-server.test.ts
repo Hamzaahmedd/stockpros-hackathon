@@ -30,16 +30,8 @@ jest.mock('socket.io', () => ({
 }))
 
 const mockVerifyAccessToken = jest.fn()
-jest.mock('../../../../modules/auth/utils/jwt', () => ({
-  verifyAccessToken: (...args: unknown[]) => mockVerifyAccessToken(...args),
-}))
-
 const mockUpdatePriceCache = jest.fn()
 const fakePriceCache = new Map<string, any>()
-jest.mock('../../../../modules/market/caches/price-cache', () => ({
-  priceCache: fakePriceCache,
-  updatePriceCache: (...args: unknown[]) => mockUpdatePriceCache(...args),
-}))
 
 class FakeFinnhubService extends EventEmitter {
   subscribe = jest.fn()
@@ -47,15 +39,18 @@ class FakeFinnhubService extends EventEmitter {
   getQuote = jest.fn()
 }
 const fakeFinnhubService = new FakeFinnhubService()
-jest.mock('../../../../modules/market/infrastructure/finnhub-stream', () => ({
-  finnhubService: fakeFinnhubService,
-}))
 
 const mockEvaluateAlertsForTick = jest.fn()
-jest.mock('../../../../modules/watchlist/evaluators/alert-evaluator', () => ({
+
+// The collaborators the composition root injects in production.
+const deps = {
+  verifyAccessToken: (...args: unknown[]) => mockVerifyAccessToken(...args),
+  marketFeed: fakeFinnhubService,
+  priceCache: fakePriceCache,
+  updatePriceCache: (...args: unknown[]) => mockUpdatePriceCache(...args),
   evaluateAlertsForTick: (...args: unknown[]) =>
     mockEvaluateAlertsForTick(...args),
-}))
+}
 
 const mockFindUniqueSession = jest.fn()
 jest.mock('../../database', () => ({
@@ -111,19 +106,19 @@ beforeEach(() => {
 describe('SocketServer — construction', () => {
   it('does not register the auth middleware when pricingTiersEnabled is off', () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     expect(lastIOInstance.middlewares).toHaveLength(0)
   })
 
   it('registers the auth middleware when pricingTiersEnabled is on', () => {
     const { SocketServer } = loadSocketServer(true)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     expect(lastIOInstance.middlewares).toHaveLength(1)
   })
 
   it('getInstance returns the most recently constructed instance', () => {
     const { SocketServer } = loadSocketServer(false)
-    const instance = new SocketServer({} as any)
+    const instance = new SocketServer({} as any, deps as any)
     expect(SocketServer.getInstance()).toBe(instance)
   })
 })
@@ -131,7 +126,7 @@ describe('SocketServer — construction', () => {
 describe('SocketServer — authenticateSocket', () => {
   const setup = () => {
     const { SocketServer } = loadSocketServer(true)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     const middleware = lastIOInstance.middlewares[0]
     return middleware
   }
@@ -215,7 +210,7 @@ describe('SocketServer — authenticateSocket', () => {
 describe('SocketServer — connection handling', () => {
   const connect = (pricingTiersEnabled = false, socketOverrides = {}) => {
     const { SocketServer } = loadSocketServer(pricingTiersEnabled)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     const socket = fakeSocket(socketOverrides)
     lastIOInstance.connectionHandlers[0](socket)
     return socket
@@ -352,7 +347,7 @@ describe('SocketServer — delayed timer broadcast', () => {
 
   it('starts a delayed broadcaster once per symbol and emits cached ticks to the delayed room', async () => {
     const { SocketServer } = loadSocketServer(true)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     const socket = fakeSocket({ data: { plan: 'FREE' } })
     lastIOInstance.connectionHandlers[0](socket)
     fakeFinnhubService.getQuote.mockResolvedValue({ c: 1 })
@@ -372,7 +367,7 @@ describe('SocketServer — delayed timer broadcast', () => {
 
   it('does not emit when there is no cached price yet', async () => {
     const { SocketServer } = loadSocketServer(true)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     const socket = fakeSocket({ data: { plan: 'FREE' } })
     lastIOInstance.connectionHandlers[0](socket)
     fakeFinnhubService.getQuote.mockResolvedValue({ c: 1 })
@@ -387,7 +382,7 @@ describe('SocketServer — delayed timer broadcast', () => {
 describe('SocketServer — Finnhub event forwarding', () => {
   it('forwards a trade to the live room, updates the cache, and evaluates alerts', () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     mockEvaluateAlertsForTick.mockResolvedValue(undefined)
 
     fakeFinnhubService.emit('trade', { s: 'aapl', p: 150, v: 10 })
@@ -403,7 +398,7 @@ describe('SocketServer — Finnhub event forwarding', () => {
 
   it('defaults volume to 0 when the trade omits it', () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     mockEvaluateAlertsForTick.mockResolvedValue(undefined)
 
     fakeFinnhubService.emit('trade', { s: 'aapl', p: 150 })
@@ -413,7 +408,7 @@ describe('SocketServer — Finnhub event forwarding', () => {
 
   it('logs when evaluateAlertsForTick rejects', async () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
     mockEvaluateAlertsForTick.mockRejectedValue(new Error('eval failed'))
 
     fakeFinnhubService.emit('trade', { s: 'aapl', p: 150, v: 1 })
@@ -427,7 +422,7 @@ describe('SocketServer — Finnhub event forwarding', () => {
 
   it('catches a synchronous error while forwarding a malformed trade', () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
 
     fakeFinnhubService.emit('trade', null)
 
@@ -438,7 +433,7 @@ describe('SocketServer — Finnhub event forwarding', () => {
 
   it('logs Finnhub WS errors', () => {
     const { SocketServer } = loadSocketServer(false)
-    new SocketServer({} as any)
+    new SocketServer({} as any, deps as any)
 
     fakeFinnhubService.emit('error', new Error('ws down'))
 

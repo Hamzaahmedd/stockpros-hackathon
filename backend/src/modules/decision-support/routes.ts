@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { upload } from '../../shared/middlewares'
 import { priorityQueue } from '../../shared/middlewares/priority-queue'
-import { MeteredFeature } from '../payments/public'
 import {
   attachTeamContext,
   composeHandlers,
@@ -11,7 +10,8 @@ import {
   requirePlan,
   requireSinglePortfolioForFree,
   requireWatchlistMembershipOrPro,
-} from '../../shared/middlewares/plan-gating'
+  MeteredFeature,
+} from '../payments/public'
 import { Action, Resource } from '../access-control'
 import { authTokenMiddleware as authenticate } from '../auth'
 import * as DecisionController from './controller'

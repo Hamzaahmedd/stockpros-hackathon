@@ -8,40 +8,44 @@
  * config is a plain object, so this is safe to do and restore per test.
  */
 import config from '@/config'
-import { PlanRequiredError, QuotaExceededError } from '../errors'
+import { PlanRequiredError, QuotaExceededError } from '../../../shared/errors'
 
-jest.mock('../infrastructure/database', () => ({
+jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: {
     watchlist: { count: jest.fn(), findFirst: jest.fn() },
     portfolio: { count: jest.fn() },
   },
 }))
 
-jest.mock('../infrastructure/usage-quota', () => ({
+jest.mock('../../../shared/infrastructure/usage-quota', () => ({
   incrementAndCheckQuota: jest.fn(),
 }))
 
-jest.mock('../../modules/access-control', () => ({
+jest.mock('../../access-control', () => ({
   rbacMiddleware: jest.fn(() => 'RBAC_MIDDLEWARE_MARKER'),
   Action: { READ: 'read', WRITE: 'write' },
   Resource: { CORE_APP: 'core_app', PORTFOLIO: 'portfolio' },
 }))
 
-jest.mock('../../modules/payments/public', () => ({
+jest.mock('../credits', () => ({
   consumeAiSignal: jest.fn(),
+}))
+
+jest.mock('../constants', () => ({
   MeteredFeature: { AI_FORECAST: 'ai_forecast', AI_DECISION: 'ai_decision' },
 }))
 
-jest.mock('../infrastructure/team-access', () => ({
+jest.mock('../../../shared/infrastructure/team-access', () => ({
   getActiveMembership: jest.fn(),
 }))
 
-import { prisma } from '../infrastructure/database'
-import { incrementAndCheckQuota } from '../infrastructure/usage-quota'
-import { getActiveMembership } from '../infrastructure/team-access'
-import { Action, Resource } from '../../modules/access-control'
-import { consumeAiSignal, MeteredFeature } from '../../modules/payments/public'
-import { OverageReason, OverageRequiredError } from '../errors'
+import { prisma } from '../../../shared/infrastructure/database'
+import { incrementAndCheckQuota } from '../../../shared/infrastructure/usage-quota'
+import { getActiveMembership } from '../../../shared/infrastructure/team-access'
+import { Action, Resource } from '../../access-control'
+import { MeteredFeature } from '../constants'
+import { consumeAiSignal } from '../credits'
+import { OverageReason, OverageRequiredError } from '../../../shared/errors'
 import {
   attachTeamContext,
   composeHandlers,
@@ -56,7 +60,7 @@ import {
   requireSinglePortfolioForFree,
   requireWatchlistLimitForFree,
   requireWatchlistMembershipOrPro,
-} from './plan-gating'
+} from '../plan-gating'
 
 function mockReqRes(
   plan: 'FREE' | 'PRO' | 'TEAM',
@@ -471,7 +475,9 @@ describe('attachTeamContext', () => {
   })
 
   it('stops flagging members as high priority the moment the emergency halt is switched on, and resumes when cleared', async () => {
-    const { setEmergencyClosed } = jest.requireActual('../utils/market-hours')
+    const { setEmergencyClosed } = jest.requireActual(
+      '../../../shared/utils/market-hours',
+    )
     jest.setSystemTime(SPIKE)
     ;(getActiveMembership as jest.Mock).mockResolvedValue(membership)
 
