@@ -6,6 +6,7 @@ import * as Billing from './billing-service'
 import * as System from './system-service'
 import * as Teams from './teams-service'
 import * as Telemetry from './telemetry-service'
+import * as Timeline from './timeline-service'
 import type { AdminReadContext, AdminWriteContext } from './types'
 import * as Users from './users-service'
 import {
@@ -18,6 +19,7 @@ import {
   planOverrideValidator,
   reasonBodyValidator,
   searchQueryValidator,
+  timelineQueryValidator,
   usageQueryValidator,
   userIdParamValidator,
   webhookQueryValidator,
@@ -68,6 +70,12 @@ export const overridePlan = handle('Plan overridden', (req) => {
     req.body,
   )
   return Users.overridePlan(writeContext(req, reason, ticketRef), id, plan)
+})
+
+export const getUserTimeline = handle('Timeline fetched', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  const query = validateOrThrow(timelineQueryValidator, req.query)
+  return Timeline.getUserTimeline(readContext(req), id, query)
 })
 
 export const revealUser = handle('Customer data revealed', (req) => {

@@ -27,6 +27,14 @@ export const MARKET_EMERGENCY_TARGET_ID = 'market-emergency'
 /** Support-ticket reference, e.g. SUP-1234: an uppercase project key, a dash, a number. */
 export const TICKET_REF_PATTERN = /^[A-Z][A-Z0-9]{1,9}-\d{1,8}$/
 
+export enum TimelineEventType {
+  PAYMENT = 'PAYMENT',
+  CREDIT = 'CREDIT',
+  SESSION = 'SESSION',
+  TEAM = 'TEAM',
+  STAFF_ACTION = 'STAFF_ACTION',
+}
+
 export enum AdminCreditTarget {
   USER = 'USER',
   TEAM = 'TEAM',

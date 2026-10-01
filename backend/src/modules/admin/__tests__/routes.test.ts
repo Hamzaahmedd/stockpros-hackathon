@@ -63,6 +63,9 @@ jest.mock('../billing-service', () => ({
   adjustCredits: mockResolved(),
   extendSubscription: mockResolved(),
 }))
+jest.mock('../timeline-service', () => ({
+  getUserTimeline: mockResolved(),
+}))
 jest.mock('../telemetry-service', () => ({
   searchUsage: mockResolved(),
   getQueueHealth: mockResolved(),
@@ -153,6 +156,11 @@ const ENDPOINTS: readonly Endpoint[] = [
     body: { closed: true, reason: REASON },
   },
   { method: 'get', path: '/system/audit-logs', min: 'SUPPORT_AGENT' },
+  {
+    method: 'get',
+    path: `/users/${ID}/timeline?limit=20`,
+    min: 'SUPPORT_AGENT',
+  },
   {
     method: 'post',
     path: `/users/${ID}/reveal`,

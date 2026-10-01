@@ -16,6 +16,7 @@ import { adminService } from "../services";
 import type { AdminUser } from "../types";
 import { apiErrorMessage, formatDateTime, formatPaisa, hasPlatformRole } from "../utils";
 import { CustomerIdentity } from "./CustomerIdentity";
+import { CustomerTimeline } from "./CustomerTimeline";
 import { ReasonModal } from "./ReasonModal";
 import { SearchBar } from "./SearchBar";
 
@@ -28,6 +29,7 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<UserAction | null>(null);
   const [plan, setPlan] = useState<PlanTier>("PRO");
+  const [timelineFor, setTimelineFor] = useState<string | null>(null);
   const canWrite = hasPlatformRole(role, "SUPER_ADMIN");
 
   const search = async (query: string) => {
@@ -70,7 +72,7 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
                 <TableHead>Credits</TableHead>
                 <TableHead>Sessions</TableHead>
                 <TableHead>Subscription</TableHead>
-                {canWrite && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -112,26 +114,33 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
                       "—"
                     )}
                   </TableCell>
-                  {canWrite && (
-                    <TableCell className="space-x-2 text-right">
-                      <Button size="sm" variant="outline" onClick={() => openPlan(user)}>
-                        Change plan
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setAction({ kind: "sessions", user })}
-                      >
-                        Revoke sessions
-                      </Button>
-                    </TableCell>
-                  )}
+                  <TableCell className="space-x-2 text-right">
+                    <Button size="sm" variant="outline" onClick={() => setTimelineFor(user.id)}>
+                      Timeline
+                    </Button>
+                    {canWrite && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => openPlan(user)}>
+                          Change plan
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAction({ kind: "sessions", user })}
+                        >
+                          Revoke sessions
+                        </Button>
+                      </>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {timelineFor && <CustomerTimeline userId={timelineFor} onClose={() => setTimelineFor(null)} />}
 
       {action?.kind === "plan" && (
         <ReasonModal

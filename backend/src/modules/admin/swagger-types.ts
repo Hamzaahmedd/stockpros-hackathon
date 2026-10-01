@@ -122,6 +122,16 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
+  /** SUPPORT_AGENT+. Newest-first history of one customer from transactional records only: payments, credit movements, sign-ins, workspace changes and staff actions. No usage analytics (PostHog), IPs or raw payloads. Page backwards with `before` (the previous page's `nextBefore`). Read-audited. */
+  @Get('users/{id}/timeline')
+  async getUserTimeline(
+    @Path() id: string,
+    @Query() limit?: number,
+    @Query() before?: string,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** SUPPORT_AGENT+. Returns a customer's real email, name and phone number. Search results mask these by default (`piiMasked: true`); every reveal is audited as CUSTOMER_DATA_REVEALED with the reason and ticket. */
   @Post('users/{id}/reveal')
   async revealUser(

@@ -3,6 +3,7 @@ import api from "@/shared/api/axios";
 import { unwrapEnvelope } from "@/shared/api/envelope";
 import type { CreditTarget } from "./constants";
 import type {
+  TimelinePage,
   RevealedUser,
   AdminAuditEntry,
   AdminPage,
@@ -37,6 +38,8 @@ export const adminService = {
   ): Promise<void> => {
     await api.post(`${BASE}/users/${userId}/plan-override`, { plan, reason, ticketRef });
   },
+  getTimeline: async (userId: string, before?: string): Promise<TimelinePage> =>
+    unwrap(await api.get(`${BASE}/users/${userId}/timeline`, { params: compact({ before }) })),
   revealUser: async (userId: string, reason: string, ticketRef?: string): Promise<RevealedUser> =>
     unwrap(await api.post(`${BASE}/users/${userId}/reveal`, { reason, ticketRef })),
   invalidateSessions: async (userId: string, reason: string, ticketRef?: string): Promise<void> => {

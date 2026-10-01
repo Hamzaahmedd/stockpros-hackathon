@@ -93,6 +93,20 @@ export type AdminQueueHealth =
       }[];
     };
 
+export interface TimelineEvent {
+  id: string;
+  type: "PAYMENT" | "CREDIT" | "SESSION" | "TEAM" | "STAFF_ACTION";
+  title: string;
+  detail: string | null;
+  ticketRef: string | null;
+  at: string;
+}
+
+export interface TimelinePage {
+  items: TimelineEvent[];
+  nextBefore: string | null;
+}
+
 export interface RevealedUser {
   id: string;
   email: string;

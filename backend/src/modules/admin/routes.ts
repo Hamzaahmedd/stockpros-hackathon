@@ -31,6 +31,7 @@ const superAdmin = [
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 router.get('/users/search', ...support, AdminController.searchUsers)
+router.get('/users/:id/timeline', ...support, AdminController.getUserTimeline)
 router.post('/users/:id/reveal', ...supportWrite, AdminController.revealUser)
 router.post(
   '/users/:id/plan-override',
