@@ -14,9 +14,17 @@ pydantic-settings==2.13.1
 
 # Machine Learning
 scikit-learn==1.4.2
+# TensorFlow 2.15.0 requires these exact ranges — do not upgrade independently
+numpy>=1.23.5,<2.0.0
+ml-dtypes~=0.2.0
+protobuf>=3.20.3,<5.0.0
 # Use the stable August 2025 release for CPU
+# onnx must stay <1.16.0 to remain compatible with TF 2.15.0's protobuf/ml-dtypes constraints
+onnx>=1.14.0,<1.16.0
 onnxruntime
-tensorflow-cpu==2.15.0 
+tensorflow-cpu==2.15.0
+# tf2onnx must be installed AFTER the pinned deps above to avoid upgrading them
+tf2onnx==1.16.1
 
 # Caching & Database
 fastapi-cache2[redis]
