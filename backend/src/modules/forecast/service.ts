@@ -145,44 +145,72 @@ export async function getForecast(
       )
     }
 
-    if (rawPredictions.length > 0 && technicals) {
+    if (rawPredictions.length > 0) {
       const basePrices = rawPredictions.map((p) =>
         Number(p.price ?? p.predicted_close),
       )
-      targetRange = computeSummaryTargets(basePrices, technicals, hasEarnings)
-      enhancedPredictions = computeEnhancedPredictions(
-        rawPredictions,
-        technicals,
-        hasEarnings,
-      )
 
-      // Directional bias: derived from price vs 20-EMA relationship.
-      // Earnings presence does not change the signal but is surfaced separately
-      // via earningsOverlay so the UI can show a distinct warning.
-      const { ema, currentPrice } = technicals as TechnicalBaselines
-      const refPrice = currentPrice ?? basePrices[0] ?? ema
-      const emaSpreadPct = ((refPrice - ema) / ema) * 100
+      if (technicals) {
+        targetRange = computeSummaryTargets(basePrices, technicals, hasEarnings)
+        enhancedPredictions = computeEnhancedPredictions(
+          rawPredictions,
+          technicals,
+          hasEarnings,
+        )
 
-      let signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL'
-      let posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD' = 'HOLD'
-      let reasoning = 'Consolidating near the 20-period EMA midpoint.'
+        // Directional bias: derived from price vs 20-EMA relationship.
+        // Earnings presence does not change the signal but is surfaced separately
+        // via earningsOverlay so the UI can show a distinct warning.
+        const { ema, currentPrice } = technicals as TechnicalBaselines
+        const refPrice = currentPrice ?? basePrices[0] ?? ema
+        const emaSpreadPct = ((refPrice - ema) / ema) * 100
 
-      if (emaSpreadPct > 0.5) {
-        signal = 'BULLISH'
-        posture = 'ACCUMULATE'
-        reasoning = `Trading ${emaSpreadPct.toFixed(1)}% above the 20-EMA trendline with bullish structure.`
-      } else if (emaSpreadPct < -0.5) {
-        signal = 'BEARISH'
-        posture = 'DEFENSIVE'
-        reasoning = `Trading ${Math.abs(emaSpreadPct).toFixed(1)}% below the 20-EMA trendline with downward pressure.`
-      }
+        let signal: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL'
+        let posture: 'ACCUMULATE' | 'DEFENSIVE' | 'HOLD' = 'HOLD'
+        let reasoning = 'Consolidating near the 20-period EMA midpoint.'
 
-      directionalBias = {
-        signal,
-        posture,
-        reasoning,
-        emaBaseline: Number.parseFloat(ema.toFixed(2)),
-        containmentRate: '86.7%',
+        if (emaSpreadPct > 0.5) {
+          signal = 'BULLISH'
+          posture = 'ACCUMULATE'
+          reasoning = `Trading ${emaSpreadPct.toFixed(1)}% above the 20-EMA trendline with bullish structure.`
+        } else if (emaSpreadPct < -0.5) {
+          signal = 'BEARISH'
+          posture = 'DEFENSIVE'
+          reasoning = `Trading ${Math.abs(emaSpreadPct).toFixed(1)}% below the 20-EMA trendline with downward pressure.`
+        }
+
+        directionalBias = {
+          signal,
+          posture,
+          reasoning,
+          emaBaseline: Number.parseFloat(ema.toFixed(2)),
+          containmentRate: '86.7%',
+        }
+      } else {
+        // Graceful fallback when technicals service (e.g. Twelve Data) fails or is rate-limited.
+        // Return raw ML predictions with a standard 1.5% volatility envelope so the UI remains functional.
+        enhancedPredictions = rawPredictions.map((p) => {
+          const rawBase = Number(p.price ?? p.predicted_close)
+          const margin = rawBase * 0.015
+          return {
+            date: p.date,
+            base: Number.parseFloat(rawBase.toFixed(2)),
+            bull: Number.parseFloat((rawBase + margin).toFixed(2)),
+            bear: Number.parseFloat((rawBase - margin).toFixed(2)),
+          }
+        })
+
+        const periodHigh = Math.max(...basePrices)
+        const periodLow = Math.min(...basePrices)
+        const terminalPrice = basePrices.at(-1) ?? periodHigh
+
+        targetRange = {
+          bull: Number.parseFloat((periodHigh * 1.015).toFixed(2)),
+          base: Number.parseFloat(terminalPrice.toFixed(2)),
+          bear: Number.parseFloat((periodLow * 0.985).toFixed(2)),
+          atr: Number.parseFloat(((periodHigh - periodLow) / 2 || 1).toFixed(2)),
+          confidence: 'LOW',
+        }
       }
     }
 

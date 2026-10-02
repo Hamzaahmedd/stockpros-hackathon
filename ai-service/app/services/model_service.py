@@ -294,7 +294,11 @@ def load_model_if_exists(df_for_scaler: pd.DataFrame, symbol: str) -> Tuple[Any,
         if APP_ENV == 'production':
             model = ort.InferenceSession(model_path)
         else:
-            model = load_model(model_path)
+            model = load_model(
+                model_path,
+                custom_objects={'_directional_penalty_loss': _directional_penalty_loss},
+                compile=False,
+            )
             
         MODEL_CACHE[symbol] = model
         return model, scaler
