@@ -1,37 +1,37 @@
 export interface Resource {
-  id: string;
-  name: string;
-  description?: string;
-  actions?: string[];
+  id: string
+  name: string
+  description?: string
+  actions?: string[]
 }
 
 export interface Permission {
-  id: string;
-  action: string;
-  resourceId: string;
+  id: string
+  action: string
+  resourceId: string
   resource: {
-    name: string;
-  };
+    name: string
+  }
 }
 
 export interface Role {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt?: string;
-  rolePermissions?: any[];
+  id: string
+  name: string
+  description?: string
+  createdAt?: string
+  rolePermissions?: any[]
 }
 
 export interface RolePermission {
-  resourceName: string;
-  actions: string[];
+  resourceName: string
+  actions: string[]
 }
 
 export interface AccessControlUser {
-  id: string;
-  displayName: string;
-  email: string;
-  status: string;
-  createdAt?: string;
-  userRoles: { role: { name: string } }[];
+  id: string
+  displayName: string
+  email: string
+  status: string
+  createdAt?: string
+  userRoles: { role: { name: string } }[]
 }

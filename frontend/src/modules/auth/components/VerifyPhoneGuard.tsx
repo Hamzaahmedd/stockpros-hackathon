@@ -4,34 +4,34 @@
 //   - Phone already verified -> redirect straight past this screen (to
 //     onboarding if the profile still needs completing, else the dashboard)
 //     so a verified user can't land on or re-submit the verify-phone screen.
-import React from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/modules/auth/hooks/useAuth";
+import React from 'react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/modules/auth/hooks/useAuth'
 
 export const VerifyPhoneGuard: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth()
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 animate-pulse" />
-          <div className="h-4 w-32 bg-primary/10 rounded-md animate-pulse" />
+      <div className='flex min-h-screen items-center justify-center'>
+        <div className='flex flex-col items-center gap-4'>
+          <div className='h-12 w-12 animate-pulse rounded-full bg-primary/10' />
+          <div className='h-4 w-32 animate-pulse rounded-md bg-primary/10' />
         </div>
       </div>
-    );
+    )
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to='/login' replace />
 
   if (user.phoneVerifiedAt) {
-    if (!user.displayName || user.displayName.trim() === "") {
-      return <Navigate to="/auth/onboarding" replace />;
+    if (!user.displayName || user.displayName.trim() === '') {
+      return <Navigate to='/auth/onboarding' replace />
     }
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to='/dashboard' replace />
   }
 
-  return <>{children}</>;
-};
+  return <>{children}</>
+}

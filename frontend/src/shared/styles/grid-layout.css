@@ -1,7 +1,8 @@
 /* Grid background and container */
 .react-grid-layout {
-  background: linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-              linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+  background:
+    linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+    linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
   background-size: 50px 50px;
   position: relative;
   padding: 16px;
@@ -35,7 +36,7 @@
 }
 
 .drag-handle::after {
-  content: "::";
+  content: '::';
   position: absolute;
   top: 8px;
   right: 8px;
@@ -74,7 +75,7 @@
 }
 
 .react-resizable-handle::after {
-  content: "::";
+  content: '::';
   color: #94a3b8;
   font-weight: bold;
   font-size: 16px;
@@ -86,4 +87,4 @@
   border: 1px dashed #3b82f6;
   border-radius: 8px;
   transition: all 100ms linear;
-} 
+}

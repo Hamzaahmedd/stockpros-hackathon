@@ -3,38 +3,38 @@
 // Every value comes straight from the backend /api/v1/decision-support
 // responses — nothing here is derived or fabricated client-side.
 import type {
-    DetailedDecision,
-    OverviewDecision,
-    PortfolioData,
-    PortfolioRiskMetrics,
-} from '../types';
+  DetailedDecision,
+  OverviewDecision,
+  PortfolioData,
+  PortfolioRiskMetrics,
+} from '../types'
 
 export interface PortfolioReportRow {
-  symbol: string;
-  sector: string;
-  quantity: number;
-  entryPrice: number;
-  currentPrice: number;
-  marketValue: number;
-  unrealizedPnL: number;
-  roiPercent: number;
-  marketDecision: string;
-  portfolioDecision: string;
-  confidence: number | null;
-  riskLevel: string;
-  beta: number | null;
-  sharpe: number | null;
-  volatilityAnnualized: number | null;
-  reasoningSummary: string;
-  riskFlags: string[];
-  positionExposurePercent: number | null;
-  sectorExposurePercent: number | null;
-  overExposed: boolean;
-  strategy: { add: boolean; hold: boolean; trim: boolean; exit: boolean } | null;
-  holdDuration: string;
-  takeProfitZone: string;
-  stopLossZone: string;
-  watchFor: string[];
+  symbol: string
+  sector: string
+  quantity: number
+  entryPrice: number
+  currentPrice: number
+  marketValue: number
+  unrealizedPnL: number
+  roiPercent: number
+  marketDecision: string
+  portfolioDecision: string
+  confidence: number | null
+  riskLevel: string
+  beta: number | null
+  sharpe: number | null
+  volatilityAnnualized: number | null
+  reasoningSummary: string
+  riskFlags: string[]
+  positionExposurePercent: number | null
+  sectorExposurePercent: number | null
+  overExposed: boolean
+  strategy: { add: boolean; hold: boolean; trim: boolean; exit: boolean } | null
+  holdDuration: string
+  takeProfitZone: string
+  stopLossZone: string
+  watchFor: string[]
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -42,24 +42,31 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
-});
+})
 
-export const formatCurrency = (value: number): string => currencyFormatter.format(value);
+export const formatCurrency = (value: number): string =>
+  currencyFormatter.format(value)
 
 export const formatSignedCurrency = (value: number): string =>
-  `${value >= 0 ? '+' : '-'}${currencyFormatter.format(Math.abs(value))}`;
+  `${value >= 0 ? '+' : '-'}${currencyFormatter.format(Math.abs(value))}`
 
 export const formatGeneratedAt = (): string =>
-  new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Karachi' });
+  new Date().toLocaleString('en-US', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'Asia/Karachi',
+  })
 
-export const computeRiskProfileLabel = (decisions: OverviewDecision[]): string => {
-  if (decisions.length === 0) return 'Not Assessed';
-  const highCount = decisions.filter((d) => d.riskLevel === 'HIGH').length;
-  const ratio = highCount / decisions.length;
-  if (ratio >= 0.6) return 'Aggressive';
-  if (ratio >= 0.3) return 'Moderate';
-  return 'Conservative';
-};
+export const computeRiskProfileLabel = (
+  decisions: OverviewDecision[],
+): string => {
+  if (decisions.length === 0) return 'Not Assessed'
+  const highCount = decisions.filter((d) => d.riskLevel === 'HIGH').length
+  const ratio = highCount / decisions.length
+  if (ratio >= 0.6) return 'Aggressive'
+  if (ratio >= 0.3) return 'Moderate'
+  return 'Conservative'
+}
 
 export const buildReportRows = (
   portfolioData: PortfolioData,
@@ -67,8 +74,10 @@ export const buildReportRows = (
   riskMetrics?: PortfolioRiskMetrics | null,
 ): PortfolioReportRow[] =>
   (portfolioData.positions ?? []).map((position) => {
-    const detail = detailedPositions.find((dd) => dd.symbol === position.symbol);
-    const riskSym = riskMetrics?.perSymbol?.find((ps) => ps.symbol === position.symbol);
+    const detail = detailedPositions.find((dd) => dd.symbol === position.symbol)
+    const riskSym = riskMetrics?.perSymbol?.find(
+      (ps) => ps.symbol === position.symbol,
+    )
 
     return {
       symbol: position.symbol,
@@ -85,7 +94,8 @@ export const buildReportRows = (
       riskLevel: detail?.riskLevel ?? '—',
       beta: riskSym?.beta ?? detail?.beta ?? null,
       sharpe: riskSym?.sharpe ?? detail?.sharpe ?? null,
-      volatilityAnnualized: riskSym?.volatilityAnnualized ?? detail?.volatilityAnnualized ?? null,
+      volatilityAnnualized:
+        riskSym?.volatilityAnnualized ?? detail?.volatilityAnnualized ?? null,
       reasoningSummary: detail?.reasoning?.summary ?? '',
       riskFlags: detail?.reasoning?.details ?? [],
       positionExposurePercent: detail?.exposure?.positionPercent ?? null,
@@ -96,23 +106,23 @@ export const buildReportRows = (
       takeProfitZone: detail?.actionGuidance?.takeProfitZone ?? '',
       stopLossZone: detail?.actionGuidance?.stopLossZone ?? '',
       watchFor: detail?.actionGuidance?.watchFor ?? [],
-    };
-  });
+    }
+  })
 
 export const formatConfidence = (confidence: number | null): string =>
-  confidence != null ? `${(confidence * 100).toFixed(0)}%` : '—';
+  confidence != null ? `${(confidence * 100).toFixed(0)}%` : '—'
 
 export const formatEnabledStrategies = (row: PortfolioReportRow): string => {
-  if (!row.strategy) return '—';
+  if (!row.strategy) return '—'
   const enabled = Object.entries(row.strategy)
     .filter(([, enabled]) => enabled)
-    .map(([key]) => key.toUpperCase());
-  return enabled.length > 0 ? enabled.join(' / ') : '—';
-};
+    .map(([key]) => key.toUpperCase())
+  return enabled.length > 0 ? enabled.join(' / ') : '—'
+}
 
 export const getReportFileName = (extension: 'csv' | 'pdf'): string =>
-  `stockpros_portfolio_health_${new Date().toISOString().split('T')[0]}.${extension}`;
+  `stockpros_portfolio_health_${new Date().toISOString().split('T')[0]}.${extension}`
 
 export const PORTFOLIO_DISCLAIMER =
   'Portfolio analysis is generated by AI models based on position data, market signals, and technical indicators. ' +
-  'This report is for informational and educational purposes only and does not constitute personalized financial, legal, tax, or fiduciary advice.';
+  'This report is for informational and educational purposes only and does not constitute personalized financial, legal, tax, or fiduciary advice.'

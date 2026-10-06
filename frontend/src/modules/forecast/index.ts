@@ -1,1 +1,1 @@
-export { default as Forecast } from "./pages/Forecast";
+export { default as Forecast } from './pages/Forecast'

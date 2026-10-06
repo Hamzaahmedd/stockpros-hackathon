@@ -1,77 +1,77 @@
-export type SubscriptionPaymentMethod = "CARD" | "WALLET";
+export type SubscriptionPaymentMethod = 'CARD' | 'WALLET'
 
-export type SubscriptionScope = "USER" | "TEAM";
+export type SubscriptionScope = 'USER' | 'TEAM'
 
-export type SubscriptionStatus = "ACTIVE" | "GRACE" | "EXPIRED" | "CANCELLED";
+export type SubscriptionStatus = 'ACTIVE' | 'GRACE' | 'EXPIRED' | 'CANCELLED'
 
 export type SubscriptionSummary = {
-  paymentMethod: SubscriptionPaymentMethod;
-  autoRenew: boolean;
-  status: SubscriptionStatus;
-  currentPeriodEnd: string | null;
-  gracePeriodEnd: string | null;
-};
+  paymentMethod: SubscriptionPaymentMethod
+  autoRenew: boolean
+  status: SubscriptionStatus
+  currentPeriodEnd: string | null
+  gracePeriodEnd: string | null
+}
 
 export type CreateCheckoutResult = {
-  checkoutUrl: string;
-  trackerId: string;
-};
+  checkoutUrl: string
+  trackerId: string
+}
 
 export type VerifyTrackerResult = {
-  trackerId: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "CANCELLED" | "REFUNDED";
-  plan: "FREE" | "PRO" | "TEAM";
-};
+  trackerId: string
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
+  plan: 'FREE' | 'PRO' | 'TEAM'
+}
 
-export type CreditLedgerType = "PURCHASE" | "OVERAGE_CONSUMPTION" | "REFUND";
+export type CreditLedgerType = 'PURCHASE' | 'OVERAGE_CONSUMPTION' | 'REFUND'
 
 export type CreditLedgerEntry = {
-  id: string;
+  id: string
   /** Signed paisa: purchases/refunds positive, overage consumption negative. */
-  amountPaisa: number;
-  type: CreditLedgerType;
-  description: string;
-  createdAt: string;
+  amountPaisa: number
+  type: CreditLedgerType
+  description: string
+  createdAt: string
   /** True when the movement was on the shared workspace pool. */
-  isTeamPool: boolean;
+  isTeamPool: boolean
   /** Workspace-wide view only. */
-  memberName?: string;
-};
+  memberName?: string
+}
 
 export type CreditLedgerPage = {
-  scope: SubscriptionScope;
-  balanceInPaisa: number;
-  entries: CreditLedgerEntry[];
-  nextCursor: string | null;
-};
+  scope: SubscriptionScope
+  balanceInPaisa: number
+  entries: CreditLedgerEntry[]
+  nextCursor: string | null
+}
 
-export type UsageWindowSource = "SUBSCRIPTION_PERIOD" | "CALENDAR_MONTH";
+export type UsageWindowSource = 'SUBSCRIPTION_PERIOD' | 'CALENDAR_MONTH'
 
 export type UsageSummary = {
-  plan: "FREE" | "PRO" | "TEAM";
+  plan: 'FREE' | 'PRO' | 'TEAM'
   /** False for FREE: daily quotas apply instead, so there is no monthly meter. */
-  metered: boolean;
+  metered: boolean
   quota: {
-    limit: number;
-    used: number;
-    remaining: number;
-    windowStart: string;
+    limit: number
+    used: number
+    remaining: number
+    windowStart: string
     /** When the allowance resets; already in the past during a grace period. */
-    windowEnd: string | null;
-    windowSource: UsageWindowSource;
-  } | null;
+    windowEnd: string | null
+    windowSource: UsageWindowSource
+  } | null
   credits: {
-    pool: "USER" | "TEAM";
-    balanceInPaisa: number;
-    costPerSignalPaisa: number;
-    signalsAvailable: number;
+    pool: 'USER' | 'TEAM'
+    balanceInPaisa: number
+    costPerSignalPaisa: number
+    signalsAvailable: number
     /** False for plain team members, who cannot buy credits. */
-    canTopUp: boolean;
-  } | null;
+    canTopUp: boolean
+  } | null
   /** Team members with a monthly credit cap only. */
   spendCap: {
-    monthlyLimitPaisa: number;
-    spentPaisa: number;
-    remainingPaisa: number;
-  } | null;
-};
+    monthlyLimitPaisa: number
+    spentPaisa: number
+    remainingPaisa: number
+  } | null
+}

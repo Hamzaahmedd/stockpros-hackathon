@@ -1,17 +1,21 @@
 // utils/downloadPortfolioReportCsv.ts
 // Exports the portfolio health report as a polished, sectioned CSV using ONLY
 // data returned by the backend /api/v1/decision-support endpoints.
-import { toCsvRow, triggerBrowserDownload } from '@/shared/utils/download';
-import type { DetailedDecision, PortfolioData, PortfolioRiskMetrics } from '../types';
+import { toCsvRow, triggerBrowserDownload } from '@/shared/utils/download'
+import type {
+  DetailedDecision,
+  PortfolioData,
+  PortfolioRiskMetrics,
+} from '../types'
 import {
-    PORTFOLIO_DISCLAIMER,
-    buildReportRows,
-    computeRiskProfileLabel,
-    formatCurrency,
-    formatGeneratedAt,
-    formatSignedCurrency,
-    getReportFileName,
-} from './portfolioReport';
+  PORTFOLIO_DISCLAIMER,
+  buildReportRows,
+  computeRiskProfileLabel,
+  formatCurrency,
+  formatGeneratedAt,
+  formatSignedCurrency,
+  getReportFileName,
+} from './portfolioReport'
 
 const COLUMN_HEADERS = [
   'Symbol',
@@ -37,26 +41,38 @@ const COLUMN_HEADERS = [
   'AI Reasoning',
   'Risk Flags',
   'Watch For',
-];
+]
 
 export const downloadPortfolioReportCsv = (
   portfolioData: PortfolioData,
   detailedPositions: DetailedDecision[],
   riskMetrics?: PortfolioRiskMetrics | null,
 ): void => {
-  const { summary } = portfolioData;
-  const rows = buildReportRows(portfolioData, detailedPositions, riskMetrics);
+  const { summary } = portfolioData
+  const rows = buildReportRows(portfolioData, detailedPositions, riskMetrics)
 
   const lines: string[] = [
     toCsvRow(['StockPros AI — Portfolio Health Report']),
     '',
     toCsvRow(['Report Summary']),
     toCsvRow(['Total Market Value', formatCurrency(summary.totalMarketValue)]),
-    toCsvRow(['Unrealized P&L', formatSignedCurrency(summary.totalUnrealizedPnL)]),
-    toCsvRow(['Overall ROI', `${summary.totalUnrealizedPnLPercent.toFixed(2)}%`]),
+    toCsvRow([
+      'Unrealized P&L',
+      formatSignedCurrency(summary.totalUnrealizedPnL),
+    ]),
+    toCsvRow([
+      'Overall ROI',
+      `${summary.totalUnrealizedPnLPercent.toFixed(2)}%`,
+    ]),
     toCsvRow(['Active Positions', summary.totalPositions]),
-    toCsvRow(['Portfolio Beta', riskMetrics ? riskMetrics.weightedBeta.toFixed(2) : '1.00']),
-    toCsvRow(['Portfolio Sharpe Ratio', riskMetrics ? riskMetrics.portfolioSharpe.toFixed(2) : '—']),
+    toCsvRow([
+      'Portfolio Beta',
+      riskMetrics ? riskMetrics.weightedBeta.toFixed(2) : '1.00',
+    ]),
+    toCsvRow([
+      'Portfolio Sharpe Ratio',
+      riskMetrics ? riskMetrics.portfolioSharpe.toFixed(2) : '—',
+    ]),
     toCsvRow(['Risk Profile', computeRiskProfileLabel(detailedPositions)]),
     toCsvRow(['Generated At', formatGeneratedAt()]),
     '',
@@ -91,9 +107,10 @@ export const downloadPortfolioReportCsv = (
     ),
     '',
     toCsvRow(['Note', PORTFOLIO_DISCLAIMER]),
-  ];
+  ]
 
-  const blob = new Blob(['\uFEFF', lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-  triggerBrowserDownload(blob, getReportFileName('csv'));
-};
-
+  const blob = new Blob(['\uFEFF', lines.join('\r\n')], {
+    type: 'text/csv;charset=utf-8;',
+  })
+  triggerBrowserDownload(blob, getReportFileName('csv'))
+}

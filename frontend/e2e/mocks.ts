@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page } from '@playwright/test'
 
 /**
  * These smoke tests run against a built frontend with no backend running
@@ -13,23 +13,23 @@ import type { Page } from "@playwright/test";
  * mocked 401 (or a real, unmocked connection failure) would.
  */
 export const mockLoggedOut = async (page: Page): Promise<void> => {
-  await page.route("**/api/v1/auth/refresh-token", (route) =>
+  await page.route('**/api/v1/auth/refresh-token', (route) =>
     route.fulfill({ status: 200, json: {} }),
-  );
-};
+  )
+}
 
 /**
  * Minimal shape of the fields VerifyPhoneGuard / VerifyPhone actually read
  * off `user` (see frontend/src/modules/auth/types.ts `User`).
  */
 export type MockUser = {
-  userId?: string;
-  email?: string;
-  displayName?: string;
-  phoneVerifiedAt?: string | null;
-  plan?: "FREE" | "PRO" | "TEAM";
-  platformRole?: "USER" | "SUPPORT_AGENT" | "PLATFORM_ADMIN" | "SUPER_ADMIN";
-};
+  userId?: string
+  email?: string
+  displayName?: string
+  phoneVerifiedAt?: string | null
+  plan?: 'FREE' | 'PRO' | 'TEAM'
+  platformRole?: 'USER' | 'SUPPORT_AGENT' | 'PLATFORM_ADMIN' | 'SUPER_ADMIN'
+}
 
 /**
  * Mocks a fully "logged in" session for useAuth's mount-time fetchMe():
@@ -41,22 +41,25 @@ export type MockUser = {
  */
 /** Feature flags the real /auth/me returns alongside the user (both default off, as in production). */
 export type MockFlags = {
-  pricingTiersEnabled?: boolean;
-  enablePaymentProcessor?: boolean;
-};
+  pricingTiersEnabled?: boolean
+  enablePaymentProcessor?: boolean
+}
 
 export const mockLoggedIn = async (
   page: Page,
-  user: MockUser = { userId: "e2e-user-1", email: "e2e-user@example.com" },
+  user: MockUser = { userId: 'e2e-user-1', email: 'e2e-user@example.com' },
   flags: MockFlags = {},
 ): Promise<void> => {
-  await page.route("**/api/v1/auth/refresh-token", (route) =>
-    route.fulfill({ status: 200, json: { accessToken: "e2e-fake-access-token" } }),
-  );
-  await page.route("**/api/v1/auth/me", (route) =>
+  await page.route('**/api/v1/auth/refresh-token', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { accessToken: 'e2e-fake-access-token' },
+    }),
+  )
+  await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({ status: 200, json: { user, ...flags } }),
-  );
-  await page.route("**/api/v1/rbac/user-screens", (route) =>
+  )
+  await page.route('**/api/v1/rbac/user-screens', (route) =>
     route.fulfill({ status: 200, json: { data: {} } }),
-  );
-};
+  )
+}

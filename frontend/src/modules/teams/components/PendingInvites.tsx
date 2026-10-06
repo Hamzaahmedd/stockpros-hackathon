@@ -1,4 +1,4 @@
-import { Button } from "@/shared/components/ui/button";
+import { Button } from '@/shared/components/ui/button'
 import {
   Table,
   TableBody,
@@ -6,90 +6,90 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/shared/components/ui/table";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import { teamService } from "../services";
-import type { PendingInvite } from "../types";
-import { apiErrorMessage, formatDate } from "../utils";
+} from '@/shared/components/ui/table'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
+import { teamService } from '../services'
+import type { PendingInvite } from '../types'
+import { apiErrorMessage, formatDate } from '../utils'
 
 interface PendingInvitesProps {
   /** Changing this reloads the list (a new invite was just sent). */
-  refreshKey: number;
+  refreshKey: number
   /** Seat counts change when an invite is revoked. */
-  onChanged: () => void;
+  onChanged: () => void
 }
 
 /** Unexpired invites, each holding a seat until it is accepted, revoked or expires. */
 export function PendingInvites({ refreshKey, onChanged }: PendingInvitesProps) {
-  const [invites, setInvites] = useState<PendingInvite[] | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [invites, setInvites] = useState<PendingInvite[] | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      setInvites(await teamService.listInvites());
+      setInvites(await teamService.listInvites())
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Failed to load invites"));
-      setInvites([]);
+      toast.error(apiErrorMessage(err, 'Failed to load invites'))
+      setInvites([])
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
+    void load()
+  }, [load, refreshKey])
 
   const run = async (id: string, action: () => Promise<void>) => {
-    if (busyId) return;
-    setBusyId(id);
+    if (busyId) return
+    setBusyId(id)
     try {
-      await action();
+      await action()
     } finally {
-      setBusyId(null);
+      setBusyId(null)
     }
-  };
+  }
 
   const resend = (invite: PendingInvite) =>
     run(invite.id, async () => {
       try {
-        const result = await teamService.resendInvite(invite.id);
+        const result = await teamService.resendInvite(invite.id)
         toast.success(
           result.emailQueued
             ? `A fresh invite was sent to ${invite.email}`
             : `Invite renewed, but the email couldn't be sent — share the new link with ${invite.email}`,
-        );
-        await load();
+        )
+        await load()
       } catch (err) {
-        toast.error(apiErrorMessage(err, "Failed to resend invite"));
+        toast.error(apiErrorMessage(err, 'Failed to resend invite'))
       }
-    });
+    })
 
   const revoke = (invite: PendingInvite) =>
     run(invite.id, async () => {
       try {
-        await teamService.revokeInvite(invite.id);
-        toast.success("Invite revoked");
-        await load();
-        onChanged();
+        await teamService.revokeInvite(invite.id)
+        toast.success('Invite revoked')
+        await load()
+        onChanged()
       } catch (err) {
-        toast.error(apiErrorMessage(err, "Failed to revoke invite"));
+        toast.error(apiErrorMessage(err, 'Failed to revoke invite'))
       }
-    });
+    })
 
-  if (invites === null || invites.length === 0) return null;
+  if (invites === null || invites.length === 0) return null
 
   return (
-    <section aria-labelledby="pending-invites" className="space-y-2">
-      <h2 id="pending-invites" className="text-sm font-semibold">
+    <section aria-labelledby='pending-invites' className='space-y-2'>
+      <h2 id='pending-invites' className='text-sm font-semibold'>
         Pending invites
       </h2>
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className='overflow-x-auto rounded-lg border border-border'>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Expires</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className='text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,22 +98,22 @@ export function PendingInvites({ refreshKey, onChanged }: PendingInvitesProps) {
                 <TableCell>{invite.email}</TableCell>
                 <TableCell>{invite.role}</TableCell>
                 <TableCell>{formatDate(invite.expiresAt)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                <TableCell className='text-right'>
+                  <div className='flex justify-end gap-2'>
                     <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
+                      type='button'
+                      size='sm'
+                      variant='outline'
                       disabled={busyId !== null}
                       onClick={() => void resend(invite)}
                     >
                       Resend
                     </Button>
                     <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="text-red-500"
+                      type='button'
+                      size='sm'
+                      variant='outline'
+                      className='text-red-500'
                       disabled={busyId !== null}
                       onClick={() => void revoke(invite)}
                     >
@@ -127,5 +127,5 @@ export function PendingInvites({ refreshKey, onChanged }: PendingInvitesProps) {
         </Table>
       </div>
     </section>
-  );
+  )
 }

@@ -1,12 +1,12 @@
-import api from "@/shared/api/axios";
-import { ConfirmationModal } from "@/shared/components/ConfirmationModal";
-import { ReportDownloadButton } from "@/shared/components/ReportDownloadButton";
-import { Sidebar } from "@/shared/components/Sidebar";
-import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent } from "@/shared/components/ui/card";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { SECONDARY_ACTION_BTN } from "@/shared/utils/buttonStyles";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import api from '@/shared/api/axios'
+import { ConfirmationModal } from '@/shared/components/ConfirmationModal'
+import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton'
+import { Sidebar } from '@/shared/components/Sidebar'
+import { Button } from '@/shared/components/ui/button'
+import { Card, CardContent } from '@/shared/components/ui/card'
+import { Skeleton } from '@/shared/components/ui/skeleton'
+import { SECONDARY_ACTION_BTN } from '@/shared/utils/buttonStyles'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FiActivity,
   FiAlertCircle,
@@ -24,143 +24,145 @@ import {
   FiTrendingUp,
   FiUpload,
   FiX,
-} from "react-icons/fi";
-import { toast } from "react-toastify";
+} from 'react-icons/fi'
+import { toast } from 'react-toastify'
 import type {
   DetailedDecision,
   MergedRow,
   OverviewDecision,
   PortfolioData,
   PortfolioRiskMetrics,
-} from "../types";
-import { downloadPortfolioReportCsv } from "../utils/downloadPortfolioReportCsv";
-import { downloadPortfolioReportPdf } from "../utils/downloadPortfolioReportPdf";
-import { computeRiskProfileLabel } from "../utils/portfolioReport";
+} from '../types'
+import { downloadPortfolioReportCsv } from '../utils/downloadPortfolioReportCsv'
+import { downloadPortfolioReportPdf } from '../utils/downloadPortfolioReportPdf'
+import { computeRiskProfileLabel } from '../utils/portfolioReport'
 
 /* ───────────── Helper Functions ───────────── */
 
 function getRiskProfileColor(label: string): string {
-  if (label === "Aggressive") return "text-rose-400";
-  if (label === "Moderate") return "text-orange-400";
-  if (label === "Conservative") return "text-emerald-400";
-  return "text-gray-400";
+  if (label === 'Aggressive') return 'text-rose-400'
+  if (label === 'Moderate') return 'text-orange-400'
+  if (label === 'Conservative') return 'text-emerald-400'
+  return 'text-gray-400'
 }
 
 function getDecisionBadgeClass(decision?: string): string {
   switch (decision) {
-    case "ADD":
-      return "bg-green-500/10 text-green-500 border-green-500/20";
-    case "HOLD":
-      return "bg-muted text-muted-foreground border-border";
-    case "TRIM":
-      return "bg-orange-500/10 text-orange-500 border-orange-500/20";
-    case "EXIT":
-      return "bg-destructive/10 text-destructive border-destructive/20";
+    case 'ADD':
+      return 'bg-green-500/10 text-green-500 border-green-500/20'
+    case 'HOLD':
+      return 'bg-muted text-muted-foreground border-border'
+    case 'TRIM':
+      return 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+    case 'EXIT':
+      return 'bg-destructive/10 text-destructive border-destructive/20'
     default:
-      return "bg-muted text-muted-foreground border-border";
+      return 'bg-muted text-muted-foreground border-border'
   }
 }
 
 function getHeatmapColorClass(roi: number): string {
-  if (roi <= -20) return "bg-rose-950/70 border-rose-500 text-rose-100 shadow-rose-950/30";
-  if (roi < -5) return "bg-amber-950/60 border-amber-500 text-amber-100";
-  if (roi <= 5) return "bg-muted/40 border-border text-foreground";
-  if (roi < 20) return "bg-emerald-950/50 border-emerald-500/70 text-emerald-100";
-  return "bg-emerald-950/90 border-emerald-400 text-emerald-50 shadow-lg shadow-emerald-950/50";
+  if (roi <= -20)
+    return 'bg-rose-950/70 border-rose-500 text-rose-100 shadow-rose-950/30'
+  if (roi < -5) return 'bg-amber-950/60 border-amber-500 text-amber-100'
+  if (roi <= 5) return 'bg-muted/40 border-border text-foreground'
+  if (roi < 20)
+    return 'bg-emerald-950/50 border-emerald-500/70 text-emerald-100'
+  return 'bg-emerald-950/90 border-emerald-400 text-emerald-50 shadow-lg shadow-emerald-950/50'
 }
 
 function getBetaBadge(beta: number): { text: string; className: string } {
   if (beta > 1.2) {
     return {
-      text: "High Sensitivity",
-      className: "bg-rose-500/10 text-rose-500 border-rose-500/20",
-    };
+      text: 'High Sensitivity',
+      className: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    }
   }
   if (beta < 0.8) {
     return {
-      text: "Defensive",
-      className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    };
+      text: 'Defensive',
+      className: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    }
   }
   return {
-    text: "Market Baseline",
-    className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  };
+    text: 'Market Baseline',
+    className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  }
 }
 
 function getSharpeBadge(sharpe: number): { text: string; className: string } {
   if (sharpe >= 1.0) {
     return {
-      text: "Optimal Return",
-      className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    };
+      text: 'Optimal Return',
+      className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    }
   }
   if (sharpe > 0) {
     return {
-      text: "Solid Return",
-      className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    };
+      text: 'Solid Return',
+      className: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    }
   }
   return {
-    text: "Low Return",
-    className: "bg-rose-500/10 text-rose-500 border-rose-500/20",
-  };
+    text: 'Low Return',
+    className: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  }
 }
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return "bg-emerald-500";
-  if (confidence >= 0.6) return "bg-primary";
-  if (confidence >= 0.4) return "bg-orange-500";
-  return "bg-destructive";
+  if (confidence >= 0.8) return 'bg-emerald-500'
+  if (confidence >= 0.6) return 'bg-primary'
+  if (confidence >= 0.4) return 'bg-orange-500'
+  return 'bg-destructive'
 }
 
 function getConfidenceTextColor(confidence: number): string {
-  if (confidence >= 0.8) return "text-emerald-500";
-  if (confidence >= 0.6) return "text-primary";
-  if (confidence >= 0.4) return "text-orange-500";
-  return "text-destructive";
+  if (confidence >= 0.8) return 'text-emerald-500'
+  if (confidence >= 0.6) return 'text-primary'
+  if (confidence >= 0.4) return 'text-orange-500'
+  return 'text-destructive'
 }
 
 function getConfidenceTier(confidence: number): string {
-  if (confidence >= 0.8) return "Very High";
-  if (confidence >= 0.6) return "High";
-  if (confidence >= 0.4) return "Moderate";
-  return "Low";
+  if (confidence >= 0.8) return 'Very High'
+  if (confidence >= 0.6) return 'High'
+  if (confidence >= 0.4) return 'Moderate'
+  return 'Low'
 }
 
 function getSharpeTextClass(sharpe: number = 0): string {
-  if (sharpe >= 1.0) return "text-emerald-500";
-  if (sharpe < 0) return "text-destructive";
-  return "text-primary";
+  if (sharpe >= 1.0) return 'text-emerald-500'
+  if (sharpe < 0) return 'text-destructive'
+  return 'text-primary'
 }
 
 function getMarketSignalBadge(marketDecision?: string) {
-  if (marketDecision === "BUY") {
+  if (marketDecision === 'BUY') {
     return {
-      badgeClass: "text-emerald-500 bg-emerald-500/10",
-      dotClass: "bg-emerald-500",
-    };
+      badgeClass: 'text-emerald-500 bg-emerald-500/10',
+      dotClass: 'bg-emerald-500',
+    }
   }
-  if (marketDecision === "SELL") {
+  if (marketDecision === 'SELL') {
     return {
-      badgeClass: "text-destructive bg-destructive/10",
-      dotClass: "bg-destructive",
-    };
+      badgeClass: 'text-destructive bg-destructive/10',
+      dotClass: 'bg-destructive',
+    }
   }
   return {
-    badgeClass: "bg-muted text-muted-foreground",
-    dotClass: "bg-muted-foreground",
-  };
+    badgeClass: 'bg-muted text-muted-foreground',
+    dotClass: 'bg-muted-foreground',
+  }
 }
 
 function getRiskLevelBadge(riskLevel?: string): string {
-  if (riskLevel === "HIGH") {
-    return "text-destructive border-destructive/20 bg-destructive/5";
+  if (riskLevel === 'HIGH') {
+    return 'text-destructive border-destructive/20 bg-destructive/5'
   }
-  if (riskLevel === "MEDIUM") {
-    return "text-orange-500 border-orange-500/20 bg-orange-500/5";
+  if (riskLevel === 'MEDIUM') {
+    return 'text-orange-500 border-orange-500/20 bg-orange-500/5'
   }
-  return "text-emerald-500 border-emerald-500/20 bg-emerald-500/5";
+  return 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5'
 }
 
 function getActionToggleButtonIcon(
@@ -168,39 +170,44 @@ function getActionToggleButtonIcon(
   isExpanded: boolean,
 ): React.ReactNode {
   if (detailLoading && !isExpanded) {
-    return <Skeleton className="w-3 h-3 rounded-full" />;
+    return <Skeleton className='h-3 w-3 rounded-full' />
   }
   if (isExpanded) {
-    return <FiChevronUp size={12} />;
+    return <FiChevronUp size={12} />
   }
-  return <FiChevronDown size={12} />;
+  return <FiChevronDown size={12} />
 }
 
 /* ───────────── Sub-components ───────────── */
 
 interface EmptyStateProps {
-  readonly icon: React.ReactNode;
-  readonly title: string;
-  readonly sub: string;
-  readonly action?: React.ReactNode;
+  readonly icon: React.ReactNode
+  readonly title: string
+  readonly sub: string
+  readonly action?: React.ReactNode
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, sub, action }) => (
-  <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-border rounded-lg bg-card/50">
-    <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-6">
+const EmptyState: React.FC<EmptyStateProps> = ({
+  icon,
+  title,
+  sub,
+  action,
+}) => (
+  <div className='flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 py-32'>
+    <div className='mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10 text-primary'>
       {icon}
     </div>
-    <h3 className="text-xl font-bold mb-2">{title}</h3>
-    <p className="text-muted-foreground max-w-sm text-center text-sm">{sub}</p>
-    {action && <div className="mt-6">{action}</div>}
+    <h3 className='mb-2 text-xl font-bold'>{title}</h3>
+    <p className='max-w-sm text-center text-sm text-muted-foreground'>{sub}</p>
+    {action && <div className='mt-6'>{action}</div>}
   </div>
-);
+)
 
 interface StatCardProps {
-  readonly icon: React.ReactNode;
-  readonly iconCls: string;
-  readonly label: string;
-  readonly children: React.ReactNode;
+  readonly icon: React.ReactNode
+  readonly iconCls: string
+  readonly label: string
+  readonly children: React.ReactNode
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -209,28 +216,28 @@ const StatCard: React.FC<StatCardProps> = ({
   label,
   children,
 }) => (
-  <Card className="rounded-lg transition-all duration-300">
-    <CardContent className="p-6">
-      <div className="flex items-center gap-3 mb-4">
+  <Card className='rounded-lg transition-all duration-300'>
+    <CardContent className='p-6'>
+      <div className='mb-4 flex items-center gap-3'>
         <div
-          className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconCls}`}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconCls}`}
         >
           {icon}
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
           {label}
         </span>
       </div>
       {children}
     </CardContent>
   </Card>
-);
+)
 
 interface KeyValueItemProps {
-  readonly label: string;
-  readonly value: string;
-  readonly accent?: boolean;
-  readonly mask?: boolean;
+  readonly label: string
+  readonly value: string
+  readonly accent?: boolean
+  readonly mask?: boolean
 }
 
 const KeyValueItem: React.FC<KeyValueItemProps> = ({
@@ -239,210 +246,213 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
   accent,
   mask,
 }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider w-10">
+  <div className='flex items-center gap-2'>
+    <span className='w-10 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
       {label}
     </span>
     <span
-      className={`text-sm font-bold ${accent ? "text-primary" : ""} ${mask ? "ph-mask" : ""}`}
+      className={`text-sm font-bold ${accent ? 'text-primary' : ''} ${mask ? 'ph-mask' : ''}`}
     >
       {value}
     </span>
   </div>
-);
+)
 
 interface PulseProps {
-  readonly text: string;
+  readonly text: string
 }
 
 const Pulse: React.FC<PulseProps> = ({ text }) => (
-  <div className="flex items-center gap-2 animate-pulse">
-    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-    <span className="text-xs text-muted-foreground font-medium italic">
+  <div className='flex animate-pulse items-center gap-2'>
+    <div className='h-1.5 w-1.5 rounded-full bg-primary' />
+    <span className='text-xs font-medium italic text-muted-foreground'>
       {text}
     </span>
   </div>
-);
+)
 
 const PortfolioUploadOverlay: React.FC = () => (
   <div
-    className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
-    role="status"
-    aria-live="polite"
+    className='fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md'
+    role='status'
+    aria-live='polite'
   >
-    <div className="w-full max-w-[360px] rounded-[28px] border border-white/5 bg-[#111318] p-8 text-center text-white shadow-2xl">
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-        <FiActivity className="animate-spin" size={28} />
+    <div className='w-full max-w-[360px] rounded-[28px] border border-white/5 bg-[#111318] p-8 text-center text-white shadow-2xl'>
+      <div className='mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary'>
+        <FiActivity className='animate-spin' size={28} />
       </div>
-      <h2 className="text-[22px] font-bold tracking-tight">
+      <h2 className='text-[22px] font-bold tracking-tight'>
         Analyzing your portfolio…
       </h2>
-      <p className="mt-3 text-[15px] leading-relaxed text-gray-400">
+      <p className='mt-3 text-[15px] leading-relaxed text-gray-400'>
         Uploading your positions and calculating your portfolio health. This may
         take a moment.
       </p>
     </div>
   </div>
-);
+)
 
 interface TagProps {
-  readonly icon: React.ReactNode;
-  readonly text: string;
-  readonly scheme: "rose" | "emerald" | "muted";
+  readonly icon: React.ReactNode
+  readonly text: string
+  readonly scheme: 'rose' | 'emerald' | 'muted'
 }
 
 const Tag: React.FC<TagProps> = ({ icon, text, scheme }) => {
-  let schemeClasses = "text-muted-foreground bg-muted";
-  if (scheme === "rose") {
-    schemeClasses = "text-destructive bg-destructive/10";
-  } else if (scheme === "emerald") {
-    schemeClasses = "text-green-500 bg-green-500/10";
+  let schemeClasses = 'text-muted-foreground bg-muted'
+  if (scheme === 'rose') {
+    schemeClasses = 'text-destructive bg-destructive/10'
+  } else if (scheme === 'emerald') {
+    schemeClasses = 'text-green-500 bg-green-500/10'
   }
   return (
     <div
-      className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-transparent ${schemeClasses}`}
+      className={`inline-flex items-center gap-1 rounded border border-transparent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${schemeClasses}`}
     >
       {icon} {text}
     </div>
-  );
-};
+  )
+}
 
 interface SectionLabelProps {
-  readonly text: string;
-  readonly color: string;
+  readonly text: string
+  readonly color: string
 }
 
 const SectionLabel: React.FC<SectionLabelProps> = ({ text, color }) => (
   <div className={`text-[10px] font-bold uppercase tracking-wider ${color}`}>
     {text}
   </div>
-);
+)
 
 interface ProgressBarProps {
-  readonly label: string;
-  readonly value: number;
-  readonly warn: boolean;
+  readonly label: string
+  readonly value: number
+  readonly warn: boolean
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({ label, value, warn }) => (
   <div>
-    <div className="flex items-center justify-between mb-1">
-      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+    <div className='mb-1 flex items-center justify-between'>
+      <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
         {label}
       </span>
-      <span className="text-xs font-bold">{value.toFixed(2)}%</span>
+      <span className='text-xs font-bold'>{value.toFixed(2)}%</span>
     </div>
-    <div className="w-full h-1.5 rounded-full overflow-hidden bg-muted">
+    <div className='h-1.5 w-full overflow-hidden rounded-full bg-muted'>
       <div
         className={`h-full rounded-full transition-all duration-700 ${
-          warn ? "bg-destructive" : "bg-primary"
+          warn ? 'bg-destructive' : 'bg-primary'
         }`}
         style={{ width: `${Math.min(value, 100)}%` }}
       />
     </div>
   </div>
-);
+)
 
 /* ───────────── Risk Metrics Panel (Persona B) ───────────── */
 
 interface RiskAuditPanelProps {
-  readonly riskMetrics: PortfolioRiskMetrics;
+  readonly riskMetrics: PortfolioRiskMetrics
 }
 
 const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
-  const betaBadge = getBetaBadge(riskMetrics.weightedBeta);
-  const sharpeBadge = getSharpeBadge(riskMetrics.portfolioSharpe);
+  const betaBadge = getBetaBadge(riskMetrics.weightedBeta)
+  const sharpeBadge = getSharpeBadge(riskMetrics.portfolioSharpe)
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 md:p-8 space-y-6 shadow-md">
-      <div className="flex items-center justify-between border-b border-border/60 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <FiActivity className="text-lg" />
+    <div className='space-y-6 rounded-2xl border border-border/80 bg-card p-6 shadow-md md:p-8'>
+      <div className='flex items-center justify-between border-b border-border/60 pb-4'>
+        <div className='flex items-center gap-3'>
+          <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary'>
+            <FiActivity className='text-lg' />
           </div>
           <div>
-            <h3 className="text-lg font-black tracking-tight">
+            <h3 className='text-lg font-black tracking-tight'>
               Risk &amp; Stability Check
             </h3>
-            <p className="text-xs text-muted-foreground font-medium">
-              Overall portfolio sensitivity, risk-adjusted returns, and industry diversification
+            <p className='text-xs font-medium text-muted-foreground'>
+              Overall portfolio sensitivity, risk-adjusted returns, and industry
+              diversification
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded bg-primary/10 text-primary border border-primary/20">
+        <span className='rounded border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary'>
           Advanced Metrics
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
         {/* Portfolio Beta */}
-        <div className="p-5 rounded-xl border border-border bg-background space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className='space-y-3 rounded-xl border border-border bg-background p-5'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
               Portfolio Beta
             </span>
             <span
-              className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${betaBadge.className}`}
+              className={`rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${betaBadge.className}`}
             >
               {betaBadge.text}
             </span>
           </div>
-          <div className="text-4xl font-black text-primary">
+          <div className='text-4xl font-black text-primary'>
             {riskMetrics.weightedBeta.toFixed(2)}
           </div>
-          <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            Market sensitivity score (1.0 moves in step with the broader market, lower means more stable).
+          <p className='text-xs font-medium leading-relaxed text-muted-foreground'>
+            Market sensitivity score (1.0 moves in step with the broader market,
+            lower means more stable).
           </p>
         </div>
 
         {/* Sharpe Ratio */}
-        <div className="p-5 rounded-xl border border-border bg-background space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className='space-y-3 rounded-xl border border-border bg-background p-5'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
               Return Efficiency (Sharpe)
             </span>
             <span
-              className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${sharpeBadge.className}`}
+              className={`rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${sharpeBadge.className}`}
             >
               {sharpeBadge.text}
             </span>
           </div>
-          <div className="text-4xl font-black text-primary">
+          <div className='text-4xl font-black text-primary'>
             {riskMetrics.portfolioSharpe.toFixed(2)}
           </div>
-          <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-            Measures profit earned relative to price swings (higher score means better returns per risk taken).
+          <p className='text-xs font-medium leading-relaxed text-muted-foreground'>
+            Measures profit earned relative to price swings (higher score means
+            better returns per risk taken).
           </p>
         </div>
 
         {/* Sector Concentration Mini-Bar Chart */}
-        <div className="p-5 rounded-xl border border-border bg-background space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className='space-y-3 rounded-xl border border-border bg-background p-5'>
+          <div className='flex items-center justify-between'>
+            <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
               Sector Concentration
             </span>
-            <span className="text-[10px] font-bold text-muted-foreground">
+            <span className='text-[10px] font-bold text-muted-foreground'>
               Weights
             </span>
           </div>
 
-          <div className="space-y-2.5 pt-1">
+          <div className='space-y-2.5 pt-1'>
             {riskMetrics.sectorConcentration.slice(0, 3).map((sc) => (
-              <div key={sc.sector} className="space-y-1">
-                <div className="flex justify-between text-[11px] font-bold">
-                  <span className="truncate max-w-[160px]">{sc.sector}</span>
+              <div key={sc.sector} className='space-y-1'>
+                <div className='flex justify-between text-[11px] font-bold'>
+                  <span className='max-w-[160px] truncate'>{sc.sector}</span>
                   <span
                     className={
-                      sc.weight > 40 ? "text-rose-500" : "text-primary"
+                      sc.weight > 40 ? 'text-rose-500' : 'text-primary'
                     }
                   >
                     {sc.weight.toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className='h-1.5 w-full overflow-hidden rounded-full bg-muted'>
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
-                      sc.weight > 40 ? "bg-rose-500" : "bg-primary"
+                      sc.weight > 40 ? 'bg-rose-500' : 'bg-primary'
                     }`}
                     style={{ width: `${Math.min(100, sc.weight)}%` }}
                   />
@@ -453,15 +463,15 @@ const RiskAuditPanel: React.FC<RiskAuditPanelProps> = ({ riskMetrics }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 /* ───────────── Heatmap View ───────────── */
 
 interface HeatmapViewProps {
-  readonly merged: MergedRow[];
-  readonly expandedSymbol: string | null;
-  readonly onSelectSymbol: (symbol: string) => void;
+  readonly merged: MergedRow[]
+  readonly expandedSymbol: string | null
+  readonly onSelectSymbol: (symbol: string) => void
 }
 
 const HeatmapView: React.FC<HeatmapViewProps> = ({
@@ -469,82 +479,84 @@ const HeatmapView: React.FC<HeatmapViewProps> = ({
   expandedSymbol,
   onSelectSymbol,
 }) => (
-  <div className="p-6">
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+  <div className='p-6'>
+    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'>
       {merged.map((pos) => {
-        const isExpanded = expandedSymbol === pos.symbol;
+        const isExpanded = expandedSymbol === pos.symbol
         return (
           <button
             key={pos.symbol}
-            type="button"
+            type='button'
             onClick={() => onSelectSymbol(pos.symbol)}
-            className={`p-4 rounded-xl border text-left transition-all duration-300 cursor-pointer flex flex-col justify-between select-none ${getHeatmapColorClass(
+            className={`flex cursor-pointer select-none flex-col justify-between rounded-xl border p-4 text-left transition-all duration-300 ${getHeatmapColorClass(
               pos.unrealizedPnLPercent,
             )} ${
               isExpanded
-                ? "ring-2 ring-primary scale-[1.02]"
-                : "hover:scale-[1.02]"
+                ? 'scale-[1.02] ring-2 ring-primary'
+                : 'hover:scale-[1.02]'
             }`}
           >
-            <div className="flex items-start justify-between w-full">
-              <span className="text-base font-black tracking-tight">
+            <div className='flex w-full items-start justify-between'>
+              <span className='text-base font-black tracking-tight'>
                 {pos.symbol}
               </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider opacity-80 truncate max-w-[60px]">
-                {pos.sector || "—"}
+              <span className='max-w-[60px] truncate text-[9px] font-bold uppercase tracking-wider opacity-80'>
+                {pos.sector || '—'}
               </span>
             </div>
 
-            <div className="my-3">
-              <div className="text-xl font-black">
-                {pos.unrealizedPnLPercent >= 0 ? "+" : ""}
+            <div className='my-3'>
+              <div className='text-xl font-black'>
+                {pos.unrealizedPnLPercent >= 0 ? '+' : ''}
                 {pos.unrealizedPnLPercent.toFixed(2)}%
               </div>
-              <div className="ph-mask text-[10px] opacity-80 font-mono">
+              <div className='ph-mask font-mono text-[10px] opacity-80'>
                 ${pos.currentValue.toLocaleString()}
               </div>
             </div>
 
-            <div className="pt-2 border-t border-current/20 flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
+            <div className='border-current/20 flex w-full items-center justify-between border-t pt-2 text-[9px] font-bold uppercase tracking-wider'>
               <span>Action</span>
-              <span className="font-black">{pos.portfolioDecision || "HOLD"}</span>
+              <span className='font-black'>
+                {pos.portfolioDecision || 'HOLD'}
+              </span>
             </div>
           </button>
-        );
+        )
       })}
     </div>
 
     {/* Heatmap Legend */}
-    <div className="mt-6 flex items-center justify-center gap-6 flex-wrap text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-t border-border pt-4">
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded bg-rose-700 border border-rose-500" />{" "}
+    <div className='mt-6 flex flex-wrap items-center justify-center gap-6 border-t border-border pt-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
+      <div className='flex items-center gap-1.5'>
+        <div className='h-3 w-3 rounded border border-rose-500 bg-rose-700' />{' '}
         &lt; -20%
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded bg-amber-700 border border-amber-500" />{" "}
+      <div className='flex items-center gap-1.5'>
+        <div className='h-3 w-3 rounded border border-amber-500 bg-amber-700' />{' '}
         -20% to -5%
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded bg-muted border border-border" /> -5% to
+      <div className='flex items-center gap-1.5'>
+        <div className='h-3 w-3 rounded border border-border bg-muted' /> -5% to
         +5%
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded bg-emerald-700 border border-emerald-500" />{" "}
+      <div className='flex items-center gap-1.5'>
+        <div className='h-3 w-3 rounded border border-emerald-500 bg-emerald-700' />{' '}
         +5% to +20%
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded bg-emerald-500 border border-emerald-300" />{" "}
+      <div className='flex items-center gap-1.5'>
+        <div className='h-3 w-3 rounded border border-emerald-300 bg-emerald-500' />{' '}
         &gt; +20%
       </div>
     </div>
   </div>
-);
+)
 
 /* ───────────── Position Detail Panel ───────────── */
 
 interface PositionDetailPanelProps {
-  readonly detail: DetailedDecision;
-  readonly onClose: () => void;
+  readonly detail: DetailedDecision
+  readonly onClose: () => void
 }
 
 const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
@@ -552,35 +564,35 @@ const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
   onClose,
 }) => (
   <tr>
-    <td colSpan={9} className="p-0">
-      <div className="mx-6 mb-5 mt-1 rounded-2xl border border-border bg-muted/20 overflow-hidden">
+    <td colSpan={9} className='p-0'>
+      <div className='mx-6 mb-5 mt-1 overflow-hidden rounded-2xl border border-border bg-muted/20'>
         {/* close bar */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+        <div className='flex items-center justify-between px-6 pb-2 pt-5'>
+          <span className='text-[10px] font-black uppercase tracking-[0.2em] text-primary'>
             Detailed Analysis — {detail.symbol}
           </span>
           <button
-            type="button"
+            type='button'
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className='text-muted-foreground transition-colors hover:text-foreground'
           >
             <FiX size={16} />
           </button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className='grid grid-cols-1 gap-8 p-6 lg:grid-cols-3'>
           {/* reasoning */}
           <div>
-            <SectionLabel text="AI Reasoning" color="text-primary" />
-            <p className="text-sm font-medium leading-relaxed mt-2">
+            <SectionLabel text='AI Reasoning' color='text-primary' />
+            <p className='mt-2 text-sm font-medium leading-relaxed'>
               {detail.reasoning.summary}
             </p>
             {detail.reasoning.details.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className='mt-3 flex flex-wrap gap-2'>
                 {detail.reasoning.details.map((d) => (
                   <span
                     key={d}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-destructive/10 text-destructive border border-destructive/10"
+                    className='inline-flex items-center gap-1 rounded border border-destructive/10 bg-destructive/10 px-2 py-1 text-[10px] font-bold text-destructive'
                   >
                     <FiAlertCircle size={10} /> {d}
                   </span>
@@ -591,20 +603,20 @@ const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
 
           {/* exposure */}
           <div>
-            <SectionLabel text="Exposure Analysis" color="text-purple-500" />
-            <div className="mt-3 space-y-3">
+            <SectionLabel text='Exposure Analysis' color='text-purple-500' />
+            <div className='mt-3 space-y-3'>
               <ProgressBar
-                label="Position Weight"
+                label='Position Weight'
                 value={detail.exposure.positionPercent}
                 warn={detail.exposure.positionPercent > 15}
               />
               <ProgressBar
-                label="Sector Exposure"
+                label='Sector Exposure'
                 value={detail.exposure.sectorPercent}
                 warn={detail.exposure.sectorPercent > 40}
               />
               {detail.exposure.isOverExposed && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-destructive bg-destructive/10 px-2.5 py-1 rounded border border-destructive/20 mt-1">
+                <span className='mt-1 inline-flex items-center gap-1 rounded border border-destructive/20 bg-destructive/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-destructive'>
                   <FiAlertCircle size={10} /> Over-Exposed
                 </span>
               )}
@@ -613,17 +625,17 @@ const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
 
           {/* action guidance */}
           <div>
-            <SectionLabel text="Action Guidance" color="text-emerald-500" />
-            <div className="mt-3 space-y-3">
-              <div className="flex flex-wrap gap-1.5">
+            <SectionLabel text='Action Guidance' color='text-emerald-500' />
+            <div className='mt-3 space-y-3'>
+              <div className='flex flex-wrap gap-1.5'>
                 {Object.entries(detail.actionGuidance.positionStrategy).map(
                   ([k, v]) => (
                     <span
                       key={k}
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                         v
-                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                          : "bg-muted text-muted-foreground/30 border-border line-through opacity-30"
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-500'
+                          : 'border-border bg-muted text-muted-foreground/30 line-through opacity-30'
                       }`}
                     >
                       {k}
@@ -631,37 +643,37 @@ const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
                   ),
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className='grid grid-cols-2 gap-3'>
                 <div>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-0.5">
+                  <span className='mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
                     Take Profit
                   </span>
-                  <span className="text-sm font-bold text-emerald-500">
+                  <span className='text-sm font-bold text-emerald-500'>
                     ${detail.actionGuidance.takeProfitZone}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-0.5">
+                  <span className='mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
                     Stop Loss
                   </span>
-                  <span className="text-sm font-bold text-destructive">
+                  <span className='text-sm font-bold text-destructive'>
                     ${detail.actionGuidance.stopLossZone}
                   </span>
                 </div>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mb-0.5">
+                <span className='mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
                   Hold Duration
                 </span>
-                <span className="text-sm font-bold">
+                <span className='text-sm font-bold'>
                   {detail.actionGuidance.holdDuration}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className='flex flex-wrap gap-1.5'>
                 {detail.actionGuidance.watchFor.map((w) => (
                   <span
                     key={w}
-                    className="text-[9px] font-bold px-2 py-0.5 rounded border border-border bg-background text-muted-foreground"
+                    className='rounded border border-border bg-background px-2 py-0.5 text-[9px] font-bold text-muted-foreground'
                   >
                     {w}
                   </span>
@@ -673,17 +685,17 @@ const PositionDetailPanel: React.FC<PositionDetailPanelProps> = ({
       </div>
     </td>
   </tr>
-);
+)
 
 /* ───────────── Position Table Row Component ───────────── */
 
 interface PositionTableRowProps {
-  readonly pos: MergedRow;
-  readonly isExpanded: boolean;
-  readonly detail?: DetailedDecision;
-  readonly detailLoading: boolean;
-  readonly onToggleExpansion: (symbol: string) => void;
-  readonly onCloseDetail: () => void;
+  readonly pos: MergedRow
+  readonly isExpanded: boolean
+  readonly detail?: DetailedDecision
+  readonly detailLoading: boolean
+  readonly onToggleExpansion: (symbol: string) => void
+  readonly onCloseDetail: () => void
 }
 
 const PositionTableRow: React.FC<PositionTableRowProps> = ({
@@ -694,128 +706,132 @@ const PositionTableRow: React.FC<PositionTableRowProps> = ({
   onToggleExpansion,
   onCloseDetail,
 }) => {
-  const signal = getMarketSignalBadge(pos.marketDecision);
-  const riskBadgeClass = getRiskLevelBadge(pos.riskLevel);
+  const signal = getMarketSignalBadge(pos.marketDecision)
+  const riskBadgeClass = getRiskLevelBadge(pos.riskLevel)
 
-  let pnlTagScheme: "rose" | "emerald" | "muted" = "muted";
-  let pnlTagText = "Stable";
-  let pnlTagIcon = <FiActivity />;
+  let pnlTagScheme: 'rose' | 'emerald' | 'muted' = 'muted'
+  let pnlTagText = 'Stable'
+  let pnlTagIcon = <FiActivity />
   if (pos.unrealizedPnLPercent < -20) {
-    pnlTagScheme = "rose";
-    pnlTagText = "Critical";
-    pnlTagIcon = <FiAlertCircle />;
+    pnlTagScheme = 'rose'
+    pnlTagText = 'Critical'
+    pnlTagIcon = <FiAlertCircle />
   } else if (pos.unrealizedPnLPercent > 20) {
-    pnlTagScheme = "emerald";
-    pnlTagText = "Strong";
-    pnlTagIcon = <FiCheckCircle />;
+    pnlTagScheme = 'emerald'
+    pnlTagText = 'Strong'
+    pnlTagIcon = <FiCheckCircle />
   }
 
   return (
     <React.Fragment>
       <tr
         onClick={() => onToggleExpansion(pos.symbol)}
-        className="group hover:bg-muted/50 transition-colors duration-200 cursor-pointer"
+        className='group cursor-pointer transition-colors duration-200 hover:bg-muted/50'
       >
-        <td className="px-4 py-3.5">
-          <div className="flex items-center gap-2">
+        <td className='px-4 py-3.5'>
+          <div className='flex items-center gap-2'>
             <div>
-              <span className="text-base font-black tracking-tight">
+              <span className='text-base font-black tracking-tight'>
                 {pos.symbol}
               </span>
-              <span className="block text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
-                {pos.sector || "—"}
+              <span className='mt-0.5 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                {pos.sector || '—'}
               </span>
             </div>
-            <div className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary">
-              {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+            <div className='ml-1 text-primary opacity-0 transition-opacity group-hover:opacity-100'>
+              {isExpanded ? (
+                <FiChevronUp size={14} />
+              ) : (
+                <FiChevronDown size={14} />
+              )}
             </div>
           </div>
         </td>
-        <td className="px-4 py-3.5">
-          <KeyValueItem label="Qty" value={String(pos.quantity)} />
+        <td className='px-4 py-3.5'>
+          <KeyValueItem label='Qty' value={String(pos.quantity)} />
           <KeyValueItem
-            label="Entry"
+            label='Entry'
             value={`$${pos.avg_entry_price.toFixed(2)}`}
             mask
           />
           <KeyValueItem
-            label="Value"
+            label='Value'
             value={`$${pos.currentValue.toLocaleString()}`}
             accent
             mask
           />
         </td>
-        <td className="px-4 py-3.5">
+        <td className='px-4 py-3.5'>
           <div
             className={`ph-mask text-base font-bold tracking-tight ${
-              pos.unrealizedPnL >= 0 ? "text-emerald-500" : "text-destructive"
+              pos.unrealizedPnL >= 0 ? 'text-emerald-500' : 'text-destructive'
             }`}
           >
-            {pos.unrealizedPnL >= 0 ? "+" : "-"}$
+            {pos.unrealizedPnL >= 0 ? '+' : '-'}$
             {Math.abs(pos.unrealizedPnL).toLocaleString()}
           </div>
           <div
-            className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${
+            className={`mt-0.5 text-[10px] font-bold uppercase tracking-wider ${
               pos.unrealizedPnLPercent >= 0
-                ? "text-emerald-500/70"
-                : "text-destructive/70"
+                ? 'text-emerald-500/70'
+                : 'text-destructive/70'
             }`}
           >
             {pos.unrealizedPnLPercent.toFixed(2)}% ROI
           </div>
         </td>
-        <td className="px-3 py-3.5 text-center">
-          <span className="text-xs font-bold text-primary font-mono">
-            {pos.beta != null ? pos.beta.toFixed(2) : "1.00"}
+        <td className='px-3 py-3.5 text-center'>
+          <span className='font-mono text-xs font-bold text-primary'>
+            {pos.beta != null ? pos.beta.toFixed(2) : '1.00'}
           </span>
         </td>
-        <td className="px-3 py-3.5 text-center">
+        <td className='px-3 py-3.5 text-center'>
           <span
-            className={`text-xs font-bold font-mono ${getSharpeTextClass(
+            className={`font-mono text-xs font-bold ${getSharpeTextClass(
               pos.sharpe,
             )}`}
           >
-            {pos.sharpe != null ? pos.sharpe.toFixed(2) : "—"}
+            {pos.sharpe != null ? pos.sharpe.toFixed(2) : '—'}
           </span>
         </td>
-        <td className="px-4 py-3.5">
+        <td className='px-4 py-3.5'>
           {pos.portfolioDecision ? (
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider whitespace-nowrap opacity-60">
+            <div className='flex flex-col gap-1.5'>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60'>
                   Action
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${getDecisionBadgeClass(
+                  className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${getDecisionBadgeClass(
                     pos.portfolioDecision,
                   )}`}
                 >
                   {pos.portfolioDecision}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider whitespace-nowrap opacity-60">
+              <div className='flex items-center justify-between gap-3'>
+                <span className='whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60'>
                   Signal
                 </span>
                 <span
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${signal.badgeClass}`}
+                  className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest ${signal.badgeClass}`}
                 >
-                  <div className={`w-1 h-1 rounded-full ${signal.dotClass}`} />
+                  <div className={`h-1 w-1 rounded-full ${signal.dotClass}`} />
                   {pos.marketDecision}
                 </span>
               </div>
             </div>
           ) : (
-            <Pulse text="Analyzing..." />
+            <Pulse text='Analyzing...' />
           )}
         </td>
-        <td className="px-4 py-3.5">
+        <td className='px-4 py-3.5'>
           {pos.confidence != null ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-black text-primary">
+            <div className='flex flex-col gap-1'>
+              <span className='text-base font-black text-primary'>
                 {(pos.confidence * 100).toFixed(0)}%
               </span>
-              <div className="w-14 h-1 rounded-full bg-muted overflow-hidden">
+              <div className='h-1 w-14 overflow-hidden rounded-full bg-muted'>
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${getConfidenceColor(
                     pos.confidence,
@@ -834,33 +850,33 @@ const PositionTableRow: React.FC<PositionTableRowProps> = ({
               </span>
             </div>
           ) : (
-            <Pulse text="—" />
+            <Pulse text='—' />
           )}
         </td>
-        <td className="px-4 py-3.5">
+        <td className='px-4 py-3.5'>
           <span
-            className={`text-[9px] font-bold px-2 py-0.5 rounded border ${riskBadgeClass}`}
+            className={`rounded border px-2 py-0.5 text-[9px] font-bold ${riskBadgeClass}`}
           >
-            {pos.riskLevel || "LOW"}
+            {pos.riskLevel || 'LOW'}
           </span>
-          <div className="mt-1.5">
+          <div className='mt-1.5'>
             <Tag icon={pnlTagIcon} text={pnlTagText} scheme={pnlTagScheme} />
           </div>
         </td>
-        <td className="px-4 py-3.5 text-right sticky right-0 bg-card/95 backdrop-blur group-hover:bg-muted/50 transition-colors shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]">
+        <td className='sticky right-0 bg-card/95 px-4 py-3.5 text-right shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)] backdrop-blur transition-colors group-hover:bg-muted/50'>
           <Button
-            type="button"
+            type='button'
             disabled={detailLoading}
             onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpansion(pos.symbol);
+              e.stopPropagation()
+              onToggleExpansion(pos.symbol)
             }}
-            variant="secondary"
-            size="sm"
+            variant='secondary'
+            size='sm'
             className={`text-[10px] font-bold ${SECONDARY_ACTION_BTN}`}
           >
             {getActionToggleButtonIcon(detailLoading, isExpanded)}
-            {isExpanded ? "Hide" : "View"}
+            {isExpanded ? 'Hide' : 'View'}
           </Button>
         </td>
       </tr>
@@ -869,27 +885,27 @@ const PositionTableRow: React.FC<PositionTableRowProps> = ({
         <PositionDetailPanel detail={detail} onClose={onCloseDetail} />
       )}
     </React.Fragment>
-  );
-};
+  )
+}
 
 /* ───────────── Main Content Area ───────────── */
 
 interface MainPortfolioContentProps {
-  readonly pageLoading: boolean;
-  readonly portfolioData: PortfolioData | null;
-  readonly riskMetrics: PortfolioRiskMetrics | null;
-  readonly riskProfileLabel: string;
-  readonly riskProfileColor: string;
-  readonly viewMode: "list" | "heatmap";
-  readonly onViewModeChange: (mode: "list" | "heatmap") => void;
-  readonly overviewLoading: boolean;
-  readonly merged: MergedRow[];
-  readonly expandedSymbol: string | null;
-  readonly detailedData: Record<string, DetailedDecision>;
-  readonly detailLoading: boolean;
-  readonly onToggleExpansion: (symbol: string) => void;
-  readonly onCloseDetail: () => void;
-  readonly onUploadRequest: () => void;
+  readonly pageLoading: boolean
+  readonly portfolioData: PortfolioData | null
+  readonly riskMetrics: PortfolioRiskMetrics | null
+  readonly riskProfileLabel: string
+  readonly riskProfileColor: string
+  readonly viewMode: 'list' | 'heatmap'
+  readonly onViewModeChange: (mode: 'list' | 'heatmap') => void
+  readonly overviewLoading: boolean
+  readonly merged: MergedRow[]
+  readonly expandedSymbol: string | null
+  readonly detailedData: Record<string, DetailedDecision>
+  readonly detailLoading: boolean
+  readonly onToggleExpansion: (symbol: string) => void
+  readonly onCloseDetail: () => void
+  readonly onUploadRequest: () => void
 }
 
 const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
@@ -911,123 +927,125 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
 }) => {
   if (pageLoading) {
     return (
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className='space-y-8'>
+        <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'>
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={`summary-skel-${i}`}
-              className="border border-border rounded-lg p-6 bg-card space-y-3 shadow-sm"
+              className='space-y-3 rounded-lg border border-border bg-card p-6 shadow-sm'
             >
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-3.5 w-24 rounded" />
-                <Skeleton className="w-8 h-8 rounded-lg" />
+              <div className='flex items-center justify-between'>
+                <Skeleton className='h-3.5 w-24 rounded' />
+                <Skeleton className='h-8 w-8 rounded-lg' />
               </div>
-              <Skeleton className="h-8 w-32 rounded-md" />
-              <Skeleton className="h-3 w-28 rounded" />
+              <Skeleton className='h-8 w-32 rounded-md' />
+              <Skeleton className='h-3 w-28 rounded' />
             </div>
           ))}
         </div>
       </div>
-    );
+    )
   }
 
   if (!portfolioData) {
     return (
       <EmptyState
         icon={<FiBriefcase size={40} />}
-        title="No Portfolio Active"
-        sub="Upload your equity portfolio (CSV/Excel) to receive real-time health analysis and AI trade recommendations."
+        title='No Portfolio Active'
+        sub='Upload your equity portfolio (CSV/Excel) to receive real-time health analysis and AI trade recommendations.'
         action={
-          <div className="flex flex-col items-center gap-3">
-            <Button onClick={onUploadRequest} className="gap-2">
+          <div className='flex flex-col items-center gap-3'>
+            <Button onClick={onUploadRequest} className='gap-2'>
               <FiUpload />
               Upload Portfolio to Continue
             </Button>
             <a
-              href="/portfolio-template.xlsx"
-              download="portfolio-template.xlsx"
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+              href='/portfolio-template.xlsx'
+              download='portfolio-template.xlsx'
+              className='flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80'
             >
               <FiDownload />
               Download Excel template
             </a>
-            <p className="text-xs text-muted-foreground">
+            <p className='text-xs text-muted-foreground'>
               Required columns: symbol, quantity, avg_entry_price
             </p>
           </div>
         }
       />
-    );
+    )
   }
 
   return (
-    <div className="space-y-8">
+    <div className='space-y-8'>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'>
         <StatCard
           icon={<FiPieChart />}
-          iconCls="bg-blue-500/10 text-blue-500"
-          label="Market Value"
+          iconCls='bg-blue-500/10 text-blue-500'
+          label='Market Value'
         >
-          <span className="ph-mask text-2xl md:text-3xl font-bold tracking-tight">
+          <span className='ph-mask text-2xl font-bold tracking-tight md:text-3xl'>
             ${portfolioData.summary.totalMarketValue.toLocaleString()}
           </span>
-          <span className="block text-[10px] text-muted-foreground mt-1 font-medium">
+          <span className='mt-1 block text-[10px] font-medium text-muted-foreground'>
             Current Portfolio Equity
           </span>
         </StatCard>
 
         <StatCard
           icon={<FiTrendingUp />}
-          iconCls="bg-primary/10 text-primary"
-          label="Unrealized PnL"
+          iconCls='bg-primary/10 text-primary'
+          label='Unrealized PnL'
         >
           <span
-            className={`ph-mask text-2xl md:text-3xl font-bold tracking-tight ${
+            className={`ph-mask text-2xl font-bold tracking-tight md:text-3xl ${
               portfolioData.summary.totalUnrealizedPnL >= 0
-                ? "text-green-500"
-                : "text-destructive"
+                ? 'text-green-500'
+                : 'text-destructive'
             }`}
           >
-            {portfolioData.summary.totalUnrealizedPnL >= 0 ? "+" : ""}
-            ${Math.abs(portfolioData.summary.totalUnrealizedPnL).toLocaleString()}
+            {portfolioData.summary.totalUnrealizedPnL >= 0 ? '+' : ''}$
+            {Math.abs(
+              portfolioData.summary.totalUnrealizedPnL,
+            ).toLocaleString()}
           </span>
           <span
-            className={`block text-[10px] font-bold mt-1 ${
+            className={`mt-1 block text-[10px] font-bold ${
               portfolioData.summary.totalUnrealizedPnL >= 0
-                ? "text-green-500/70"
-                : "text-destructive/70"
+                ? 'text-green-500/70'
+                : 'text-destructive/70'
             }`}
           >
-            {portfolioData.summary.totalUnrealizedPnLPercent.toFixed(2)}% Overall
-            ROI
+            {portfolioData.summary.totalUnrealizedPnLPercent.toFixed(2)}%
+            Overall ROI
           </span>
         </StatCard>
 
         <StatCard
           icon={<FiTarget />}
-          iconCls="bg-purple-500/10 text-purple-500"
-          label="Positions"
+          iconCls='bg-purple-500/10 text-purple-500'
+          label='Positions'
         >
-          <span className="text-2xl md:text-3xl font-bold tracking-tight">
+          <span className='text-2xl font-bold tracking-tight md:text-3xl'>
             {portfolioData.summary.totalPositions}
           </span>
-          <span className="block text-[10px] text-muted-foreground mt-1 font-medium">
+          <span className='mt-1 block text-[10px] font-medium text-muted-foreground'>
             Active Equity Tickers
           </span>
         </StatCard>
 
         <StatCard
           icon={<FiShield />}
-          iconCls="bg-orange-500/10 text-orange-500"
-          label="Risk Profile"
+          iconCls='bg-orange-500/10 text-orange-500'
+          label='Risk Profile'
         >
           <span
-            className={`text-2xl md:text-3xl font-bold tracking-tight italic ${riskProfileColor}`}
+            className={`text-2xl font-bold italic tracking-tight md:text-3xl ${riskProfileColor}`}
           >
             {riskProfileLabel}
           </span>
-          <span className="block text-[10px] text-muted-foreground mt-1 font-medium italic">
+          <span className='mt-1 block text-[10px] font-medium italic text-muted-foreground'>
             AI Computed Rating
           </span>
         </StatCard>
@@ -1037,33 +1055,33 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
       {riskMetrics && <RiskAuditPanel riskMetrics={riskMetrics} />}
 
       {/* View Mode Switcher & Content */}
-      <div className="rounded-lg border border-border overflow-hidden bg-card">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              <FiActivity className="text-primary" />
+      <div className='overflow-hidden rounded-lg border border-border bg-card'>
+        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4'>
+          <div className='flex items-center gap-3'>
+            <h3 className='flex items-center gap-2 text-sm font-bold'>
+              <FiActivity className='text-primary' />
               Asset Allocation &amp; Decision Intelligence
             </h3>
 
-            <div className="flex items-center bg-muted/40 p-1 rounded-lg border border-border ml-2">
+            <div className='ml-2 flex items-center rounded-lg border border-border bg-muted/40 p-1'>
               <button
-                type="button"
-                onClick={() => onViewModeChange("list")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold transition-all ${
-                  viewMode === "list"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                type='button'
+                onClick={() => onViewModeChange('list')}
+                className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-bold transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <FiList size={12} /> List View
               </button>
               <button
-                type="button"
-                onClick={() => onViewModeChange("heatmap")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold transition-all ${
-                  viewMode === "heatmap"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                type='button'
+                onClick={() => onViewModeChange('heatmap')}
+                className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-bold transition-all ${
+                  viewMode === 'heatmap'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <FiGrid size={12} /> Heatmap View
@@ -1071,39 +1089,39 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {overviewLoading && <Pulse text="Loading decisions..." />}
-            <span className="text-[10px] text-muted-foreground font-medium italic">
+          <div className='flex items-center gap-4'>
+            {overviewLoading && <Pulse text='Loading decisions...' />}
+            <span className='text-[10px] font-medium italic text-muted-foreground'>
               Live • {new Date().toLocaleTimeString()}
             </span>
           </div>
         </div>
 
-        {viewMode === "heatmap" ? (
+        {viewMode === 'heatmap' ? (
           <HeatmapView
             merged={merged}
             expandedSymbol={expandedSymbol}
             onSelectSymbol={onToggleExpansion}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className='overflow-x-auto'>
+            <table className='w-full border-collapse text-left'>
               <thead>
-                <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30">
-                  <th className="px-4 py-3.5">Asset</th>
-                  <th className="px-4 py-3.5">Holdings</th>
-                  <th className="px-4 py-3.5">Performance</th>
-                  <th className="px-3 py-3.5 text-center">Beta</th>
-                  <th className="px-3 py-3.5 text-center">Sharpe</th>
-                  <th className="px-4 py-3.5">AI Decision</th>
-                  <th className="px-4 py-3.5">Confidence</th>
-                  <th className="px-4 py-3.5">Risk</th>
-                  <th className="px-4 py-3.5 text-right sticky right-0 bg-card/95 backdrop-blur shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]">
+                <tr className='border-b border-border bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
+                  <th className='px-4 py-3.5'>Asset</th>
+                  <th className='px-4 py-3.5'>Holdings</th>
+                  <th className='px-4 py-3.5'>Performance</th>
+                  <th className='px-3 py-3.5 text-center'>Beta</th>
+                  <th className='px-3 py-3.5 text-center'>Sharpe</th>
+                  <th className='px-4 py-3.5'>AI Decision</th>
+                  <th className='px-4 py-3.5'>Confidence</th>
+                  <th className='px-4 py-3.5'>Risk</th>
+                  <th className='sticky right-0 bg-card/95 px-4 py-3.5 text-right shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)] backdrop-blur'>
                     Analysis
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className='divide-y divide-border'>
                 {merged.map((pos) => (
                   <PositionTableRow
                     key={pos.symbol}
@@ -1121,204 +1139,204 @@ const MainPortfolioContent: React.FC<MainPortfolioContentProps> = ({
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
 /* ───────────── Main Portfolio Health Component ───────────── */
 
 export const PortfolioHealth: React.FC = () => {
-  const [pageLoading, setPageLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [overviewLoading, setOverviewLoading] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [removing, setRemoving] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [overviewLoading, setOverviewLoading] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const [showRemovePortfolioModal, setShowRemovePortfolioModal] =
-    useState(false);
-  const uploadInputRef = useRef<HTMLInputElement>(null);
+    useState(false)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
   const [riskMetrics, setRiskMetrics] = useState<PortfolioRiskMetrics | null>(
     null,
-  );
-  const [viewMode, setViewMode] = useState<"list" | "heatmap">("list");
+  )
+  const [viewMode, setViewMode] = useState<'list' | 'heatmap'>('list')
 
   const [overviewDecisions, setOverviewDecisions] = useState<
     OverviewDecision[]
-  >([]);
-  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  >([])
+  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null)
   const [detailedData, setDetailedData] = useState<
     Record<string, DetailedDecision>
-  >({});
+  >({})
 
   const fetchOverview = useCallback(async (portfolioId: string) => {
     try {
-      setOverviewLoading(true);
+      setOverviewLoading(true)
       const [decisionRes, riskRes] = await Promise.all([
-        api.post("/api/v1/decision-support/portfolio/decision", {
+        api.post('/api/v1/decision-support/portfolio/decision', {
           portfolioId,
-          decisionMode: "OVERVIEW",
+          decisionMode: 'OVERVIEW',
         }),
         api
-          .post("/api/v1/decision-support/portfolio/risk-metrics", {
+          .post('/api/v1/decision-support/portfolio/risk-metrics', {
             portfolioId,
           })
           .catch((err) => {
-            console.warn("Failed risk metrics fetch", err);
-            return { data: { success: false, data: null } };
+            console.warn('Failed risk metrics fetch', err)
+            return { data: { success: false, data: null } }
           }),
-      ]);
+      ])
 
       if (decisionRes.data.success) {
-        setOverviewDecisions(decisionRes.data.data.positions);
+        setOverviewDecisions(decisionRes.data.data.positions)
       }
       if (riskRes.data?.success && riskRes.data.data) {
-        setRiskMetrics(riskRes.data.data);
+        setRiskMetrics(riskRes.data.data)
       }
     } catch (err) {
-      console.error("Failed to fetch overview", err);
+      console.error('Failed to fetch overview', err)
     } finally {
-      setOverviewLoading(false);
+      setOverviewLoading(false)
     }
-  }, []);
+  }, [])
 
   const fetchDetailed = useCallback(
     async (portfolioId: string, symbol: string) => {
       if (detailedData[symbol]) {
-        setExpandedSymbol(symbol);
-        return;
+        setExpandedSymbol(symbol)
+        return
       }
       try {
-        setDetailLoading(true);
+        setDetailLoading(true)
         const res = await api.post(
-          "/api/v1/decision-support/portfolio/decision",
+          '/api/v1/decision-support/portfolio/decision',
           {
             portfolioId,
-            decisionMode: "DETAILED",
+            decisionMode: 'DETAILED',
           },
-        );
+        )
         if (res.data.success) {
-          const map: Record<string, DetailedDecision> = {};
+          const map: Record<string, DetailedDecision> = {}
           res.data.data.positions.forEach((p: DetailedDecision) => {
-            map[p.symbol] = p;
-          });
-          setDetailedData(map);
-          setExpandedSymbol(symbol);
+            map[p.symbol] = p
+          })
+          setDetailedData(map)
+          setExpandedSymbol(symbol)
         }
       } catch (err) {
-        console.error("Failed to fetch detailed", err);
-        toast.error("Failed to load detailed analysis");
+        console.error('Failed to fetch detailed', err)
+        toast.error('Failed to load detailed analysis')
       } finally {
-        setDetailLoading(false);
+        setDetailLoading(false)
       }
     },
     [detailedData],
-  );
+  )
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       try {
-        setPageLoading(true);
-        const res = await api.get("/api/v1/decision-support/portfolio/latest");
+        setPageLoading(true)
+        const res = await api.get('/api/v1/decision-support/portfolio/latest')
         if (res.data.success && res.data.data) {
-          setPortfolioData(res.data.data);
-          await fetchOverview(res.data.data.portfolioId);
+          setPortfolioData(res.data.data)
+          await fetchOverview(res.data.data.portfolioId)
         }
       } catch {
         // no portfolio yet
       } finally {
-        setPageLoading(false);
+        setPageLoading(false)
       }
-    })();
-  }, [fetchOverview]);
+    })()
+  }, [fetchOverview])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append("portfolio", file);
+    const file = e.target.files?.[0]
+    if (!file) return
+    const fd = new FormData()
+    fd.append('portfolio', file)
     try {
-      setUploading(true);
+      setUploading(true)
       const res = await api.post(
-        "/api/v1/decision-support/upload-portfolio",
+        '/api/v1/decision-support/upload-portfolio',
         fd,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 'Content-Type': 'multipart/form-data' },
         },
-      );
+      )
       if (res.data.success) {
-        toast.success("Portfolio uploaded successfully");
-        setPortfolioData(res.data.data);
-        setDetailedData({});
-        setExpandedSymbol(null);
-        await fetchOverview(res.data.data.portfolioId);
+        toast.success('Portfolio uploaded successfully')
+        setPortfolioData(res.data.data)
+        setDetailedData({})
+        setExpandedSymbol(null)
+        await fetchOverview(res.data.data.portfolioId)
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Upload failed");
+      toast.error(err.response?.data?.message || 'Upload failed')
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const handleRemovePortfolio = async () => {
     try {
-      setRemoving(true);
-      await api.delete("/api/v1/decision-support/portfolio");
-      setPortfolioData(null);
-      setRiskMetrics(null);
-      setOverviewDecisions([]);
-      setDetailedData({});
-      setExpandedSymbol(null);
-      toast.success("Portfolio removed successfully");
+      setRemoving(true)
+      await api.delete('/api/v1/decision-support/portfolio')
+      setPortfolioData(null)
+      setRiskMetrics(null)
+      setOverviewDecisions([])
+      setDetailedData({})
+      setExpandedSymbol(null)
+      toast.success('Portfolio removed successfully')
     } catch {
-      toast.error("Failed to remove portfolio");
+      toast.error('Failed to remove portfolio')
     } finally {
-      setRemoving(false);
+      setRemoving(false)
     }
-  };
+  }
 
-  const handleDownloadReport = async (format: "csv" | "pdf") => {
-    if (!portfolioData) return;
+  const handleDownloadReport = async (format: 'csv' | 'pdf') => {
+    if (!portfolioData) return
     try {
-      setReportLoading(true);
+      setReportLoading(true)
       const res = await api.post(
-        "/api/v1/decision-support/portfolio/decision",
+        '/api/v1/decision-support/portfolio/decision',
         {
           portfolioId: portfolioData.portfolioId,
-          decisionMode: "DETAILED",
+          decisionMode: 'DETAILED',
         },
-      );
+      )
       if (!res.data.success) {
-        toast.error("Failed to generate report");
-        return;
+        toast.error('Failed to generate report')
+        return
       }
 
-      const detailedPositions: DetailedDecision[] = res.data.data.positions;
-      if (format === "csv") {
+      const detailedPositions: DetailedDecision[] = res.data.data.positions
+      if (format === 'csv') {
         downloadPortfolioReportCsv(
           portfolioData,
           detailedPositions,
           riskMetrics,
-        );
-        toast.success("Report downloaded as CSV");
+        )
+        toast.success('Report downloaded as CSV')
       } else {
         downloadPortfolioReportPdf(
           portfolioData,
           detailedPositions,
           riskMetrics,
-        );
-        toast.success("Report downloaded as PDF");
+        )
+        toast.success('Report downloaded as PDF')
       }
     } catch {
-      toast.error("Failed to generate report");
+      toast.error('Failed to generate report')
     } finally {
-      setReportLoading(false);
+      setReportLoading(false)
     }
-  };
+  }
 
   const merged: MergedRow[] = (portfolioData?.positions ?? []).map((p) => {
-    const d = overviewDecisions.find((dd) => dd.symbol === p.symbol);
-    const rm = riskMetrics?.perSymbol?.find((ps) => ps.symbol === p.symbol);
+    const d = overviewDecisions.find((dd) => dd.symbol === p.symbol)
+    const rm = riskMetrics?.perSymbol?.find((ps) => ps.symbol === p.symbol)
     return {
       ...p,
       ...d,
@@ -1326,56 +1344,59 @@ export const PortfolioHealth: React.FC = () => {
       sharpe: rm?.sharpe ?? d?.sharpe ?? 0,
       volatilityAnnualized:
         rm?.volatilityAnnualized ?? d?.volatilityAnnualized ?? 0,
-    };
-  });
+    }
+  })
 
-  const riskProfileLabel = computeRiskProfileLabel(overviewDecisions);
-  const riskProfileColor = getRiskProfileColor(riskProfileLabel);
+  const riskProfileLabel = computeRiskProfileLabel(overviewDecisions)
+  const riskProfileColor = getRiskProfileColor(riskProfileLabel)
 
   const toggleRowExpansion = (symbol: string) => {
     if (expandedSymbol === symbol) {
-      setExpandedSymbol(null);
-      return;
+      setExpandedSymbol(null)
+      return
     }
     if (portfolioData) {
-      fetchDetailed(portfolioData.portfolioId, symbol);
+      fetchDetailed(portfolioData.portfolioId, symbol)
     }
-  };
+  }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground font-inter overflow-hidden">
+    <div className='font-inter flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row'>
       <Sidebar />
-      <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
-        <div className="max-w-[1440px] mx-auto space-y-8">
+      <main
+        id='main-content'
+        className='flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8'
+      >
+        <div className='mx-auto max-w-[1440px] space-y-8'>
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className='flex flex-wrap items-center justify-between gap-4'>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>
                 Portfolio Health
               </h1>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">
+              <p className='mt-1 text-sm font-medium text-muted-foreground'>
                 AI-Driven Portfolio Optimization &amp; Quantitative Risk
                 Intelligence
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className='flex items-center gap-3'>
               {portfolioData && (
                 <>
                   <ReportDownloadButton
                     onDownload={handleDownloadReport}
                     loading={reportLoading}
                     disabled={!portfolioData}
-                    title="Download the portfolio health report"
+                    title='Download the portfolio health report'
                   />
                   <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-2 text-destructive hover:text-destructive"
+                    type='button'
+                    variant='outline'
+                    className='gap-2 text-destructive hover:text-destructive'
                     onClick={() => setShowRemovePortfolioModal(true)}
                     disabled={removing}
                   >
                     <FiTrash2 />
-                    {removing ? "Removing..." : "Remove Portfolio"}
+                    {removing ? 'Removing...' : 'Remove Portfolio'}
                   </Button>
                 </>
               )}
@@ -1383,12 +1404,12 @@ export const PortfolioHealth: React.FC = () => {
           </div>
 
           <input
-            type="file"
-            className="hidden"
+            type='file'
+            className='hidden'
             ref={uploadInputRef}
             onChange={handleUpload}
             disabled={uploading}
-            accept=".csv,.xlsx,.xls"
+            accept='.csv,.xlsx,.xls'
           />
 
           <MainPortfolioContent
@@ -1414,15 +1435,15 @@ export const PortfolioHealth: React.FC = () => {
         isOpen={showRemovePortfolioModal}
         onConfirm={handleRemovePortfolio}
         onCancel={() => setShowRemovePortfolioModal(false)}
-        title="Remove Portfolio?"
-        message="Are you sure you want to remove your uploaded portfolio? This cannot be undone and will clear its saved analysis."
-        confirmText="Remove Now"
-        cancelText="Cancel"
-        variant="danger"
+        title='Remove Portfolio?'
+        message='Are you sure you want to remove your uploaded portfolio? This cannot be undone and will clear its saved analysis.'
+        confirmText='Remove Now'
+        cancelText='Cancel'
+        variant='danger'
       />
       {uploading && <PortfolioUploadOverlay />}
     </div>
-  );
-};
+  )
+}
 
-export default PortfolioHealth;
+export default PortfolioHealth

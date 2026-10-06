@@ -1,13 +1,15 @@
-import { SmartSearch } from "@/shared/components/SmartSearch";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { useSocket } from "@/shared/hooks/useSocket";
-import React, { useMemo, useState } from "react";
-import { FiAlertCircle, FiPlus } from "react-icons/fi";
-import type { Trade } from "../types";
+import { SmartSearch } from '@/shared/components/SmartSearch'
+import { Skeleton } from '@/shared/components/ui/skeleton'
+import { useSocket } from '@/shared/hooks/useSocket'
+import React, { useMemo, useState } from 'react'
+import { FiAlertCircle, FiPlus } from 'react-icons/fi'
+import type { Trade } from '../types'
 
-const DEFAULT_SYMBOLS = ["BINANCE:BTCUSDT", "AAPL", "TSLA"];
+const DEFAULT_SYMBOLS = ['BINANCE:BTCUSDT', 'AAPL', 'TSLA']
 
-export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader = false }) => {
+export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({
+  hideHeader = false,
+}) => {
   const {
     connected,
     error,
@@ -17,31 +19,31 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
     tradeStats,
     lastUpdate,
     status,
-  } = useSocket(true);
+  } = useSocket(true)
 
-  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
-  const [input, setInput] = useState("");
+  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
+  const [input, setInput] = useState('')
 
   // Auto-subscribe to initial symbols on mount/connection
   React.useEffect(() => {
     if (connected) {
-      symbols.forEach(s => subscribe(s));
+      symbols.forEach((s) => subscribe(s))
     }
     return () => {
-      symbols.forEach(s => unsubscribe(s));
-    };
-  }, [connected, symbols, subscribe, unsubscribe]);
+      symbols.forEach((s) => unsubscribe(s))
+    }
+  }, [connected, symbols, subscribe, unsubscribe])
 
-  const tradeMap = getTradeMap();
+  const tradeMap = getTradeMap()
 
   const rows: Trade[] = useMemo(() => {
     return symbols.map((s) => {
-      const t = tradeMap.get(s.toUpperCase());
+      const t = tradeMap.get(s.toUpperCase())
       if (t) {
         return {
           ...t,
           updateCount: tradeStats.get(s.toUpperCase()) || 0,
-        };
+        }
       }
       return {
         s,
@@ -49,43 +51,43 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
         v: 0,
         snapshot: false,
         updateCount: 0,
-      };
-    });
-  }, [symbols, tradeMap, tradeStats]);
+      }
+    })
+  }, [symbols, tradeMap, tradeStats])
 
   const handleAdd = () => {
-    const sym = input.trim().toUpperCase();
-    if (!sym) return;
+    const sym = input.trim().toUpperCase()
+    if (!sym) return
 
     if (!symbols.includes(sym)) {
-      setSymbols((prev) => [...prev, sym]);
+      setSymbols((prev) => [...prev, sym])
     }
-    
+
     // Always call subscribe to allow retrying/refreshing a connection
-    subscribe(sym);
-    setInput("");
-  };
+    subscribe(sym)
+    setInput('')
+  }
 
   const handleRemove = (sym: string) => {
-    unsubscribe(sym);
-    setSymbols((prev) => prev.filter((x) => x !== sym));
-  };
+    unsubscribe(sym)
+    setSymbols((prev) => prev.filter((x) => x !== sym))
+  }
 
   return (
-    <div className="rounded-lg overflow-hidden">
+    <div className='overflow-hidden rounded-lg'>
       {/* Header */}
       {!hideHeader && (
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className='flex items-center justify-between border-b border-border p-5'>
           <div>
-            <h3 className="text-lg font-semibold">Live Stock Data</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h3 className='text-lg font-semibold'>Live Stock Data</h3>
+            <p className='mt-1 text-sm text-muted-foreground'>
               Real-time market streaming
             </p>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs text-primary font-medium">
-              {connected ? "Connected" : "Connecting..."}
+          <div className='flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5'>
+            <div className='h-2 w-2 animate-pulse rounded-full bg-primary' />
+            <span className='text-xs font-medium text-primary'>
+              {connected ? 'Connected' : 'Connecting...'}
             </span>
           </div>
         </div>
@@ -93,41 +95,43 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
 
       {/* Controls */}
       {!hideHeader && (
-        <div className="p-5 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <SmartSearch 
+        <div className='border-b border-border p-5'>
+          <div className='flex items-center gap-3'>
+            <div className='flex-1'>
+              <SmartSearch
                 onSubmit={(sym) => {
-                  setInput(sym);
-                  const newSymbols = sym.includes(',') ? sym.split(',').map(s => s.trim().toUpperCase()) : [sym.toUpperCase()];
-                  newSymbols.forEach(s => {
+                  setInput(sym)
+                  const newSymbols = sym.includes(',')
+                    ? sym.split(',').map((s) => s.trim().toUpperCase())
+                    : [sym.toUpperCase()]
+                  newSymbols.forEach((s) => {
                     if (s && !symbols.includes(s)) {
-                      setSymbols(prev => [...prev, s]);
-                      subscribe(s);
+                      setSymbols((prev) => [...prev, s])
+                      subscribe(s)
                     }
-                  });
-                  setInput("");
+                  })
+                  setInput('')
                 }}
-                placeholder="Add symbol (e.g., AAPL, TSLA)"
+                placeholder='Add symbol (e.g., AAPL, TSLA)'
                 initialValue={input}
               />
             </div>
             <button
               onClick={handleAdd}
-              className="px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors"
+              className='flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90'
             >
               <FiPlus /> Subscribe
             </button>
           </div>
 
           {error && (
-            <div className="mt-3 flex gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-              <FiAlertCircle className="text-destructive mt-0.5" />
+            <div className='mt-3 flex gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4'>
+              <FiAlertCircle className='mt-0.5 text-destructive' />
               <div>
-                <div className="text-sm font-medium text-destructive">
+                <div className='text-sm font-medium text-destructive'>
                   Connection Error
                 </div>
-                <div className="text-sm text-destructive/80 mt-1">{error}</div>
+                <div className='mt-1 text-sm text-destructive/80'>{error}</div>
               </div>
             </div>
           )}
@@ -135,20 +139,25 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className='overflow-x-auto'>
+        <table className='w-full'>
           <thead>
-            <tr className="border-b border-border">
-              {["Symbol", "Price", "Volume", "Last Time", "Status", "Actions"].map(
-                (h) => (
-                  <th
-                    key={h}
-                    className="text-left py-3 px-6 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                )
-              )}
+            <tr className='border-b border-border'>
+              {[
+                'Symbol',
+                'Price',
+                'Volume',
+                'Last Time',
+                'Status',
+                'Actions',
+              ].map((h) => (
+                <th
+                  key={h}
+                  className='px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground'
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -157,71 +166,73 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
                 key={row.s}
                 className={`border-b border-border transition-colors ${index % 2 === 0 ? 'bg-muted/20 hover:bg-muted/40' : 'hover:bg-muted/30'}`}
               >
-                <td className="py-3.5 px-6 font-bold text-foreground tracking-wide">
+                <td className='px-6 py-3.5 font-bold tracking-wide text-foreground'>
                   {row.s}
                 </td>
 
-                <td className="py-3.5 px-6 font-bold">
-                  {Number.isFinite(row.p) ? `$${row.p.toFixed(2)}` : "—"}
+                <td className='px-6 py-3.5 font-bold'>
+                  {Number.isFinite(row.p) ? `$${row.p.toFixed(2)}` : '—'}
                 </td>
 
-                <td className="py-3.5 px-6 text-muted-foreground">
-                  {row.v ? row.v.toLocaleString() : "—"}
+                <td className='px-6 py-3.5 text-muted-foreground'>
+                  {row.v ? row.v.toLocaleString() : '—'}
                 </td>
 
                 {!hideHeader && (
-                  <td className="py-3.5 px-6 text-muted-foreground text-xs">
-                    {row.t
-                      ? new Date(row.t).toLocaleTimeString()
-                      : "—"}
+                  <td className='px-6 py-3.5 text-xs text-muted-foreground'>
+                    {row.t ? new Date(row.t).toLocaleTimeString() : '—'}
                   </td>
                 )}
 
-                <td className="py-3.5 px-6">
+                <td className='px-6 py-3.5'>
                   {status().subscribed.includes(row.s.toUpperCase()) ? (
-                    <span className="text-green-500 font-medium flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className='flex items-center gap-1.5 font-medium text-green-500'>
+                      <div className='h-1.5 w-1.5 animate-pulse rounded-full bg-green-500' />
                       Streaming
                     </span>
                   ) : (
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                    <span className='flex items-center gap-1.5 text-muted-foreground'>
+                      <div className='h-1.5 w-1.5 rounded-full bg-muted-foreground' />
                       Paused
                     </span>
                   )}
                 </td>
 
                 {!hideHeader && (
-                  <td className="py-3.5 px-6">
-                    <div className="flex items-center gap-2">
-                       <button
-                         onClick={() => subscribe(row.s)}
-                         disabled={status().subscribed.includes(row.s.toUpperCase())}
-                         className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                           status().subscribed.includes(row.s.toUpperCase())
-                             ? "bg-muted text-muted-foreground cursor-not-allowed"
-                             : "bg-primary/10 text-primary hover:bg-primary/20"
-                         }`}
-                       >
-                         Subscribe
-                       </button>
-                       <button
-                         onClick={() => unsubscribe(row.s)}
-                         disabled={!status().subscribed.includes(row.s.toUpperCase())}
-                         className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                           !status().subscribed.includes(row.s.toUpperCase())
-                             ? "bg-muted text-muted-foreground cursor-not-allowed"
-                             : "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                         }`}
-                       >
-                         Unsubscribe
-                       </button>
-                       <button
-                         onClick={() => handleRemove(row.s)}
-                         className="px-3 py-1.5 text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md transition-all"
-                       >
-                         Remove
-                       </button>
+                  <td className='px-6 py-3.5'>
+                    <div className='flex items-center gap-2'>
+                      <button
+                        onClick={() => subscribe(row.s)}
+                        disabled={status().subscribed.includes(
+                          row.s.toUpperCase(),
+                        )}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                          status().subscribed.includes(row.s.toUpperCase())
+                            ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                      >
+                        Subscribe
+                      </button>
+                      <button
+                        onClick={() => unsubscribe(row.s)}
+                        disabled={
+                          !status().subscribed.includes(row.s.toUpperCase())
+                        }
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                          !status().subscribed.includes(row.s.toUpperCase())
+                            ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                            : 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                        }`}
+                      >
+                        Unsubscribe
+                      </button>
+                      <button
+                        onClick={() => handleRemove(row.s)}
+                        className='rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive transition-all hover:bg-destructive/20'
+                      >
+                        Remove
+                      </button>
                     </div>
                   </td>
                 )}
@@ -233,19 +244,19 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({ hideHeader 
 
       {/* Footer */}
       {!hideHeader && (
-        <div className="p-5 border-t border-border">
-          <div className="text-sm text-muted-foreground">
-            Showing {rows.length} symbols • Last updated:{" "}
-            {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : "—"}
+        <div className='border-t border-border p-5'>
+          <div className='text-sm text-muted-foreground'>
+            Showing {rows.length} symbols • Last updated:{' '}
+            {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : '—'}
           </div>
           {!connected && (
-            <div className="flex items-center gap-2 text-muted-foreground text-xs">
-              <Skeleton className="w-5 h-5 rounded-full" />
+            <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+              <Skeleton className='h-5 w-5 rounded-full' />
               Connecting...
             </div>
           )}
         </div>
       )}
     </div>
-  );
-};
+  )
+}

@@ -1,6 +1,6 @@
-import api from "@/shared/api/axios";
-import { readCheckoutRedirect, unwrapEnvelope } from "@/shared/api/envelope";
-import type { TopupPackId } from "./constants";
+import api from '@/shared/api/axios'
+import { readCheckoutRedirect, unwrapEnvelope } from '@/shared/api/envelope'
+import type { TopupPackId } from './constants'
 import type {
   CreateCheckoutResult,
   CreditLedgerPage,
@@ -9,7 +9,7 @@ import type {
   SubscriptionSummary,
   UsageSummary,
   VerifyTrackerResult,
-} from "./types";
+} from './types'
 
 export const subscriptionService = {
   /**
@@ -19,74 +19,86 @@ export const subscriptionService = {
    */
   createCheckout: async (
     paymentMethod: SubscriptionPaymentMethod,
-    planTier: "PRO" | "TEAM" = "PRO",
+    planTier: 'PRO' | 'TEAM' = 'PRO',
     seatCount?: number,
     teamName?: string,
   ): Promise<CreateCheckoutResult> => {
-    const res = await api.post("/api/v1/payments/create-checkout", {
+    const res = await api.post('/api/v1/payments/create-checkout', {
       plan: planTier,
       paymentMethod,
       ...(seatCount !== undefined ? { seatCount } : {}),
       ...(teamName !== undefined ? { teamName } : {}),
-    });
-    return readCheckoutRedirect(res.data);
+    })
+    return readCheckoutRedirect(res.data)
   },
 
   /** Prepaid credit top-up: credits the team pool for owners/admins, else the caller's own balance. */
-  createTopupCheckout: async (packId: TopupPackId): Promise<CreateCheckoutResult> => {
-    const res = await api.post("/api/v1/payments/create-checkout", {
-      plan: "TOPUP",
+  createTopupCheckout: async (
+    packId: TopupPackId,
+  ): Promise<CreateCheckoutResult> => {
+    const res = await api.post('/api/v1/payments/create-checkout', {
+      plan: 'TOPUP',
       packId,
-    });
-    return readCheckoutRedirect(res.data);
+    })
+    return readCheckoutRedirect(res.data)
   },
 
   verifyTracker: async (trackerId: string): Promise<VerifyTrackerResult> => {
-    const res = await api.post("/api/v1/payments/verify-tracker", { trackerId });
-    return res.data;
+    const res = await api.post('/api/v1/payments/verify-tracker', { trackerId })
+    return res.data
   },
 
-  getSubscription: async (scope: SubscriptionScope = "USER"): Promise<SubscriptionSummary> => {
-    const res = await api.get("/api/v1/payments/subscription", { params: { scope } });
-    return res.data;
-  },
-
-  renewSubscription: async (scope: SubscriptionScope = "USER"): Promise<CreateCheckoutResult> => {
-    const res = await api.post("/api/v1/payments/subscription/renew", undefined, {
+  getSubscription: async (
+    scope: SubscriptionScope = 'USER',
+  ): Promise<SubscriptionSummary> => {
+    const res = await api.get('/api/v1/payments/subscription', {
       params: { scope },
-    });
-    return readCheckoutRedirect(res.data);
+    })
+    return res.data
+  },
+
+  renewSubscription: async (
+    scope: SubscriptionScope = 'USER',
+  ): Promise<CreateCheckoutResult> => {
+    const res = await api.post(
+      '/api/v1/payments/subscription/renew',
+      undefined,
+      {
+        params: { scope },
+      },
+    )
+    return readCheckoutRedirect(res.data)
   },
 
   toggleAutoRenew: async (
     enabled: boolean,
-    scope: SubscriptionScope = "USER",
+    scope: SubscriptionScope = 'USER',
   ): Promise<SubscriptionSummary> => {
-    const res = await api.post("/api/v1/payments/subscription/auto-renew", {
+    const res = await api.post('/api/v1/payments/subscription/auto-renew', {
       enabled,
       scope,
-    });
-    return res.data;
+    })
+    return res.data
   },
-};
+}
 
 export const creditService = {
   /** Newest-first credit history; `scope: "TEAM"` is the whole workspace pool (owner/admin only). */
   getLedger: async (
-    scope: SubscriptionScope = "USER",
+    scope: SubscriptionScope = 'USER',
     cursor?: string,
   ): Promise<CreditLedgerPage> => {
-    const res = await api.get("/api/v1/payments/credits/ledger", {
+    const res = await api.get('/api/v1/payments/credits/ledger', {
       params: { scope, ...(cursor ? { cursor } : {}) },
-    });
-    return unwrapEnvelope(res);
+    })
+    return unwrapEnvelope(res)
   },
-};
+}
 
 export const usageService = {
   /** The caller's allowance this cycle: signals used vs. included, credit pool, and any spend cap. */
   getMyUsage: async (): Promise<UsageSummary> => {
-    const res = await api.get("/api/v1/payments/me/usage");
-    return unwrapEnvelope(res);
+    const res = await api.get('/api/v1/payments/me/usage')
+    return unwrapEnvelope(res)
   },
-};
+}

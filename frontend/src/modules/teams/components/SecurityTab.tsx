@@ -1,20 +1,20 @@
-import type { DomainAuthPolicy } from "@/modules/auth/types";
-import { parseDomainAuthPolicy } from "@/modules/auth/utils/loginPolicy";
-import { Modal } from "@/shared/components/Modal";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import type { DomainAuthPolicy } from '@/modules/auth/types'
+import { parseDomainAuthPolicy } from '@/modules/auth/utils/loginPolicy'
+import { Modal } from '@/shared/components/Modal'
+import { Badge } from '@/shared/components/ui/badge'
+import { Button } from '@/shared/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
-import { useState } from "react";
-import { toast } from "react-toastify";
-import { teamService } from "../services";
-import type { Team, TeamDomain } from "../types";
+} from '@/shared/components/ui/card'
+import { Input } from '@/shared/components/ui/input'
+import { useState } from 'react'
+import { toast } from 'react-toastify'
+import { teamService } from '../services'
+import type { Team, TeamDomain } from '../types'
 import {
   apiErrorMessage,
   AUTH_POLICIES,
@@ -22,80 +22,86 @@ import {
   authPolicyChangedMessage,
   isDomainConfirmation,
   isStricterAuthPolicy,
-} from "../utils";
+} from '../utils'
 
 interface SecurityTabProps {
-  team: Team;
-  reload: () => void;
+  team: Team
+  reload: () => void
 }
 
-type PendingChange = { domain: TeamDomain; policy: DomainAuthPolicy };
+type PendingChange = { domain: TeamDomain; policy: DomainAuthPolicy }
 
 /** Owner-only: which sign-in methods each verified company domain allows. */
 export function SecurityTab({ team, reload }: Readonly<SecurityTabProps>) {
-  const [pending, setPending] = useState<PendingChange | null>(null);
-  const [typed, setTyped] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingChange | null>(null)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const close = () => {
-    setPending(null);
-    setTyped("");
-  };
+    setPending(null)
+    setTyped('')
+  }
 
   const handleSelect = (domain: TeamDomain, value: string) => {
-    const policy = parseDomainAuthPolicy(value);
-    if (busy || !policy || policy === domain.authPolicy) return;
-    setPending({ domain, policy });
-  };
+    const policy = parseDomainAuthPolicy(value)
+    if (busy || !policy || policy === domain.authPolicy) return
+    setPending({ domain, policy })
+  }
 
   const confirm = async () => {
-    if (!pending || busy) return;
-    const { domain, policy } = pending;
-    setBusy(true);
+    if (!pending || busy) return
+    const { domain, policy } = pending
+    setBusy(true)
     try {
       const result = await teamService.setDomainAuthPolicy(
         domain.domain,
         policy,
         isStricterAuthPolicy(policy) ? domain.domain : undefined,
-      );
-      toast.success(authPolicyChangedMessage(domain.domain, policy, result.revokedSessions));
-      close();
-      reload();
+      )
+      toast.success(
+        authPolicyChangedMessage(domain.domain, policy, result.revokedSessions),
+      )
+      close()
+      reload()
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Failed to update sign-in policy"));
+      toast.error(apiErrorMessage(err, 'Failed to update sign-in policy'))
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
-  const stricter = pending !== null && isStricterAuthPolicy(pending.policy);
+  const stricter = pending !== null && isStricterAuthPolicy(pending.policy)
   const canConfirm =
-    pending !== null && (!stricter || isDomainConfirmation(typed, pending.domain.domain));
+    pending !== null &&
+    (!stricter || isDomainConfirmation(typed, pending.domain.domain))
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Sign-in security</CardTitle>
+        <CardTitle className='text-base'>Sign-in security</CardTitle>
         <CardDescription>
-          Require everyone with an email on a verified company domain to sign in with Google.
-          Magic-link login is refused for those users.
+          Require everyone with an email on a verified company domain to sign in
+          with Google. Magic-link login is refused for those users.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className='space-y-4'>
         {team.domains.length === 0 && (
-          <p className="text-sm text-muted-foreground">
+          <p className='text-sm text-muted-foreground'>
             Add and verify a company domain on the Domains tab first.
           </p>
         )}
-        <ul className="space-y-3">
+        <ul className='space-y-3'>
           {team.domains.map((d) => (
-            <li key={d.id} className="rounded-lg border border-border p-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium">{d.domain}</span>
-                <Badge variant={d.isVerified ? "default" : "secondary"}>
-                  {d.isVerified ? "Verified" : "Pending"}
+            <li key={d.id} className='rounded-lg border border-border p-3'>
+              <div className='flex flex-wrap items-center gap-2 text-sm'>
+                <span className='font-medium'>{d.domain}</span>
+                <Badge variant={d.isVerified ? 'default' : 'secondary'}>
+                  {d.isVerified ? 'Verified' : 'Pending'}
                 </Badge>
-                <label htmlFor={`auth-policy-${d.id}`} className="ml-auto font-medium">
+                <label
+                  htmlFor={`auth-policy-${d.id}`}
+                  className='ml-auto font-medium'
+                >
                   Sign-in method
                 </label>
                 <select
@@ -104,7 +110,7 @@ export function SecurityTab({ team, reload }: Readonly<SecurityTabProps>) {
                   value={d.authPolicy}
                   disabled={busy || !d.isVerified}
                   onChange={(e) => handleSelect(d, e.target.value)}
-                  className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+                  className='h-8 rounded-md border border-input bg-transparent px-2 text-sm'
                 >
                   {AUTH_POLICIES.map((policy) => (
                     <option key={policy} value={policy}>
@@ -114,7 +120,7 @@ export function SecurityTab({ team, reload }: Readonly<SecurityTabProps>) {
                 </select>
               </div>
               {!d.isVerified && (
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className='mt-2 text-xs text-muted-foreground'>
                   Verify this domain to restrict how its users sign in.
                 </p>
               )}
@@ -134,40 +140,43 @@ export function SecurityTab({ team, reload }: Readonly<SecurityTabProps>) {
           }
           description={
             stricter
-              ? "Everyone on this domain will be signed out and must sign in with Google from now on. You must be signed in with Google yourself, or you could lock yourself out."
-              : "Members on this domain will be able to use magic-link login again."
+              ? 'Everyone on this domain will be signed out and must sign in with Google from now on. You must be signed in with Google yourself, or you could lock yourself out.'
+              : 'Members on this domain will be able to use magic-link login again.'
           }
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             {stricter && (
               <div>
-                <label htmlFor="confirm-domain" className="mb-1 block text-sm font-medium">
+                <label
+                  htmlFor='confirm-domain'
+                  className='mb-1 block text-sm font-medium'
+                >
                   Type {pending.domain.domain} to confirm
                 </label>
                 <Input
-                  id="confirm-domain"
+                  id='confirm-domain'
                   value={typed}
-                  autoComplete="off"
+                  autoComplete='off'
                   onChange={(e) => setTyped(e.target.value)}
                 />
               </div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={close}>
+            <div className='flex justify-end gap-2'>
+              <Button type='button' variant='ghost' onClick={close}>
                 Cancel
               </Button>
               <Button
-                type="button"
-                variant={stricter ? "destructive" : "default"}
+                type='button'
+                variant={stricter ? 'destructive' : 'default'}
                 disabled={!canConfirm || busy}
                 onClick={() => void confirm()}
               >
-                {busy ? "Saving…" : "Confirm"}
+                {busy ? 'Saving…' : 'Confirm'}
               </Button>
             </div>
           </div>
         </Modal>
       )}
     </Card>
-  );
+  )
 }

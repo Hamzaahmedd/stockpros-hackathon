@@ -1,5 +1,5 @@
-import { Button } from "@/shared/components/ui/button";
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Button } from '@/shared/components/ui/button'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -7,52 +7,56 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/shared/components/ui/table";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import { teamService } from "../services";
-import type { AuditLogEntry } from "../types";
-import { apiErrorMessage, auditActionLabel } from "../utils";
+} from '@/shared/components/ui/table'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
+import { teamService } from '../services'
+import type { AuditLogEntry } from '../types'
+import { apiErrorMessage, auditActionLabel } from '../utils'
 
 const formatDateTime = (value: string): string =>
-  new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 
 /** Who did what in the workspace — the admin audit trail, newest first. */
 export function ActivityTab() {
-  const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [entries, setEntries] = useState<AuditLogEntry[] | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const load = useCallback(async (cursor?: string) => {
     try {
-      const page = await teamService.listAuditLog(cursor);
-      const list = Array.isArray(page.entries) ? page.entries : [];
-      setEntries((current) => (cursor && current ? [...current, ...list] : list));
-      setNextCursor(page.nextCursor ?? null);
+      const page = await teamService.listAuditLog(cursor)
+      const list = Array.isArray(page.entries) ? page.entries : []
+      setEntries((current) =>
+        cursor && current ? [...current, ...list] : list,
+      )
+      setNextCursor(page.nextCursor ?? null)
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Failed to load activity"));
-      setEntries((current) => current ?? []);
+      toast.error(apiErrorMessage(err, 'Failed to load activity'))
+      setEntries((current) => current ?? [])
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load()
+  }, [load])
 
-  if (entries === null) return <Skeleton className="h-48 w-full" />;
+  if (entries === null) return <Skeleton className='h-48 w-full' />
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">No activity recorded yet.</p>;
+    return (
+      <p className='text-sm text-muted-foreground'>No activity recorded yet.</p>
+    )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-border">
+    <div className='space-y-3'>
+      <div className='overflow-x-auto rounded-lg border border-border'>
         <Table>
           <TableHeader>
             <TableRow>
@@ -65,11 +69,17 @@ export function ActivityTab() {
           <TableBody>
             {entries.map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell className="whitespace-nowrap">{formatDateTime(entry.createdAt)}</TableCell>
-                <TableCell>{entry.actorName ?? (entry.actorUserId ? "Former member" : "System")}</TableCell>
+                <TableCell className='whitespace-nowrap'>
+                  {formatDateTime(entry.createdAt)}
+                </TableCell>
+                <TableCell>
+                  {entry.actorName ??
+                    (entry.actorUserId ? 'Former member' : 'System')}
+                </TableCell>
                 <TableCell>{auditActionLabel(entry.action)}</TableCell>
                 <TableCell>
-                  {entry.targetName ?? (entry.targetUserId ? "Former member" : "—")}
+                  {entry.targetName ??
+                    (entry.targetUserId ? 'Former member' : '—')}
                 </TableCell>
               </TableRow>
             ))}
@@ -78,18 +88,18 @@ export function ActivityTab() {
       </div>
       {nextCursor && (
         <Button
-          type="button"
-          variant="outline"
+          type='button'
+          variant='outline'
           disabled={loadingMore}
           onClick={async () => {
-            setLoadingMore(true);
-            await load(nextCursor);
-            setLoadingMore(false);
+            setLoadingMore(true)
+            await load(nextCursor)
+            setLoadingMore(false)
           }}
         >
-          {loadingMore ? "Loading…" : "Load more"}
+          {loadingMore ? 'Loading…' : 'Load more'}
         </Button>
       )}
     </div>
-  );
+  )
 }

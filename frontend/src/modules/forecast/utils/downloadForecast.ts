@@ -1,8 +1,8 @@
 // utils/downloadForecast.ts
 // Exports the forecast as a polished, sectioned CSV report using ONLY the
 // data returned by the backend GET /api/v1/forecast route.
-import { toCsvRow, triggerBrowserDownload } from '@/shared/utils/download';
-import { ForecastData } from '../types';
+import { toCsvRow, triggerBrowserDownload } from '@/shared/utils/download'
+import { ForecastData } from '../types'
 import {
   DISCLAIMER,
   TABLE_COLUMNS,
@@ -10,14 +10,16 @@ import {
   getReportFileName,
   getSummaryFields,
   getTableRows,
-} from './forecastExport';
+} from './forecastExport'
 
 export const downloadForecastCsv = (data: ForecastData): void => {
   const lines: string[] = [
     toCsvRow(['StockPros AI — Price Forecast Report']),
     '',
     toCsvRow(['Report Summary']),
-    ...getSummaryFields(data).map((field) => toCsvRow([field.label, field.value])),
+    ...getSummaryFields(data).map((field) =>
+      toCsvRow([field.label, field.value]),
+    ),
     toCsvRow(['Generated At', formatGeneratedAt()]),
     '',
     toCsvRow(['Forecast Data']),
@@ -32,8 +34,10 @@ export const downloadForecastCsv = (data: ForecastData): void => {
     ),
     '',
     toCsvRow(['Note', DISCLAIMER]),
-  ];
+  ]
 
-  const blob = new Blob(['\uFEFF', lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-  triggerBrowserDownload(blob, getReportFileName(data, 'csv'));
-};
+  const blob = new Blob(['\uFEFF', lines.join('\r\n')], {
+    type: 'text/csv;charset=utf-8;',
+  })
+  triggerBrowserDownload(blob, getReportFileName(data, 'csv'))
+}

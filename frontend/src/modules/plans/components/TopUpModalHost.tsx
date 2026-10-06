@@ -2,16 +2,16 @@ import {
   subscribeToOverageRequired,
   type OverageReason,
   type OverageRequiredDetails,
-} from "@/shared/utils/overage-events";
-import { useEffect, useState } from "react";
-import { TopUpModal } from "./TopUpModal";
+} from '@/shared/utils/overage-events'
+import { useEffect, useState } from 'react'
+import { TopUpModal } from './TopUpModal'
 
 const REASON_COPY: Record<OverageReason, string> = {
   INSUFFICIENT_CREDITS:
     "You've used your monthly AI quota and your credit balance can't cover another signal.",
   SPEND_LIMIT_REACHED:
     "You've reached your monthly credit spending limit set by your workspace admin.",
-};
+}
 
 /**
  * Mounted once at the app root: opens the top-up dialog whenever any API call
@@ -19,9 +19,9 @@ const REASON_COPY: Record<OverageReason, string> = {
  * interceptor, which cannot render UI itself).
  */
 export function TopUpModalHost() {
-  const [details, setDetails] = useState<OverageRequiredDetails | null>(null);
+  const [details, setDetails] = useState<OverageRequiredDetails | null>(null)
 
-  useEffect(() => subscribeToOverageRequired(setDetails), []);
+  useEffect(() => subscribeToOverageRequired(setDetails), [])
 
   return (
     <TopUpModal
@@ -29,5 +29,5 @@ export function TopUpModalHost() {
       onClose={() => setDetails(null)}
       reason={details ? REASON_COPY[details.reason] : undefined}
     />
-  );
+  )
 }

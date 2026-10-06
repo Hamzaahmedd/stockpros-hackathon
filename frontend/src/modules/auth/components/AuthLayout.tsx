@@ -1,59 +1,60 @@
 // src/components/AuthLayout.tsx
-import React from "react";
+import React from 'react'
 
 interface AuthLayoutProps {
-  children: React.ReactNode;
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  loading?: boolean;
+  children: React.ReactNode
+  title: React.ReactNode
+  subtitle?: React.ReactNode
+  loading?: boolean
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
   title,
   subtitle,
-  loading
+  loading,
 }) => {
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 animate-pulse" />
-          <div className="h-4 w-40 bg-primary/10 rounded-md animate-pulse" />
+      <div className='flex min-h-screen items-center justify-center bg-[#0a0a0a]'>
+        <div className='flex flex-col items-center gap-4'>
+          <div className='h-12 w-12 animate-pulse rounded-full bg-primary/10' />
+          <div className='h-4 w-40 animate-pulse rounded-md bg-primary/10' />
         </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-black text-white selection:bg-cyan-500/30">
+    <div className='flex min-h-screen flex-col bg-black text-white selection:bg-cyan-500/30 md:flex-row'>
       {/* Left Panel: Hero & Branding */}
-      <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-gray-900 flex-col justify-center">
+      <div className='relative hidden flex-col justify-center overflow-hidden bg-gray-900 md:flex md:w-1/2'>
         <img
-          src="/stock_bg.png"
-          alt="Market Background"
-          className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-luminosity"
+          src='/stock_bg.png'
+          alt='Market Background'
+          className='absolute inset-0 h-full w-full object-cover opacity-60 mix-blend-luminosity'
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black"></div>
+        <div className='absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black'></div>
 
         {/* Decorative Blur Backgrounds */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-cyan-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-40 right-20 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div className='absolute left-20 top-20 h-32 w-32 rounded-full bg-cyan-600/20 blur-3xl'></div>
+        <div className='absolute bottom-40 right-20 h-48 w-48 rounded-full bg-blue-600/10 blur-3xl'></div>
 
-        <div className="relative z-10 flex flex-col justify-center px-10 lg:px-16 max-w-2xl mx-auto w-full">
+        <div className='relative z-10 mx-auto flex w-full max-w-2xl flex-col justify-center px-10 lg:px-16'>
           {/* Main Group: Icon on Left, Title & Aligned Description on Right */}
-          <div className="flex items-start gap-4 lg:gap-5">
+          <div className='flex items-start gap-4 lg:gap-5'>
             <img
-              src="/stockpros-logo.png"
-              alt="StockPros Logo"
-              className="w-16 h-16 lg:w-28 lg:h-28 object-contain shrink-0 mt-1"
+              src='/stockpros-logo.png'
+              alt='StockPros Logo'
+              className='mt-1 h-16 w-16 shrink-0 object-contain lg:h-28 lg:w-28'
             />
-            <div className="flex flex-col">
-              <h1 className="text-5xl lg:text-7xl font-extrabold leading-none tracking-tight text-white">
-                Stock<span className="text-cyan-500">Pros</span>
+            <div className='flex flex-col'>
+              <h1 className='text-5xl font-extrabold leading-none tracking-tight text-white lg:text-7xl'>
+                Stock<span className='text-cyan-500'>Pros</span>
               </h1>
-              <p className="mt-4 text-base lg:text-lg text-[#9CA3AF] leading-relaxed font-normal">
-                Professional-grade market intelligence, predictive forecasting, and real-time decision support—all in one unified platform
+              <p className='mt-4 text-base font-normal leading-relaxed text-[#9CA3AF] lg:text-lg'>
+                Professional-grade market intelligence, predictive forecasting,
+                and real-time decision support—all in one unified platform
               </p>
             </div>
           </div>
@@ -61,22 +62,30 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       </div>
 
       {/* Right Panel: Auth Form */}
-      <div className="flex-1 flex flex-col justify-between px-6 py-12 lg:px-24 bg-[#0a0a0a] relative overflow-hidden">
+      <div className='relative flex flex-1 flex-col justify-between overflow-hidden bg-[#0a0a0a] px-6 py-12 lg:px-24'>
         {/* Floating circles */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-900/20 rounded-full blur-[100px]"></div>
-        <div className="absolute top-1/2 -left-24 w-64 h-64 bg-cyan-900/10 rounded-full blur-[100px]"></div>
+        <div className='absolute -right-24 -top-24 h-96 w-96 rounded-full bg-blue-900/20 blur-[100px]'></div>
+        <div className='absolute -left-24 top-1/2 h-64 w-64 rounded-full bg-cyan-900/10 blur-[100px]'></div>
 
-        <div className="relative z-10 w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
+        <div className='relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center'>
           {/* Logo for mobile screens */}
-          <div className="md:hidden mb-12 flex flex-col items-center gap-4 text-center">
-            <img src="/stockpros-logo.png" alt="Logo" className="w-20 h-20 object-contain" />
-            <h2 className="text-4xl font-black text-white">Stock<span className="text-cyan-500">Pros</span></h2>
+          <div className='mb-12 flex flex-col items-center gap-4 text-center md:hidden'>
+            <img
+              src='/stockpros-logo.png'
+              alt='Logo'
+              className='h-20 w-20 object-contain'
+            />
+            <h2 className='text-4xl font-black text-white'>
+              Stock<span className='text-cyan-500'>Pros</span>
+            </h2>
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-white mb-3 text-left">{title}</h2>
+          <div className='mb-8'>
+            <h2 className='mb-3 text-left text-3xl font-bold tracking-tight text-white lg:text-4xl'>
+              {title}
+            </h2>
             {subtitle && (
-              <p className="text-[#9CA3AF] text-left text-sm lg:text-base leading-relaxed font-normal">
+              <p className='text-left text-sm font-normal leading-relaxed text-[#9CA3AF] lg:text-base'>
                 {subtitle}
               </p>
             )}
@@ -86,15 +95,18 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
 
         {/* Footer */}
-        <footer className="relative z-10 w-full max-w-md mx-auto pt-6 mt-6 border-t border-white/10 text-[11px] text-gray-500 font-medium space-y-1">
-          <div className="flex items-center justify-between gap-3">
-            <span>&copy; {new Date().getFullYear()} StockPros. All rights reserved.</span>
+        <footer className='relative z-10 mx-auto mt-6 w-full max-w-md space-y-1 border-t border-white/10 pt-6 text-[11px] font-medium text-gray-500'>
+          <div className='flex items-center justify-between gap-3'>
+            <span>
+              &copy; {new Date().getFullYear()} StockPros. All rights reserved.
+            </span>
           </div>
-          <p className="leading-relaxed">
-            StockPros outputs are informational and educational only. They are not personalized financial, legal, tax, or fiduciary advice.
+          <p className='leading-relaxed'>
+            StockPros outputs are informational and educational only. They are
+            not personalized financial, legal, tax, or fiduciary advice.
           </p>
         </footer>
       </div>
     </div>
-  );
-};
+  )
+}

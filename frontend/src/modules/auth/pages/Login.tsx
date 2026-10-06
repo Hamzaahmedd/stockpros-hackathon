@@ -1,22 +1,32 @@
-import { useAuth } from "@/modules/auth/hooks/useAuth";
-import api from "@/shared/api/axios";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { GOOGLE_CLIENT_ID } from "@/shared/config";
-import { setAccessToken } from "@/shared/utils/token";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Mail, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
-import posthog from "posthog-js";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { AuthLayout } from "../components/AuthLayout";
-import { Button } from "../components/Button";
-import { Input } from "../components/Input";
-import { useLoginAuthPolicy } from "../hooks/useLoginAuthPolicy";
-import { googleLogin } from "../services";
-import { isGoogleRequired, loginMethodRequiredMessage, loginPolicyNotice } from "../utils/loginPolicy";
-import { loginSchema, type LoginFormValues } from "../validation";
+import { useAuth } from '@/modules/auth/hooks/useAuth'
+import api from '@/shared/api/axios'
+import { Skeleton } from '@/shared/components/ui/skeleton'
+import { GOOGLE_CLIENT_ID } from '@/shared/config'
+import { setAccessToken } from '@/shared/utils/token'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  CheckCircle2,
+  Mail,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react'
+import posthog from 'posthog-js'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import { AuthLayout } from '../components/AuthLayout'
+import { Button } from '../components/Button'
+import { Input } from '../components/Input'
+import { useLoginAuthPolicy } from '../hooks/useLoginAuthPolicy'
+import { googleLogin } from '../services'
+import {
+  isGoogleRequired,
+  loginMethodRequiredMessage,
+  loginPolicyNotice,
+} from '../utils/loginPolicy'
+import { loginSchema, type LoginFormValues } from '../validation'
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
 declare global {
@@ -25,318 +35,358 @@ declare global {
       accounts?: {
         id?: {
           initialize: (config: {
-            client_id: string;
-            callback: (response: { credential?: string }) => void;
-          }) => void;
-          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
-        };
-      };
-    };
+            client_id: string
+            callback: (response: { credential?: string }) => void
+          }) => void
+          renderButton: (
+            parent: HTMLElement,
+            options: Record<string, unknown>,
+          ) => void
+        }
+      }
+    }
   }
 }
 
 export const Login: React.FC = () => {
-  const navigate = useNavigate();
-  const { loading, user, can, refreshMe } = useAuth();
-  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const navigate = useNavigate()
+  const { loading, user, can, refreshMe } = useAuth()
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   // Set once a Google sign-in response says phone verification is required,
   // so the "already logged in" effect below doesn't race an imperative
   // navigate to /auth/verify-phone and bounce the user back to the dashboard.
-  const [phoneVerificationPending, setPhoneVerificationPending] = useState(false);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [phoneVerificationPending, setPhoneVerificationPending] =
+    useState(false)
+  const googleButtonRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Set when the server refused a login method for the typed email's domain.
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null)
 
-  const { register, handleSubmit, formState, watch } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
+  const { register, handleSubmit, formState, watch } = useForm<LoginFormValues>(
+    {
+      resolver: zodResolver(loginSchema),
+      defaultValues: {
+        email: '',
+      },
     },
-  });
+  )
 
-  const email = watch("email");
-  const authPolicy = useLoginAuthPolicy(email);
-  const policyNotice = blockedMessage ?? loginPolicyNotice(authPolicy);
-  const googleRequired = blockedMessage !== null || isGoogleRequired(authPolicy);
+  const email = watch('email')
+  const authPolicy = useLoginAuthPolicy(email)
+  const policyNotice = blockedMessage ?? loginPolicyNotice(authPolicy)
+  const googleRequired = blockedMessage !== null || isGoogleRequired(authPolicy)
 
   // A refusal belongs to the email it was issued for.
   useEffect(() => {
-    setBlockedMessage(null);
-  }, [email]);
+    setBlockedMessage(null)
+  }, [email])
 
   // Redirect if already logged in
   useEffect(() => {
     if (user && !phoneVerificationPending) {
-      const isAdminOnly = !can("CORE_APP", "canRead") && can("ACCESS_CONTROL", "canRead");
+      const isAdminOnly =
+        !can('CORE_APP', 'canRead') && can('ACCESS_CONTROL', 'canRead')
 
       if (isAdminOnly) {
-        navigate("/access-control/users", { replace: true });
+        navigate('/access-control/users', { replace: true })
       } else {
-        navigate("/dashboard", { replace: true });
+        navigate('/dashboard', { replace: true })
       }
     }
-  }, [user, can, navigate, phoneVerificationPending]);
+  }, [user, can, navigate, phoneVerificationPending])
 
   // Resend cooldown timer
   useEffect(() => {
-    if (resendCooldown <= 0) return;
+    if (resendCooldown <= 0) return
     const interval = setInterval(() => {
-      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [resendCooldown]);
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [resendCooldown])
 
   const sendLoginLink = async (email: string) => {
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await api.post("/api/v1/auth/magic-link", { email });
-      setSubmittedEmail(email);
-      setResendCooldown(30); // 30s cooldown before resending
-      toast.success("Magic link sent! Please check your inbox.");
+      await api.post('/api/v1/auth/magic-link', { email })
+      setSubmittedEmail(email)
+      setResendCooldown(30) // 30s cooldown before resending
+      toast.success('Magic link sent! Please check your inbox.')
     } catch (err: any) {
-      const methodRequired = loginMethodRequiredMessage(err);
+      const methodRequired = loginMethodRequiredMessage(err)
       if (methodRequired) {
-        setBlockedMessage(methodRequired);
+        setBlockedMessage(methodRequired)
       } else {
-        toast.error(err?.response?.data?.message || "Failed to send magic link. Please try again.");
+        toast.error(
+          err?.response?.data?.message ||
+            'Failed to send magic link. Please try again.',
+        )
       }
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const onSubmit = async (data: LoginFormValues) => {
-    await sendLoginLink(data.email);
-  };
+    await sendLoginLink(data.email)
+  }
 
   const handleResend = async () => {
-    if (resendCooldown > 0 || !submittedEmail) return;
-    await sendLoginLink(submittedEmail);
-  };
+    if (resendCooldown > 0 || !submittedEmail) return
+    await sendLoginLink(submittedEmail)
+  }
 
   // ─── Continue with Google ────────────────────────────────────────────────
   const handleGoogleCredential = useCallback(
     async (credential: string) => {
-      setIsGoogleLoading(true);
+      setIsGoogleLoading(true)
       try {
-        const response = await googleLogin(credential);
-        const { requiresOnboarding, requiresPhoneVerification, onboardingToken, defaultDisplayName, accessToken } = response.data || {};
+        const response = await googleLogin(credential)
+        const {
+          requiresOnboarding,
+          requiresPhoneVerification,
+          onboardingToken,
+          defaultDisplayName,
+          accessToken,
+        } = response.data || {}
 
         if (requiresOnboarding && onboardingToken) {
-          sessionStorage.setItem("onboarding_token", onboardingToken);
+          sessionStorage.setItem('onboarding_token', onboardingToken)
           if (defaultDisplayName) {
-            sessionStorage.setItem("onboarding_display_name", defaultDisplayName);
+            sessionStorage.setItem(
+              'onboarding_display_name',
+              defaultDisplayName,
+            )
           }
-          toast.success("Welcome! Let’s finish setting up your profile.");
-          navigate("/auth/onboarding", { replace: true });
-          return;
+          toast.success('Welcome! Let’s finish setting up your profile.')
+          navigate('/auth/onboarding', { replace: true })
+          return
         }
 
         if (!accessToken) {
-          toast.error("Google sign-in failed. Please try again.");
-          return;
+          toast.error('Google sign-in failed. Please try again.')
+          return
         }
 
-        setAccessToken(accessToken);
-        const signedInUser = await refreshMe();
-        if (signedInUser) posthog.identify(signedInUser.userId);
-        toast.success("Signed in with Google successfully");
+        setAccessToken(accessToken)
+        const signedInUser = await refreshMe()
+        if (signedInUser) posthog.identify(signedInUser.userId)
+        toast.success('Signed in with Google successfully')
 
         // Phone verification (when required) takes priority over the
         // "already logged in" redirect effect below — checked before it.
         if (requiresPhoneVerification) {
-          setPhoneVerificationPending(true);
-          navigate("/auth/verify-phone", { replace: true });
-          return;
+          setPhoneVerificationPending(true)
+          navigate('/auth/verify-phone', { replace: true })
+          return
         }
         // Otherwise the "already logged in" redirect effect above takes over once `user` is set
       } catch (err: any) {
-        const methodRequired = loginMethodRequiredMessage(err);
+        const methodRequired = loginMethodRequiredMessage(err)
         if (methodRequired) {
-          setBlockedMessage(methodRequired);
+          setBlockedMessage(methodRequired)
         } else {
-          toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+          toast.error(
+            err?.response?.data?.message ||
+              'Google sign-in failed. Please try again.',
+          )
         }
       } finally {
-        setIsGoogleLoading(false);
+        setIsGoogleLoading(false)
       }
     },
-    [navigate, refreshMe]
-  );
+    [navigate, refreshMe],
+  )
 
   // Initialize Google Identity Services and render the official sign-in button
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || submittedEmail) return;
+    if (!GOOGLE_CLIENT_ID || submittedEmail) return
 
-    let attempts = 0;
+    let attempts = 0
     const interval = setInterval(() => {
-      const gis = window.google?.accounts?.id;
+      const gis = window.google?.accounts?.id
 
       if (gis && googleButtonRef.current) {
-        clearInterval(interval);
+        clearInterval(interval)
         gis.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: (response) => {
-            if (response?.credential) handleGoogleCredential(response.credential);
+            if (response?.credential)
+              handleGoogleCredential(response.credential)
           },
-        });
-        const formW = formRef.current?.offsetWidth || googleButtonRef.current.offsetWidth || 400;
-        const scale = 48 / 40; // h-12 (48px) / GIS "large" (40px)
+        })
+        const formW =
+          formRef.current?.offsetWidth ||
+          googleButtonRef.current.offsetWidth ||
+          400
+        const scale = 48 / 40 // h-12 (48px) / GIS "large" (40px)
         gis.renderButton(googleButtonRef.current, {
-          theme: "outline_white",
-          size: "large",
-          text: "continue_with",
-          logo_alignment: "center",
+          theme: 'outline_white',
+          size: 'large',
+          text: 'continue_with',
+          logo_alignment: 'center',
           width: Math.floor(formW / scale),
-        });
+        })
         if (googleButtonRef.current) {
-          googleButtonRef.current.style.transform = `scale(${scale})`;
-          googleButtonRef.current.style.transformOrigin = 'top left';
+          googleButtonRef.current.style.transform = `scale(${scale})`
+          googleButtonRef.current.style.transformOrigin = 'top left'
         }
       } else if (++attempts > 50) {
         // GIS script failed to load within ~10s — stop retrying
-        clearInterval(interval);
+        clearInterval(interval)
       }
-    }, 200);
+    }, 200)
 
-    return () => clearInterval(interval);
-  }, [handleGoogleCredential, submittedEmail]);
+    return () => clearInterval(interval)
+  }, [handleGoogleCredential, submittedEmail])
 
   if (submittedEmail) {
     return (
       <AuthLayout
         loading={loading}
-        title="Check your inbox"
-        subtitle="We sent a one-time magic login link to your email."
+        title='Check your inbox'
+        subtitle='We sent a one-time magic login link to your email.'
       >
-        <div className="space-y-6 animate-fadeIn">
-          <div className="p-6 rounded-2xl bg-gradient-to-b from-gray-900/90 to-gray-950/90 border border-gray-800/80 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl"></div>
+        <div className='animate-fadeIn space-y-6'>
+          <div className='relative overflow-hidden rounded-2xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 to-gray-950/90 p-6 shadow-2xl'>
+            <div className='absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl'></div>
 
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Mail className="w-6 h-6 animate-pulse" />
+            <div className='mb-4 flex items-center gap-4'>
+              <div className='flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400'>
+                <Mail className='h-6 w-6 animate-pulse' />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                <p className='text-xs font-semibold uppercase tracking-wider text-cyan-400'>
                   Authentication Email Sent
                 </p>
-                <p className="text-sm font-bold text-white break-all">{submittedEmail}</p>
+                <p className='break-all text-sm font-bold text-white'>
+                  {submittedEmail}
+                </p>
               </div>
             </div>
 
-            <div className="space-y-2.5 pt-3 border-t border-gray-800/60 text-xs text-gray-300">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <div className='space-y-2.5 border-t border-gray-800/60 pt-3 text-xs text-gray-300'>
+              <div className='flex items-center gap-2 text-emerald-400'>
+                <CheckCircle2 className='h-4 w-4 shrink-0' />
                 <span>Click the link in your email to sign in instantly</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <ShieldCheck className="w-4 h-4 shrink-0 text-cyan-400" />
-                <span>Link expires strictly in <strong>10 minutes</strong> and is single-use</span>
+              <div className='flex items-center gap-2 text-gray-400'>
+                <ShieldCheck className='h-4 w-4 shrink-0 text-cyan-400' />
+                <span>
+                  Link expires strictly in <strong>10 minutes</strong> and is
+                  single-use
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className='space-y-3'>
             <Button
-              type="button"
+              type='button'
               onClick={handleResend}
               disabled={resendCooldown > 0 || isSubmitting}
-              className="w-full h-12 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-sm border border-gray-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className='flex h-12 w-full items-center justify-center gap-2 border border-gray-700 bg-gray-800 text-sm font-semibold text-white transition-all hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50'
             >
               {isSubmitting ? (
-                <Skeleton className="w-4 h-4 rounded-full bg-white/20" />
+                <Skeleton className='h-4 w-4 rounded-full bg-white/20' />
               ) : (
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className='h-4 w-4' />
               )}
               {resendCooldown > 0 && `Resend link in ${resendCooldown}s`}
-              {resendCooldown <= 0 && isSubmitting && "Resending..."}
-              {resendCooldown <= 0 && !isSubmitting && "Resend email link"}
+              {resendCooldown <= 0 && isSubmitting && 'Resending...'}
+              {resendCooldown <= 0 && !isSubmitting && 'Resend email link'}
             </Button>
 
             <button
-              type="button"
+              type='button'
               onClick={() => {
-                setSubmittedEmail(null);
-                setResendCooldown(0);
+                setSubmittedEmail(null)
+                setResendCooldown(0)
               }}
-              className="w-full text-center text-xs text-gray-400 hover:text-cyan-400 transition-colors py-2"
+              className='w-full py-2 text-center text-xs text-gray-400 transition-colors hover:text-cyan-400'
             >
               Use a different email address
             </button>
           </div>
         </div>
       </AuthLayout>
-    );
+    )
   }
 
   return (
     <AuthLayout
       loading={loading}
-      title="Sign in to StockPros"
-      subtitle="Your intelligent companion for stock market analysis and forecasting"
+      title='Sign in to StockPros'
+      subtitle='Your intelligent companion for stock market analysis and forecasting'
     >
-      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit(onSubmit)}
+        className='space-y-6'
+      >
         {GOOGLE_CLIENT_ID && (
-          <div className="space-y-5">
+          <div className='space-y-5'>
             <div
-              className={`relative overflow-hidden rounded-lg h-12 ${googleRequired ? "ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]" : ""}`}
+              className={`relative h-12 overflow-hidden rounded-lg ${googleRequired ? 'shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400' : ''}`}
             >
-              <div ref={googleButtonRef} className="absolute top-0 left-0" />
+              <div ref={googleButtonRef} className='absolute left-0 top-0' />
               {isGoogleLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg z-10">
-                  <Skeleton className="w-5 h-5 rounded-full bg-cyan-400/40" />
+                <div className='absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/60'>
+                  <Skeleton className='h-5 w-5 rounded-full bg-cyan-400/40' />
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-800"></div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
-              <div className="flex-1 h-px bg-gray-800"></div>
+            <div className='flex items-center gap-3'>
+              <div className='h-px flex-1 bg-gray-800'></div>
+              <span className='text-xs uppercase tracking-wider text-gray-500'>
+                or
+              </span>
+              <div className='h-px flex-1 bg-gray-800'></div>
             </div>
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-base font-semibold text-[#E2E8F0] tracking-wide mb-2.5">
+          <label
+            htmlFor='email'
+            className='mb-2.5 block text-base font-semibold tracking-wide text-[#E2E8F0]'
+          >
             Email Address
           </label>
           <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
+            id='email'
+            type='email'
+            placeholder='you@example.com'
             error={formState.errors.email?.message}
-            registration={register("email")}
-            autoComplete="email"
+            registration={register('email')}
+            autoComplete='email'
             autoFocus
-            label=""
-            className="bg-gray-950/60 border-gray-800 text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/25 h-12 transition-all w-full rounded-lg"
+            label=''
+            className='h-12 w-full rounded-lg border-gray-800 bg-gray-950/60 text-white transition-all placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/25'
           />
           {policyNotice && (
             <div
-              role="alert"
-              className="mt-3 flex items-start gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-sm text-cyan-100"
+              role='alert'
+              className='mt-3 flex items-start gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-sm text-cyan-100'
             >
-              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+              <ShieldAlert className='mt-0.5 h-4 w-4 shrink-0 text-cyan-400' />
               <span>{policyNotice}</span>
             </div>
           )}
         </div>
 
         <Button
-          type="submit"
+          type='submit'
           disabled={formState.isSubmitting || isSubmitting || googleRequired}
-          className="w-full h-12 mt-4 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-base shadow-lg shadow-cyan-950/40 hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] border border-cyan-400/40 hover:border-cyan-400 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black"
+          className='mt-4 flex h-12 w-full items-center justify-center gap-2 border border-cyan-400/40 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 text-base font-bold text-white shadow-lg shadow-cyan-950/40 transition-all duration-300 hover:border-cyan-400 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
         >
           {formState.isSubmitting || isSubmitting ? (
-            <div className="flex items-center justify-center gap-2">
-              <Skeleton className="w-4 h-4 rounded-full bg-white/30" />
+            <div className='flex items-center justify-center gap-2'>
+              <Skeleton className='h-4 w-4 rounded-full bg-white/30' />
               <span>Sending link...</span>
             </div>
           ) : (
@@ -345,5 +395,5 @@ export const Login: React.FC = () => {
         </Button>
       </form>
     </AuthLayout>
-  );
-};
+  )
+}

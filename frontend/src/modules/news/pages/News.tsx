@@ -1,17 +1,17 @@
 // src/pages/News.tsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { FiSearch, FiCalendar, FiX } from "react-icons/fi";
-import { Sidebar } from "@/shared/components/Sidebar";
-import { NewsArticleItem } from "@/modules/news/components/NewsArticleItem";
-import { newsService } from "../services";
-import { NewsArticle, NewsFeedParams, NewsCategory } from "../types";
-import { toast } from "react-toastify";
-import { SmartSearch } from "@/shared/components/SmartSearch";
-import { Button } from "@/shared/components/ui/button";
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { FiSearch, FiCalendar, FiX } from 'react-icons/fi'
+import { Sidebar } from '@/shared/components/Sidebar'
+import { NewsArticleItem } from '@/modules/news/components/NewsArticleItem'
+import { newsService } from '../services'
+import { NewsArticle, NewsFeedParams, NewsCategory } from '../types'
+import { toast } from 'react-toastify'
+import { SmartSearch } from '@/shared/components/SmartSearch'
+import { Button } from '@/shared/components/ui/button'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = new Date().toISOString().split('T')[0]
 
 const CATEGORIES: { label: string; value: NewsCategory }[] = [
   { label: 'General', value: 'GENERAL' },
@@ -21,71 +21,76 @@ const CATEGORIES: { label: string; value: NewsCategory }[] = [
   { label: 'Merger', value: 'MERGER' },
   { label: 'Macro', value: 'MACRO' },
   { label: 'Sector', value: 'SECTOR' },
-];
+]
 
 const TABS = [
   { label: 'All Feed', value: 'all' },
   { label: 'Portfolio', value: 'portfolio' },
   { label: 'Watchlist', value: 'watchlist' },
   { label: 'Saved', value: 'saved' },
-] as const;
+] as const
 
-type NewsTab = (typeof TABS)[number]['value'];
+type NewsTab = (typeof TABS)[number]['value']
 
 const isNewsTab = (value: string | null): value is NewsTab =>
-  TABS.some((tab) => tab.value === value);
+  TABS.some((tab) => tab.value === value)
 
 export default function News() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const filterParam = searchParams.get('filter');
-  const activeTab: NewsTab = isNewsTab(filterParam) ? filterParam : 'all';
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filterParam = searchParams.get('filter')
+  const activeTab: NewsTab = isNewsTab(filterParam) ? filterParam : 'all'
 
   const setActiveTab = (tab: NewsTab) => {
-    const next = new URLSearchParams(searchParams);
+    const next = new URLSearchParams(searchParams)
     if (tab === 'all') {
-      next.delete('filter');
+      next.delete('filter')
     } else {
-      next.set('filter', tab);
+      next.set('filter', tab)
     }
-    setSearchParams(next, { replace: true });
-  };
-  const [activeCategory, setActiveCategory] = useState<NewsCategory | 'ALL'>('ALL');
-  const [activeSymbol, setActiveSymbol] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+    setSearchParams(next, { replace: true })
+  }
+  const [activeCategory, setActiveCategory] = useState<NewsCategory | 'ALL'>(
+    'ALL',
+  )
+  const [activeSymbol, setActiveSymbol] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [articles, setArticles] = useState<NewsArticle[]>([])
+  const [loading, setLoading] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
 
   const [dateRange, setDateRange] = useState({
     startDate: '2026-01-01',
-    endDate: TODAY
-  });
+    endDate: TODAY,
+  })
 
-  const fromDateRef = useRef<HTMLInputElement>(null);
-  const toDateRef = useRef<HTMLInputElement>(null);
+  const fromDateRef = useRef<HTMLInputElement>(null)
+  const toDateRef = useRef<HTMLInputElement>(null)
 
-  const observer = useRef<IntersectionObserver | null>(null);
-  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        fetchNextPage();
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [loading, hasMore, nextCursor]);
+  const observer = useRef<IntersectionObserver | null>(null)
+  const lastElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loading) return
+      if (observer.current) observer.current.disconnect()
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          fetchNextPage()
+        }
+      })
+      if (node) observer.current.observe(node)
+    },
+    [loading, hasMore, nextCursor],
+  )
 
   const fetchArticles = async (isInitial = false) => {
-    setLoading(true);
+    setLoading(true)
     try {
       const fromDate = dateRange.startDate
         ? new Date(`${dateRange.startDate}T00:00:00.000Z`).toISOString()
-        : undefined;
+        : undefined
       const toDate = dateRange.endDate
         ? new Date(`${dateRange.endDate}T23:59:59.999Z`).toISOString()
-        : undefined;
+        : undefined
 
       const params: NewsFeedParams = {
         filter: activeTab,
@@ -95,9 +100,9 @@ export default function News() {
         cursor: isInitial ? undefined : nextCursor || undefined,
         from: fromDate,
         to: toDate,
-      };
+      }
 
-      let response;
+      let response
       if (searchQuery.length >= 2) {
         response = await newsService.search({
           ...params,
@@ -106,89 +111,95 @@ export default function News() {
           endDate: dateRange.endDate,
           from: fromDate,
           to: toDate,
-        });
+        })
       } else {
-        response = await newsService.getFeed(params);
+        response = await newsService.getFeed(params)
       }
 
       if (isInitial) {
-        setArticles(response.data);
+        setArticles(response.data)
       } else {
-        setArticles(prev => {
-          const existingIds = new Set(prev.map(a => a.id));
-          const newArticles = response.data.filter(a => !existingIds.has(a.id));
-          return [...prev, ...newArticles];
-        });
+        setArticles((prev) => {
+          const existingIds = new Set(prev.map((a) => a.id))
+          const newArticles = response.data.filter(
+            (a) => !existingIds.has(a.id),
+          )
+          return [...prev, ...newArticles]
+        })
       }
 
-      setNextCursor(response.nextCursor);
-      setHasMore(response.hasMore);
+      setNextCursor(response.nextCursor)
+      setHasMore(response.hasMore)
     } catch (err) {
-      toast.error("Failed to fetch news articles");
+      toast.error('Failed to fetch news articles')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const fetchNextPage = () => {
     if (nextCursor && hasMore && !loading) {
-      fetchArticles(false);
+      fetchArticles(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchArticles(true);
-  }, [activeTab, activeCategory, dateRange]);
+    fetchArticles(true)
+  }, [activeTab, activeCategory, dateRange])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const isSearchValid = searchQuery === "" || searchQuery.length >= 2;
+      const isSearchValid = searchQuery === '' || searchQuery.length >= 2
       if (isSearchValid) {
-        fetchArticles(true);
+        fetchArticles(true)
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeSymbol]);
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery, activeSymbol])
 
   const handleUpdateArticle = (updated: NewsArticle) => {
-    setArticles(prev => prev.map(a => a.id === updated.id ? updated : a));
-  };
+    setArticles((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+  }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
+    <div className='flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row'>
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
         input[type="date"] { -webkit-appearance: none; appearance: none; }
         .date-field-btn:hover { border-color: var(--primary) !important; }
       `}</style>
       <Sidebar />
-      <main id="main-content" className="flex-1 p-4 md:px-10 md:py-10 overflow-y-auto overflow-x-hidden h-screen scroll-smooth">
-        <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <main
+        id='main-content'
+        className='h-screen flex-1 overflow-y-auto overflow-x-hidden scroll-smooth p-4 md:px-10 md:py-10'
+      >
+        <div className='mx-auto max-w-5xl space-y-8 duration-1000 animate-in fade-in slide-in-from-bottom-4'>
+          <div className='flex flex-col justify-between gap-6 md:flex-row md:items-center'>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>
                 Market News
               </h1>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">Live news from top financial sources</p>
+              <p className='mt-1 text-sm font-medium text-muted-foreground'>
+                Live news from top financial sources
+              </p>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-              <div className="relative group border border-border rounded-lg flex items-center bg-secondary w-full md:w-80 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 transition-colors">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <FiSearch className="group-focus-within:text-primary transition-colors" />
+            <div className='flex w-full flex-col items-center gap-4 md:w-auto md:flex-row'>
+              <div className='group relative flex w-full items-center rounded-lg border border-border bg-secondary transition-colors focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 md:w-80'>
+                <div className='absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground'>
+                  <FiSearch className='transition-colors group-focus-within:text-primary' />
                 </div>
                 <input
-                  type="text"
+                  type='text'
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search headlines..."
-                  className="w-full bg-transparent pl-11 pr-12 py-3 text-sm font-medium outline-none"
+                  placeholder='Search headlines...'
+                  className='w-full bg-transparent py-3 pl-11 pr-12 text-sm font-medium outline-none'
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                    onClick={() => setSearchQuery('')}
+                    className='absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-primary'
                   >
                     <FiX size={16} />
                   </button>
@@ -198,23 +209,24 @@ export default function News() {
               <SmartSearch
                 onSubmit={(sym) => setActiveSymbol(sym)}
                 initialValue={activeSymbol}
-                placeholder="Filter by symbol..."
-                className="w-full md:w-80"
+                placeholder='Filter by symbol...'
+                className='w-full md:w-80'
               />
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-              <div className="flex p-1 rounded-lg w-max sm:w-fit border border-border bg-secondary/50">
-                {TABS.map(tab => (
+          <div className='flex flex-col justify-between gap-6 lg:flex-row lg:items-center'>
+            <div className='scrollbar-hide -mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0'>
+              <div className='flex w-max rounded-lg border border-border bg-secondary/50 p-1 sm:w-fit'>
+                {TABS.map((tab) => (
                   <button
                     key={tab.value}
                     onClick={() => setActiveTab(tab.value)}
-                    className={`px-5 py-2 rounded-md text-xs font-bold transition-all duration-200 ${activeTab === tab.value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                      }`}
+                    className={`rounded-md px-5 py-2 text-xs font-bold transition-all duration-200 ${
+                      activeTab === tab.value
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
                     {tab.label}
                   </button>
@@ -222,109 +234,138 @@ export default function News() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <FiCalendar className="text-primary text-lg shrink-0" />
+            <div className='flex items-center gap-2'>
+              <FiCalendar className='shrink-0 text-lg text-primary' />
               {/* From date */}
               <button
-                type="button"
+                type='button'
                 onClick={() => fromDateRef.current?.showPicker?.()}
-                className="date-field-btn relative flex flex-col gap-0.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group"
-                title="Click to pick start date"
+                className='date-field-btn group relative flex cursor-pointer flex-col gap-0.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 transition-all hover:bg-primary/10'
+                title='Click to pick start date'
               >
-                <span className="text-[9px] font-black uppercase tracking-widest text-primary">From</span>
-                <span className="text-xs font-bold text-foreground">{dateRange.startDate}</span>
+                <span className='text-[9px] font-black uppercase tracking-widest text-primary'>
+                  From
+                </span>
+                <span className='text-xs font-bold text-foreground'>
+                  {dateRange.startDate}
+                </span>
                 <input
                   ref={fromDateRef}
-                  type="date"
+                  type='date'
                   value={dateRange.startDate}
                   max={TODAY}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) =>
+                    setDateRange((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                    }))
+                  }
+                  className='absolute inset-0 h-full w-full cursor-pointer opacity-0'
                   tabIndex={-1}
                 />
               </button>
-              <span className="text-muted-foreground/50 font-bold text-sm">→</span>
+              <span className='text-sm font-bold text-muted-foreground/50'>
+                →
+              </span>
               {/* To date */}
               <button
-                type="button"
+                type='button'
                 onClick={() => toDateRef.current?.showPicker?.()}
-                className="date-field-btn relative flex flex-col gap-0.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group"
-                title="Click to pick end date"
+                className='date-field-btn group relative flex cursor-pointer flex-col gap-0.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 transition-all hover:bg-primary/10'
+                title='Click to pick end date'
               >
-                <span className="text-[9px] font-black uppercase tracking-widest text-primary">To</span>
-                <span className="text-xs font-bold text-foreground">{dateRange.endDate}</span>
+                <span className='text-[9px] font-black uppercase tracking-widest text-primary'>
+                  To
+                </span>
+                <span className='text-xs font-bold text-foreground'>
+                  {dateRange.endDate}
+                </span>
                 <input
                   ref={toDateRef}
-                  type="date"
+                  type='date'
                   value={dateRange.endDate}
                   max={TODAY}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) =>
+                    setDateRange((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                  className='absolute inset-0 h-full w-full cursor-pointer opacity-0'
                   tabIndex={-1}
                 />
               </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
+          <div className='flex flex-wrap gap-2 border-b border-border pb-4'>
             <Button
-              variant={activeCategory === 'ALL' ? "default" : "outline"}
-              size="sm"
+              variant={activeCategory === 'ALL' ? 'default' : 'outline'}
+              size='sm'
               onClick={() => setActiveCategory('ALL')}
-              className="rounded-full text-[10px] font-black uppercase tracking-widest"
+              className='rounded-full text-[10px] font-black uppercase tracking-widest'
             >
               All Categories
             </Button>
-            {CATEGORIES.map(cat => (
+            {CATEGORIES.map((cat) => (
               <Button
                 key={cat.value}
-                variant={activeCategory === cat.value ? "default" : "outline"}
-                size="sm"
+                variant={activeCategory === cat.value ? 'default' : 'outline'}
+                size='sm'
                 onClick={() => setActiveCategory(cat.value)}
-                className="rounded-full text-[10px] font-black uppercase tracking-widest"
+                className='rounded-full text-[10px] font-black uppercase tracking-widest'
               >
                 {cat.label}
               </Button>
             ))}
           </div>
 
-          <div className="space-y-6">
+          <div className='space-y-6'>
             {articles.length === 0 && loading ? (
-              <div className="space-y-6">
+              <div className='space-y-6'>
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="border border-border rounded-lg overflow-hidden bg-card p-5 flex flex-col md:flex-row gap-6 shadow-sm">
-                    <Skeleton className="w-full md:w-56 h-40 rounded-xl shrink-0" />
-                    <div className="flex-1 space-y-3">
-                      <div className="flex justify-between gap-4">
-                        <Skeleton className="h-6 w-3/4 rounded-md" />
-                        <Skeleton className="w-8 h-8 rounded-md shrink-0" />
+                  <div
+                    key={i}
+                    className='flex flex-col gap-6 overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm md:flex-row'
+                  >
+                    <Skeleton className='h-40 w-full shrink-0 rounded-xl md:w-56' />
+                    <div className='flex-1 space-y-3'>
+                      <div className='flex justify-between gap-4'>
+                        <Skeleton className='h-6 w-3/4 rounded-md' />
+                        <Skeleton className='h-8 w-8 shrink-0 rounded-md' />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-4 w-16 rounded-md" />
-                        <Skeleton className="h-3 w-20 rounded" />
-                        <Skeleton className="h-3 w-28 rounded" />
+                      <div className='flex items-center gap-3'>
+                        <Skeleton className='h-4 w-16 rounded-md' />
+                        <Skeleton className='h-3 w-20 rounded' />
+                        <Skeleton className='h-3 w-28 rounded' />
                       </div>
-                      <div className="space-y-2 pt-2">
-                        <Skeleton className="h-3.5 w-full rounded" />
-                        <Skeleton className="h-3.5 w-5/6 rounded" />
+                      <div className='space-y-2 pt-2'>
+                        <Skeleton className='h-3.5 w-full rounded' />
+                        <Skeleton className='h-3.5 w-5/6 rounded' />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : articles.length === 0 && !loading ? (
-              <div className="py-20 text-center rounded-3xl border border-dashed border-border bg-muted/20">
-                <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">No articles found matching your criteria</p>
+              <div className='rounded-3xl border border-dashed border-border bg-muted/20 py-20 text-center'>
+                <p className='text-sm font-bold uppercase tracking-widest text-gray-500'>
+                  No articles found matching your criteria
+                </p>
                 <Button
-                  variant="link"
-                  onClick={() => { setActiveTab('all'); setActiveCategory('ALL'); setSearchQuery(""); }}
-                  className="mt-4 text-cyan-600 dark:text-cyan-400 text-xs font-black underline underline-offset-4 decoration-cyan-500/30"
+                  variant='link'
+                  onClick={() => {
+                    setActiveTab('all')
+                    setActiveCategory('ALL')
+                    setSearchQuery('')
+                  }}
+                  className='mt-4 text-xs font-black text-cyan-600 underline decoration-cyan-500/30 underline-offset-4 dark:text-cyan-400'
                 >
                   Clear all filters
                 </Button>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className='space-y-6'>
                 {articles.map((article) => (
                   <NewsArticleItem
                     key={article.id}
@@ -335,38 +376,39 @@ export default function News() {
               </div>
             )}
 
-            <div ref={lastElementRef} className="py-6">
+            <div ref={lastElementRef} className='py-6'>
               {loading && articles.length > 0 && (
-                <div className="border border-border rounded-lg overflow-hidden bg-card p-5 flex flex-col md:flex-row gap-6 shadow-sm">
-                  <Skeleton className="w-full md:w-56 h-40 rounded-xl shrink-0" />
-                  <div className="flex-1 space-y-3">
-                    <div className="flex justify-between gap-4">
-                      <Skeleton className="h-6 w-3/4 rounded-md" />
-                      <Skeleton className="w-8 h-8 rounded-md shrink-0" />
+                <div className='flex flex-col gap-6 overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm md:flex-row'>
+                  <Skeleton className='h-40 w-full shrink-0 rounded-xl md:w-56' />
+                  <div className='flex-1 space-y-3'>
+                    <div className='flex justify-between gap-4'>
+                      <Skeleton className='h-6 w-3/4 rounded-md' />
+                      <Skeleton className='h-8 w-8 shrink-0 rounded-md' />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-4 w-16 rounded-md" />
-                      <Skeleton className="h-3 w-20 rounded" />
+                    <div className='flex items-center gap-3'>
+                      <Skeleton className='h-4 w-16 rounded-md' />
+                      <Skeleton className='h-3 w-20 rounded' />
                     </div>
-                    <div className="space-y-2 pt-2">
-                      <Skeleton className="h-3.5 w-full rounded" />
-                      <Skeleton className="h-3.5 w-4/5 rounded" />
+                    <div className='space-y-2 pt-2'>
+                      <Skeleton className='h-3.5 w-full rounded' />
+                      <Skeleton className='h-3.5 w-4/5 rounded' />
                     </div>
                   </div>
                 </div>
               )}
               {!hasMore && articles.length > 0 && (
-                <div className="flex items-center justify-center gap-4 text-muted-foreground py-6">
-                  <div className="h-px w-20 bg-border" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">End of Feed</p>
-                  <div className="h-px w-20 bg-border" />
+                <div className='flex items-center justify-center gap-4 py-6 text-muted-foreground'>
+                  <div className='h-px w-20 bg-border' />
+                  <p className='text-[10px] font-black uppercase tracking-[0.3em]'>
+                    End of Feed
+                  </p>
+                  <div className='h-px w-20 bg-border' />
                 </div>
               )}
             </div>
           </div>
-
         </div>
       </main>
     </div>
-  );
+  )
 }

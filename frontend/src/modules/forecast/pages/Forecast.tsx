@@ -1,242 +1,261 @@
-import { OrgContextBanner } from "@/shared/components/OrgContextBanner";
+import { OrgContextBanner } from '@/shared/components/OrgContextBanner'
 // pages/Forecast.tsx
-import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton';
-import { Sidebar } from '@/shared/components/Sidebar';
-import { SmartSearch } from '@/shared/components/SmartSearch';
+import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton'
+import { Sidebar } from '@/shared/components/Sidebar'
+import { SmartSearch } from '@/shared/components/SmartSearch'
+import { AlertCircle, AlertTriangle, Menu } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
+import ForecastChart from '../components/ForecastChart'
+import ForecastTable from '../components/ForecastTable'
+import PriceTargetRange from '../components/PriceTargetRange'
+import TrainingTimer from '../components/TrainingTimer'
+import forecastService from '../services'
+import { ForecastData } from '../types'
+import { downloadForecastCsv } from '../utils/downloadForecast'
+import { downloadForecastPdf } from '../utils/downloadForecastPdf'
+
+import { Button } from '@/shared/components/ui/button'
 import {
-  AlertCircle,
-  AlertTriangle,
-  Menu
-} from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
-import ForecastChart from '../components/ForecastChart';
-import ForecastTable from '../components/ForecastTable';
-import PriceTargetRange from '../components/PriceTargetRange';
-import TrainingTimer from '../components/TrainingTimer';
-import forecastService from '../services';
-import { ForecastData } from '../types';
-import { downloadForecastCsv } from '../utils/downloadForecast';
-import { downloadForecastPdf } from '../utils/downloadForecastPdf';
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Card as ShadcnCard,
+} from '@/shared/components/ui/card'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 
-import { Button } from '@/shared/components/ui/button';
-import { CardContent, CardHeader, CardTitle, Card as ShadcnCard } from '@/shared/components/ui/card';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-
-function Card({ title, actions, children, className = "" }: Readonly<{ 
-  title?: string; 
-  actions?: React.ReactNode; 
-  children: React.ReactNode;
-  className?: string;
+function Card({
+  title,
+  actions,
+  children,
+  className = '',
+}: Readonly<{
+  title?: string
+  actions?: React.ReactNode
+  children: React.ReactNode
+  className?: string
 }>) {
   return (
     <ShadcnCard className={className}>
       {(title || actions) && (
-        <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5 space-y-0">
-          {title && <CardTitle className="text-sm font-bold">{title}</CardTitle>}
+        <CardHeader className='flex flex-row items-center justify-between space-y-0 px-5 pb-2 pt-5'>
+          {title && (
+            <CardTitle className='text-sm font-bold'>{title}</CardTitle>
+          )}
           {actions && <div>{actions}</div>}
         </CardHeader>
       )}
-      <CardContent className={(!title && !actions) ? "p-5" : "px-5 pb-5 pt-3"}>
+      <CardContent className={!title && !actions ? 'p-5' : 'px-5 pb-5 pt-3'}>
         {children}
       </CardContent>
     </ShadcnCard>
-  );
+  )
 }
 
-const PERIOD = '1w';
+const PERIOD = '1w'
 
 const Forecast: React.FC = () => {
-  const [symbol, setSymbol] = useState<string>('AAPL');
-  const [forecastData, setForecastData] = useState<ForecastData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [exporting, setExporting] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [symbol, setSymbol] = useState<string>('AAPL')
+  const [forecastData, setForecastData] = useState<ForecastData | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [exporting, setExporting] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false)
 
   const fetchForecast = async (isManualRefresh = false) => {
     if (!forecastService.validateSymbol(symbol)) {
-      setError('Invalid stock symbol. Use 1-5 uppercase letters.');
-      return;
+      setError('Invalid stock symbol. Use 1-5 uppercase letters.')
+      return
     }
 
-    setLoading(true);
-    setError(null);
-    if (!isManualRefresh) setForecastData(null);
+    setLoading(true)
+    setError(null)
+    if (!isManualRefresh) setForecastData(null)
 
     try {
-      const data = await forecastService.getForecast(symbol, PERIOD);
-      setForecastData(data);
+      const data = await forecastService.getForecast(symbol, PERIOD)
+      setForecastData(data)
     } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching forecast data');
-      console.error('Error fetching forecast:', err);
+      setError(err.message || 'An error occurred while fetching forecast data')
+      console.error('Error fetching forecast:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (symbol) {
-      fetchForecast();
+      fetchForecast()
     }
-  }, [symbol]);
+  }, [symbol])
 
   const handleTrainingComplete = () => {
     // Re-fetch forecast once timer hits zero
-    fetchForecast(true);
-  };
+    fetchForecast(true)
+  }
 
   const canDownload =
     !!forecastData &&
     !loading &&
     !exporting &&
     forecastData.status !== 'training' &&
-    (forecastData.predictions?.length ?? 0) > 0;
+    (forecastData.predictions?.length ?? 0) > 0
 
   const handleDownload = async (format: 'csv' | 'pdf') => {
-    if (!forecastData || !canDownload) return;
-    setExporting(true);
+    if (!forecastData || !canDownload) return
+    setExporting(true)
     try {
-      const raw = await forecastService.getRawForecast(symbol, PERIOD);
+      const raw = await forecastService.getRawForecast(symbol, PERIOD)
 
       if (format === 'csv') {
-        downloadForecastCsv(raw);
-        toast.success('Forecast downloaded as CSV');
+        downloadForecastCsv(raw)
+        toast.success('Forecast downloaded as CSV')
       } else {
-        downloadForecastPdf(raw);
-        toast.success('Forecast downloaded as PDF');
+        downloadForecastPdf(raw)
+        toast.success('Forecast downloaded as PDF')
       }
     } catch (err) {
-      console.error('Error downloading forecast:', err);
-      toast.error('Failed to download forecast');
+      console.error('Error downloading forecast:', err)
+      toast.error('Failed to download forecast')
     } finally {
-      setExporting(false);
+      setExporting(false)
     }
-  };
+  }
 
   const renderForecastContent = () => {
     if (loading) {
       return (
-        <div className="space-y-6">
+        <div className='space-y-6'>
           {/* Forecast Chart Card Skeleton */}
-          <div className="border border-border rounded-xl bg-card p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-44 rounded-md" />
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-12 rounded-md" />
-                <Skeleton className="h-8 w-12 rounded-md" />
-                <Skeleton className="h-8 w-12 rounded-md" />
+          <div className='space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm'>
+            <div className='flex items-center justify-between'>
+              <Skeleton className='h-6 w-44 rounded-md' />
+              <div className='flex gap-2'>
+                <Skeleton className='h-8 w-12 rounded-md' />
+                <Skeleton className='h-8 w-12 rounded-md' />
+                <Skeleton className='h-8 w-12 rounded-md' />
               </div>
             </div>
-            <div className="h-[350px] w-full rounded-lg bg-muted/20 border border-border/50 p-6 flex flex-col justify-between">
-              <div className="flex justify-between items-center">
-                <Skeleton className="h-4 w-32 rounded" />
-                <div className="flex gap-4">
-                  <Skeleton className="h-3 w-16 rounded" />
-                  <Skeleton className="h-3 w-16 rounded" />
+            <div className='flex h-[350px] w-full flex-col justify-between rounded-lg border border-border/50 bg-muted/20 p-6'>
+              <div className='flex items-center justify-between'>
+                <Skeleton className='h-4 w-32 rounded' />
+                <div className='flex gap-4'>
+                  <Skeleton className='h-3 w-16 rounded' />
+                  <Skeleton className='h-3 w-16 rounded' />
                 </div>
               </div>
-              <div className="space-y-3">
-                <Skeleton className="h-[180px] w-full rounded" />
+              <div className='space-y-3'>
+                <Skeleton className='h-[180px] w-full rounded' />
               </div>
-              <div className="flex justify-between items-center pt-4 border-t border-border/40">
-                <Skeleton className="h-3 w-20 rounded" />
-                <Skeleton className="h-3 w-20 rounded" />
-                <Skeleton className="h-3 w-20 rounded" />
-                <Skeleton className="h-3 w-20 rounded" />
+              <div className='flex items-center justify-between border-t border-border/40 pt-4'>
+                <Skeleton className='h-3 w-20 rounded' />
+                <Skeleton className='h-3 w-20 rounded' />
+                <Skeleton className='h-3 w-20 rounded' />
+                <Skeleton className='h-3 w-20 rounded' />
               </div>
             </div>
           </div>
 
           {/* Price Target Range Card Skeleton */}
-          <div className="border border-border rounded-xl bg-card p-6 space-y-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Skeleton className="h-6 w-48 rounded-md" />
-                <Skeleton className="h-3 w-72 rounded" />
+          <div className='space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-1'>
+                <Skeleton className='h-6 w-48 rounded-md' />
+                <Skeleton className='h-3 w-72 rounded' />
               </div>
-              <Skeleton className="h-6 w-24 rounded-full" />
+              <Skeleton className='h-6 w-24 rounded-full' />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-2">
-                <Skeleton className="h-4 w-24 rounded" />
-                <Skeleton className="h-7 w-32 rounded" />
-                <Skeleton className="h-3 w-40 rounded" />
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+              <div className='space-y-2 rounded-lg border border-border/50 bg-muted/20 p-4'>
+                <Skeleton className='h-4 w-24 rounded' />
+                <Skeleton className='h-7 w-32 rounded' />
+                <Skeleton className='h-3 w-40 rounded' />
               </div>
-              <div className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-2">
-                <Skeleton className="h-4 w-24 rounded" />
-                <Skeleton className="h-7 w-32 rounded" />
-                <Skeleton className="h-3 w-40 rounded" />
+              <div className='space-y-2 rounded-lg border border-border/50 bg-muted/20 p-4'>
+                <Skeleton className='h-4 w-24 rounded' />
+                <Skeleton className='h-7 w-32 rounded' />
+                <Skeleton className='h-3 w-40 rounded' />
               </div>
-              <div className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-2">
-                <Skeleton className="h-4 w-24 rounded" />
-                <Skeleton className="h-7 w-32 rounded" />
-                <Skeleton className="h-3 w-40 rounded" />
+              <div className='space-y-2 rounded-lg border border-border/50 bg-muted/20 p-4'>
+                <Skeleton className='h-4 w-24 rounded' />
+                <Skeleton className='h-7 w-32 rounded' />
+                <Skeleton className='h-3 w-40 rounded' />
               </div>
             </div>
           </div>
 
           {/* Forecast Table Card Skeleton */}
-          <div className="border border-border rounded-xl bg-card p-6 space-y-4 shadow-sm">
-            <Skeleton className="h-6 w-40 rounded-md" />
-            <div className="space-y-3 pt-2">
-              <div className="flex justify-between border-b border-border pb-2">
-                <Skeleton className="h-4 w-20 rounded" />
-                <Skeleton className="h-4 w-20 rounded" />
-                <Skeleton className="h-4 w-20 rounded" />
-                <Skeleton className="h-4 w-20 rounded" />
+          <div className='space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm'>
+            <Skeleton className='h-6 w-40 rounded-md' />
+            <div className='space-y-3 pt-2'>
+              <div className='flex justify-between border-b border-border pb-2'>
+                <Skeleton className='h-4 w-20 rounded' />
+                <Skeleton className='h-4 w-20 rounded' />
+                <Skeleton className='h-4 w-20 rounded' />
+                <Skeleton className='h-4 w-20 rounded' />
               </div>
               {['row-1', 'row-2', 'row-3', 'row-4', 'row-5'].map((rowKey) => (
-                <div key={rowKey} className="flex justify-between py-2 border-b border-border/40">
-                  <Skeleton className="h-4 w-16 rounded" />
-                  <Skeleton className="h-4 w-14 rounded" />
-                  <Skeleton className="h-4 w-14 rounded" />
-                  <Skeleton className="h-4 w-14 rounded" />
+                <div
+                  key={rowKey}
+                  className='flex justify-between border-b border-border/40 py-2'
+                >
+                  <Skeleton className='h-4 w-16 rounded' />
+                  <Skeleton className='h-4 w-14 rounded' />
+                  <Skeleton className='h-4 w-14 rounded' />
+                  <Skeleton className='h-4 w-14 rounded' />
                 </div>
               ))}
             </div>
           </div>
         </div>
-      );
+      )
     }
 
     if (!forecastData) {
-      return null;
+      return null
     }
 
     if (forecastData.status === 'training' && forecastData.estimated_ready_at) {
       return (
-        <div className="py-12 fade-in">
-          <TrainingTimer 
-            estimatedReadyAt={forecastData.estimated_ready_at} 
-            onComplete={handleTrainingComplete} 
+        <div className='py-12 fade-in'>
+          <TrainingTimer
+            estimatedReadyAt={forecastData.estimated_ready_at}
+            onComplete={handleTrainingComplete}
             symbol={symbol}
           />
         </div>
-      );
+      )
     }
 
     return (
-      <div className="space-y-6 fade-in">
+      <div className='space-y-6 fade-in'>
         {/* Chart Section */}
-        <Card title="Price Forecast Chart">
-          <div className="mt-6">
+        <Card title='Price Forecast Chart'>
+          <div className='mt-6'>
             <ForecastChart data={forecastData} period={PERIOD} />
           </div>
         </Card>
 
         {/* Earnings Shock Warning Banner */}
         {forecastData.earningsOverlay && (
-          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
-            <AlertTriangle size={18} className="text-amber-400 mt-0.5 shrink-0" />
+          <div className='flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4'>
+            <AlertTriangle
+              size={18}
+              className='mt-0.5 shrink-0 text-amber-400'
+            />
             <div>
-              <p className="text-sm font-semibold text-amber-300">
-                Earnings Release in {forecastData.earningsOverlay.daysUntilEarnings} day{forecastData.earningsOverlay.daysUntilEarnings !== 1 ? 's' : ''}
-                {' '}({forecastData.earningsOverlay.earningsDate})
+              <p className='text-sm font-semibold text-amber-300'>
+                Earnings Release in{' '}
+                {forecastData.earningsOverlay.daysUntilEarnings} day
+                {forecastData.earningsOverlay.daysUntilEarnings !== 1
+                  ? 's'
+                  : ''}{' '}
+                ({forecastData.earningsOverlay.earningsDate})
               </p>
-              <p className="text-xs text-amber-400/80 mt-0.5">
-                Expected price boundaries have been widened to reflect earnings volatility.
-                Confidence is lower around report dates — consider keeping wider safety margins.
+              <p className='mt-0.5 text-xs text-amber-400/80'>
+                Expected price boundaries have been widened to reflect earnings
+                volatility. Confidence is lower around report dates — consider
+                keeping wider safety margins.
               </p>
             </div>
           </div>
@@ -253,23 +272,23 @@ const Forecast: React.FC = () => {
         )}
 
         {/* Forecast Table */}
-        <Card title="Daily Breakdown">
-          <div className="mt-6">
+        <Card title='Daily Breakdown'>
+          <div className='mt-6'>
             <ForecastTable data={forecastData} />
           </div>
         </Card>
       </div>
-    );
-  };
+    )
+  }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
+    <div className='flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row'>
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <button
-          type="button"
-          aria-label="Close sidebar overlay"
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden w-full h-full border-none cursor-pointer p-0"
+          type='button'
+          aria-label='Close sidebar overlay'
+          className='fixed inset-0 z-40 h-full w-full cursor-pointer border-none bg-black/50 p-0 lg:hidden'
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -277,24 +296,28 @@ const Forecast: React.FC = () => {
       <Sidebar />
 
       {/* MAIN CONTENT */}
-      <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+      <main
+        id='main-content'
+        className='flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8'
+      >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost"
-              size="icon"
+        <div className='mb-6 flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            <Button
+              variant='ghost'
+              size='icon'
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-muted-foreground"
+              className='text-muted-foreground lg:hidden'
             >
               <Menu size={20} />
             </Button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>
                 AI Price Forecast
               </h1>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">
-                Analyze historical trends and model predictions based on split/dividend-adjusted closing prices.
+              <p className='mt-1 text-sm font-medium text-muted-foreground'>
+                Analyze historical trends and model predictions based on
+                split/dividend-adjusted closing prices.
               </p>
             </div>
           </div>
@@ -303,32 +326,32 @@ const Forecast: React.FC = () => {
             onDownload={handleDownload}
             loading={exporting}
             disabled={!canDownload}
-            title="Download the current forecast report"
+            title='Download the current forecast report'
           />
         </div>
 
-        <div className="space-y-6">
+        <div className='space-y-6'>
           <OrgContextBanner />
-          <ShadcnCard className="p-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <ShadcnCard className='p-4'>
+            <div className='flex flex-col gap-4 md:flex-row md:items-center'>
               {/* Search */}
-              <div className="flex-1">
-                <SmartSearch 
+              <div className='flex-1'>
+                <SmartSearch
                   onSubmit={(sym) => {
-                    setSymbol(sym);
+                    setSymbol(sym)
                   }}
                   initialValue={symbol}
-                  placeholder="Search stock symbol (e.g., AAPL, MSFT)"
+                  placeholder='Search stock symbol (e.g., AAPL, MSFT)'
                 />
               </div>
             </div>
-            
+
             {/* Error Display */}
             {error && (
-              <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="flex items-center text-destructive">
-                  <AlertCircle size={16} className="mr-2" />
-                  <span className="text-sm">{error}</span>
+              <div className='mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4'>
+                <div className='flex items-center text-destructive'>
+                  <AlertCircle size={16} className='mr-2' />
+                  <span className='text-sm'>{error}</span>
                 </div>
               </div>
             )}
@@ -337,17 +360,20 @@ const Forecast: React.FC = () => {
           {renderForecastContent()}
 
           {/* Disclaimer */}
-          <div className="p-4 border rounded-lg text-xs bg-muted/30 border-border text-muted-foreground">
-  <p className="font-bold mb-1 text-foreground">Important Notice:</p>
-  <p>
-    All historical data and ML model forecasts represent <strong>Adjusted Closing Prices</strong> (reflecting stock splits and dividend distributions). 
-    Predictions are generated for analytical and decision-support purposes only and do not constitute financial advice.
-  </p>
-</div>
+          <div className='rounded-lg border border-border bg-muted/30 p-4 text-xs text-muted-foreground'>
+            <p className='mb-1 font-bold text-foreground'>Important Notice:</p>
+            <p>
+              All historical data and ML model forecasts represent{' '}
+              <strong>Adjusted Closing Prices</strong> (reflecting stock splits
+              and dividend distributions). Predictions are generated for
+              analytical and decision-support purposes only and do not
+              constitute financial advice.
+            </p>
+          </div>
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default Forecast;
+export default Forecast

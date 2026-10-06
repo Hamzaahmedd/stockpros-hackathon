@@ -7,11 +7,11 @@
  * plus compute headroom: 40 s - 20 s leaves 20 s to actually compute once a
  * request leaves the queue. Keep the gap when changing either value.
  */
-export const BACKEND_QUEUE_MAX_WAIT_MS = 20_000;
+export const BACKEND_QUEUE_MAX_WAIT_MS = 20_000
 /** Time the AI service gets once a request has left the queue. */
-export const COMPUTE_HEADROOM_MS = 20_000;
+export const COMPUTE_HEADROOM_MS = 20_000
 export const QUEUED_COMPUTE_TIMEOUT_MS =
-  BACKEND_QUEUE_MAX_WAIT_MS + COMPUTE_HEADROOM_MS;
+  BACKEND_QUEUE_MAX_WAIT_MS + COMPUTE_HEADROOM_MS
 
 // Exactly the routes behind the backend priority queue. `/forecast/pdf` and
 // other siblings are deliberately not matched: they are not queued.
@@ -19,13 +19,13 @@ const QUEUED_COMPUTE_PATHS: readonly RegExp[] = [
   /^\/api\/v1\/forecast\/?$/,
   /^\/api\/v1\/decision-support\/market\/decision\/[^/]+\/?$/,
   /^\/api\/v1\/decision-support\/market\/radar\/?$/,
-];
+]
 
 /** True for the routes behind the backend priority queue (GET forecast / market decision / radar). */
 export const isQueuedComputeRoute = (
   url: string | undefined,
-  method: string | undefined = "get",
-): boolean => queuedComputeTimeout(url, method) !== undefined;
+  method: string | undefined = 'get',
+): boolean => queuedComputeTimeout(url, method) !== undefined
 
 /**
  * The timeout to apply to a request URL (absolute or relative, query string
@@ -33,17 +33,17 @@ export const isQueuedComputeRoute = (
  */
 export const queuedComputeTimeout = (
   url: string | undefined,
-  method: string | undefined = "get",
+  method: string | undefined = 'get',
 ): number | undefined => {
-  if (!url || method.toLowerCase() !== "get") return undefined;
+  if (!url || method.toLowerCase() !== 'get') return undefined
 
-  let pathname: string;
+  let pathname: string
   try {
-    pathname = new URL(url, "http://placeholder.invalid").pathname;
+    pathname = new URL(url, 'http://placeholder.invalid').pathname
   } catch {
-    return undefined;
+    return undefined
   }
   return QUEUED_COMPUTE_PATHS.some((pattern) => pattern.test(pathname))
     ? QUEUED_COMPUTE_TIMEOUT_MS
-    : undefined;
-};
+    : undefined
+}

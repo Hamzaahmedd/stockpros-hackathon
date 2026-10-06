@@ -4,15 +4,15 @@
 // — kept in sync by hand since these are separate npm packages with no
 // shared type boundary.
 export const SocketEvent = {
-  Join: "join",
-  Subscribe: "subscribe",
-  Unsubscribe: "unsubscribe",
-  Trade: "trade",
-  Subscribed: "subscribed",
-  Unsubscribed: "unsubscribed",
-  Error: "error",
-  FinnhubError: "finnhub_error",
-  Notification: "notification",
-  PlanRestricted: "plan_restricted",
-} as const;
-export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent];
+  Join: 'join',
+  Subscribe: 'subscribe',
+  Unsubscribe: 'unsubscribe',
+  Trade: 'trade',
+  Subscribed: 'subscribed',
+  Unsubscribed: 'unsubscribed',
+  Error: 'error',
+  FinnhubError: 'finnhub_error',
+  Notification: 'notification',
+  PlanRestricted: 'plan_restricted',
+} as const
+export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent]

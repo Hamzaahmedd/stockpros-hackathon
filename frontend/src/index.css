@@ -71,8 +71,12 @@
     @apply border-border;
   }
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    @apply bg-background text-foreground transition-colors duration-300 antialiased;
+    font-family:
+      'Plus Jakarta Sans',
+      system-ui,
+      -apple-system,
+      sans-serif;
+    @apply bg-background text-foreground antialiased transition-colors duration-300;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
@@ -80,15 +84,20 @@
   .tabular-nums,
   .font-mono,
   table,
-  [data-tabular="true"] {
+  [data-tabular='true'] {
     font-variant-numeric: tabular-nums;
   }
 }
 
 /* Glassmorphism & Terminal aesthetic utilities */
 .terminal-glass {
-  background: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%),
-              hsl(var(--card));
+  background:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    hsl(var(--card));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -102,8 +111,15 @@
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), transparent 40%, rgba(6, 182, 212, 0.25));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.35),
+    transparent 40%,
+    rgba(6, 182, 212, 0.25)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -111,6 +127,9 @@
 
 /* Subtle dark financial terminal mesh */
 .terminal-mesh {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px
+  );
   background-size: 24px 24px;
 }

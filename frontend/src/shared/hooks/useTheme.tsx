@@ -1,78 +1,80 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
-type Theme = "light" | "dark";
+type Theme = 'light' | 'dark'
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: Theme
   /** `persist: false` applies a default (e.g. workspace theme) without recording it as the user's own choice. */
-  setTheme: (theme: Theme, persist?: boolean) => void;
-  toggleTheme: () => void;
+  setTheme: (theme: Theme, persist?: boolean) => void
+  toggleTheme: () => void
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 const getSystemTheme = (): Theme =>
-  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     // Honour an explicit user preference stored in localStorage; otherwise
     // fall back to the OS / browser system preference.
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored === "light" || stored === "dark") return stored;
-    return getSystemTheme();
-  });
+    const stored = localStorage.getItem('theme') as Theme | null
+    if (stored === 'light' || stored === 'dark') return stored
+    return getSystemTheme()
+  })
 
   const setTheme = (newTheme: Theme, persist = true) => {
-    setThemeState(newTheme);
-    if (persist) localStorage.setItem("theme", newTheme);
-  };
+    setThemeState(newTheme)
+    if (persist) localStorage.setItem('theme', newTheme)
+  }
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+    setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
 
   // Keep the <html> class and body styles in sync with the active theme.
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(theme);
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
+    root.classList.add(theme)
 
-    if (theme === "dark") {
-      document.body.style.backgroundColor = "#0a0a0a";
-      document.body.style.color = "#ffffff";
+    if (theme === 'dark') {
+      document.body.style.backgroundColor = '#0a0a0a'
+      document.body.style.color = '#ffffff'
     } else {
-      document.body.style.backgroundColor = "#ffffff";
-      document.body.style.color = "#0b1220";
+      document.body.style.backgroundColor = '#ffffff'
+      document.body.style.color = '#0b1220'
     }
-  }, [theme]);
+  }, [theme])
 
   // React to OS-level theme changes when the user has not set an explicit
   // preference (i.e. nothing is stored in localStorage).
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const handleChange = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem("theme")) {
-        setThemeState(e.matches ? "dark" : "light");
+      if (!localStorage.getItem('theme')) {
+        setThemeState(e.matches ? 'dark' : 'light')
       }
-    };
+    }
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
-  );
-};
+  )
+}
 
 export const useTheme = () => {
-  const context = useContext(ThemeContext);
+  const context = useContext(ThemeContext)
   if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider");
+    throw new Error('useTheme must be used within a ThemeProvider')
   }
-  return context;
-};
+  return context
+}

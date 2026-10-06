@@ -6,7 +6,7 @@
  * Callers that need a different timezone can pass their own `options.timeZone`.
  */
 
-export const PKT_TIMEZONE = "Asia/Karachi";
+export const PKT_TIMEZONE = 'Asia/Karachi'
 
 /**
  * Format a date as a localised date string (e.g. "07/09/2026") in PKT.
@@ -14,13 +14,13 @@ export const PKT_TIMEZONE = "Asia/Karachi";
  */
 export function formatDate(
   date: Date | string | number,
-  locales: Intl.LocalesArgument = "en-PK",
+  locales: Intl.LocalesArgument = 'en-PK',
   options: Intl.DateTimeFormatOptions = {},
 ): string {
   return new Date(date).toLocaleDateString(locales, {
     ...options,
     timeZone: options.timeZone ?? PKT_TIMEZONE,
-  });
+  })
 }
 
 /**
@@ -28,13 +28,13 @@ export function formatDate(
  */
 export function formatDateTime(
   date: Date | string | number,
-  locales: Intl.LocalesArgument = "en-PK",
+  locales: Intl.LocalesArgument = 'en-PK',
   options: Intl.DateTimeFormatOptions = {},
 ): string {
   return new Date(date).toLocaleString(locales, {
     ...options,
     timeZone: options.timeZone ?? PKT_TIMEZONE,
-  });
+  })
 }
 
 /**
@@ -42,11 +42,11 @@ export function formatDateTime(
  */
 export function formatTime(
   date: Date | string | number,
-  locales: Intl.LocalesArgument = "en-PK",
+  locales: Intl.LocalesArgument = 'en-PK',
   options: Intl.DateTimeFormatOptions = {},
 ): string {
   return new Date(date).toLocaleTimeString(locales, {
     ...options,
     timeZone: options.timeZone ?? PKT_TIMEZONE,
-  });
+  })
 }
