@@ -1,7 +1,59 @@
 import { developmentConfig } from '../development'
 import { productionConfig } from '../production'
 import { testConfig } from '../test'
-import { buildConfig, parseBooleanEnv, readSecrets } from '../index'
+import {
+  assertFeedbackWebhookUrl,
+  buildConfig,
+  parseBooleanEnv,
+  readSecrets,
+} from '../index'
+
+describe('assertFeedbackWebhookUrl', () => {
+  const HOSTS = ['hooks.slack.com', 'discord.com', 'discordapp.com']
+
+  it.each([
+    '',
+    'https://hooks.slack.com/services/T000/B000/XXXX',
+    'https://discord.com/api/webhooks/123/abc',
+    'https://canary.discord.com/api/webhooks/123/abc',
+    'https://discordapp.com/api/webhooks/123/abc',
+  ])('accepts %p', (url) => {
+    expect(() => assertFeedbackWebhookUrl(url, HOSTS)).not.toThrow()
+  })
+
+  it.each([
+    ['not a url', /not a valid URL/],
+    ['http://hooks.slack.com/services/x', /https/],
+    ['https://user:pass@hooks.slack.com/services/x', /without credentials/],
+    ['https://evil.example/hooks.slack.com', /host must be one of/],
+    ['https://nothooks.slack.com.evil.example/x', /host must be one of/],
+    ['https://169.254.169.254/latest/meta-data', /host must be one of/],
+    ['https://localhost/hook', /host must be one of/],
+  ])('refuses %p', (url, message) => {
+    expect(() => assertFeedbackWebhookUrl(url, HOSTS)).toThrow(message)
+  })
+
+  it('stops the app at boot on a bad URL, and wires the config when it is good', () => {
+    const secrets = readSecrets()
+    expect(() =>
+      buildConfig(testConfig, {
+        ...secrets,
+        feedbackWebhookUrl: 'http://hooks.slack.com/x',
+      }),
+    ).toThrow(/https/)
+
+    const built = buildConfig(testConfig, {
+      ...secrets,
+      feedbackWebhookUrl: 'https://hooks.slack.com/services/T/B/X',
+    })
+    expect(built.feedback).toMatchObject({
+      webhookUrl: 'https://hooks.slack.com/services/T/B/X',
+      webhookTimeoutMs: 3000,
+      webhookSnippetChars: 200,
+      submitLimitPerMinute: 5,
+    })
+  })
+})
 
 describe('readSecrets', () => {
   const originalEnv = process.env
@@ -38,6 +90,7 @@ describe('readSecrets', () => {
     'SAFEPAY_SECRET_KEY',
     'SAFEPAY_WEBHOOK_SECRET',
     'SAFEPAY_PRO_PLAN_ID',
+    'FEEDBACK_WEBHOOK_URL',
   ]
 
   it('reads every secret from its corresponding env var', () => {

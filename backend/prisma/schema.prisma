@@ -336,15 +336,36 @@ model Notification {
   @@map("notifications")
 }
 
+enum FeedbackCategory {
+  BUG
+  FEATURE_REQUEST
+  GENERAL
+}
+
+enum FeedbackStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
 model Feedback {
-  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  message   String
-  page      String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String            @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  message         String
+  page            String?
+  // Optional intent chosen by the user; null for older rows and "no choice".
+  category        FeedbackCategory?
+  // Triage state, changed by admins.
+  status          FeedbackStatus    @default(NEW)
+  // Technical context (userAgent, viewport, planTier, appVersion); see feedback/validation.ts.
+  metadata        Json?
+  statusUpdatedAt DateTime?         @map("status_updated_at") @db.Timestamptz(6)
+  statusUpdatedBy String?           @map("status_updated_by") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([status, createdAt], map: "idx_feedback_status_created_at")
   @@index([userId], map: "idx_feedback_user_id")
   @@index([createdAt], map: "idx_feedback_created_at")
   @@map("feedback")

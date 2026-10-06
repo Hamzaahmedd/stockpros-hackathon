@@ -92,6 +92,19 @@ export const testConfig = {
     // Every admin write must cite a support ticket (format-validated whenever supplied).
     requireTicketRef: false,
   },
+  feedback: {
+    // Only these chat hosts may receive new-feedback alerts (the URL itself is a secret in .env).
+    webhookAllowedHosts: [
+      'hooks.slack.com',
+      'discord.com',
+      'discordapp.com',
+    ] as string[],
+    webhookTimeoutMs: 3000,
+    // How much of the user's message the alert quotes.
+    webhookSnippetChars: 200,
+    // Per user, per minute, on POST /feedback.
+    submitLimitPerMinute: 5,
+  },
   audit: {
     retentionDays: 30,
   },
