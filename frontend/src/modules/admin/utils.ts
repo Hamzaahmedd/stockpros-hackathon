@@ -7,7 +7,7 @@ import {
 } from './constants'
 
 export { apiErrorMessage } from '@/shared/utils/api-error'
-export { formatPaisa } from '@/modules/plans/utils'
+export { formatPaisa, parseRupeesToPaisa } from '@/modules/plans/utils'
 
 /** True when `actual` meets or exceeds `required`. The UI only hides controls; the API enforces every one. */
 export const hasPlatformRole = (

@@ -54,6 +54,7 @@ const mockResolved = () => jest.fn().mockResolvedValue({ ok: true })
 jest.mock('../users-service', () => ({
   searchUsers: mockResolved(),
   overridePlan: mockResolved(),
+  overrideSpendLimit: mockResolved(),
   invalidateSessions: mockResolved(),
   revealUser: mockResolved(),
 }))
@@ -82,6 +83,9 @@ jest.mock('../step-up-service', () => ({
 }))
 jest.mock('../timeline-service', () => ({
   getUserTimeline: mockResolved(),
+}))
+jest.mock('../usage-service', () => ({
+  getUserUsage: mockResolved(),
 }))
 jest.mock('../telemetry-service', () => ({
   getQueueHealth: mockResolved(),
@@ -112,6 +116,13 @@ interface Endpoint {
 
 const ENDPOINTS: readonly Endpoint[] = [
   { method: 'get', path: '/users/search?q=ali', min: 'SUPPORT_AGENT' },
+  { method: 'get', path: `/users/${ID}/usage`, min: 'SUPPORT_AGENT' },
+  {
+    method: 'post',
+    path: `/users/${ID}/spend-limit`,
+    min: 'PLATFORM_ADMIN',
+    body: { monthlyLimitPaisa: 50_000, reason: REASON, ticketRef: 'SUP-1234' },
+  },
   {
     method: 'post',
     path: `/users/${ID}/plan-override`,
@@ -279,8 +290,8 @@ describe('RBAC matrix (pricingTiersEnabled: true)', () => {
   })
 
   it('SUPPORT_AGENT cannot override plans or inject credits, SUPER_ADMIN can', async () => {
-    const plan = ENDPOINTS[1]
-    const credits = ENDPOINTS[9]
+    const plan = ENDPOINTS.find((e) => e.path.endsWith('/plan-override'))!
+    const credits = ENDPOINTS.find((e) => e.path === '/billing/credits/adjust')!
     expect((await call(plan, PlatformRole.SUPPORT_AGENT)).status).toBe(403)
     expect((await call(credits, PlatformRole.SUPPORT_AGENT)).status).toBe(403)
     expect((await call(plan, PlatformRole.SUPER_ADMIN)).status).toBe(200)

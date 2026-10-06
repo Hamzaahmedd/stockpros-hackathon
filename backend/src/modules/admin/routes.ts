@@ -42,11 +42,17 @@ router.post('/step-up/verify', ...stepUpAccess, AdminController.verifyStepUp)
 // ─── Users ───────────────────────────────────────────────────────────────────
 router.get('/users/search', ...support, AdminController.searchUsers)
 router.get('/users/:id/timeline', ...support, AdminController.getUserTimeline)
+router.get('/users/:id/usage', ...support, AdminController.getUserUsage)
 router.post('/users/:id/reveal', ...supportWrite, AdminController.revealUser)
 router.post(
   '/users/:id/plan-override',
   ...superAdmin,
   AdminController.overridePlan,
+)
+router.post(
+  '/users/:id/spend-limit',
+  ...platformAdmin,
+  AdminController.overrideSpendLimit,
 )
 router.post(
   '/users/:id/sessions/invalidate',

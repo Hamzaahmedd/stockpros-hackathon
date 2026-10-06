@@ -4553,6 +4553,36 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"SpendLimitRequest": {
+				"properties": {
+					"monthlyLimitPaisa": {
+						"type": "integer",
+						"format": "int32",
+						"nullable": true,
+						"description": "The customer's new monthly credit-spend limit in whole paisa, or null to\nremove it. One signal (the minimum) up to Rs 100,000.",
+						"example": 500000
+					},
+					"reason": {
+						"type": "string",
+						"description": "Justification stored on the audit row.",
+						"minLength": 10,
+						"maxLength": 500
+					},
+					"ticketRef": {
+						"type": "string",
+						"description": "Support ticket this change answers. Always required here, because the\ncustomer is emailed the reference.",
+						"example": "SUP-1234",
+						"pattern": "^[A-Z][A-Z0-9]{1,9}-\\d{1,8}$"
+					}
+				},
+				"required": [
+					"monthlyLimitPaisa",
+					"reason",
+					"ticketRef"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"AdminReasonRequest": {
 				"properties": {
 					"reason": {
@@ -10361,7 +10391,7 @@
 						}
 					}
 				},
-				"description": "SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, active sessions, subscription.",
+				"description": "SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, personal spend limit (`monthlyCreditLimitPaisa`, null = none), `usageAlertsEnabled`, active sessions, subscription.",
 				"tags": [
 					"Admin"
 				],
@@ -10471,6 +10501,92 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/PlanOverrideRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/users/{id}/spend-limit": {
+			"post": {
+				"operationId": "OverrideSpendLimit",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "FREE user, workspace member, or limit unchanged",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN. Sets or removes (null) an individual Pro user's own monthly credit-spend limit on their behalf. Needs a reason and a ticketRef, step-up verification, and appends one `SPEND_LIMIT_OVERRIDDEN` audit row (previous and new limit) in the same transaction. 409 for FREE users, workspace members (their cap belongs to a workspace admin) and a no-op change.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SpendLimitRequest"
 							}
 						}
 					}
@@ -10636,6 +10752,72 @@
 				]
 			}
 		},
+		"/api/v1/admin/users/{id}/usage": {
+			"get": {
+				"operationId": "GetUserUsage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. A customer's metering position: plan allowance used/remaining, personal or workspace spend cap with this cycle's spend, credit pool balance, whether usage-warning emails are on, and `blockedReason` (INSUFFICIENT_CREDITS, SPEND_LIMIT_REACHED or PERSONAL_SPEND_LIMIT_REACHED) when the next metered AI action would be refused, null otherwise. Uses the same window and counting rules as enforcement. Read-audited.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/admin/users/{id}/reveal": {
 			"post": {
 				"operationId": "RevealUser",
@@ -10757,7 +10939,7 @@
 						}
 					}
 				},
-				"description": "SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members, orgInstructions.",
+				"description": "SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members (each with their credit cap `monthlyCreditLimitPaisa` and `cycleSpendPaisa` for the current billing cycle), orgInstructions.",
 				"tags": [
 					"Admin"
 				],

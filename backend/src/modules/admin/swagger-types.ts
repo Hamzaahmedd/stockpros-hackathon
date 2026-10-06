@@ -51,6 +51,29 @@ export interface PlanOverrideRequest extends AdminReasonRequest {
   plan: 'FREE' | 'PRO' | 'TEAM'
 }
 
+export interface SpendLimitRequest {
+  /**
+   * The customer's new monthly credit-spend limit in whole paisa, or null to
+   * remove it. One signal (the minimum) up to Rs 100,000.
+   * @isInt
+   * @example 500000
+   */
+  monthlyLimitPaisa: number | null
+  /**
+   * Justification stored on the audit row.
+   * @minLength 10
+   * @maxLength 500
+   */
+  reason: string
+  /**
+   * Support ticket this change answers. Always required here, because the
+   * customer is emailed the reference.
+   * @pattern ^[A-Z][A-Z0-9]{1,9}-\d{1,8}$
+   * @example "SUP-1234"
+   */
+  ticketRef: string
+}
+
 export interface SeatCapacityRequest extends AdminReasonRequest {
   /**
    * New seat ceiling for an enterprise deal (2–10000). Also clears any
@@ -116,7 +139,7 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
-  /** SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, active sessions, subscription. */
+  /** SUPPORT_AGENT+. Global search by email, id or name: plan, credit balance, personal spend limit (`monthlyCreditLimitPaisa`, null = none), `usageAlertsEnabled`, active sessions, subscription. */
   @Get('users/search')
   async searchUsers(
     @Query() q: string,
@@ -131,6 +154,19 @@ export class AdminSwaggerController extends Controller {
   async overridePlan(
     @Path() id: string,
     @Body() body: PlanOverrideRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Sets or removes (null) an individual Pro user's own monthly credit-spend limit on their behalf. Needs a reason and a ticketRef, step-up verification, and appends one `SPEND_LIMIT_OVERRIDDEN` audit row (previous and new limit) in the same transaction. 409 for FREE users, workspace members (their cap belongs to a workspace admin) and a no-op change. */
+  @Post('users/{id}/spend-limit')
+  @Response<ApiErrorResponse>(
+    409,
+    'FREE user, workspace member, or limit unchanged',
+  )
+  async overrideSpendLimit(
+    @Path() id: string,
+    @Body() body: SpendLimitRequest,
   ): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
@@ -154,6 +190,12 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
+  /** SUPPORT_AGENT+. A customer's metering position: plan allowance used/remaining, personal or workspace spend cap with this cycle's spend, credit pool balance, whether usage-warning emails are on, and `blockedReason` (INSUFFICIENT_CREDITS, SPEND_LIMIT_REACHED or PERSONAL_SPEND_LIMIT_REACHED) when the next metered AI action would be refused, null otherwise. Uses the same window and counting rules as enforcement. Read-audited. */
+  @Get('users/{id}/usage')
+  async getUserUsage(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** SUPPORT_AGENT+. Returns a customer's real email, name and phone number. Search results mask these by default (`piiMasked: true`); every reveal is audited as CUSTOMER_DATA_REVEALED with the reason and ticket. */
   @Post('users/{id}/reveal')
   async revealUser(
@@ -163,7 +205,7 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
-  /** SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members, orgInstructions. */
+  /** SUPPORT_AGENT+. Searches workspaces: seat utilization (e.g. 8/10), owner, members (each with their credit cap `monthlyCreditLimitPaisa` and `cycleSpendPaisa` for the current billing cycle), orgInstructions. */
   @Get('teams/search')
   async searchTeams(
     @Query() q: string,

@@ -52,8 +52,10 @@ jest.mock('../../../shared/infrastructure/team-access', () => ({
 
 const mockReplay = jest.fn()
 const mockSubscriptionQueues = jest.fn()
+const mockSumTeamMemberSpend = jest.fn()
 jest.mock('../../payments/public', () => ({
   TEAM_MIN_SEATS: 2,
+  sumTeamMemberSpend: (...args: unknown[]) => mockSumTeamMemberSpend(...args),
   replayStoredWebhook: (...args: unknown[]) => mockReplay(...args),
   getSubscriptionQueues: () => mockSubscriptionQueues(),
 }))
@@ -148,6 +150,7 @@ const expectOneAudit = (
 beforeEach(() => {
   jest.clearAllMocks()
   mockMarket.closed = false
+  mockSumTeamMemberSpend.mockResolvedValue(new Map())
   mockPrisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) =>
     fn(mockTx),
   )
@@ -189,6 +192,105 @@ describe('users', () => {
     expect(mockTx.subscription.updateMany).not.toHaveBeenCalled()
     const data = expectOneAudit(AdminAuditAction.PLAN_OVERRIDE, 'USER', TARGET)
     expect(data.metadata).toMatchObject({ fromPlan: 'FREE', toPlan: 'PRO' })
+  })
+
+  describe('overrideSpendLimit', () => {
+    const proUser = (monthlyCreditLimitPaisa: number | null) => ({
+      id: TARGET,
+      plan: 'PRO',
+      monthlyCreditLimitPaisa,
+    })
+
+    it('stores the new limit and audits previous and new values once', async () => {
+      mockTx.user.findUnique.mockResolvedValue(proUser(50_000))
+      mockTx.teamMember.findUnique.mockResolvedValue(null)
+
+      const result = await Users.overrideSpendLimit(ctx, TARGET, 120_000)
+
+      expect(result).toEqual({
+        userId: TARGET,
+        previousLimitPaisa: 50_000,
+        monthlyLimitPaisa: 120_000,
+      })
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: TARGET },
+        data: { monthlyCreditLimitPaisa: 120_000 },
+      })
+      const data = expectOneAudit(
+        AdminAuditAction.SPEND_LIMIT_OVERRIDDEN,
+        'USER',
+        TARGET,
+      )
+      expect(data.metadata).toEqual({
+        previousLimitPaisa: 50_000,
+        monthlyLimitPaisa: 120_000,
+      })
+    })
+
+    it('removes the limit with null', async () => {
+      mockTx.user.findUnique.mockResolvedValue(proUser(50_000))
+      mockTx.teamMember.findUnique.mockResolvedValue(null)
+
+      const result = await Users.overrideSpendLimit(ctx, TARGET, null)
+
+      expect(result.monthlyLimitPaisa).toBeNull()
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: TARGET },
+        data: { monthlyCreditLimitPaisa: null },
+      })
+    })
+
+    it('404s for an unknown user', async () => {
+      mockTx.user.findUnique.mockResolvedValue(null)
+
+      await expect(
+        Users.overrideSpendLimit(ctx, TARGET, 1_000),
+      ).rejects.toThrow(NotFoundError)
+      expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
+    })
+
+    it('refuses FREE users, which have no credits to cap', async () => {
+      mockTx.user.findUnique.mockResolvedValue({
+        ...proUser(null),
+        plan: 'FREE',
+      })
+
+      await expect(
+        Users.overrideSpendLimit(ctx, TARGET, 1_000),
+      ).rejects.toThrow(ConflictError)
+      expect(mockTx.user.update).not.toHaveBeenCalled()
+      expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
+    })
+
+    it('refuses workspace members, whose cap belongs to a workspace admin', async () => {
+      mockTx.user.findUnique.mockResolvedValue({
+        ...proUser(null),
+        plan: 'TEAM',
+      })
+      mockTx.teamMember.findUnique.mockResolvedValue({
+        teamId: TEAM,
+        role: TeamRole.MEMBER,
+        monthlyCreditLimitPaisa: 1_000,
+        team: { status: 'ACTIVE', orgInstructions: null },
+      })
+
+      await expect(
+        Users.overrideSpendLimit(ctx, TARGET, 1_000),
+      ).rejects.toThrow('workspace')
+      expect(mockTx.user.update).not.toHaveBeenCalled()
+      expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
+    })
+
+    it('rejects a change that would not change anything (no audit, no email trigger)', async () => {
+      mockTx.user.findUnique.mockResolvedValue(proUser(50_000))
+      mockTx.teamMember.findUnique.mockResolvedValue(null)
+
+      await expect(
+        Users.overrideSpendLimit(ctx, TARGET, 50_000),
+      ).rejects.toThrow(ConflictError)
+      expect(mockTx.user.update).not.toHaveBeenCalled()
+      expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
+    })
   })
 
   it('cancels a live personal subscription when moving off PRO', async () => {
@@ -280,13 +382,49 @@ describe('teams', () => {
         id: TEAM,
         seatCapacity: 10,
         scheduledSeatCapacity: null,
-        members: new Array(8).fill({}),
+        members: Array.from({ length: 8 }, (_, i) => ({
+          role: 'MEMBER',
+          monthlyCreditLimitPaisa: null,
+          user: { id: `m${i}`, email: `m${i}@fund.com`, displayName: null },
+        })),
       },
     ])
     const [row] = await Teams.searchTeams(readCtx, TEAM, 5)
     expect(row.seatUtilization).toBe('8/10')
     expectReadAudit('TEAM', [TEAM])
     expect(mockPrisma.team.findMany.mock.calls[0][0].where.OR).toHaveLength(3)
+  })
+
+  it('shows each member cap and cycle spend from one batched lookup', async () => {
+    mockSumTeamMemberSpend.mockResolvedValue(new Map([[`${TEAM}:m1`, 1_250]]))
+    mockPrisma.team.findMany = jest.fn().mockResolvedValue([
+      {
+        id: TEAM,
+        seatCapacity: 5,
+        scheduledSeatCapacity: null,
+        members: [
+          {
+            role: 'MEMBER',
+            monthlyCreditLimitPaisa: 5_000,
+            user: { id: 'm1', email: 'a@fund.com', displayName: null },
+          },
+          {
+            role: 'MEMBER',
+            monthlyCreditLimitPaisa: null,
+            user: { id: 'm2', email: 'b@fund.com', displayName: null },
+          },
+        ],
+      },
+    ])
+
+    const [team] = await Teams.searchTeams(readCtx, TEAM, 5)
+
+    expect(mockSumTeamMemberSpend).toHaveBeenCalledTimes(1)
+    expect(mockSumTeamMemberSpend).toHaveBeenCalledWith([TEAM])
+    expect(team.members).toMatchObject([
+      { monthlyCreditLimitPaisa: 5_000, cycleSpendPaisa: 1_250 },
+      { monthlyCreditLimitPaisa: null, cycleSpendPaisa: 0 },
+    ])
   })
 
   it('overrides capacity, clears the scheduled reduction and audits', async () => {
@@ -912,6 +1050,7 @@ describe('PII masking and reveal', () => {
         members: [
           {
             role: 'MEMBER',
+            monthlyCreditLimitPaisa: null,
             user: {
               id: 'm1',
               email: 'mia@fund.com',

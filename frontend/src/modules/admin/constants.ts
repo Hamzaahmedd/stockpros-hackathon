@@ -81,4 +81,24 @@ export const ADMIN_AUDIT_ACTIONS = [
   'AUTH_POLICY_RESET',
   'SAML_CONFIG_RESET',
   'SAML_DISABLED',
+  'SPEND_LIMIT_OVERRIDDEN',
 ] as const
+
+export const BLOCKED_REASONS = [
+  'INSUFFICIENT_CREDITS',
+  'SPEND_LIMIT_REACHED',
+  'PERSONAL_SPEND_LIMIT_REACHED',
+] as const
+
+export const BLOCKED_REASON_LABELS: Readonly<
+  Record<(typeof BLOCKED_REASONS)[number], string>
+> = {
+  INSUFFICIENT_CREDITS: 'Out of credits',
+  SPEND_LIMIT_REACHED: "Workspace admin's limit reached",
+  PERSONAL_SPEND_LIMIT_REACHED: 'Own spending limit reached',
+}
+
+export {
+  USER_SPEND_CAP_MAX_PAISA,
+  USER_SPEND_CAP_MIN_PAISA,
+} from '@/modules/plans/constants'

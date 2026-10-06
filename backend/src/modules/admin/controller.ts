@@ -11,6 +11,7 @@ import * as StepUp from './step-up-service'
 import * as Teams from './teams-service'
 import * as Telemetry from './telemetry-service'
 import * as Timeline from './timeline-service'
+import * as Usage from './usage-service'
 import { AdminCreditTarget, MARKET_EMERGENCY_TARGET_ID } from './constants'
 import type { AdminReadContext, AdminWriteContext } from './types'
 import * as Users from './users-service'
@@ -25,6 +26,7 @@ import {
   domainParamValidator,
   reasonBodyValidator,
   searchQueryValidator,
+  spendLimitValidator,
   stepUpVerifyValidator,
   timelineQueryValidator,
   creditLedgerQueryValidator,
@@ -91,10 +93,28 @@ export const overridePlan = handle('Plan overridden', async (req) => {
   return result
 })
 
+export const overrideSpendLimit = handle('Spend limit overridden', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  const { monthlyLimitPaisa, reason, ticketRef } = validateOrThrow(
+    spendLimitValidator,
+    req.body,
+  )
+  return Users.overrideSpendLimit(
+    writeContext(req, reason, ticketRef),
+    id,
+    monthlyLimitPaisa,
+  )
+})
+
 export const getUserTimeline = handle('Timeline fetched', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
   const query = validateOrThrow(timelineQueryValidator, req.query)
   return Timeline.getUserTimeline(readContext(req), id, query)
+})
+
+export const getUserUsage = handle('Usage fetched', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  return Usage.getUserUsage(readContext(req), id)
 })
 
 /** The authenticated staff member and the session this request belongs to. */

@@ -21,6 +21,8 @@ interface Props {
   children?: ReactNode
   /** False while the extra fields are invalid; keeps the confirm button disabled. */
   canSubmit?: boolean
+  /** Makes the support ticket mandatory (e.g. when the customer is told which ticket it cites). */
+  ticketRequired?: boolean
   onSubmit: (reason: string, ticketRef?: string) => Promise<void>
   onClose: () => void
   onDone: () => void
@@ -35,6 +37,7 @@ export function ReasonModal({
   successMessage,
   children,
   canSubmit = true,
+  ticketRequired = false,
   onSubmit,
   onClose,
   onDone,
@@ -45,7 +48,11 @@ export function ReasonModal({
   const [busy, setBusy] = useState(false)
   const [stepUpNeeded, setStepUpNeeded] = useState(false)
   const ready =
-    canSubmit && isValidReason(reason) && isValidTicketRef(ticketRef) && !busy
+    canSubmit &&
+    isValidReason(reason) &&
+    isValidTicketRef(ticketRef) &&
+    (!ticketRequired || ticketRef.trim() !== '') &&
+    !busy
 
   const submit = async () => {
     setBusy(true)
@@ -116,8 +123,8 @@ export function ReasonModal({
             onChange={(event) => setTicketRef(event.target.value.toUpperCase())}
           />
           <p className='mt-1 text-xs text-muted-foreground'>
-            Links this action to its ticket (e.g. SUP-1234). Required in
-            production.
+            Links this action to its ticket (e.g. SUP-1234).{' '}
+            {ticketRequired ? 'Required.' : 'Required in production.'}
           </p>
         </div>
         <div className='flex justify-end gap-2'>

@@ -17,7 +17,7 @@ import {
   logAdminAction,
   logAdminRead,
 } from '../access-control'
-import { TEAM_MIN_SEATS } from '../payments/public'
+import { sumTeamMemberSpend, TEAM_MIN_SEATS } from '../payments/public'
 import { UUID_PATTERN } from './constants'
 import { isMaskingEnabled, maskIdentity } from './masking'
 import { detachMemberTx } from './team-members'
@@ -60,6 +60,7 @@ export async function searchTeams(
       members: {
         select: {
           role: true,
+          monthlyCreditLimitPaisa: true,
           user: { select: { id: true, displayName: true, email: true } },
         },
       },
@@ -68,6 +69,7 @@ export async function searchTeams(
       },
     },
   })
+  const cycleSpend = await sumTeamMemberSpend(teams.map((team) => team.id))
 
   await logAdminRead(prisma, {
     adminId: ctx.adminId,
@@ -83,6 +85,7 @@ export async function searchTeams(
       owner: maskIdentity(team.owner),
       members: team.members.map((member) => ({
         ...member,
+        cycleSpendPaisa: cycleSpend.get(`${team.id}:${member.user.id}`) ?? 0,
         user: maskIdentity(member.user),
       })),
       piiMasked: isMaskingEnabled(),

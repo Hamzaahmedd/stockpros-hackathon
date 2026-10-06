@@ -10,6 +10,7 @@ import type {
   AdminQueueHealth,
   AdminTeam,
   AdminTeamSso,
+  AdminUserUsage,
   CreditLedgerEntry,
   AdminUser,
   AdminWebhook,
@@ -49,6 +50,20 @@ export const adminService = {
   ): Promise<void> => {
     await api.post(`${BASE}/users/${userId}/plan-override`, {
       plan,
+      reason,
+      ticketRef,
+    })
+  },
+  getUserUsage: async (userId: string): Promise<AdminUserUsage> =>
+    unwrap(await api.get(`${BASE}/users/${userId}/usage`)),
+  setSpendLimit: async (
+    userId: string,
+    monthlyLimitPaisa: number | null,
+    reason: string,
+    ticketRef: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/users/${userId}/spend-limit`, {
+      monthlyLimitPaisa,
       reason,
       ticketRef,
     })

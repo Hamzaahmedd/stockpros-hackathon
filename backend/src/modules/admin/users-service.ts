@@ -7,6 +7,7 @@ import {
 } from '@prisma/client'
 import { ConflictError, NotFoundError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
+import { getActiveMembership } from '../../shared/infrastructure/team-access'
 import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import {
   AdminTargetType,
@@ -42,6 +43,8 @@ export async function searchUsers(
       plan: true,
       platformRole: true,
       creditBalanceInPaisa: true,
+      monthlyCreditLimitPaisa: true,
+      usageAlertsEnabled: true,
       deletedAt: true,
       createdAt: true,
       subscription: {
@@ -217,5 +220,56 @@ export async function revealUser(ctx: AdminWriteContext, userId: string) {
     })
 
     return user
+  })
+}
+
+/**
+ * Sets or clears (`null`) an individual Pro user's own monthly credit-spend
+ * limit on their behalf. Refused for FREE users (nothing to cap) and workspace
+ * members (their cap belongs to their workspace admins), as the customer's own
+ * setting is. The limit and its audit row (previous and new value, reason,
+ * ticket) commit together.
+ */
+export async function overrideSpendLimit(
+  ctx: AdminWriteContext,
+  userId: string,
+  monthlyLimitPaisa: number | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, plan: true, monthlyCreditLimitPaisa: true },
+    })
+    if (!user) throw new NotFoundError('User not found')
+    if (user.plan === PlanTier.FREE) {
+      throw new ConflictError('Spending limits are available on paid plans')
+    }
+    if (await getActiveMembership(userId, tx)) {
+      throw new ConflictError(
+        'This user is in a workspace: their credit limit is set by a workspace admin',
+      )
+    }
+    const previousLimitPaisa = user.monthlyCreditLimitPaisa
+    if (previousLimitPaisa === monthlyLimitPaisa) {
+      throw new ConflictError('The spending limit is already set to that value')
+    }
+
+    await tx.user.update({
+      where: { id: userId },
+      data: { monthlyCreditLimitPaisa: monthlyLimitPaisa },
+    })
+
+    await logAdminAction(tx, {
+      adminId: ctx.adminId,
+      action: AdminAuditAction.SPEND_LIMIT_OVERRIDDEN,
+      targetType: AdminTargetType.USER,
+      targetId: userId,
+      reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
+      ipAddress: ctx.ipAddress,
+      metadata: { previousLimitPaisa, monthlyLimitPaisa },
+    })
+
+    return { userId, previousLimitPaisa, monthlyLimitPaisa }
   })
 }

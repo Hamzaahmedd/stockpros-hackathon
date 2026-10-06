@@ -96,6 +96,15 @@ describe('ReasonModal', () => {
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled()
   })
 
+  it('keeps Confirm disabled until a ticket is entered when one is required', async () => {
+    setup({ ticketRequired: true })
+    await userEvent.type(screen.getByLabelText('Reason (audited)'), REASON)
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText('Support ticket'), 'SUP-12')
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled()
+  })
+
   it("shows the server's message and stays open when the action fails", async () => {
     const failure = {
       response: {

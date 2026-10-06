@@ -586,6 +586,7 @@ enum TeamAuditAction {
   SAML_CONFIG_UPDATED
   SAML_ENABLED
   SAML_DISABLED
+  SPEND_LIMIT_OVERRIDDEN
 }
 
 // Which limit a usage-warning email is about.
@@ -627,6 +628,7 @@ enum AdminAuditAction {
   AUTH_POLICY_RESET
   SAML_CONFIG_RESET
   SAML_DISABLED
+  SPEND_LIMIT_OVERRIDDEN
 }
 
 enum SubscriptionPaymentMethod {

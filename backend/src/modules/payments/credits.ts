@@ -175,6 +175,54 @@ export async function sumCreditSpend(
   return Math.abs(spent._sum.amountPaisa ?? 0)
 }
 
+/**
+ * Credit each workspace member has drawn this cycle, for a page of workspaces
+ * in two queries (no per-member lookups). Each team uses its own billing
+ * window, as {@link resolveUsageWindow} does for enforcement. Keyed by
+ * `${teamId}:${userId}`; members who spent nothing are absent.
+ */
+export async function sumTeamMemberSpend(
+  teamIds: string[],
+  now: Date = new Date(),
+): Promise<Map<string, number>> {
+  const spend = new Map<string, number>()
+  if (teamIds.length === 0) return spend
+
+  const subscriptions = await prisma.subscription.findMany({
+    where: { teamId: { in: teamIds } },
+    select: { teamId: true, currentPeriodStart: true, currentPeriodEnd: true },
+  })
+  const periodStart = new Map(
+    subscriptions.flatMap((subscription) =>
+      subscription.teamId && subscription.currentPeriodEnd
+        ? [[subscription.teamId, subscription.currentPeriodStart] as const]
+        : [],
+    ),
+  )
+
+  const rows = await prisma.creditLedger.groupBy({
+    by: ['teamId', 'userId'],
+    _sum: { amountPaisa: true },
+    where: {
+      type: CreditLedgerType.OVERAGE_CONSUMPTION,
+      OR: teamIds.map((teamId) => ({
+        teamId,
+        createdAt: { gte: periodStart.get(teamId) ?? startOfUtcMonth(now) },
+      })),
+    },
+  })
+  for (const row of rows) {
+    if (row.teamId && row.userId) {
+      // Consumption rows are stored negative.
+      spend.set(
+        `${row.teamId}:${row.userId}`,
+        Math.abs(row._sum.amountPaisa ?? 0),
+      )
+    }
+  }
+  return spend
+}
+
 const rejection = (reason: OverageReason, feature: string, actor: MeterActor) =>
   new OverageRequiredError({
     reason,

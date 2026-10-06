@@ -198,6 +198,12 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
                     masked={team.piiMasked}
                   />
                   <Badge variant='secondary'>{member.role}</Badge>
+                  <span className='text-xs text-muted-foreground'>
+                    Spent {formatPaisa(member.cycleSpendPaisa)} of{' '}
+                    {member.monthlyCreditLimitPaisa === null
+                      ? 'no limit'
+                      : formatPaisa(member.monthlyCreditLimitPaisa)}
+                  </span>
                   {canWrite && member.role !== 'OWNER' && (
                     <Button
                       size='sm'

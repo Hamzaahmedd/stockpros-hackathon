@@ -6,7 +6,11 @@ import {
 } from '@prisma/client'
 import { z } from 'zod'
 import config from '@/config'
-import { TEAM_MIN_SEATS } from '../payments/public'
+import {
+  TEAM_MIN_SEATS,
+  USER_SPEND_CAP_MAX_PAISA,
+  USER_SPEND_CAP_MIN_PAISA,
+} from '../payments/public'
 import {
   ADMIN_DEFAULT_PAGE_SIZE,
   ADMIN_MAX_CREDIT_ADJUSTMENT_PAISA,
@@ -100,6 +104,28 @@ export const searchQueryValidator = z.object({
 export const planOverrideValidator = z
   .object({ plan: z.nativeEnum(PlanTier), ...writeFields })
   .superRefine(requireTicketWhenConfigured)
+
+/**
+ * Staff override of a customer's own spending limit (`null` removes it). The
+ * ticket is always required, whatever `requireTicketRef` says, because the
+ * customer is emailed the reference.
+ */
+export const spendLimitValidator = z.object({
+  monthlyLimitPaisa: z
+    .number({
+      required_error: 'monthlyLimitPaisa is required (use null to remove it)',
+      invalid_type_error: 'monthlyLimitPaisa must be a number or null',
+    })
+    .int('monthlyLimitPaisa must be a whole number of paisa')
+    .min(USER_SPEND_CAP_MIN_PAISA, 'The limit must cover at least one signal')
+    .max(USER_SPEND_CAP_MAX_PAISA, 'The limit is too high')
+    .nullable(),
+  reason: reasonSchema,
+  ticketRef: z
+    .string({ required_error: 'ticketRef is required' })
+    .trim()
+    .regex(TICKET_REF_PATTERN, 'ticketRef must look like SUP-1234'),
+})
 
 export const stepUpVerifyValidator = z.object({
   code: z

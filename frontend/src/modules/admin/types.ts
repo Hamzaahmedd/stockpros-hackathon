@@ -3,8 +3,10 @@ import type {
   PlanTier,
   PlatformRole,
 } from '@/modules/auth/types'
+import type { UsageSummary } from '@/modules/plans/types'
 import type {
   ADMIN_AUDIT_ACTIONS,
+  BLOCKED_REASONS,
   CREDIT_LEDGER_TYPES,
   PAYMENT_STATUSES,
 } from './constants'
@@ -27,6 +29,9 @@ export interface AdminUser {
   plan: PlanTier
   platformRole: PlatformRole
   creditBalanceInPaisa: number
+  /** The customer's own monthly credit-spend limit; null = none. */
+  monthlyCreditLimitPaisa: number | null
+  usageAlertsEnabled: boolean
   activeSessions: number
   deletedAt: string | null
   /** True when the API masked email/name; a Reveal (audited) shows the real values. */
@@ -91,6 +96,10 @@ export interface AdminTeam {
   }[]
   members: {
     role: string
+    /** The workspace admin's cap for this member; null = none. */
+    monthlyCreditLimitPaisa: number | null
+    /** Credit drawn this billing cycle. */
+    cycleSpendPaisa: number
     user: { id: string; displayName: string | null; email: string }
   }[]
   subscription: {
@@ -191,4 +200,13 @@ export interface AuditFilters {
   action?: AdminAuditAction
   targetId?: string
   ticketRef?: string
+}
+
+/** Why the next metered AI action would be refused; mirrors the backend `OverageReason`. */
+export type BlockedReason = (typeof BLOCKED_REASONS)[number]
+
+/** `GET /admin/users/:id/usage`: the customer's own usage summary plus the refusal reason, if any. */
+export type AdminUserUsage = UsageSummary & {
+  userId: string
+  blockedReason: BlockedReason | null
 }

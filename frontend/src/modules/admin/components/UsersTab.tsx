@@ -24,6 +24,7 @@ import { CustomerIdentity } from './CustomerIdentity'
 import { CustomerTimeline } from './CustomerTimeline'
 import { ReasonModal } from './ReasonModal'
 import { SearchBar } from './SearchBar'
+import { SpendLimitCard } from './SpendLimitCard'
 
 type UserAction = { kind: 'plan' | 'sessions'; user: AdminUser }
 
@@ -35,6 +36,8 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
   const [action, setAction] = useState<UserAction | null>(null)
   const [plan, setPlan] = useState<PlanTier>('PRO')
   const [timelineFor, setTimelineFor] = useState<string | null>(null)
+  const [spendFor, setSpendFor] = useState<AdminUser | null>(null)
+  const canOverrideSpend = hasPlatformRole(role, 'PLATFORM_ADMIN')
   const canWrite = hasPlatformRole(role, 'SUPER_ADMIN')
 
   const search = async (query: string) => {
@@ -133,6 +136,13 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
                     <Button
                       size='sm'
                       variant='outline'
+                      onClick={() => setSpendFor(user)}
+                    >
+                      Spend limit
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='outline'
                       onClick={() => setTimelineFor(user.id)}
                     >
                       Timeline
@@ -161,6 +171,16 @@ export function UsersTab({ role }: Readonly<{ role: PlatformRole }>) {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {spendFor && (
+        <SpendLimitCard
+          key={spendFor.id}
+          user={spendFor}
+          canOverride={canOverrideSpend}
+          onClose={() => setSpendFor(null)}
+          onChanged={() => void search(lastQuery)}
+        />
       )}
 
       {timelineFor && (
