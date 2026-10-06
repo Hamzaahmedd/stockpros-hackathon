@@ -8,6 +8,12 @@ jest.mock('../service', () => ({
   verifyTracker: jest.fn(),
 }))
 
+const mockOpsAlert = jest.fn()
+jest.mock('../../../shared/infrastructure/ops-alert', () => ({
+  ...jest.requireActual('../../../shared/infrastructure/ops-alert'),
+  sendOpsAlert: (...args: unknown[]) => mockOpsAlert(...args),
+}))
+
 jest.mock('../ledger', () => ({ getCreditLedger: jest.fn() }))
 
 jest.mock('../usage', () => ({ getMyUsage: jest.fn() }))
@@ -54,6 +60,7 @@ import { setSpendCap } from '../spend-cap'
 import { setUsageAlertsEnabled } from '../usage-alerts'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import { verifySafepaySignature } from '../signature'
+import { AppError } from '../../../shared/errors'
 import {
   createTeamCheckout,
   createTeamRenewalCheckout,
@@ -78,7 +85,10 @@ const mockReq = (overrides: Record<string, any> = {}) => ({
 })
 const next = jest.fn()
 
-beforeEach(() => jest.clearAllMocks())
+beforeEach(() => {
+  jest.clearAllMocks()
+  mockOpsAlert.mockReset()
+})
 
 describe('createCheckout', () => {
   it('creates a checkout session for the PRO plan', async () => {
@@ -186,6 +196,103 @@ describe('toggleAutoRenewHandler', () => {
     await controller.toggleAutoRenewHandler(req as any, res, next)
     expect(next).toHaveBeenCalledWith(expect.any(Error))
     expect(toggleAutoRenew).not.toHaveBeenCalled()
+  })
+})
+
+describe('safepayWebhook ops alerts', () => {
+  const body = {
+    data: { token: 'trk_123', notification: { state: 'PAID' } },
+  }
+
+  it('alerts once per rejected webhook, keyed so a flood becomes a single alert', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(false)
+    await controller.safepayWebhook(
+      mockReq({ body: { data: {} } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(mockOpsAlert).toHaveBeenCalledTimes(1)
+    expect(mockOpsAlert).toHaveBeenCalledWith({
+      kind: 'PAYMENT_WEBHOOK_REJECTED',
+      key: 'safepay',
+    })
+    // The caller still gets the same 401.
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 401 }),
+    )
+  })
+
+  it('does not alert for a webhook that is processed normally', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(true)
+    ;(handleWebhookEvent as jest.Mock).mockResolvedValue(undefined)
+    await controller.safepayWebhook(mockReq({ body }) as any, mockRes(), next)
+    expect(mockOpsAlert).not.toHaveBeenCalled()
+  })
+
+  it('alerts when processing a one-time payment fails, naming the tracker and the error class only', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(true)
+    ;(handleWebhookEvent as jest.Mock).mockRejectedValue(
+      new TypeError('db down for sam@fund.com'),
+    )
+    await controller.safepayWebhook(mockReq({ body }) as any, mockRes(), next)
+
+    expect(mockOpsAlert).toHaveBeenCalledWith({
+      kind: 'PAYMENT_WEBHOOK_FAILED',
+      key: 'trk_123',
+      details: { reference: 'trk_123', error: 'TypeError' },
+    })
+    expect(JSON.stringify(mockOpsAlert.mock.calls)).not.toContain(
+      'sam@fund.com',
+    )
+    // Safepay still gets the error response, so it retries.
+    expect(next).toHaveBeenCalledWith(expect.any(TypeError))
+  })
+
+  it('alerts when processing a recurring renewal fails, naming the subscription', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(true)
+    ;(handleSubscriptionRenewalWebhookEvent as jest.Mock).mockRejectedValue(
+      new Error('boom'),
+    )
+    await controller.safepayWebhook(
+      mockReq({
+        body: { data: { type: 'payment.succeeded', reference: 'sub-1' } },
+      }) as any,
+      mockRes(),
+      next,
+    )
+    expect(mockOpsAlert).toHaveBeenCalledWith({
+      kind: 'PAYMENT_WEBHOOK_FAILED',
+      key: 'sub-1',
+      details: { reference: 'sub-1', error: 'Error' },
+    })
+  })
+
+  it('treats a 5xx application error as a failure, but a refused request (4xx) as nothing to page about', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(true)
+
+    ;(handleWebhookEvent as jest.Mock).mockRejectedValueOnce(
+      new AppError('unavailable', 503),
+    )
+    await controller.safepayWebhook(mockReq({ body }) as any, mockRes(), next)
+    expect(mockOpsAlert).toHaveBeenCalledTimes(1)
+
+    mockOpsAlert.mockClear()
+    ;(handleWebhookEvent as jest.Mock).mockRejectedValueOnce(
+      new AppError('bad request', 400),
+    )
+    await controller.safepayWebhook(mockReq({ body }) as any, mockRes(), next)
+    expect(mockOpsAlert).not.toHaveBeenCalled()
+  })
+
+  it('reports a thrown non-Error as unknown', async () => {
+    ;(verifySafepaySignature as jest.Mock).mockReturnValue(true)
+    ;(handleWebhookEvent as jest.Mock).mockRejectedValue('boom')
+    await controller.safepayWebhook(mockReq({ body }) as any, mockRes(), next)
+    expect(mockOpsAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({ error: 'unknown' }),
+      }),
+    )
   })
 })
 

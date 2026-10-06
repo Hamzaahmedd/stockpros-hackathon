@@ -13,6 +13,10 @@ import {
 import { BadRequestError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
 import { logger } from '../../shared/infrastructure/logger'
+import {
+  OpsAlertKind,
+  sendOpsAlert,
+} from '../../shared/infrastructure/ops-alert'
 import { releaseLapsedMembership } from '../../shared/infrastructure/team-access'
 import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import { SUBSCRIPTION_PERIOD_MS } from './constants'
@@ -106,6 +110,12 @@ async function fulfillTeamRenewal(
     logger.warn(
       `[Payments] Team renewal for teamId=${teamId} has no subscription`,
     )
+    // Not awaited: the alert must never hold up or change how the payment is recorded.
+    void sendOpsAlert({
+      kind: OpsAlertKind.PAYMENT_NEEDS_MANUAL_ACTION,
+      key: teamId,
+      details: { teamId, reason: 'RENEWAL_WITHOUT_SUBSCRIPTION' },
+    })
     return
   }
   // A workspace its owner deleted stays deleted: a payment that lands late is
@@ -114,6 +124,11 @@ async function fulfillTeamRenewal(
     logger.warn(
       `[Payments] Renewal payment for deleted teamId=${teamId} needs a manual refund`,
     )
+    void sendOpsAlert({
+      kind: OpsAlertKind.PAYMENT_NEEDS_MANUAL_ACTION,
+      key: teamId,
+      details: { teamId, reason: 'RENEWAL_FOR_DELETED_TEAM' },
+    })
     return
   }
 

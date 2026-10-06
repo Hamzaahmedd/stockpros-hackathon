@@ -1,4 +1,9 @@
 jest.mock('../receipt-email', () => ({ sendTeamReceiptEmail: jest.fn() }))
+const mockOpsAlert = jest.fn()
+jest.mock('../../../shared/infrastructure/ops-alert', () => ({
+  ...jest.requireActual('../../../shared/infrastructure/ops-alert'),
+  sendOpsAlert: (...args: unknown[]) => mockOpsAlert(...args),
+}))
 jest.mock('../../../shared/infrastructure/database', () => ({
   prisma: { $transaction: jest.fn() },
 }))
@@ -302,10 +307,40 @@ describe('team renewal fulfilment', () => {
     expect(tx.user.updateMany).not.toHaveBeenCalled()
   })
 
+  it('tells ops that money was taken for a deleted workspace and needs a manual refund', async () => {
+    tx.subscription.findUnique.mockResolvedValue({
+      status: 'CANCELLED',
+      currentPeriodEnd: null,
+    })
+
+    await run(txn({ teamId: 'team-1' }))
+
+    expect(mockOpsAlert).toHaveBeenCalledTimes(1)
+    expect(mockOpsAlert).toHaveBeenCalledWith({
+      kind: 'PAYMENT_NEEDS_MANUAL_ACTION',
+      key: 'team-1',
+      details: { teamId: 'team-1', reason: 'RENEWAL_FOR_DELETED_TEAM' },
+    })
+  })
+
+  it('does not alert for an ordinary renewal', async () => {
+    tx.subscription.findUnique.mockResolvedValue({
+      status: 'ACTIVE',
+      currentPeriodEnd: new Date(),
+    })
+    await run(txn({ teamId: 'team-1' }))
+    expect(mockOpsAlert).not.toHaveBeenCalled()
+  })
+
   it('skips gracefully when the team has no subscription row', async () => {
     tx.subscription.findUnique.mockResolvedValue(null)
     await run(txn({ teamId: 'team-1' }))
     expect(tx.subscription.update).not.toHaveBeenCalled()
+    expect(mockOpsAlert).toHaveBeenCalledWith({
+      kind: 'PAYMENT_NEEDS_MANUAL_ACTION',
+      key: 'team-1',
+      details: { teamId: 'team-1', reason: 'RENEWAL_WITHOUT_SUBSCRIPTION' },
+    })
   })
 })
 

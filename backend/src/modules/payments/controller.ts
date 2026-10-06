@@ -1,5 +1,13 @@
 import { NextFunction, Request, Response } from 'express'
-import { UnauthorizedError, validateOrThrow } from '../../shared/errors'
+import {
+  AppError,
+  UnauthorizedError,
+  validateOrThrow,
+} from '../../shared/errors'
+import {
+  OpsAlertKind,
+  sendOpsAlert,
+} from '../../shared/infrastructure/ops-alert'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
 import {
@@ -280,22 +288,34 @@ function parseSafepaySubscriptionWebhookPayload(
   return { type, reference }
 }
 
+/** A server-side failure (a bug or an outage), as opposed to a request we rightly refused. */
+const isServerFailure = (error: unknown): boolean =>
+  !(error instanceof AppError) || error.statusCode >= 500
+
 export const safepayWebhook = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
+  // What the webhook was about, for an alert if processing fails.
+  let subject = 'unknown'
   try {
     const signature = req.headers[SAFEPAY_SIGNATURE_HEADER]
     const isValid = verifySafepaySignature(req.body?.data, signature)
 
     if (!isValid) {
       logger.warn('[Payments] Rejected Safepay webhook with invalid signature')
+      // One alert per window however many forged calls arrive.
+      void sendOpsAlert({
+        kind: OpsAlertKind.PAYMENT_WEBHOOK_REJECTED,
+        key: 'safepay',
+      })
       throw new UnauthorizedError('Invalid webhook signature')
     }
 
     const subscriptionEvent = parseSafepaySubscriptionWebhookPayload(req.body)
     if (subscriptionEvent) {
+      subject = subscriptionEvent.reference
       await handleSubscriptionRenewalWebhookEvent(subscriptionEvent)
       return res.status(200).json({ received: true })
     }
@@ -306,10 +326,22 @@ export const safepayWebhook = async (
       return res.status(200).json({ received: true })
     }
 
+    subject = event.trackerId
     await handleWebhookEvent(event, req.body)
 
     return res.status(200).json({ received: true })
   } catch (error) {
+    if (isServerFailure(error)) {
+      // Safepay will retry, but a paid user may be waiting: someone should know.
+      void sendOpsAlert({
+        kind: OpsAlertKind.PAYMENT_WEBHOOK_FAILED,
+        key: subject,
+        details: {
+          reference: subject,
+          error: error instanceof Error ? error.name : 'unknown',
+        },
+      })
+    }
     next(error)
   }
 }
