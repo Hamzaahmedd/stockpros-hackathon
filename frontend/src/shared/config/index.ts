@@ -16,3 +16,6 @@ export const POSTHOG_KEY = IS_PRODUCTION
   : undefined
 export const POSTHOG_HOST =
   import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com'
+
+// Injected at build time from package.json; reported with user feedback.
+export const APP_VERSION = __APP_VERSION__

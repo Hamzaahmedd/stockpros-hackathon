@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { FiMessageSquare, FiCheckCircle, FiX } from 'react-icons/fi'
 import { feedbackService } from '../services'
+import { FeedbackCategory } from '../types'
+import { FEEDBACK_CATEGORY_LABELS, collectFeedbackContext } from '../utils'
 
 const MAX_LENGTH = 2000
 
@@ -15,6 +17,7 @@ interface FeedbackModalProps {
 const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
   const { pathname } = useLocation()
   const [message, setMessage] = useState('')
+  const [category, setCategory] = useState<FeedbackCategory | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -25,6 +28,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
     onClose()
     // Reset after the close animation would run; safe since the portal unmounts.
     setMessage('')
+    setCategory(null)
     setError(null)
     setSubmitted(false)
   }
@@ -39,7 +43,12 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
     setSubmitting(true)
     setError(null)
     try {
-      await feedbackService.submit({ message: trimmed, page: pathname })
+      await feedbackService.submit({
+        message: trimmed,
+        page: pathname,
+        ...(category && { category }),
+        metadata: collectFeedbackContext(),
+      })
       setSubmitted(true)
     } catch (err: any) {
       setError(
@@ -95,6 +104,32 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
               Found a bug, or have an idea for StockPros? Let us know.
             </p>
 
+            <div
+              role='radiogroup'
+              aria-label='What is this about?'
+              className='mb-4 flex flex-wrap gap-2'
+            >
+              {Object.values(FeedbackCategory).map((value) => {
+                const selected = category === value
+                return (
+                  <button
+                    key={value}
+                    type='button'
+                    role='radio'
+                    aria-checked={selected}
+                    onClick={() => setCategory(selected ? null : value)}
+                    className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                      selected
+                        ? 'border-cyan-500 bg-cyan-500/15 text-cyan-300'
+                        : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200'
+                    }`}
+                  >
+                    {FEEDBACK_CATEGORY_LABELS[value]}
+                  </button>
+                )
+              })}
+            </div>
+
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value.slice(0, MAX_LENGTH))}
@@ -111,6 +146,10 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
                 <span className='text-[12px] text-red-400'>{error}</span>
               )}
             </div>
+
+            <p className='mb-4 text-[11px] text-gray-600'>
+              We include your browser and screen size to help us debug.
+            </p>
 
             <div className='flex w-full flex-col gap-3'>
               <button
