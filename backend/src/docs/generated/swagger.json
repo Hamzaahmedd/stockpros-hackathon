@@ -3659,6 +3659,28 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"_36_Enums.FeedbackCategory": {
+				"type": "string",
+				"enum": [
+					"BUG",
+					"FEATURE_REQUEST",
+					"GENERAL"
+				]
+			},
+			"FeedbackCategory": {
+				"$ref": "#/components/schemas/_36_Enums.FeedbackCategory"
+			},
+			"_36_Enums.FeedbackStatus": {
+				"type": "string",
+				"enum": [
+					"NEW",
+					"READ",
+					"ARCHIVED"
+				]
+			},
+			"FeedbackStatus": {
+				"$ref": "#/components/schemas/_36_Enums.FeedbackStatus"
+			},
 			"FeedbackEntry": {
 				"properties": {
 					"id": {
@@ -3674,6 +3696,18 @@
 						"type": "string",
 						"nullable": true
 					},
+					"category": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/FeedbackCategory"
+							}
+						],
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/FeedbackStatus"
+					},
+					"metadata": {},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -3684,6 +3718,9 @@
 					"userId",
 					"message",
 					"page",
+					"category",
+					"status",
+					"metadata",
 					"createdAt"
 				],
 				"type": "object",
@@ -3708,15 +3745,66 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"FeedbackClientMetadata": {
+				"properties": {
+					"userAgent": {
+						"type": "string",
+						"description": "The browser's user agent string.",
+						"maxLength": 300
+					},
+					"viewport": {
+						"properties": {
+							"height": {
+								"type": "number",
+								"format": "double",
+								"minimum": 1,
+								"maximum": 20000
+							},
+							"width": {
+								"type": "number",
+								"format": "double",
+								"minimum": 1,
+								"maximum": 20000
+							}
+						},
+						"required": [
+							"height",
+							"width"
+						],
+						"type": "object"
+					},
+					"appVersion": {
+						"type": "string",
+						"description": "The web app version.",
+						"maxLength": 40
+					}
+				},
+				"type": "object",
+				"additionalProperties": true
+			},
 			"SubmitFeedbackRequest": {
 				"properties": {
 					"message": {
 						"type": "string",
-						"description": "Feedback message from the user"
+						"description": "Feedback message from the user",
+						"maxLength": 2000
 					},
 					"page": {
 						"type": "string",
 						"description": "The app page/route the user was on when they submitted feedback"
+					},
+					"category": {
+						"type": "string",
+						"enum": [
+							"BUG",
+							"FEATURE_REQUEST",
+							"GENERAL"
+						],
+						"description": "What the user is telling us (optional)."
+					},
+					"metadata": {
+						"$ref": "#/components/schemas/FeedbackClientMetadata",
+						"description": "Technical context reported by the browser. No other keys are accepted: the\nplan tier is added by the server from the signed-in session, never taken from here."
 					}
 				},
 				"required": [
@@ -3724,6 +3812,33 @@
 				],
 				"type": "object",
 				"additionalProperties": true
+			},
+			"Record_FeedbackStatus.number_": {
+				"properties": {
+					"NEW": {
+						"type": "number",
+						"format": "double"
+					},
+					"READ": {
+						"type": "number",
+						"format": "double"
+					},
+					"ARCHIVED": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"NEW",
+					"READ",
+					"ARCHIVED"
+				],
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"FeedbackStatusCounts": {
+				"$ref": "#/components/schemas/Record_FeedbackStatus.number_",
+				"description": "How many entries sit in each triage state, across the whole inbox (not just the current filter)."
 			},
 			"FeedbackListRow": {
 				"properties": {
@@ -3735,6 +3850,23 @@
 					},
 					"page": {
 						"type": "string",
+						"nullable": true
+					},
+					"category": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/FeedbackCategory"
+							}
+						],
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/FeedbackStatus"
+					},
+					"metadata": {},
+					"statusUpdatedAt": {
+						"type": "string",
+						"format": "date-time",
 						"nullable": true
 					},
 					"createdAt": {
@@ -3765,13 +3897,17 @@
 					"id",
 					"message",
 					"page",
+					"category",
+					"status",
+					"metadata",
+					"statusUpdatedAt",
 					"createdAt",
 					"user"
 				],
 				"type": "object",
 				"additionalProperties": true
 			},
-			"ApiResponse_FeedbackListRow-Array_": {
+			"FeedbackListResponse": {
 				"properties": {
 					"success": {
 						"type": "boolean"
@@ -3784,11 +3920,94 @@
 							"$ref": "#/components/schemas/FeedbackListRow"
 						},
 						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Entries matching the status filter."
+					},
+					"counts": {
+						"$ref": "#/components/schemas/FeedbackStatusCounts",
+						"description": "Entries per status across the whole inbox, whatever the filter."
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"nextCursor",
+					"hasMore",
+					"total",
+					"counts"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"FeedbackStatusChange": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/FeedbackStatus"
+					},
+					"statusUpdatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"changed": {
+						"type": "boolean",
+						"description": "False when it already had that status (nothing written)."
+					}
+				},
+				"required": [
+					"id",
+					"status",
+					"statusUpdatedAt",
+					"changed"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_FeedbackStatusChange_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/FeedbackStatusChange"
 					}
 				},
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UpdateFeedbackStatusRequest": {
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"NEW",
+							"READ",
+							"ARCHIVED"
+						]
+					}
+				},
+				"required": [
+					"status"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -10429,9 +10648,29 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"description": "Invalid message, category or metadata",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Too many submissions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
 					}
 				},
-				"description": "Submit user feedback (bug report, suggestion, general comment).",
+				"description": "Submit user feedback (bug report, suggestion, general comment). Limited to\na few submissions per minute per user. When a chat webhook is configured\nthe team is pinged after the feedback is saved (best effort: a webhook\nproblem never fails the request).",
 				"tags": [
 					"Feedback"
 				],
@@ -10460,13 +10699,13 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_FeedbackListRow-Array_"
+									"$ref": "#/components/schemas/FeedbackListResponse"
 								}
 							}
 						}
 					}
 				},
-				"description": "List submitted feedback (admin only — requires ACCESS_CONTROL:READ + ROLE:READ).",
+				"description": "List submitted feedback, newest first (admin only — requires ACCESS_CONTROL:READ + ROLE:READ).\nWorks in both the role-based and the tier-based workflow.",
 				"tags": [
 					"Feedback"
 				],
@@ -10494,8 +10733,89 @@
 							"format": "double",
 							"type": "number"
 						}
+					},
+					{
+						"description": "Only entries in this triage state (default: all)",
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"NEW",
+								"READ",
+								"ARCHIVED"
+							]
+						}
 					}
 				]
+			}
+		},
+		"/api/v1/feedback/{id}/status": {
+			"patch": {
+				"operationId": "SetFeedbackStatus",
+				"responses": {
+					"200": {
+						"description": "Status updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_FeedbackStatusChange_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid id or status",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Feedback not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Mark an entry NEW, READ or ARCHIVED (admin only — requires ACCESS_CONTROL:READ + ROLE:READ).\nIdempotent: setting the state it already has changes nothing (`changed: false`).\nThe change is recorded with who made it and when.",
+				"tags": [
+					"Feedback"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Feedback id",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateFeedbackStatusRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/decision-support/market/decision/{symbol}": {

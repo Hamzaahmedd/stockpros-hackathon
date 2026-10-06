@@ -157,6 +157,26 @@ export const adminWriteLimiter = rateLimit({
   },
 })
 
+// Each submission may ping the team chat, so it is capped per signed-in user.
+export const feedbackSubmitLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  limit: config.feedback.submitLimitPerMinute,
+  store: createRateLimitStore('rl:feedback-submit:'),
+  keyGenerator: (req: Request): string => {
+    const userId = (req as { user?: { userId?: string } }).user?.userId
+    return `feedback-submit:${userId || req.ip || 'unknown'}`
+  },
+  message: {
+    success: false,
+    message: 'You are sending feedback too quickly. Please wait a minute.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  validate: {
+    keyGeneratorIpFallback: false,
+  },
+})
+
 // Asking to join a workspace emails its admins, so it is capped per signed-in
 // user (a declined user is also held back by a 24h cooldown in the service).
 export const joinRequestLimiter = rateLimit({
