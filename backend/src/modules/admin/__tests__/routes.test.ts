@@ -61,6 +61,7 @@ jest.mock('../teams-service', () => ({
   searchTeams: mockResolved(),
   setSeatCapacity: mockResolved(),
   forceVerifyDomain: mockResolved(),
+  resetAuthPolicy: mockResolved(),
   forceRemoveMember: mockResolved(),
 }))
 jest.mock('../billing-service', () => ({
@@ -128,6 +129,12 @@ const ENDPOINTS: readonly Endpoint[] = [
   {
     method: 'post',
     path: `/teams/domains/${ID}/verify`,
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: '/teams/domains/fund.com/reset-auth-policy',
     min: 'PLATFORM_ADMIN',
     body: { reason: REASON },
   },
@@ -582,6 +589,23 @@ describe('alerts on risky staff actions', () => {
     await flush()
     expect(sent()).toEqual([
       expect.objectContaining({ action: 'MEMBER_FORCE_REMOVED', targetId: ID }),
+    ])
+  })
+
+  it('alerts when a domain sign-in policy is reset', async () => {
+    await as(
+      PlatformRole.PLATFORM_ADMIN,
+      'post',
+      '/teams/domains/fund.com/reset-auth-policy',
+      { reason: REASON },
+    )
+    await flush()
+    expect(sent()).toEqual([
+      expect.objectContaining({
+        action: 'AUTH_POLICY_RESET',
+        targetType: 'TEAM_DOMAIN',
+        targetId: 'fund.com',
+      }),
     ])
   })
 

@@ -67,6 +67,10 @@ export const reasonBodyValidator = z
   .object(writeFields)
   .superRefine(requireTicketWhenConfigured)
 
+export const domainParamValidator = z.object({
+  domain: z.string().trim().toLowerCase().min(3).max(253),
+})
+
 export const idParamValidator = z.object({
   id: z.string().uuid('id must be a valid id'),
 })

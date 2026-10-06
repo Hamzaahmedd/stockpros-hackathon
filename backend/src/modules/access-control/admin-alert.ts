@@ -18,6 +18,7 @@ export const RISKY_ADMIN_ACTIONS: ReadonlySet<string> = new Set([
   AdminAuditAction.USER_SESSION_INVALIDATED,
   AdminAuditAction.EMERGENCY_MARKET_TOGGLED,
   AdminAuditAction.MEMBER_FORCE_REMOVED,
+  AdminAuditAction.AUTH_POLICY_RESET,
   STEP_UP_LOCKOUT_ALERT,
 ])
 

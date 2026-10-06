@@ -68,6 +68,12 @@ export const adminService = {
   verifyDomain: async (domainId: string, reason: string, ticketRef?: string): Promise<void> => {
     await api.post(`${BASE}/teams/domains/${domainId}/verify`, { reason, ticketRef });
   },
+  resetDomainAuthPolicy: async (domain: string, reason: string, ticketRef?: string): Promise<void> => {
+    await api.post(`${BASE}/teams/domains/${encodeURIComponent(domain)}/reset-auth-policy`, {
+      reason,
+      ticketRef,
+    });
+  },
   removeMember: async (userId: string, reason: string, ticketRef?: string): Promise<void> => {
     await api.delete(`${BASE}/teams/members/${userId}`, { data: { reason, ticketRef } });
   },

@@ -54,6 +54,7 @@ const OWNER_ONLY_PERMISSIONS: ReadonlySet<TeamPermission> = new Set([
   TeamPermission.OWNERSHIP_TRANSFER,
   TeamPermission.TEAM_DELETE,
   TeamPermission.TEAM_EXPORT,
+  TeamPermission.SECURITY_MANAGE,
 ])
 
 export async function requireMembership(
@@ -164,6 +165,7 @@ export async function getMyTeam(userId: string) {
             isVerified: true,
             restrictOrgCreation: true,
             joinPolicy: true,
+            authPolicy: true,
           },
         },
         subscription: {

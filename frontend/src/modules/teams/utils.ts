@@ -1,3 +1,4 @@
+import { DomainAuthPolicy } from "@/modules/auth/types";
 import {
   TeamJoinPolicy,
   type ChartLayout,
@@ -22,6 +23,7 @@ export enum TeamAction {
   TRANSFER_OWNERSHIP = "TRANSFER_OWNERSHIP",
   DELETE_TEAM = "DELETE_TEAM",
   EXPORT_TEAM = "EXPORT_TEAM",
+  SET_AUTH_POLICY = "SET_AUTH_POLICY",
 }
 
 const OWNER_ONLY_ACTIONS: ReadonlySet<TeamAction> = new Set([
@@ -29,6 +31,7 @@ const OWNER_ONLY_ACTIONS: ReadonlySet<TeamAction> = new Set([
   TeamAction.TRANSFER_OWNERSHIP,
   TeamAction.DELETE_TEAM,
   TeamAction.EXPORT_TEAM,
+  TeamAction.SET_AUTH_POLICY,
 ]);
 
 export const canDo = (role: TeamRole, action: TeamAction): boolean =>
@@ -62,6 +65,30 @@ export const JOIN_POLICIES: readonly TeamJoinPolicy[] = Object.values(TeamJoinPo
 
 export const parseJoinPolicy = (value: string): TeamJoinPolicy | undefined =>
   JOIN_POLICIES.find((policy) => policy === value);
+
+export const AUTH_POLICY_LABELS: Record<DomainAuthPolicy, string> = {
+  [DomainAuthPolicy.ANY]: "Any method",
+  [DomainAuthPolicy.GOOGLE_ONLY]: "Google sign-in only",
+  [DomainAuthPolicy.GOOGLE_WORKSPACE]: "Google Workspace only",
+};
+
+export const AUTH_POLICIES: readonly DomainAuthPolicy[] = Object.values(DomainAuthPolicy);
+
+/** Anything other than "any method" locks members out of magic-link login, so it needs a typed confirmation. */
+export const isStricterAuthPolicy = (policy: DomainAuthPolicy): boolean =>
+  policy !== DomainAuthPolicy.ANY;
+
+/** The owner confirms a lockout-risk change by typing the domain exactly (case-insensitive, surrounding spaces ignored). */
+export const isDomainConfirmation = (typed: string, domain: string): boolean =>
+  typed.trim().toLowerCase() === domain.toLowerCase();
+
+/** Confirmation message after a policy change, including how many sessions were signed out. */
+export const authPolicyChangedMessage = (
+  domain: string,
+  policy: DomainAuthPolicy,
+  revokedSessions: number,
+): string =>
+  `${domain}: ${AUTH_POLICY_LABELS[policy]}. ${revokedSessions} ${revokedSessions === 1 ? "session was" : "sessions were"} signed out.`;
 
 /** Button copy for a join option: auto-approve joins at once, otherwise it asks an admin. */
 export const joinActionLabel = (option: JoinOption): string =>

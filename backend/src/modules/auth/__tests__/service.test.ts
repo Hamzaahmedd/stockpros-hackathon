@@ -30,6 +30,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
     user: {
       findUnique: jest.fn(),
     },
+    teamDomain: { findFirst: jest.fn() },
   },
 }))
 
@@ -58,6 +59,7 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
       user: {
         id: userId,
+        email: 'user@example.com',
         status: UserStatus.ACTIVE,
       },
     }
@@ -125,6 +127,7 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
       updatedAt: new Date(),
       user: {
         id: userId,
+        email: 'user@example.com',
         status: UserStatus.ACTIVE,
       },
     }
@@ -189,6 +192,7 @@ describe('Auth Service - refreshAccessToken (Refresh Token Rotation)', () => {
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
       user: {
         id: userId,
+        email: 'user@example.com',
         status: UserStatus.ACTIVE,
       },
     }

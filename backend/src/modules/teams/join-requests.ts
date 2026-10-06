@@ -1,6 +1,7 @@
 import config from '@/config'
 import {
   JoinRequestStatus,
+  type Prisma,
   TeamAuditAction,
   TeamJoinPolicy,
   TeamRole,
@@ -228,19 +229,8 @@ export async function approveJoinRequest(
   const request = await findPendingRequest(teamId, requestId)
 
   await prisma.$transaction(async (tx) => {
-    // The status flip is the guard: a second approver (or a cancel) that got
-    // there first leaves nothing to claim. A failed seat rolls it back.
-    const claimed = await tx.teamJoinRequest.updateMany({
-      where: { id: requestId, status: JoinRequestStatus.PENDING },
-      data: {
-        status: JoinRequestStatus.APPROVED,
-        decidedBy: actorId,
-        decidedAt: new Date(),
-      },
-    })
-    if (claimed.count === 0) {
-      throw new ConflictError('This request was already handled')
-    }
+    // A failed seat rolls the claim back with the rest of the transaction.
+    await claimRequest(tx, requestId, JoinRequestStatus.APPROVED, actorId)
     await seatMember(tx, {
       teamId,
       userId: request.userId,
@@ -267,17 +257,7 @@ export async function declineJoinRequest(
   const request = await findPendingRequest(teamId, requestId)
 
   await prisma.$transaction(async (tx) => {
-    const claimed = await tx.teamJoinRequest.updateMany({
-      where: { id: requestId, status: JoinRequestStatus.PENDING },
-      data: {
-        status: JoinRequestStatus.DECLINED,
-        decidedBy: actorId,
-        decidedAt: new Date(),
-      },
-    })
-    if (claimed.count === 0) {
-      throw new ConflictError('This request was already handled')
-    }
+    await claimRequest(tx, requestId, JoinRequestStatus.DECLINED, actorId)
     await recordTeamAudit(tx, {
       teamId,
       actorUserId: actorId,
@@ -317,6 +297,7 @@ export async function setJoinPolicy(
         isVerified: true,
         restrictOrgCreation: true,
         joinPolicy: true,
+        authPolicy: true,
       },
     })
     await recordTeamAudit(tx, {
@@ -330,6 +311,25 @@ export async function setJoinPolicy(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Moves a request out of PENDING. The status flip is the guard: a second
+ * decider (or a cancel) that got there first leaves nothing to claim.
+ */
+async function claimRequest(
+  tx: Prisma.TransactionClient,
+  requestId: string,
+  status: typeof JoinRequestStatus.APPROVED | typeof JoinRequestStatus.DECLINED,
+  actorId: string,
+): Promise<void> {
+  const claimed = await tx.teamJoinRequest.updateMany({
+    where: { id: requestId, status: JoinRequestStatus.PENDING },
+    data: { status, decidedBy: actorId, decidedAt: new Date() },
+  })
+  if (claimed.count === 0) {
+    throw new ConflictError('This request was already handled')
+  }
+}
 
 async function findPendingRequest(teamId: string, requestId: string) {
   const request = await prisma.teamJoinRequest.findFirst({

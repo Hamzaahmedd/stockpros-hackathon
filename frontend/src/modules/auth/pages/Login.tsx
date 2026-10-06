@@ -4,7 +4,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { GOOGLE_CLIENT_ID } from "@/shared/config";
 import { setAccessToken } from "@/shared/utils/token";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Mail, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import posthog from "posthog-js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,7 +13,9 @@ import { toast } from "react-toastify";
 import { AuthLayout } from "../components/AuthLayout";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { useLoginAuthPolicy } from "../hooks/useLoginAuthPolicy";
 import { googleLogin } from "../services";
+import { isGoogleRequired, loginMethodRequiredMessage, loginPolicyNotice } from "../utils/loginPolicy";
 import { loginSchema, type LoginFormValues } from "../validation";
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
@@ -47,12 +49,25 @@ export const Login: React.FC = () => {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, handleSubmit, formState } = useForm<LoginFormValues>({
+  // Set when the server refused a login method for the typed email's domain.
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+
+  const { register, handleSubmit, formState, watch } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
     },
   });
+
+  const email = watch("email");
+  const authPolicy = useLoginAuthPolicy(email);
+  const policyNotice = blockedMessage ?? loginPolicyNotice(authPolicy);
+  const googleRequired = blockedMessage !== null || isGoogleRequired(authPolicy);
+
+  // A refusal belongs to the email it was issued for.
+  useEffect(() => {
+    setBlockedMessage(null);
+  }, [email]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -84,7 +99,12 @@ export const Login: React.FC = () => {
       setResendCooldown(30); // 30s cooldown before resending
       toast.success("Magic link sent! Please check your inbox.");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to send magic link. Please try again.");
+      const methodRequired = loginMethodRequiredMessage(err);
+      if (methodRequired) {
+        setBlockedMessage(methodRequired);
+      } else {
+        toast.error(err?.response?.data?.message || "Failed to send magic link. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -136,7 +156,12 @@ export const Login: React.FC = () => {
         }
         // Otherwise the "already logged in" redirect effect above takes over once `user` is set
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+        const methodRequired = loginMethodRequiredMessage(err);
+        if (methodRequired) {
+          setBlockedMessage(methodRequired);
+        } else {
+          toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+        }
       } finally {
         setIsGoogleLoading(false);
       }
@@ -259,7 +284,9 @@ export const Login: React.FC = () => {
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {GOOGLE_CLIENT_ID && (
           <div className="space-y-5">
-            <div className="relative overflow-hidden rounded-lg h-12">
+            <div
+              className={`relative overflow-hidden rounded-lg h-12 ${googleRequired ? "ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]" : ""}`}
+            >
               <div ref={googleButtonRef} className="absolute top-0 left-0" />
               {isGoogleLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg z-10">
@@ -291,11 +318,20 @@ export const Login: React.FC = () => {
             label=""
             className="bg-gray-950/60 border-gray-800 text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/25 h-12 transition-all w-full rounded-lg"
           />
+          {policyNotice && (
+            <div
+              role="alert"
+              className="mt-3 flex items-start gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-sm text-cyan-100"
+            >
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+              <span>{policyNotice}</span>
+            </div>
+          )}
         </div>
 
         <Button
           type="submit"
-          disabled={formState.isSubmitting || isSubmitting}
+          disabled={formState.isSubmitting || isSubmitting || googleRequired}
           className="w-full h-12 mt-4 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 text-white font-bold text-base shadow-lg shadow-cyan-950/40 hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] border border-cyan-400/40 hover:border-cyan-400 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black"
         >
           {formState.isSubmitting || isSubmitting ? (

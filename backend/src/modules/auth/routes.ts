@@ -20,6 +20,7 @@ router.post(
 )
 router.post('/verify-magic-link', AuthController.verifyMagicLinkToken)
 router.post('/google', loginLimiter, AuthController.googleLogin)
+router.post('/login-options', loginLimiter, AuthController.loginOptions)
 router.post('/onboarding', AuthController.completeOnboardingHandler)
 
 // ─── Self-Serve Plan Selection (Bypass Mode) ─────────────────────────────────

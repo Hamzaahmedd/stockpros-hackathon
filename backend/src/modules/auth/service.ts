@@ -1,6 +1,8 @@
 // Consolidated auth service
 import config from '@/config'
 import {
+  DomainAuthPolicy,
+  LoginMethod,
   PlanTier,
   PlatformRole,
   Prisma,
@@ -29,6 +31,11 @@ import {
   captureEvent,
   PostHogEvent,
 } from '../../shared/infrastructure/posthog'
+import {
+  assertLoginAllowed,
+  findAuthRestriction,
+  isLoginAllowedByPolicy,
+} from '../../shared/infrastructure/team-access'
 import { convertToMilliseconds, hashToken } from '../../shared/utils'
 import { signToken, verifyRefreshToken } from './utils/jwt'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
@@ -94,6 +101,63 @@ export async function generateTokens(
   return { accessToken, refreshToken, jti: refreshJti }
 }
 
+/** Stores a new session along with how it signed in, which login enforcement relies on later. */
+async function persistSession(params: {
+  sessionId: string
+  userId: string
+  jti: string
+  ip: string
+  userAgent: string
+  loginMethod: LoginMethod
+  googleHd?: string | null
+}): Promise<void> {
+  const refreshTokenExpiryMs =
+    convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
+
+  await prisma.userSession.create({
+    data: {
+      id: params.sessionId,
+      userId: params.userId,
+      jti: hashToken(params.jti),
+      ipAddress: params.ip,
+      userAgent: params.userAgent,
+      expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
+      loginMethod: params.loginMethod,
+      googleHd: params.googleHd ?? null,
+    },
+  })
+}
+
+/**
+ * Backstop for sessions that outlive a policy change: if the user's domain now
+ * restricts sign-in and this session's method no longer satisfies it, the
+ * session is revoked and the refresh refused (the user must sign in again).
+ */
+async function revokeIfNonCompliant(session: {
+  id: string
+  loginMethod: LoginMethod | null
+  googleHd: string | null
+  user: { email: string }
+}): Promise<void> {
+  const restriction = await findAuthRestriction(session.user.email)
+  if (
+    !restriction ||
+    isLoginAllowedByPolicy(restriction.authPolicy, restriction.domain, {
+      method: session.loginMethod,
+      googleHd: session.googleHd,
+    })
+  ) {
+    return
+  }
+  await prisma.userSession.update({
+    where: { id: session.id },
+    data: { isRevoked: true },
+  })
+  throw new UnauthorizedError(
+    'Your sign-in method is no longer allowed for your organization',
+  )
+}
+
 const REFRESH_GRACE_WINDOW_MS = 30 * 1000 // 30 seconds multi-tab grace leeway
 
 export async function refreshAccessToken(refreshToken: string) {
@@ -131,6 +195,7 @@ export async function refreshAccessToken(refreshToken: string) {
       })
 
       if (recentRotatedSession?.user.status === UserStatus.ACTIVE) {
+        await revokeIfNonCompliant(recentRotatedSession)
         // Tab race condition handled: rotate again and hand this tab a fresh
         // pair too, instead of replaying the already-consumed refresh token —
         // otherwise a later refresh with that stale token (once this race's
@@ -184,6 +249,8 @@ export async function refreshAccessToken(refreshToken: string) {
     if (session.user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedError('Account is inactive or suspended')
     }
+
+    await revokeIfNonCompliant(session)
 
     // Step 5: Issue new access token and rotated refresh token with fresh jti
     const {
@@ -438,6 +505,7 @@ export async function generateMagicLink(
   clientOrigin?: string,
 ): Promise<void> {
   const email = rawEmail.toLowerCase().trim()
+  await assertLoginAllowed(email, LoginMethod.MAGIC_LINK)
 
   // 1. Generate a cryptographically secure random raw token (64 hex characters)
   const rawToken = crypto.randomBytes(32).toString('hex')
@@ -588,6 +656,8 @@ export async function verifyMagicLink(
   }
 
   const email = magicLink.email.toLowerCase().trim()
+  // A link issued before a policy change must not outlive it.
+  await assertLoginAllowed(email, LoginMethod.MAGIC_LINK)
 
   // 4. Database Account Match: Query user database table for existing user account
   let user = await prisma.user.findUnique({
@@ -605,7 +675,7 @@ export async function verifyMagicLink(
   if (!user) {
     // Issue a short-lived onboarding token so the frontend can complete signup
     const onboardingToken = signToken(
-      { sub: email, type: 'onboarding' },
+      { sub: email, type: 'onboarding', method: LoginMethod.MAGIC_LINK },
       ACCESS_TOKEN_SECRET,
       '15m',
     )
@@ -656,19 +726,13 @@ export async function verifyMagicLink(
     sessionId,
   )
 
-  const refreshTokenExpiryMs =
-    convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
-
-  // Create active session in database with hashed token
-  await prisma.userSession.create({
-    data: {
-      id: sessionId,
-      userId: user.id,
-      jti: hashToken(jti),
-      ipAddress: ip,
-      userAgent,
-      expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
-    },
+  await persistSession({
+    sessionId,
+    userId: user.id,
+    jti,
+    ip,
+    userAgent,
+    loginMethod: LoginMethod.MAGIC_LINK,
   })
 
   // 6. Hard delete the used token record from DB to prevent DB bloating
@@ -698,11 +762,18 @@ export async function verifyMagicLink(
   }
 }
 
+/** How the identity behind an onboarding was proven; carried in the onboarding token. */
+export interface OnboardingLogin {
+  method: LoginMethod
+  googleHd?: string | null
+}
+
 export async function completeOnboarding(
   email: string,
   displayName: string,
   ip: string,
   userAgent: string,
+  login: OnboardingLogin,
 ): Promise<{
   user: UserData
   accessToken: string
@@ -710,6 +781,7 @@ export async function completeOnboarding(
   requiresPhoneVerification: boolean
 }> {
   const normalizedEmail = email.toLowerCase().trim()
+  await assertLoginAllowed(normalizedEmail, login.method, login.googleHd)
 
   // Create user and assign the configured default role in a single transaction.
   const user = await prisma.$transaction(async (tx) => {
@@ -747,18 +819,14 @@ export async function completeOnboarding(
     user.id,
     sessionId,
   )
-  const refreshTokenExpiryMs =
-    convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
-
-  await prisma.userSession.create({
-    data: {
-      id: sessionId,
-      userId: user.id,
-      jti: hashToken(jti),
-      ipAddress: ip,
-      userAgent,
-      expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
-    },
+  await persistSession({
+    sessionId,
+    userId: user.id,
+    jti,
+    ip,
+    userAgent,
+    loginMethod: login.method,
+    googleHd: login.googleHd,
   })
 
   captureEvent(user.id, PostHogEvent.OnboardingCompleted)
@@ -848,11 +916,25 @@ async function resolveEmailFromBearer(
 
 // ─── Helper: extract email claim from a short-lived onboarding JWT ────────────
 
-function resolveEmailFromOnboardingToken(token: string): string {
+function resolveIdentityFromOnboardingToken(token: string): {
+  email: string
+  login: OnboardingLogin
+} {
   try {
     const payload = jwt.verify(token, ACCESS_TOKEN_SECRET) as TokenClaims
     if (payload.type === 'onboarding' && payload.sub) {
-      return payload.sub
+      // A token without a recognised method (issued before this existed) is
+      // treated as the weaker one, so a restricted domain refuses it.
+      const method = Object.values(LoginMethod).find(
+        (value) => value === payload.method,
+      )
+      return {
+        email: payload.sub,
+        login: {
+          method: method ?? LoginMethod.MAGIC_LINK,
+          googleHd: payload.hd,
+        },
+      }
     }
     throw new UnauthorizedError('Invalid or expired onboarding token')
   } catch {
@@ -875,9 +957,13 @@ export async function completeOnboardingFlow(params: {
   }
 
   let email: string | undefined
+  // Unproven identities (an email sent in the body) count as the weakest method.
+  let login: OnboardingLogin = { method: LoginMethod.MAGIC_LINK }
 
   if (params.onboardingToken) {
-    email = resolveEmailFromOnboardingToken(params.onboardingToken)
+    const identity = resolveIdentityFromOnboardingToken(params.onboardingToken)
+    email = identity.email
+    login = identity.login
   }
 
   if (!email) {
@@ -908,6 +994,7 @@ export async function completeOnboardingFlow(params: {
     resolvedName,
     params.ip,
     params.userAgent,
+    login,
   )
   return { kind: 'signupCompleted', ...result }
 }
@@ -958,6 +1045,9 @@ export async function googleLogin(
   }
 
   const email = payload.email.toLowerCase().trim()
+  // `hd` is only present for Google Workspace accounts.
+  const googleHd = payload.hd?.toLowerCase()
+  await assertLoginAllowed(email, LoginMethod.GOOGLE, googleHd)
   const defaultDisplayName = (payload.name || email.split('@')[0]).trim()
 
   let user = await prisma.user.findUnique({
@@ -971,7 +1061,12 @@ export async function googleLogin(
 
   if (!user) {
     const onboardingToken = signToken(
-      { sub: email, type: 'onboarding' },
+      {
+        sub: email,
+        type: 'onboarding',
+        method: LoginMethod.GOOGLE,
+        hd: googleHd,
+      },
       ACCESS_TOKEN_SECRET,
       '15m',
     )
@@ -1013,18 +1108,14 @@ export async function googleLogin(
     user.id,
     sessionId,
   )
-  const refreshTokenExpiryMs =
-    convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
-
-  await prisma.userSession.create({
-    data: {
-      id: sessionId,
-      userId: user.id,
-      jti: hashToken(jti),
-      ipAddress: ip,
-      userAgent,
-      expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
-    },
+  await persistSession({
+    sessionId,
+    userId: user.id,
+    jti,
+    ip,
+    userAgent,
+    loginMethod: LoginMethod.GOOGLE,
+    googleHd,
   })
 
   captureEvent(user.id, PostHogEvent.UserSignedIn, {
@@ -1047,6 +1138,17 @@ export async function googleLogin(
       user.phoneVerifiedAt,
     ),
   }
+}
+
+/**
+ * Lets the login screen steer users on a restricted domain to Google before
+ * they ask for a magic link. Only the policy is returned, never the workspace.
+ */
+export async function getLoginOptions(
+  rawEmail: string,
+): Promise<{ authPolicy: DomainAuthPolicy }> {
+  const restriction = await findAuthRestriction(rawEmail.toLowerCase().trim())
+  return { authPolicy: restriction?.authPolicy ?? DomainAuthPolicy.ANY }
 }
 
 // ─── Phone Verification (WhatsApp OTP) ────────────────────────────────────────

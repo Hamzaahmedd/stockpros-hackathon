@@ -60,6 +60,20 @@ export interface SeatUtilization {
 export type TeamJoinPolicyValue =
   'INVITE_ONLY' | 'REQUEST_APPROVAL' | 'AUTO_APPROVE'
 
+/** Which sign-in methods are accepted for people on a verified domain. */
+export type DomainAuthPolicyValue = 'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE'
+
+export interface SetAuthPolicyRequest {
+  authPolicy: DomainAuthPolicyValue
+  /** Required when moving to a stricter policy: the domain, typed back as confirmation. @example "fund.com" */
+  confirmDomain?: string
+}
+
+export interface SetAuthPolicyResponse extends TeamDomainSummary {
+  /** Sessions on the domain signed out because they no longer satisfy the policy. */
+  revokedSessions: number
+}
+
 export interface JoinOptionResponse {
   teamId: string
   teamName: string
@@ -105,6 +119,7 @@ export interface TeamDomainSummary {
   isVerified: boolean
   restrictOrgCreation: boolean
   joinPolicy: TeamJoinPolicyValue
+  authPolicy: DomainAuthPolicyValue
 }
 
 export interface TeamResponse {
@@ -451,6 +466,26 @@ export class TeamsSwaggerController extends Controller {
     @Path() domain: string,
     @Body() body: SetJoinPolicyRequest,
   ): Promise<ApiResponse<TeamDomainSummary>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Sets which sign-in methods people on a verified domain may use (owner only).
+   * Moving to GOOGLE_ONLY or GOOGLE_WORKSPACE requires `confirmDomain`, requires
+   * the owner's own session to already satisfy the policy when the owner's email
+   * is on the domain (409 otherwise), and immediately signs out every
+   * non-compliant session on the domain except the caller's.
+   */
+  @Patch('domains/{domain}/auth-policy')
+  @Response<ApiErrorResponse>(
+    400,
+    'Domain not verified or confirmation missing',
+  )
+  @Response<ApiErrorResponse>(409, 'Owner would be locked out')
+  async setAuthPolicy(
+    @Path() domain: string,
+    @Body() body: SetAuthPolicyRequest,
+  ): Promise<ApiResponse<SetAuthPolicyResponse>> {
     throw new Error('tsoa spec-only')
   }
 

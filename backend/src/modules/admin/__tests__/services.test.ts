@@ -81,6 +81,7 @@ jest.mock('../../../shared/utils/market-hours', () => ({
 import {
   AdminAuditAction,
   CreditLedgerType,
+  DomainAuthPolicy,
   PaymentStatus,
   PlanTier,
   SubscriptionStatus,
@@ -361,6 +362,51 @@ describe('teams', () => {
     )
     mockTx.teamDomain.findUnique.mockResolvedValueOnce({ isVerified: true })
     await expect(Teams.forceVerifyDomain(ctx, 'd1')).rejects.toBeInstanceOf(
+      ConflictError,
+    )
+    expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it('resets a restricted domain to ANY, audits both trails and keeps the previous policy', async () => {
+    mockTx.teamDomain.findUnique.mockResolvedValue({
+      id: 'd1',
+      teamId: TEAM,
+      authPolicy: DomainAuthPolicy.GOOGLE_ONLY,
+    })
+
+    await expect(Teams.resetAuthPolicy(ctx, 'fund.com')).resolves.toEqual({
+      domain: 'fund.com',
+      teamId: TEAM,
+      authPolicy: DomainAuthPolicy.ANY,
+    })
+
+    expect(mockTx.teamDomain.findUnique).toHaveBeenCalledWith({
+      where: { domain: 'fund.com' },
+    })
+    expect(mockTx.teamDomain.update).toHaveBeenCalledWith({
+      where: { id: 'd1' },
+      data: { authPolicy: DomainAuthPolicy.ANY },
+    })
+    expect(mockTx.teamAuditLog.create.mock.calls[0][0].data).toMatchObject({
+      action: 'AUTH_POLICY_SET',
+      metadata: { reset: true },
+    })
+    expectOneAudit(AdminAuditAction.AUTH_POLICY_RESET, 'TEAM_DOMAIN', 'd1')
+    expect(
+      mockTx.adminAuditLog.create.mock.calls[0][0].data.metadata,
+    ).toMatchObject({ previousPolicy: DomainAuthPolicy.GOOGLE_ONLY })
+  })
+
+  it('rejects resetting a missing domain or one that already accepts anything', async () => {
+    mockTx.teamDomain.findUnique.mockResolvedValueOnce(null)
+    await expect(Teams.resetAuthPolicy(ctx, 'x.com')).rejects.toBeInstanceOf(
+      NotFoundError,
+    )
+    mockTx.teamDomain.findUnique.mockResolvedValueOnce({
+      id: 'd1',
+      authPolicy: DomainAuthPolicy.ANY,
+    })
+    await expect(Teams.resetAuthPolicy(ctx, 'fund.com')).rejects.toBeInstanceOf(
       ConflictError,
     )
     expect(mockTx.adminAuditLog.create).not.toHaveBeenCalled()

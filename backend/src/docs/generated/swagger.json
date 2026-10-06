@@ -491,6 +491,15 @@
 				],
 				"description": "How people on a verified company domain can get into the workspace."
 			},
+			"DomainAuthPolicyValue": {
+				"type": "string",
+				"enum": [
+					"ANY",
+					"GOOGLE_ONLY",
+					"GOOGLE_WORKSPACE"
+				],
+				"description": "Which sign-in methods are accepted for people on a verified domain."
+			},
 			"TeamDomainSummary": {
 				"properties": {
 					"id": {
@@ -507,6 +516,9 @@
 					},
 					"joinPolicy": {
 						"$ref": "#/components/schemas/TeamJoinPolicyValue"
+					},
+					"authPolicy": {
+						"$ref": "#/components/schemas/DomainAuthPolicyValue"
 					}
 				},
 				"required": [
@@ -514,7 +526,8 @@
 					"domain",
 					"isVerified",
 					"restrictOrgCreation",
-					"joinPolicy"
+					"joinPolicy",
+					"authPolicy"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -1130,6 +1143,80 @@
 				},
 				"required": [
 					"joinPolicy"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetAuthPolicyResponse": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"domain": {
+						"type": "string"
+					},
+					"isVerified": {
+						"type": "boolean"
+					},
+					"restrictOrgCreation": {
+						"type": "boolean"
+					},
+					"joinPolicy": {
+						"$ref": "#/components/schemas/TeamJoinPolicyValue"
+					},
+					"authPolicy": {
+						"$ref": "#/components/schemas/DomainAuthPolicyValue"
+					},
+					"revokedSessions": {
+						"type": "number",
+						"format": "double",
+						"description": "Sessions on the domain signed out because they no longer satisfy the policy."
+					}
+				},
+				"required": [
+					"id",
+					"domain",
+					"isVerified",
+					"restrictOrgCreation",
+					"joinPolicy",
+					"authPolicy",
+					"revokedSessions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SetAuthPolicyResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/SetAuthPolicyResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetAuthPolicyRequest": {
+				"properties": {
+					"authPolicy": {
+						"$ref": "#/components/schemas/DomainAuthPolicyValue"
+					},
+					"confirmDomain": {
+						"type": "string",
+						"description": "Required when moving to a stricter policy: the domain, typed back as confirmation.",
+						"example": "fund.com"
+					}
+				},
+				"required": [
+					"authPolicy"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -3489,6 +3576,45 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"LoginOptionsResponse": {
+				"description": "Which sign-in methods a user's organization accepts.",
+				"properties": {
+					"authPolicy": {
+						"type": "string",
+						"enum": [
+							"ANY",
+							"GOOGLE_ONLY",
+							"GOOGLE_WORKSPACE"
+						],
+						"description": "ANY when the email's domain is unrestricted, unknown or public.",
+						"example": "GOOGLE_ONLY"
+					}
+				},
+				"required": [
+					"authPolicy"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_LoginOptionsResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/LoginOptionsResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"UserProfile": {
 				"properties": {
 					"userId": {
@@ -5512,6 +5638,72 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/SetJoinPolicyRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/teams/domains/{domain}/auth-policy": {
+			"patch": {
+				"operationId": "SetAuthPolicy",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SetAuthPolicyResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Domain not verified or confirmation missing",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Owner would be locked out",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Sets which sign-in methods people on a verified domain may use (owner only).\nMoving to GOOGLE_ONLY or GOOGLE_WORKSPACE requires `confirmDomain`, requires\nthe owner's own session to already satisfy the policy when the owner's email\nis on the domain (409 otherwise), and immediately signs out every\nnon-compliant session on the domain except the caller's.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetAuthPolicyRequest"
 							}
 						}
 					}
@@ -8301,9 +8493,62 @@
 								}
 							}
 						}
+					},
+					"403": {
+						"description": "The email's organization requires Google sign-in (errorCode LOGIN_METHOD_REQUIRED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
 					}
 				},
 				"description": "Send a magic link login email. A one-time link will be emailed to the address.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/MagicLinkRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/login-options": {
+			"post": {
+				"operationId": "LoginOptions",
+				"responses": {
+					"200": {
+						"description": "Login options",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_LoginOptionsResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Tells the login screen which sign-in methods the email's organization\naccepts (a verified domain can require Google or Google Workspace). Only\nthe policy is returned; always `ANY` for unknown or public domains.",
 				"tags": [
 					"Authentication"
 				],
@@ -8346,7 +8591,7 @@
 						}
 					}
 				},
-				"description": "Verify a magic link token and return JWT access token + session cookie.",
+				"description": "Verify a magic link token and return JWT access token + session cookie.\nRefused with 403 `LOGIN_METHOD_REQUIRED` when the email's organization requires Google sign-in.",
 				"tags": [
 					"Authentication"
 				],
@@ -8380,6 +8625,16 @@
 					},
 					"401": {
 						"description": "Invalid Google credential",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "The organization requires a Google Workspace account (errorCode LOGIN_METHOD_REQUIRED)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -8422,7 +8677,7 @@
 						}
 					}
 				},
-				"description": "Complete user onboarding after magic link / OAuth signup.",
+				"description": "Complete user onboarding after magic link / OAuth signup. Refused with\n403 `LOGIN_METHOD_REQUIRED` when the email's organization requires Google sign-in\nand the onboarding token was not issued by it.",
 				"tags": [
 					"Authentication"
 				],
@@ -9448,6 +9703,82 @@
 					{
 						"in": "path",
 						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/teams/domains/{domain}/reset-auth-policy": {
+			"post": {
+				"operationId": "ResetAuthPolicy",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Emergency reset: puts a domain's sign-in policy back to\n`ANY` (for an owner who locked their organization out). Audit-logged and\nalerted; 409 when the domain already accepts any method.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
 						"required": true,
 						"schema": {
 							"type": "string"

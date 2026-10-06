@@ -1,3 +1,5 @@
+import type { DomainAuthPolicy } from "@/modules/auth/types";
+
 export type TeamRole = "OWNER" | "ADMIN" | "MEMBER";
 
 export type TeamStatus = "ACTIVE" | "CANCELLED";
@@ -35,7 +37,11 @@ export type TeamDomain = {
   isVerified: boolean;
   restrictOrgCreation: boolean;
   joinPolicy: TeamJoinPolicy;
+  authPolicy: DomainAuthPolicy;
 };
+
+/** Result of changing a domain's sign-in policy; `revokedSessions` is how many sessions were signed out. */
+export type DomainAuthPolicyResult = TeamDomain & { revokedSessions: number };
 
 /** A workspace the caller's verified email domain lets them join (never INVITE_ONLY). */
 export type JoinOption = {

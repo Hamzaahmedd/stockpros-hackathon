@@ -62,6 +62,7 @@ import { hashToken } from '../../../shared/utils'
 import { resolveUsageWindowStart, recordUsage } from '../../payments/public'
 import * as admin from '../admin-service'
 import router from '../routes'
+import * as authPolicy from '../auth-policy'
 import * as joinRequests from '../join-requests'
 import * as service from '../service'
 import * as workspace from '../workspace-service'
@@ -627,6 +628,29 @@ const CASES: Record<string, Case> = {
     )
     aRowsUntouched(before)
   },
+  "setting another workspace's domain sign-in policy": async () => {
+    asUser('b-owner')
+    const before = snapshotA()
+    await refused(
+      authPolicy.setAuthPolicy('b-owner', 'b-session', 'a-open.com', {
+        authPolicy: 'GOOGLE_ONLY' as any,
+        confirmDomain: 'a-open.com',
+      }),
+    )
+    aRowsUntouched(before)
+    expect(
+      db.teamDomain.rows.find((d) => d.id === 'dom-A-open')?.authPolicy,
+    ).toBeUndefined()
+  },
+  'only the owner may change sign-in policy': async () => {
+    asUser('b-admin')
+    await refused(
+      authPolicy.setAuthPolicy('b-admin', 'b-session', 'b-open.com', {
+        authPolicy: 'GOOGLE_ONLY' as any,
+        confirmDomain: 'b-open.com',
+      }),
+    )
+  },
   'creating or accepting with no membership reaches nothing': async () => {
     asUser('nobody')
     await expect(service.getMyTeam('nobody')).rejects.toMatchObject({
@@ -673,6 +697,8 @@ const ROUTE_CASES: Record<string, string> = {
   'POST /domains/verify': "verifying another workspace's domain",
   'PATCH /domains/:domain/join-policy':
     "setting another workspace's domain join policy",
+  'PATCH /domains/:domain/auth-policy':
+    "setting another workspace's domain sign-in policy",
   'GET /join-options': "listing join requests and options shows none of A's",
   'GET /join-requests/me':
     "listing join requests and options shows none of A's",

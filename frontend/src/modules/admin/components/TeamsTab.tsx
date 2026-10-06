@@ -1,4 +1,4 @@
-import type { PlatformRole } from "@/modules/auth/types";
+import { DomainAuthPolicy, type PlatformRole } from "@/modules/auth/types";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -14,6 +14,7 @@ import { SearchBar } from "./SearchBar";
 type TeamAction =
   | { kind: "capacity"; team: AdminTeam }
   | { kind: "domain"; domainId: string; domain: string }
+  | { kind: "authReset"; domain: string }
   | { kind: "member"; userId: string; email: string };
 
 /** Workspace lookup (SUPPORT_AGENT+) with capacity, domain and member overrides (PLATFORM_ADMIN+). */
@@ -132,6 +133,18 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
                       Force verify
                     </Button>
                   )}
+                  {/* The search payload may not carry authPolicy yet: then offer the reset for every verified domain. */}
+                  {canWrite &&
+                    domain.isVerified &&
+                    domain.authPolicy !== DomainAuthPolicy.ANY && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAction({ kind: "authReset", domain: domain.domain })}
+                      >
+                        Reset auth policy to ANY
+                      </Button>
+                    )}
                 </li>
               ))}
             </ul>
@@ -200,6 +213,20 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
           successMessage="Domain verified"
           onSubmit={(reason, ticketRef) =>
             adminService.verifyDomain(action.domainId, reason, ticketRef)
+          }
+          onClose={() => setAction(null)}
+          onDone={() => void search(lastQuery)}
+        />
+      )}
+
+      {action?.kind === "authReset" && (
+        <ReasonModal
+          title="Reset auth policy"
+          description={`Lets users on ${action.domain} sign in by any method again (the owner-set Google requirement is removed).`}
+          confirmLabel="Reset to ANY"
+          successMessage="Auth policy reset to ANY"
+          onSubmit={(reason, ticketRef) =>
+            adminService.resetDomainAuthPolicy(action.domain, reason, ticketRef)
           }
           onClose={() => setAction(null)}
           onDone={() => void search(lastQuery)}

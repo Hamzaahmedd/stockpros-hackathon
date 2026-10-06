@@ -22,6 +22,13 @@ export type ScreenPermissions = {
   canDelete?: boolean;
 };
 
+/** How a verified company domain lets its users sign in. Mirrors the backend `DomainAuthPolicy` enum. */
+export enum DomainAuthPolicy {
+  ANY = "ANY",
+  GOOGLE_ONLY = "GOOGLE_ONLY",
+  GOOGLE_WORKSPACE = "GOOGLE_WORKSPACE",
+}
+
 export type RequestMagicLinkDto = {
   email: string;
 };

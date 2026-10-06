@@ -1,5 +1,7 @@
 import api from "@/shared/api/axios";
-import type { OnboardingDto } from "./types";
+import { unwrapEnvelope } from "@/shared/api/envelope";
+import { DomainAuthPolicy, type OnboardingDto } from "./types";
+import { parseDomainAuthPolicy } from "./utils/loginPolicy";
 
 export const requestMagicLink = (email: string) =>
   api.post("/api/v1/auth/magic-link", { email });
@@ -27,3 +29,15 @@ export const requestPhoneOtp = (phoneNumber: string) =>
 
 export const verifyPhoneOtp = (code: string) =>
   api.post("/api/v1/auth/phone-verification/verify", { code });
+
+/** The sign-in policy of the email's company domain. Never throws: any failure means "no restriction". */
+export const getLoginAuthPolicy = async (email: string): Promise<DomainAuthPolicy> => {
+  try {
+    const data = unwrapEnvelope<{ authPolicy?: string }>(
+      await api.post("/api/v1/auth/login-options", { email }),
+    );
+    return parseDomainAuthPolicy(data.authPolicy ?? "") ?? DomainAuthPolicy.ANY;
+  } catch {
+    return DomainAuthPolicy.ANY;
+  }
+};

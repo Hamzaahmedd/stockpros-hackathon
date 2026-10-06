@@ -1,4 +1,9 @@
-import { AdminAuditAction, TeamAuditAction, TeamRole } from '@prisma/client'
+import {
+  AdminAuditAction,
+  DomainAuthPolicy,
+  TeamAuditAction,
+  TeamRole,
+} from '@prisma/client'
 import {
   BadRequestError,
   ConflictError,
@@ -43,7 +48,14 @@ export async function searchTeams(
       creditBalanceInPaisa: true,
       createdAt: true,
       owner: { select: { id: true, displayName: true, email: true } },
-      domains: { select: { id: true, domain: true, isVerified: true } },
+      domains: {
+        select: {
+          id: true,
+          domain: true,
+          isVerified: true,
+          authPolicy: true,
+        },
+      },
       members: {
         select: {
           role: true,
@@ -173,6 +185,56 @@ export async function forceVerifyDomain(
     })
 
     return { domainId, teamId: domain.teamId, isVerified: true }
+  })
+}
+
+/**
+ * Emergency reset: puts a domain back to accepting any sign-in method, for an
+ * owner who locked their organization out. Already-revoked sessions stay
+ * revoked; people simply sign in again.
+ */
+export async function resetAuthPolicy(ctx: AdminWriteContext, domain: string) {
+  return prisma.$transaction(async (tx) => {
+    const record = await tx.teamDomain.findUnique({ where: { domain } })
+    if (!record) throw new NotFoundError('Domain not found')
+    if (record.authPolicy === DomainAuthPolicy.ANY) {
+      throw new ConflictError('Domain already accepts any sign-in method')
+    }
+
+    await tx.teamDomain.update({
+      where: { id: record.id },
+      data: { authPolicy: DomainAuthPolicy.ANY },
+    })
+    await recordTeamAudit(tx, {
+      teamId: record.teamId,
+      actorUserId: ctx.adminId,
+      action: TeamAuditAction.AUTH_POLICY_SET,
+      metadata: {
+        domainId: record.id,
+        authPolicy: DomainAuthPolicy.ANY,
+        reset: true,
+      },
+    })
+    await logAdminAction(tx, {
+      adminId: ctx.adminId,
+      action: AdminAuditAction.AUTH_POLICY_RESET,
+      targetType: AdminTargetType.TEAM_DOMAIN,
+      targetId: record.id,
+      reason: ctx.reason,
+      ticketRef: ctx.ticketRef,
+      ipAddress: ctx.ipAddress,
+      metadata: {
+        teamId: record.teamId,
+        domain,
+        previousPolicy: record.authPolicy,
+      },
+    })
+
+    return {
+      domain,
+      teamId: record.teamId,
+      authPolicy: DomainAuthPolicy.ANY,
+    }
   })
 }
 

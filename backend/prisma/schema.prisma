@@ -66,18 +66,22 @@ model User {
 }
 
 model UserSession {
-  id               String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  userId           String    @map("user_id") @db.Uuid
-  jti              String    @unique
-  previousJti      String?   @map("previous_jti")
-  ipAddress        String?   @map("ip_address")
-  userAgent        String?   @map("user_agent")
-  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
-  isRevoked        Boolean   @default(false) @map("is_revoked")
+  id               String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  jti              String       @unique
+  previousJti      String?      @map("previous_jti")
+  ipAddress        String?      @map("ip_address")
+  userAgent        String?      @map("user_agent")
+  expiresAt        DateTime     @map("expires_at") @db.Timestamptz(6)
+  isRevoked        Boolean      @default(false) @map("is_revoked")
   // Last time the staff member re-verified (emailed code) for sensitive admin writes; null = never.
-  stepUpVerifiedAt DateTime? @map("step_up_verified_at") @db.Timestamptz(6)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  stepUpVerifiedAt DateTime?    @map("step_up_verified_at") @db.Timestamptz(6)
+  // How this session signed in (null on sessions that predate enforcement; treated as non-compliant
+  // by any restricted domain policy) and, for Google, the Workspace domain (`hd`) of the account.
+  loginMethod      LoginMethod? @map("login_method")
+  googleHd         String?      @map("google_hd")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   stepUps AdminStepUp[]
@@ -512,6 +516,19 @@ enum TeamJoinPolicy {
   AUTO_APPROVE
 }
 
+// Which sign-in methods are accepted for people whose email is on a verified domain.
+enum DomainAuthPolicy {
+  ANY
+  GOOGLE_ONLY
+  GOOGLE_WORKSPACE
+}
+
+// How a session was established; compared against DomainAuthPolicy.
+enum LoginMethod {
+  MAGIC_LINK
+  GOOGLE
+}
+
 enum JoinRequestStatus {
   PENDING
   APPROVED
@@ -534,6 +551,7 @@ enum TeamAuditAction {
   JOIN_APPROVED
   JOIN_DECLINED
   JOIN_POLICY_SET
+  AUTH_POLICY_SET
   MEMBER_REMOVED
   MEMBER_LEFT
   ROLE_CHANGED
@@ -580,6 +598,7 @@ enum AdminAuditAction {
   WEBHOOK_RETRIED
   CUSTOMER_DATA_VIEWED
   CUSTOMER_DATA_REVEALED
+  AUTH_POLICY_RESET
 }
 
 enum SubscriptionPaymentMethod {
@@ -730,14 +749,15 @@ model Team {
 }
 
 model TeamDomain {
-  id                  String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  teamId              String         @map("team_id") @db.Uuid
-  domain              String         @unique
+  id                  String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  teamId              String           @map("team_id") @db.Uuid
+  domain              String           @unique
   // DNS TXT proof-of-ownership token (see teams/domain-verification.ts).
-  verificationToken   String         @map("verification_token")
-  isVerified          Boolean        @default(false) @map("is_verified")
-  restrictOrgCreation Boolean        @default(true) @map("restrict_org_creation")
-  joinPolicy          TeamJoinPolicy @default(INVITE_ONLY) @map("join_policy")
+  verificationToken   String           @map("verification_token")
+  isVerified          Boolean          @default(false) @map("is_verified")
+  restrictOrgCreation Boolean          @default(true) @map("restrict_org_creation")
+  joinPolicy          TeamJoinPolicy   @default(INVITE_ONLY) @map("join_policy")
+  authPolicy          DomainAuthPolicy @default(ANY) @map("auth_policy")
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 

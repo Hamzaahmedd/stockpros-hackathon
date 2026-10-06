@@ -32,6 +32,10 @@ export interface JwtPayload {
 export interface TokenClaims {
   sub?: string
   type?: string
+  /** Onboarding tokens: how the email was proven (`LoginMethod`). */
+  method?: string
+  /** Onboarding tokens from Google: the Workspace domain of the account. */
+  hd?: string
 }
 
 /** Profile shape returned by the authenticated "me" endpoint. */

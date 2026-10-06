@@ -19,6 +19,7 @@ import {
   deleteAccount as deleteAccountService,
   fetchMe,
   generateMagicLink,
+  getLoginOptions,
   googleLogin as googleLoginService,
   logoutUser,
   refreshAccessToken,
@@ -197,6 +198,22 @@ export const requestMagicLink = async (
     return sendSuccess(res, {
       message:
         'If an account with that email exists or can be created, a magic link has been sent.',
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const loginOptions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { email } = validateOrThrow(emailValidator, req.body)
+    return sendSuccess(res, {
+      message: 'Login options',
+      data: await getLoginOptions(email),
     })
   } catch (error) {
     next(error)

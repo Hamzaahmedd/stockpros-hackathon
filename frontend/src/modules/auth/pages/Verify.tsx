@@ -8,6 +8,7 @@ import api from "../../../shared/api/axios";
 import { AuthLayout } from "../components/AuthLayout";
 import { Button } from "../components/Button";
 import { useAuth } from "../hooks/useAuth";
+import { loginMethodRequiredMessage } from "../utils/loginPolicy";
 
 const verifiedTokens = new Set<string>();
 
@@ -17,6 +18,8 @@ export const VerifyMagicLink = () => {
   const navigate = useNavigate();
   const { can, refreshMe } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  // The link was refused because the domain requires Google sign-in (not an invalid link).
+  const [methodRequired, setMethodRequired] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
@@ -78,6 +81,12 @@ export const VerifyMagicLink = () => {
           }
         }, 800);
       } catch (err: any) {
+        const required = loginMethodRequiredMessage(err);
+        if (required) {
+          setMethodRequired(true);
+          setError(required);
+          return;
+        }
         setError(
           err.response?.data?.message ||
             "Authentication failed. The login link may be invalid, already used, or expired."
@@ -91,8 +100,12 @@ export const VerifyMagicLink = () => {
   if (error) {
     return (
       <AuthLayout
-        title="Authentication Failed"
-        subtitle="We could not verify your login link."
+        title={methodRequired ? "Sign in with Google" : "Authentication Failed"}
+        subtitle={
+          methodRequired
+            ? "Your organization does not allow email-link sign-in."
+            : "We could not verify your login link."
+        }
       >
         <div className="space-y-6">
           <div className="p-6 rounded-2xl bg-red-950/30 border border-red-900/50 shadow-xl flex items-start gap-4">
@@ -100,14 +113,14 @@ export const VerifyMagicLink = () => {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white mb-1">Link Invalid or Expired</p>
+              <p className="text-sm font-semibold text-white mb-1">{methodRequired ? "Sign-in method required" : "Link Invalid or Expired"}</p>
               <p className="text-xs text-red-300 leading-relaxed">{error}</p>
             </div>
           </div>
 
           <Link to="/login" className="block w-full">
             <Button className="w-full h-12 bg-[#0047AB] hover:bg-[#003385] text-white font-bold text-sm shadow-lg shadow-blue-900/40 border-none transition-all flex items-center justify-center gap-2">
-              <span>Request a new login link</span>
+              <span>{methodRequired ? "Sign in with Google" : "Request a new login link"}</span>
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>

@@ -1,4 +1,4 @@
-import type { PlanTier, PlatformRole } from "@/modules/auth/types";
+import type { DomainAuthPolicy, PlanTier, PlatformRole } from "@/modules/auth/types";
 import type { ADMIN_AUDIT_ACTIONS, CREDIT_LEDGER_TYPES, PAYMENT_STATUSES } from "./constants";
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -47,7 +47,8 @@ export interface AdminTeam {
   orgInstructions: string | null;
   creditBalanceInPaisa: number;
   owner: { id: string; displayName: string | null; email: string };
-  domains: { id: string; domain: string; isVerified: boolean }[];
+  /** `authPolicy` is absent until the search payload exposes it. */
+  domains: { id: string; domain: string; isVerified: boolean; authPolicy?: DomainAuthPolicy }[];
   members: { role: string; user: { id: string; displayName: string | null; email: string } }[];
   subscription: { id: string; status: string; currentPeriodEnd: string | null } | null;
 }

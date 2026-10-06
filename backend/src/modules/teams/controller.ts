@@ -3,6 +3,7 @@ import { validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
 import * as Admin from './admin-service'
+import * as AuthPolicy from './auth-policy'
 import * as JoinRequests from './join-requests'
 import * as TeamService from './service'
 import * as Workspace from './workspace-service'
@@ -11,6 +12,7 @@ import {
   addDomainValidator,
   addSeatsValidator,
   auditLogQueryValidator,
+  authPolicyValidator,
   billingContactValidator,
   changeRoleValidator,
   createInviteValidator,
@@ -197,6 +199,18 @@ export const setJoinPolicy = handle(
       userId,
       validateOrThrow(joinPolicyParamValidator, req.params).domain,
       validateOrThrow(joinPolicyValidator, req.body).joinPolicy,
+    ),
+  }),
+)
+
+export const setAuthPolicy = handle(
+  'Auth policy updated',
+  async (req, userId) => ({
+    data: await AuthPolicy.setAuthPolicy(
+      userId,
+      req.user?.sessionId,
+      validateOrThrow(joinPolicyParamValidator, req.params).domain,
+      validateOrThrow(authPolicyValidator, req.body),
     ),
   }),
 )

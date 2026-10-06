@@ -1,4 +1,4 @@
-import { UserStatus } from '@prisma/client'
+import { LoginMethod, UserStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import config from '@/config'
 
@@ -35,6 +35,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
     rbacConfiguration: {
       findUnique: jest.fn(),
     },
+    teamDomain: { findFirst: jest.fn() },
     magicLinkToken: {
       deleteMany: jest.fn(),
       create: jest.fn(),
@@ -486,6 +487,7 @@ describe('completeOnboarding', () => {
       'Ada',
       '127.0.0.1',
       'jest',
+      { method: LoginMethod.MAGIC_LINK },
     )
     expect(result.user.email).toBe('new@example.com')
     expect(result.accessToken).toEqual(expect.any(String))
@@ -505,7 +507,9 @@ describe('completeOnboarding', () => {
     )
 
     await expect(
-      completeOnboarding('new@example.com', 'Ada', '127.0.0.1', 'jest'),
+      completeOnboarding('new@example.com', 'Ada', '127.0.0.1', 'jest', {
+        method: LoginMethod.MAGIC_LINK,
+      }),
     ).rejects.toThrow('The default user role is not configured')
   })
 })

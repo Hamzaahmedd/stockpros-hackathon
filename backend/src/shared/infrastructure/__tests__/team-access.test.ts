@@ -1,4 +1,5 @@
-import { TeamRole } from '@prisma/client'
+import { DomainAuthPolicy, LoginMethod, TeamRole } from '@prisma/client'
+import { LoginMethodRequiredError } from '../../errors'
 jest.mock('../database', () => ({
   prisma: {
     teamMember: { findUnique: jest.fn() },
@@ -18,6 +19,10 @@ import {
   findRestrictingDomain,
   getActiveMembership,
   resolveFallbackPlan,
+  assertLoginAllowed,
+  findAuthRestriction,
+  isLoginAllowedByPolicy,
+  nonCompliantSessionWhere,
 } from '../team-access'
 
 const db = prisma as unknown as {
@@ -161,6 +166,7 @@ describe('can — the role to permission table', () => {
     TeamPermission.OWNERSHIP_TRANSFER,
     TeamPermission.TEAM_DELETE,
     TeamPermission.TEAM_EXPORT,
+    TeamPermission.SECURITY_MANAGE,
   ]
   const SHARED_WITH_ADMIN = Object.values(TeamPermission).filter(
     (permission) => !OWNER_ONLY.includes(permission),
@@ -215,6 +221,138 @@ describe('releaseLapsedMembership', () => {
     await releaseLapsedMembership(client as never, 'u1')
     expect(client.teamMember.deleteMany).toHaveBeenCalledWith({
       where: { userId: 'u1', team: { status: { not: 'ACTIVE' } } },
+    })
+  })
+})
+
+describe('isLoginAllowedByPolicy', () => {
+  const GOOGLE = { method: LoginMethod.GOOGLE, googleHd: 'fund.com' }
+
+  it('ANY accepts everything, even an unknown method', () => {
+    expect(
+      isLoginAllowedByPolicy(DomainAuthPolicy.ANY, 'fund.com', {
+        method: null,
+      }),
+    ).toBe(true)
+  })
+
+  it('GOOGLE_ONLY accepts Google (with or without Workspace) only', () => {
+    const allowed = (evidence: Parameters<typeof isLoginAllowedByPolicy>[2]) =>
+      isLoginAllowedByPolicy(DomainAuthPolicy.GOOGLE_ONLY, 'fund.com', evidence)
+
+    expect(allowed({ method: LoginMethod.GOOGLE })).toBe(true)
+    expect(allowed(GOOGLE)).toBe(true)
+    expect(allowed({ method: LoginMethod.MAGIC_LINK })).toBe(false)
+    expect(allowed({ method: null })).toBe(false)
+  })
+
+  it('GOOGLE_WORKSPACE needs Google from this domain’s own Workspace (case-insensitive)', () => {
+    const allowed = (evidence: Parameters<typeof isLoginAllowedByPolicy>[2]) =>
+      isLoginAllowedByPolicy(
+        DomainAuthPolicy.GOOGLE_WORKSPACE,
+        'fund.com',
+        evidence,
+      )
+
+    expect(allowed(GOOGLE)).toBe(true)
+    expect(allowed({ method: LoginMethod.GOOGLE, googleHd: 'FUND.com' })).toBe(
+      true,
+    )
+    expect(allowed({ method: LoginMethod.GOOGLE, googleHd: 'other.com' })).toBe(
+      false,
+    )
+    expect(allowed({ method: LoginMethod.GOOGLE })).toBe(false)
+    expect(
+      allowed({ method: LoginMethod.MAGIC_LINK, googleHd: 'fund.com' }),
+    ).toBe(false)
+  })
+})
+
+describe('findAuthRestriction / assertLoginAllowed', () => {
+  it('finds nothing for an email with no domain, without querying', async () => {
+    await expect(findAuthRestriction('not-an-email')).resolves.toBeNull()
+    expect(db.teamDomain.findFirst).not.toHaveBeenCalled()
+  })
+
+  it('lets a login through when nothing restricts the domain', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(null)
+
+    await expect(
+      assertLoginAllowed('sam@fund.com', LoginMethod.MAGIC_LINK),
+    ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    [DomainAuthPolicy.GOOGLE_ONLY, 'requires signing in with Google'],
+    [DomainAuthPolicy.GOOGLE_WORKSPACE, 'Google Workspace account'],
+  ])(
+    'refuses a magic link under %s with a clear message',
+    async (policy, text) => {
+      db.teamDomain.findFirst.mockResolvedValue({
+        domain: 'fund.com',
+        authPolicy: policy,
+      })
+
+      const error = await assertLoginAllowed(
+        'sam@fund.com',
+        LoginMethod.MAGIC_LINK,
+      ).catch((e) => e)
+
+      expect(error).toBeInstanceOf(LoginMethodRequiredError)
+      expect(error.statusCode).toBe(403)
+      expect(error.code).toBe('LOGIN_METHOD_REQUIRED')
+      expect(error.message).toContain(text)
+    },
+  )
+
+  it('accepts Google from the right Workspace under GOOGLE_WORKSPACE', async () => {
+    db.teamDomain.findFirst.mockResolvedValue({
+      domain: 'fund.com',
+      authPolicy: DomainAuthPolicy.GOOGLE_WORKSPACE,
+    })
+
+    await expect(
+      assertLoginAllowed('sam@fund.com', LoginMethod.GOOGLE, 'fund.com'),
+    ).resolves.toBeUndefined()
+  })
+
+  it('ignores a stray ANY record rather than refusing', async () => {
+    db.teamDomain.findFirst.mockResolvedValue({
+      domain: 'fund.com',
+      authPolicy: DomainAuthPolicy.ANY,
+    })
+
+    await expect(
+      assertLoginAllowed('sam@fund.com', LoginMethod.MAGIC_LINK),
+    ).resolves.toBeUndefined()
+  })
+})
+
+describe('nonCompliantSessionWhere', () => {
+  it('has nothing to revoke under ANY', () => {
+    expect(
+      nonCompliantSessionWhere(DomainAuthPolicy.ANY, 'fund.com'),
+    ).toBeNull()
+  })
+
+  it('GOOGLE_ONLY targets sessions that are not Google, including unknown ones', () => {
+    expect(
+      nonCompliantSessionWhere(DomainAuthPolicy.GOOGLE_ONLY, 'fund.com'),
+    ).toEqual({
+      OR: [{ loginMethod: null }, { loginMethod: { not: LoginMethod.GOOGLE } }],
+    })
+  })
+
+  it('GOOGLE_WORKSPACE also targets Google sessions from another or no Workspace', () => {
+    expect(
+      nonCompliantSessionWhere(DomainAuthPolicy.GOOGLE_WORKSPACE, 'fund.com'),
+    ).toEqual({
+      OR: [
+        { loginMethod: null },
+        { loginMethod: { not: LoginMethod.GOOGLE } },
+        { googleHd: null },
+        { googleHd: { not: 'fund.com' } },
+      ],
     })
   })
 })

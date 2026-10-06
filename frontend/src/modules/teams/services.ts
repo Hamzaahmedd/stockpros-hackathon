@@ -1,8 +1,10 @@
 import api from "@/shared/api/axios";
 import { UNEXPECTED_RESPONSE_MESSAGE, unwrapEnvelope } from "@/shared/api/envelope";
 import { isRecord } from "@/shared/utils/type-guards";
+import type { DomainAuthPolicy } from "@/modules/auth/types";
 import type {
   AuditLogPage,
+  DomainAuthPolicyResult,
   DomainVerification,
   InvitableRole,
   InviteResult,
@@ -99,6 +101,19 @@ export const teamService = {
       joinPolicy,
     });
   },
+
+  /** Owner only. A stricter policy must carry `confirmDomain` (the lockout safeguard). */
+  setDomainAuthPolicy: async (
+    domain: string,
+    authPolicy: DomainAuthPolicy,
+    confirmDomain?: string,
+  ): Promise<DomainAuthPolicyResult> =>
+    unwrap(
+      await api.patch(`${BASE}/domains/${encodeURIComponent(domain)}/auth-policy`, {
+        authPolicy,
+        confirmDomain,
+      }),
+    ),
 
   updateInstructions: async (orgInstructions: string | null): Promise<void> => {
     await api.patch(`${BASE}/instructions`, { orgInstructions });

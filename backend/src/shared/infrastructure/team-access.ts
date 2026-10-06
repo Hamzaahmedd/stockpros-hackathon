@@ -1,4 +1,6 @@
 import {
+  DomainAuthPolicy,
+  LoginMethod,
   PlanTier,
   SubscriptionStatus,
   TeamRole,
@@ -6,6 +8,7 @@ import {
   type Prisma,
   type PrismaClient,
 } from '@prisma/client'
+import { LoginMethodRequiredError } from '../errors'
 import { prisma } from './database'
 
 type DbClient = PrismaClient | Prisma.TransactionClient
@@ -24,6 +27,7 @@ export enum TeamPermission {
   OWNERSHIP_TRANSFER = 'OWNERSHIP_TRANSFER',
   TEAM_DELETE = 'TEAM_DELETE',
   TEAM_EXPORT = 'TEAM_EXPORT',
+  SECURITY_MANAGE = 'SECURITY_MANAGE',
 }
 
 const ADMIN_PERMISSIONS: readonly TeamPermission[] = [
@@ -93,6 +97,111 @@ export async function findRestrictingDomain(email: string) {
   return prisma.teamDomain.findFirst({
     where: { domain, isVerified: true, restrictOrgCreation: true },
   })
+}
+
+// ─── Login enforcement (per verified domain) ────────────────────────────────
+
+/** What is known about how a user signed in (a login attempt, or a stored session). */
+export interface LoginEvidence {
+  /** Null on sessions that predate enforcement: unknown, so never compliant. */
+  method: LoginMethod | null
+  /** The Google Workspace domain (`hd` claim) of the account, when it has one. */
+  googleHd?: string | null
+}
+
+/** Pure policy check: does this evidence satisfy `policy` for users of `domain`? */
+export const isLoginAllowedByPolicy = (
+  policy: DomainAuthPolicy,
+  domain: string,
+  evidence: LoginEvidence,
+): boolean => {
+  switch (policy) {
+    case DomainAuthPolicy.ANY:
+      return true
+    case DomainAuthPolicy.GOOGLE_ONLY:
+      return evidence.method === LoginMethod.GOOGLE
+    case DomainAuthPolicy.GOOGLE_WORKSPACE:
+      return (
+        evidence.method === LoginMethod.GOOGLE &&
+        evidence.googleHd?.toLowerCase() === domain
+      )
+  }
+}
+
+/** The enforcing policy for an email's domain, or null when it is unrestricted. */
+export async function findAuthRestriction(email: string) {
+  const domain = emailDomain(email)
+  if (!domain) return null
+  return prisma.teamDomain.findFirst({
+    where: {
+      domain,
+      isVerified: true,
+      authPolicy: { not: DomainAuthPolicy.ANY },
+      team: { status: TeamStatus.ACTIVE },
+    },
+    select: { domain: true, authPolicy: true },
+  })
+}
+
+const REQUIRED_METHOD_MESSAGES: Record<
+  Exclude<DomainAuthPolicy, typeof DomainAuthPolicy.ANY>,
+  string
+> = {
+  [DomainAuthPolicy.GOOGLE_ONLY]:
+    'Your organization requires signing in with Google',
+  [DomainAuthPolicy.GOOGLE_WORKSPACE]:
+    'Your organization requires signing in with your Google Workspace account',
+}
+
+/**
+ * Throws `LoginMethodRequiredError` when the email's verified domain restricts
+ * sign-in and this method (or Google Workspace `hd`) does not satisfy it.
+ */
+export async function assertLoginAllowed(
+  email: string,
+  method: LoginMethod | null,
+  googleHd?: string | null,
+): Promise<void> {
+  const restriction = await findAuthRestriction(email)
+  if (
+    restriction &&
+    restriction.authPolicy !== DomainAuthPolicy.ANY &&
+    !isLoginAllowedByPolicy(restriction.authPolicy, restriction.domain, {
+      method,
+      googleHd,
+    })
+  ) {
+    throw new LoginMethodRequiredError(
+      REQUIRED_METHOD_MESSAGES[restriction.authPolicy],
+    )
+  }
+}
+
+/** Sessions that would no longer satisfy `policy` for `domain`, as a Prisma filter (null = nothing is non-compliant). */
+export const nonCompliantSessionWhere = (
+  policy: DomainAuthPolicy,
+  domain: string,
+): Prisma.UserSessionWhereInput | null => {
+  switch (policy) {
+    case DomainAuthPolicy.ANY:
+      return null
+    case DomainAuthPolicy.GOOGLE_ONLY:
+      return {
+        OR: [
+          { loginMethod: null },
+          { loginMethod: { not: LoginMethod.GOOGLE } },
+        ],
+      }
+    case DomainAuthPolicy.GOOGLE_WORKSPACE:
+      return {
+        OR: [
+          { loginMethod: null },
+          { loginMethod: { not: LoginMethod.GOOGLE } },
+          { googleHd: null },
+          { googleHd: { not: domain } },
+        ],
+      }
+  }
 }
 
 /**

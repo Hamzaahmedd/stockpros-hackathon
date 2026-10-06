@@ -14,6 +14,7 @@ import { JoinWorkspaceBanner } from "../components/JoinWorkspaceBanner";
 import { MembersTab } from "../components/MembersTab";
 import { OverviewTab } from "../components/OverviewTab";
 import { PreferencesPanel } from "../components/PreferencesPanel";
+import { SecurityTab } from "../components/SecurityTab";
 import { SettingsTab } from "../components/SettingsTab";
 import { SharedAssetsTab } from "../components/SharedAssetsTab";
 import { WorkspaceSearchTab } from "../components/WorkspaceSearchTab";
@@ -31,6 +32,7 @@ type WorkspaceTab =
   | "credits"
   | "billing"
   | "activity"
+  | "security"
   | "settings";
 
 // Who sees a tab: everyone, owners and admins, or (owner) only the owner.
@@ -46,12 +48,15 @@ const TABS: { id: WorkspaceTab; label: string; audience: TabAudience }[] = [
   { id: "credits", label: "Credits", audience: "admin" },
   { id: "billing", label: "Billing", audience: "admin" },
   { id: "activity", label: "Activity", audience: "admin" },
+  { id: "security", label: "Security", audience: "owner" },
   // Admins can rename; the rest of the tab is owner-only.
   { id: "settings", label: "Settings", audience: "admin" },
 ];
 
-const canSeeTab = (audience: TabAudience, role: Team["role"]): boolean =>
-  audience === "all" || canDo(role, TeamAction.MANAGE);
+const canSeeTab = (audience: TabAudience, role: Team["role"]): boolean => {
+  if (audience === "all") return true;
+  return canDo(role, audience === "owner" ? TeamAction.SET_AUTH_POLICY : TeamAction.MANAGE);
+};
 
 export default function TeamWorkspace() {
   const { user } = useAuth();
@@ -163,6 +168,9 @@ export default function TeamWorkspace() {
                 <BillingTab team={team} reload={load} />
               )}
               {tab === "activity" && isTeamAdmin(team.role) && <ActivityTab />}
+              {tab === "security" && canDo(team.role, TeamAction.SET_AUTH_POLICY) && (
+                <SecurityTab team={team} reload={load} />
+              )}
               {tab === "settings" && isTeamAdmin(team.role) && (
                 <SettingsTab
                   team={team}

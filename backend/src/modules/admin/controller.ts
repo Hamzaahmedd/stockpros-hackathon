@@ -21,6 +21,7 @@ import {
   idParamValidator,
   marketEmergencyValidator,
   planOverrideValidator,
+  domainParamValidator,
   reasonBodyValidator,
   searchQueryValidator,
   stepUpVerifyValidator,
@@ -162,6 +163,23 @@ export const forceVerifyDomain = handle('Domain verified', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
   const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
   return Teams.forceVerifyDomain(writeContext(req, reason, ticketRef), id)
+})
+
+export const resetAuthPolicy = handle('Auth policy reset', async (req) => {
+  const { domain } = validateOrThrow(domainParamValidator, req.params)
+  const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+  const result = await Teams.resetAuthPolicy(
+    writeContext(req, reason, ticketRef),
+    domain,
+  )
+  void alertAdminAction({
+    adminId: getUserId(req),
+    action: AdminAuditAction.AUTH_POLICY_RESET,
+    targetType: AdminTargetType.TEAM_DOMAIN,
+    targetId: domain,
+    ticketRef,
+  })
+  return result
 })
 
 export const forceRemoveMember = handle('Member removed', async (req) => {

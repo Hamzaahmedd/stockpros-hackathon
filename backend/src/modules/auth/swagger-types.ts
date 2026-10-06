@@ -39,6 +39,12 @@ export interface SetPlanResponse {
   plan: 'FREE' | 'PRO'
 }
 
+/** Which sign-in methods a user's organization accepts. */
+export interface LoginOptionsResponse {
+  /** ANY when the email's domain is unrestricted, unknown or public. @example "GOOGLE_ONLY" */
+  authPolicy: 'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE'
+}
+
 export interface MagicLinkRequest {
   /** @format email @example "investor@stockpros.com" */
   email: string
@@ -90,12 +96,31 @@ export class AuthSwaggerController extends Controller {
   @Post('magic-link')
   @SuccessResponse(200, 'Magic link sent')
   @Response<ApiErrorResponse>(400, 'Invalid email')
+  @Response<ApiErrorResponse>(
+    403,
+    "The email's organization requires Google sign-in (errorCode LOGIN_METHOD_REQUIRED)",
+  )
   async sendMagicLink(@Body() body: MagicLinkRequest): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 
   /**
+   * Tells the login screen which sign-in methods the email's organization
+   * accepts (a verified domain can require Google or Google Workspace). Only
+   * the policy is returned; always `ANY` for unknown or public domains.
+   */
+  @Post('login-options')
+  @SuccessResponse(200, 'Login options')
+  @Response<ApiErrorResponse>(400, 'Invalid email')
+  async loginOptions(
+    @Body() body: MagicLinkRequest,
+  ): Promise<ApiResponse<LoginOptionsResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
    * Verify a magic link token and return JWT access token + session cookie.
+   * Refused with 403 `LOGIN_METHOD_REQUIRED` when the email's organization requires Google sign-in.
    */
   @Post('verify-magic-link')
   @SuccessResponse(200, 'Magic link verified, tokens issued')
@@ -112,6 +137,10 @@ export class AuthSwaggerController extends Controller {
   @Post('google')
   @SuccessResponse(200, 'Google login successful')
   @Response<ApiErrorResponse>(401, 'Invalid Google credential')
+  @Response<ApiErrorResponse>(
+    403,
+    'The organization requires a Google Workspace account (errorCode LOGIN_METHOD_REQUIRED)',
+  )
   async googleLogin(
     @Body() body: GoogleLoginRequest,
   ): Promise<ApiResponse<AuthTokensResponse>> {
@@ -119,7 +148,9 @@ export class AuthSwaggerController extends Controller {
   }
 
   /**
-   * Complete user onboarding after magic link / OAuth signup.
+   * Complete user onboarding after magic link / OAuth signup. Refused with
+   * 403 `LOGIN_METHOD_REQUIRED` when the email's organization requires Google sign-in
+   * and the onboarding token was not issued by it.
    */
   @Post('onboarding')
   @SuccessResponse(200, 'Onboarding completed')

@@ -66,6 +66,11 @@ router.post(
   ...platformAdmin,
   AdminController.forceVerifyDomain,
 )
+router.post(
+  '/teams/domains/:domain/reset-auth-policy',
+  ...platformAdmin,
+  AdminController.resetAuthPolicy,
+)
 router.delete(
   '/teams/members/:userId',
   ...platformAdmin,

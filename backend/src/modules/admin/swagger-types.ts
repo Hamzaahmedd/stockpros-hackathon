@@ -190,6 +190,19 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 
+  /**
+   * PLATFORM_ADMIN+. Emergency reset: puts a domain's sign-in policy back to
+   * `ANY` (for an owner who locked their organization out). Audit-logged and
+   * alerted; 409 when the domain already accepts any method.
+   */
+  @Post('teams/domains/{domain}/reset-auth-policy')
+  async resetAuthPolicy(
+    @Path() domain: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /** PLATFORM_ADMIN+. Hard-removes a member, freeing the seat instantly. The owner cannot be removed (409). */
   @Delete('teams/members/{userId}')
   async forceRemoveMember(

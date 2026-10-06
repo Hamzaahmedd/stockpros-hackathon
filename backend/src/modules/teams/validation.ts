@@ -1,4 +1,8 @@
-import { TeamAuditAction, TeamJoinPolicy } from '@prisma/client'
+import {
+  DomainAuthPolicy,
+  TeamAuditAction,
+  TeamJoinPolicy,
+} from '@prisma/client'
 import { z } from 'zod'
 import {
   seatCountValidator,
@@ -196,4 +200,10 @@ export const joinPolicyParamValidator = z.object({ domain: domainValidator })
 
 export const joinPolicyValidator = z.object({
   joinPolicy: z.nativeEnum(TeamJoinPolicy),
+})
+
+export const authPolicyValidator = z.object({
+  authPolicy: z.nativeEnum(DomainAuthPolicy),
+  /** Required when moving to a stricter policy: the domain typed back by the owner. */
+  confirmDomain: domainValidator.optional(),
 })
