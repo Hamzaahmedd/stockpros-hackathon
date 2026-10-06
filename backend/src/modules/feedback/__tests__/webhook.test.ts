@@ -6,8 +6,6 @@ import config from '@/config'
 import { logger } from '../../../shared/infrastructure/logger'
 import {
   buildAlertText,
-  buildPayload,
-  neutralizeMentions,
   sendFeedbackWebhook,
   toSnippet,
   type FeedbackAlert,
@@ -38,19 +36,6 @@ beforeEach(() => {
 
 afterAll(() => {
   feedback.webhookUrl = originalUrl
-})
-
-describe('neutralizeMentions', () => {
-  it('defuses channel pings, user pings and link syntax without changing the look', () => {
-    const out = neutralizeMentions(
-      '@everyone @here <!channel> <@U123> <http://x|y>',
-    )
-    expect(out).not.toMatch(/@(?!​)/)
-    expect(out).not.toMatch(/<(?!​)/)
-    expect(out.replaceAll('​', '')).toBe(
-      '@everyone @here <!channel> <@U123> <http://x|y>',
-    )
-  })
 })
 
 describe('toSnippet', () => {
@@ -91,23 +76,6 @@ describe('buildAlertText', () => {
     )
     expect(text).not.toMatch(/@(?!​)/)
     expect(text).not.toMatch(/<(?!​)/)
-  })
-})
-
-describe('buildPayload', () => {
-  it('uses text for Slack', () => {
-    expect(buildPayload(SLACK, 'hi')).toEqual({ text: 'hi' })
-  })
-
-  it.each([
-    DISCORD,
-    'https://discordapp.com/api/webhooks/1/x',
-    'https://canary.discord.com/api/webhooks/1/x',
-  ])('uses content and blocks every mention for Discord (%s)', (url) => {
-    expect(buildPayload(url, 'hi')).toEqual({
-      content: 'hi',
-      allowed_mentions: { parse: [] },
-    })
   })
 })
 

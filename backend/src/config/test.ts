@@ -105,6 +105,17 @@ export const testConfig = {
     // Per user, per minute, on POST /feedback.
     submitLimitPerMinute: 5,
   },
+  opsAlerts: {
+    // Only these chat hosts may receive operational alerts (the URL itself is a secret in .env).
+    webhookAllowedHosts: [
+      'hooks.slack.com',
+      'discord.com',
+      'discordapp.com',
+    ] as string[],
+    timeoutMs: 3000,
+    // Storm control: one alert per kind and key per window; the rest are counted.
+    dedupeWindowSeconds: 600,
+  },
   audit: {
     retentionDays: 30,
   },

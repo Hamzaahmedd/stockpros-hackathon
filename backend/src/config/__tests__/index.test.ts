@@ -3,6 +3,7 @@ import { productionConfig } from '../production'
 import { testConfig } from '../test'
 import {
   assertFeedbackWebhookUrl,
+  assertOpsAlertWebhookUrl,
   buildConfig,
   parseBooleanEnv,
   readSecrets,
@@ -91,6 +92,7 @@ describe('readSecrets', () => {
     'SAFEPAY_WEBHOOK_SECRET',
     'SAFEPAY_PRO_PLAN_ID',
     'FEEDBACK_WEBHOOK_URL',
+    'OPS_ALERT_WEBHOOK_URL',
   ]
 
   it('reads every secret from its corresponding env var', () => {
@@ -319,5 +321,54 @@ describe('priorityQueue limits', () => {
   it('is exposed on the assembled config', () => {
     const built = buildConfig(developmentConfig, readSecrets())
     expect(built.priorityQueue).toEqual(developmentConfig.priorityQueue)
+  })
+})
+
+describe('assertOpsAlertWebhookUrl', () => {
+  const HOSTS = ['hooks.slack.com', 'discord.com', 'discordapp.com']
+
+  it('accepts an empty value (alerts off) and a chat webhook', () => {
+    expect(() => assertOpsAlertWebhookUrl('', HOSTS)).not.toThrow()
+    expect(() =>
+      assertOpsAlertWebhookUrl('https://hooks.slack.com/services/T/B/X', HOSTS),
+    ).not.toThrow()
+  })
+
+  it('names its own variable when it refuses a URL', () => {
+    expect(() => assertOpsAlertWebhookUrl('nope', HOSTS)).toThrow(
+      'OPS_ALERT_WEBHOOK_URL is not a valid URL',
+    )
+    expect(() =>
+      assertOpsAlertWebhookUrl('http://hooks.slack.com/x', HOSTS),
+    ).toThrow(/OPS_ALERT_WEBHOOK_URL must be an https URL/)
+    expect(() =>
+      assertOpsAlertWebhookUrl('https://evil.example/x', HOSTS),
+    ).toThrow(/OPS_ALERT_WEBHOOK_URL host must be one of/)
+  })
+
+  it('stops the app at boot on a bad URL, and wires the config when it is good', () => {
+    const secrets = readSecrets()
+    expect(() =>
+      buildConfig(testConfig, { ...secrets, opsAlertWebhookUrl: 'http://x' }),
+    ).toThrow(/OPS_ALERT_WEBHOOK_URL/)
+
+    const built = buildConfig(testConfig, {
+      ...secrets,
+      opsAlertWebhookUrl: 'https://discord.com/api/webhooks/1/abc',
+    })
+    expect(built.opsAlerts).toEqual({
+      webhookUrl: 'https://discord.com/api/webhooks/1/abc',
+      timeoutMs: 3000,
+      dedupeWindowSeconds: 600,
+    })
+  })
+
+  it('keeps the two webhooks separate', () => {
+    const built = buildConfig(testConfig, {
+      ...readSecrets(),
+      feedbackWebhookUrl: 'https://hooks.slack.com/services/F/F/F',
+      opsAlertWebhookUrl: 'https://hooks.slack.com/services/O/O/O',
+    })
+    expect(built.feedback.webhookUrl).not.toBe(built.opsAlerts.webhookUrl)
   })
 })

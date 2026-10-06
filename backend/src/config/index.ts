@@ -37,6 +37,9 @@ export const readSecrets = () => ({
   // Slack/Discord incoming-webhook URL for new feedback. The URL embeds a token,
   // so it is a secret. Empty disables the alert.
   feedbackWebhookUrl: process.env.FEEDBACK_WEBHOOK_URL || '',
+  // Slack/Discord incoming-webhook URL for operational alerts (payments needing
+  // attention, failed background jobs, risky staff actions). Also a secret. Empty disables it.
+  opsAlertWebhookUrl: process.env.OPS_ALERT_WEBHOOK_URL || '',
 })
 
 export type Secrets = ReturnType<typeof readSecrets>
@@ -83,11 +86,12 @@ export const parseBooleanEnv = (
 }
 
 /**
- * A feedback webhook must be https on a known chat host. The URL is set by the
+ * A chat webhook must be https on a known chat host. The URL is set by the
  * operator (never by a user), so this is a guard against a typo or a copied
  * internal address, not a defence against hostile input. Empty means "off".
  */
-export const assertFeedbackWebhookUrl = (
+const assertWebhookUrl = (
+  name: string,
   url: string,
   allowedHosts: readonly string[],
 ): void => {
@@ -96,28 +100,38 @@ export const assertFeedbackWebhookUrl = (
   try {
     parsed = new URL(url)
   } catch {
-    throw new Error('FEEDBACK_WEBHOOK_URL is not a valid URL')
+    throw new Error(`${name} is not a valid URL`)
   }
   const host = parsed.hostname.toLowerCase()
   const allowed = allowedHosts.some(
     (entry) => host === entry || host.endsWith(`.${entry}`),
   )
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
-    throw new Error(
-      'FEEDBACK_WEBHOOK_URL must be an https URL without credentials',
-    )
+    throw new Error(`${name} must be an https URL without credentials`)
   }
   if (!allowed) {
-    throw new Error(
-      `FEEDBACK_WEBHOOK_URL host must be one of: ${allowedHosts.join(', ')}`,
-    )
+    throw new Error(`${name} host must be one of: ${allowedHosts.join(', ')}`)
   }
 }
+
+export const assertFeedbackWebhookUrl = (
+  url: string,
+  allowedHosts: readonly string[],
+): void => assertWebhookUrl('FEEDBACK_WEBHOOK_URL', url, allowedHosts)
+
+export const assertOpsAlertWebhookUrl = (
+  url: string,
+  allowedHosts: readonly string[],
+): void => assertWebhookUrl('OPS_ALERT_WEBHOOK_URL', url, allowedHosts)
 
 export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
   assertFeedbackWebhookUrl(
     secrets.feedbackWebhookUrl,
     env.feedback.webhookAllowedHosts,
+  )
+  assertOpsAlertWebhookUrl(
+    secrets.opsAlertWebhookUrl,
+    env.opsAlerts.webhookAllowedHosts,
   )
 
   // Parse comma-separated origins exclusively from process.env.CORS_ORIGINS
@@ -236,6 +250,11 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       webhookTimeoutMs: env.feedback.webhookTimeoutMs,
       webhookSnippetChars: env.feedback.webhookSnippetChars,
       submitLimitPerMinute: env.feedback.submitLimitPerMinute,
+    },
+    opsAlerts: {
+      webhookUrl: secrets.opsAlertWebhookUrl,
+      timeoutMs: env.opsAlerts.timeoutMs,
+      dedupeWindowSeconds: env.opsAlerts.dedupeWindowSeconds,
     },
     admin: env.admin,
     priorityQueue: env.priorityQueue,
