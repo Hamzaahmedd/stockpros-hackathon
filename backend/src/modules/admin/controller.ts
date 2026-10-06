@@ -116,6 +116,13 @@ export const overrideSpendLimit = handle(
     )
     // After the commit, and never awaited: a mail problem must not fail the change.
     void notifySpendLimitChanged({ ...result, ticketRef })
+    void alertAdminAction({
+      adminId: getUserId(req),
+      action: AdminAuditAction.SPEND_LIMIT_OVERRIDDEN,
+      targetType: AdminTargetType.USER,
+      targetId: id,
+      ticketRef,
+    })
     return result
   },
 )
@@ -413,14 +420,34 @@ export const publishAnnouncement = announcementAction(
   Announcements.publishAnnouncement,
 )
 
+/** Switching an announcement on or off changes what every user sees, so it alerts. A no-op (already in that state) does not. */
+const switchAnnouncement = async (
+  ctx: AdminWriteContext,
+  id: string,
+  isEnabled: boolean,
+) => {
+  const result = await Announcements.setAnnouncementEnabled(ctx, id, isEnabled)
+  if (result.changed) {
+    void alertAdminAction({
+      adminId: ctx.adminId,
+      action: AdminAuditAction.ANNOUNCEMENT_KILL_SWITCH_TOGGLED,
+      targetType: AdminTargetType.ANNOUNCEMENT,
+      targetId: id,
+      ticketRef: ctx.ticketRef,
+      outcome: isEnabled ? 'ENABLED' : 'DISABLED',
+    })
+  }
+  return result
+}
+
 export const disableAnnouncement = announcementAction(
   'Announcement switched off',
-  (ctx, id) => Announcements.setAnnouncementEnabled(ctx, id, false),
+  (ctx, id) => switchAnnouncement(ctx, id, false),
 )
 
 export const enableAnnouncement = announcementAction(
   'Announcement switched on',
-  (ctx, id) => Announcements.setAnnouncementEnabled(ctx, id, true),
+  (ctx, id) => switchAnnouncement(ctx, id, true),
 )
 
 export const reannounceAnnouncement = announcementAction(

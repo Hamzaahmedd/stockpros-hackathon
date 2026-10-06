@@ -50,7 +50,14 @@ jest.mock('../../notifications/public', () => ({
   getAuthEmailQueue: jest.fn(),
 }))
 
+const mockOpsAlert = jest.fn()
+jest.mock('../../../shared/infrastructure/ops-alert', () => ({
+  ...jest.requireActual('../../../shared/infrastructure/ops-alert'),
+  sendOpsAlert: (...args: unknown[]) => mockOpsAlert(...args),
+}))
+
 const mockResolved = () => jest.fn().mockResolvedValue({ ok: true })
+const mockAnnouncementSwitch = jest.fn().mockResolvedValue({ ok: true })
 const mockOverrideSpendLimit = jest.fn().mockResolvedValue({ ok: true })
 const mockNotifySpendLimitChanged = jest.fn().mockResolvedValue(undefined)
 jest.mock('../users-service', () => ({
@@ -89,7 +96,8 @@ jest.mock('../announcements-service', () => ({
   createAnnouncement: mockResolved(),
   updateAnnouncement: mockResolved(),
   publishAnnouncement: mockResolved(),
-  setAnnouncementEnabled: mockResolved(),
+  setAnnouncementEnabled: (...args: unknown[]) =>
+    mockAnnouncementSwitch(...args),
   reannounceAnnouncement: mockResolved(),
   archiveAnnouncement: mockResolved(),
 }))
@@ -765,6 +773,106 @@ describe('alerts on risky staff actions', () => {
         targetId: ID,
       }),
     ])
+  })
+
+  describe('spend limits and the announcement kill switch', () => {
+    const switched = (changed: boolean) =>
+      (mockAnnouncementSwitch as jest.Mock).mockResolvedValueOnce({
+        id: ID,
+        changed,
+      })
+    const opsDetails = () =>
+      mockOpsAlert.mock.calls.map((call) => call[0].details)
+
+    beforeEach(() => mockOpsAlert.mockReset())
+
+    it('alerts when staff change a customer spend limit', async () => {
+      const res = await as(
+        PlatformRole.PLATFORM_ADMIN,
+        'post',
+        `/users/${ID}/spend-limit`,
+        { monthlyLimitPaisa: 50_000, reason: REASON, ticketRef: 'SUP-1234' },
+      )
+      expect(res.status).toBe(200)
+      await flush()
+
+      expect(sent()).toEqual([
+        expect.objectContaining({
+          action: 'SPEND_LIMIT_OVERRIDDEN',
+          targetType: 'USER',
+          targetId: ID,
+          ticketRef: 'SUP-1234',
+        }),
+      ])
+      expect(opsDetails()).toEqual([
+        expect.objectContaining({
+          action: 'SPEND_LIMIT_OVERRIDDEN',
+          targetId: ID,
+          adminId: PlatformRole.PLATFORM_ADMIN,
+        }),
+      ])
+      // Identifiers only: not the reason, not the amount.
+      expect(JSON.stringify([sent(), opsDetails()])).not.toContain(REASON)
+      expect(JSON.stringify(opsDetails())).not.toContain('50000')
+    })
+
+    it.each([
+      ['disable', 'SUPPORT_AGENT', 'DISABLED'],
+      ['enable', 'PLATFORM_ADMIN', 'ENABLED'],
+    ] as const)(
+      'alerts when an announcement is switched %s, saying which way',
+      async (path, role, outcome) => {
+        switched(true)
+        const res = await as(role, 'post', `/announcements/${ID}/${path}`, {
+          reason: REASON,
+        })
+        expect(res.status).toBe(200)
+        await flush()
+
+        expect(sent()).toEqual([
+          expect.objectContaining({
+            action: 'ANNOUNCEMENT_KILL_SWITCH_TOGGLED',
+            targetType: 'ANNOUNCEMENT',
+            targetId: ID,
+            adminId: role,
+          }),
+        ])
+        expect(opsDetails()).toEqual([
+          expect.objectContaining({
+            action: 'ANNOUNCEMENT_KILL_SWITCH_TOGGLED',
+            outcome,
+          }),
+        ])
+      },
+    )
+
+    it('stays quiet when the announcement was already in that state', async () => {
+      switched(false)
+      const res = await as(
+        PlatformRole.SUPPORT_AGENT,
+        'post',
+        `/announcements/${ID}/disable`,
+        { reason: REASON },
+      )
+      expect(res.status).toBe(200)
+      await flush()
+      expect(sent()).toEqual([])
+      expect(mockOpsAlert).not.toHaveBeenCalled()
+    })
+
+    it('does not alert for the other announcement actions', async () => {
+      for (const path of ['publish', 'reannounce']) {
+        await as(
+          PlatformRole.PLATFORM_ADMIN,
+          'post',
+          `/announcements/${ID}/${path}`,
+          { reason: REASON },
+        )
+      }
+      await flush()
+      expect(sent()).toEqual([])
+      expect(mockOpsAlert).not.toHaveBeenCalled()
+    })
   })
 
   it('does not alert for routine writes', async () => {
