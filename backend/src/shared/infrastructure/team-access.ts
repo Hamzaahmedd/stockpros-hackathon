@@ -142,6 +142,47 @@ export const isLoginAllowedByPolicy = (
   }
 }
 
+/**
+ * The verified, active domain that SSO tenant `tenantId` authenticates, but only
+ * when `email` is on exactly that domain. A tenant owner can assert any email
+ * from their IdP, so this binding is what stops them signing in as someone else.
+ */
+export async function findSsoDomainForEmail(
+  tenantId: string,
+  email: string,
+  { requireEnabled = true }: { requireEnabled?: boolean } = {},
+) {
+  const domain = await prisma.teamDomain.findFirst({
+    where: {
+      ssoTenantId: tenantId,
+      isVerified: true,
+      ...(requireEnabled ? { samlEnabled: true } : {}),
+      team: { status: TeamStatus.ACTIVE },
+    },
+    select: { id: true, teamId: true, domain: true },
+  })
+  return domain && emailDomain(email) === domain.domain ? domain : null
+}
+
+/** The SSO tenant a login for `email` would go through, or null when its domain has no enabled SSO. */
+export async function findSsoTenantForEmail(
+  email: string,
+): Promise<string | null> {
+  const domain = emailDomain(email)
+  if (!domain) return null
+  const record = await prisma.teamDomain.findFirst({
+    where: {
+      domain,
+      isVerified: true,
+      samlEnabled: true,
+      ssoTenantId: { not: null },
+      team: { status: TeamStatus.ACTIVE },
+    },
+    select: { ssoTenantId: true },
+  })
+  return record?.ssoTenantId ?? null
+}
+
 /** The enforcing policy for an email's domain, or null when it is unrestricted. */
 export async function findAuthRestriction(email: string) {
   const domain = emailDomain(email)

@@ -60,6 +60,7 @@ export const developmentConfig = {
     enablePhoneVerification: false,
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
+    enableSso: true,
   },
   sendpk: {
     // Explicit, visible flag rather than inferring mock mode from a missing

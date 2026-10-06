@@ -6,6 +6,7 @@ import {
   Patch,
   Path,
   Post,
+  Put,
   Query,
   Response,
   Route,
@@ -73,6 +74,64 @@ export interface SetAuthPolicyRequest {
 export interface SetAuthPolicyResponse extends TeamDomainSummary {
   /** Sessions on the domain signed out because they no longer satisfy the policy. */
   revokedSessions: number
+}
+
+export interface SsoConfigResponse {
+  /** @example "fund.com" */
+  domain: string
+  authPolicy: DomainAuthPolicyValue
+  /** True once SSO has passed a test sign-in and been switched on for the domain. */
+  enabled: boolean
+  configured: boolean
+  /** Give this to the IdP as the SP Entity ID / Audience. */
+  spEntityId: string
+  /** Give this to the IdP as the ACS (Assertion Consumer Service) URL. */
+  acsUrl: string
+  idpEntityId: string | null
+  idpSsoUrl: string | null
+  /** When the IdP's latest signing certificate expires, so admins can plan a rotation. */
+  certificateExpiresAt: string | null
+  /** Set by a passing test sign-in; cleared whenever the IdP settings change. */
+  testedAt: string | null
+  lastLoginAt: string | null
+}
+
+export interface SsoMetadataXmlRequest {
+  source: 'METADATA_XML'
+  /** The IdP's SAML metadata document (max 256 KB). */
+  metadataXml: string
+}
+
+export interface SsoMetadataUrlRequest {
+  source: 'METADATA_URL'
+  /** Public https URL of the IdP's metadata; fetched once, not stored as a live link. @example "https://idp.example.com/metadata" */
+  metadataUrl: string
+}
+
+export interface SsoManualRequest {
+  source: 'MANUAL'
+  idpEntityId: string
+  /** HTTP-Redirect sign-in URL; https only. */
+  idpSsoUrl: string
+  /** PEM or base64 X.509 signing certificate(s). */
+  idpCertificate: string
+}
+
+export type SsoConfigRequest =
+  SsoMetadataXmlRequest | SsoMetadataUrlRequest | SsoManualRequest
+
+export interface SetSsoEnabledRequest {
+  enabled: boolean
+}
+
+export interface DeleteSsoResponse {
+  /** SSO sessions signed out because the connection is gone. */
+  revokedSessions: number
+}
+
+export interface StartSsoTestResponse {
+  /** Send the browser here; the IdP returns to the workspace security page with `sso_test=passed|failed`. */
+  redirectUrl: string
 }
 
 export interface JoinOptionResponse {
@@ -487,6 +546,74 @@ export class TeamsSwaggerController extends Controller {
     @Path() domain: string,
     @Body() body: SetAuthPolicyRequest,
   ): Promise<ApiResponse<SetAuthPolicyResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SSO setup for a domain: the values to give the IdP, the stored IdP settings, and test status. Owner/admin only. */
+  @Get('domains/{domain}/sso')
+  @Response<ApiErrorResponse>(403, 'Not an owner/admin, or SSO is not enabled')
+  @Response<ApiErrorResponse>(404, 'Domain not found in your workspace')
+  async getSsoConfig(
+    @Path() domain: string,
+  ): Promise<ApiResponse<SsoConfigResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Saves the IdP's settings from metadata XML, a metadata URL (fetched over
+   * https from a public address only) or manual fields. Any change switches SSO
+   * off and clears the test result, so it must be re-tested and re-enabled.
+   * Refused (409) while the domain requires SSO. Owner/admin only.
+   */
+  @Put('domains/{domain}/sso')
+  @Response<ApiErrorResponse>(
+    400,
+    'Domain not verified or invalid IdP settings',
+  )
+  @Response<ApiErrorResponse>(409, 'The domain currently requires SSO')
+  async saveSsoConfig(
+    @Path() domain: string,
+    @Body() body: SsoConfigRequest,
+  ): Promise<ApiResponse<SsoConfigResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Removes the SSO connection and signs out its SSO sessions. Refused (409) while the domain requires SSO. Owner/admin only. */
+  @Delete('domains/{domain}/sso')
+  @Response<ApiErrorResponse>(404, 'SSO is not configured for this domain')
+  @Response<ApiErrorResponse>(409, 'The domain currently requires SSO')
+  async deleteSsoConfig(
+    @Path() domain: string,
+  ): Promise<ApiResponse<DeleteSsoResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Switches SSO sign-in on or off for the domain. Enabling needs a passing
+   * test; disabling signs out SSO sessions and is refused (409) while the
+   * domain requires SSO. Requiring SSO is a separate owner-only step
+   * (`PATCH domains/{domain}/auth-policy` with `SAML_SSO`). Owner/admin only.
+   */
+  @Patch('domains/{domain}/sso/enabled')
+  @Response<ApiErrorResponse>(400, 'Not configured, or not tested yet')
+  @Response<ApiErrorResponse>(409, 'The domain currently requires SSO')
+  async setSsoEnabled(
+    @Path() domain: string,
+    @Body() body: SetSsoEnabledRequest,
+  ): Promise<ApiResponse<SsoConfigResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Starts a "Test SSO connection" sign-in. A passing test marks the
+   * connection tested and, if the same admin signs in, upgrades their own
+   * session to an SSO session. Owner/admin only.
+   */
+  @Post('domains/{domain}/sso/test')
+  @Response<ApiErrorResponse>(400, 'SSO is not configured yet')
+  async testSsoConnection(
+    @Path() domain: string,
+  ): Promise<ApiResponse<StartSsoTestResponse>> {
     throw new Error('tsoa spec-only')
   }
 

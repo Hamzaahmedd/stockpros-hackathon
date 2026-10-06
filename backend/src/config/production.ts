@@ -60,6 +60,7 @@ export const productionConfig = {
     enablePhoneVerification: true,
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
+    enableSso: false,
   },
   sendpk: {
     mockProvider: false,

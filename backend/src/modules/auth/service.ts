@@ -34,6 +34,8 @@ import {
 import {
   assertLoginAllowed,
   findAuthRestriction,
+  findSsoDomainForEmail,
+  findSsoTenantForEmail,
   isLoginAllowedByPolicy,
 } from '../../shared/infrastructure/team-access'
 import { convertToMilliseconds, hashToken } from '../../shared/utils'
@@ -775,6 +777,7 @@ export async function verifyMagicLink(
 export interface OnboardingLogin {
   method: LoginMethod
   googleHd?: string | null
+  ssoTenantId?: string | null
 }
 
 export async function completeOnboarding(
@@ -790,7 +793,21 @@ export async function completeOnboarding(
   requiresPhoneVerification: boolean
 }> {
   const normalizedEmail = email.toLowerCase().trim()
-  await assertLoginAllowed(normalizedEmail, login.method, login.googleHd)
+  await assertLoginAllowed(
+    normalizedEmail,
+    login.method,
+    login.googleHd,
+    login.ssoTenantId,
+  )
+  if (
+    login.method === LoginMethod.SSO &&
+    !(
+      login.ssoTenantId &&
+      (await findSsoDomainForEmail(login.ssoTenantId, normalizedEmail))
+    )
+  ) {
+    throw new UnauthorizedError('Invalid or expired onboarding token')
+  }
 
   // Create user and assign the configured default role in a single transaction.
   const user = await prisma.$transaction(async (tx) => {
@@ -836,6 +853,7 @@ export async function completeOnboarding(
     userAgent,
     loginMethod: login.method,
     googleHd: login.googleHd,
+    ssoTenantId: login.ssoTenantId,
   })
 
   captureEvent(user.id, PostHogEvent.OnboardingCompleted)
@@ -931,11 +949,16 @@ function resolveIdentityFromOnboardingToken(token: string): {
       const method = Object.values(LoginMethod).find(
         (value) => value === payload.method,
       )
+      // An SSO token without its tenant proves nothing about SSO, so it
+      // is downgraded rather than trusted.
+      const trusted =
+        method === LoginMethod.SSO && !payload.sso ? undefined : method
       return {
         email: payload.sub,
         login: {
-          method: method ?? LoginMethod.MAGIC_LINK,
+          method: trusted ?? LoginMethod.MAGIC_LINK,
           googleHd: payload.hd,
+          ssoTenantId: payload.sso,
         },
       }
     }
@@ -987,11 +1010,11 @@ export async function completeOnboardingFlow(params: {
 
 // ─── Google OAuth (Sign in with Google) ───────────────────────────────────────
 
-export async function googleLogin(
-  idToken: string,
-  ip: string,
-  userAgent: string,
-): Promise<
+type UserWithRoles = Prisma.UserGetPayload<{
+  include: { userRoles: { include: { role: true } } }
+}>
+
+export type SocialLoginResult =
   | {
       requiresOnboarding: true
       onboardingToken: string
@@ -1010,7 +1033,81 @@ export async function googleLogin(
       defaultDisplayName?: undefined
       requiresPhoneVerification: boolean
     }
-> {
+
+/** Signs an existing user in: backfills the default role, refuses inactive accounts, then opens the session. */
+async function signInExistingUser(
+  found: UserWithRoles,
+  session: {
+    loginMethod: LoginMethod
+    googleHd?: string | null
+    ssoTenantId?: string | null
+  },
+  authMethod: AuthMethod,
+  ip: string,
+  userAgent: string,
+): Promise<SocialLoginResult> {
+  let user = found
+  if (user.userRoles.length === 0) {
+    const defaultRole = await getDefaultRole(prisma)
+    await prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: defaultRole.id,
+        assignedById: user.id,
+      },
+    })
+
+    user = (await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        userRoles: { include: { role: true } },
+      },
+    }))!
+  }
+
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new UnauthorizedError('Account is inactive or suspended')
+  }
+
+  const sessionId = uuidv7()
+  const { accessToken, refreshToken, jti } = await generateTokens(
+    user.id,
+    sessionId,
+  )
+  await persistSession({
+    sessionId,
+    userId: user.id,
+    jti,
+    ip,
+    userAgent,
+    ...session,
+  })
+
+  captureEvent(user.id, PostHogEvent.UserSignedIn, { method: authMethod })
+
+  return {
+    requiresOnboarding: false,
+    user: {
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      roleId: user.userRoles?.[0]?.roleId,
+      status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
+    },
+    accessToken,
+    refreshToken,
+    requiresPhoneVerification: computeRequiresPhoneVerification(
+      user.phoneVerifiedAt,
+    ),
+  }
+}
+
+export async function googleLogin(
+  idToken: string,
+  ip: string,
+  userAgent: string,
+): Promise<SocialLoginResult> {
   if (!GOOGLE_CLIENT_ID) {
     throw new UnauthorizedError('Google login is not configured on the server')
   }
@@ -1067,63 +1164,65 @@ export async function googleLogin(
     }
   }
 
-  if (user.userRoles.length === 0) {
-    const defaultRole = await getDefaultRole(prisma)
-    await prisma.userRole.create({
-      data: {
-        userId: user.id,
-        roleId: defaultRole.id,
-        assignedById: user.id,
-      },
-    })
-
-    user = (await prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        userRoles: { include: { role: true } },
-      },
-    }))!
-  }
-
-  if (user.status !== UserStatus.ACTIVE) {
-    throw new UnauthorizedError('Account is inactive or suspended')
-  }
-
-  const sessionId = uuidv7()
-  const { accessToken, refreshToken, jti } = await generateTokens(
-    user.id,
-    sessionId,
-  )
-  await persistSession({
-    sessionId,
-    userId: user.id,
-    jti,
+  return signInExistingUser(
+    user,
+    { loginMethod: LoginMethod.GOOGLE, googleHd },
+    AuthMethod.Google,
     ip,
     userAgent,
-    loginMethod: LoginMethod.GOOGLE,
-    googleHd,
-  })
+  )
+}
 
-  captureEvent(user.id, PostHogEvent.UserSignedIn, {
-    method: AuthMethod.Google,
-  })
+// ─── Enterprise SSO (SAML) ─────────────────────────────────────────────────────
 
-  return {
-    requiresOnboarding: false,
-    user: {
-      userId: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      roleId: user.userRoles?.[0]?.roleId,
-      status: user.status,
-      phoneVerifiedAt: user.phoneVerifiedAt,
-    },
-    accessToken,
-    refreshToken,
-    requiresPhoneVerification: computeRequiresPhoneVerification(
-      user.phoneVerifiedAt,
-    ),
+/**
+ * Turns an identity the IdP has vouched for into a session (or an onboarding
+ * token for a first-time user). The tenant-to-domain binding and the sign-in
+ * policy are both enforced here, so no caller can skip them.
+ */
+export async function ssoSignIn(
+  identity: { tenantId: string; email: string },
+  ip: string,
+  userAgent: string,
+): Promise<SocialLoginResult> {
+  const email = identity.email.toLowerCase().trim()
+  if (!(await findSsoDomainForEmail(identity.tenantId, email))) {
+    throw new UnauthorizedError('This account cannot sign in with SSO')
   }
+  await assertLoginAllowed(email, LoginMethod.SSO, undefined, identity.tenantId)
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { userRoles: { include: { role: true } } },
+  })
+
+  if (!user) {
+    return {
+      requiresOnboarding: true,
+      onboardingToken: signToken(
+        {
+          sub: email,
+          type: 'onboarding',
+          method: LoginMethod.SSO,
+          sso: identity.tenantId,
+        },
+        ACCESS_TOKEN_SECRET,
+        '15m',
+      ),
+      defaultDisplayName: email.split('@')[0],
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+    }
+  }
+
+  return signInExistingUser(
+    user,
+    { loginMethod: LoginMethod.SSO, ssoTenantId: identity.tenantId },
+    AuthMethod.Sso,
+    ip,
+    userAgent,
+  )
 }
 
 /**
@@ -1132,9 +1231,16 @@ export async function googleLogin(
  */
 export async function getLoginOptions(
   rawEmail: string,
-): Promise<{ authPolicy: DomainAuthPolicy }> {
-  const restriction = await findAuthRestriction(rawEmail.toLowerCase().trim())
-  return { authPolicy: restriction?.authPolicy ?? DomainAuthPolicy.ANY }
+): Promise<{ authPolicy: DomainAuthPolicy; ssoAvailable: boolean }> {
+  const email = rawEmail.toLowerCase().trim()
+  const [restriction, ssoTenantId] = await Promise.all([
+    findAuthRestriction(email),
+    findSsoTenantForEmail(email),
+  ])
+  return {
+    authPolicy: restriction?.authPolicy ?? DomainAuthPolicy.ANY,
+    ssoAvailable: ssoTenantId !== null,
+  }
 }
 
 // ─── Phone Verification (WhatsApp OTP) ────────────────────────────────────────

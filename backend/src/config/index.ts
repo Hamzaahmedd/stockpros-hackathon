@@ -22,6 +22,8 @@ export const readSecrets = () => ({
   posthogApiKey: process.env.POSTHOG_API_KEY || '',
   groqApiKey: process.env.GROQ_API_KEY || '',
   corsOrigins: process.env.CORS_ORIGINS || '',
+  // Public base URL of this API (not a secret): where IdPs post SAML responses.
+  apiPublicUrl: process.env.API_PUBLIC_URL || '',
   sendpkApiKey: process.env.SENDPK_API_KEY || '',
   sendpkTemplateId: process.env.SENDPK_TEMPLATE_ID || '',
   safepayApiKey: process.env.SAFEPAY_API_KEY || '',
@@ -89,15 +91,26 @@ export const buildConfig = (env: EnvConfig, secrets: Secrets) => {
       : []
 
   const frontendUrl = corsOrigins[0] || 'http://localhost:5173'
+  const port = Number(process.env.PORT) || env.server.port
+  const apiPublicUrl = (
+    secrets.apiPublicUrl ||
+    (env.env === 'production' ? '' : `http://localhost:${port}`)
+  ).replace(/\/$/, '')
+  if (env.features.enableSso && env.env === 'production' && !apiPublicUrl) {
+    throw new Error(
+      'API_PUBLIC_URL is required when SSO is enabled in production',
+    )
+  }
 
   return {
     server: {
-      port: Number(process.env.PORT) || env.server.port,
+      port,
       nodeEnv: env.env,
       logLevel: env.server.logLevel,
       trustProxy: env.server.trustProxy,
       corsOrigins,
       frontendUrl,
+      apiPublicUrl,
     },
     database: {
       url: secrets.databaseUrl,

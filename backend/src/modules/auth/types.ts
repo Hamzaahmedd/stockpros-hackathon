@@ -36,6 +36,8 @@ export interface TokenClaims {
   method?: string
   /** Onboarding tokens from Google: the Workspace domain of the account. */
   hd?: string
+  /** Onboarding tokens from SSO: the tenant that vouched for the email. */
+  sso?: string
 }
 
 /** Profile shape returned by the authenticated "me" endpoint. */

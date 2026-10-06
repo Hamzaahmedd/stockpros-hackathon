@@ -32,6 +32,10 @@
         "description": "User login, OAuth, magic links, session refresh, and onboarding"
       },
       {
+        "name": "Single Sign-On",
+        "description": "Enterprise SAML sign-in: start, IdP callback and session exchange"
+      },
+      {
         "name": "Access Control (RBAC)",
         "description": "Role definitions, screen permissions, and user role assignments"
       },

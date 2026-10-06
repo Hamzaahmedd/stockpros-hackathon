@@ -3,30 +3,15 @@ import {
   SsoConfigurationError,
   SsoVerificationError,
   type SsoConnectionConfig,
-  type SsoConnectionStore,
-  type SsoRequestCache,
 } from '../provider'
-
-// Self-signed, public-only certificate valid 2026-10-06 to 2126-09-12 (test fixture, no private key kept).
-const CERTIFICATE = `-----BEGIN CERTIFICATE-----
-MIIDCTCCAfGgAwIBAgIURFVIdbeepkKtHdK4V3H6pK9lM+AwDQYJKoZIhvcNAQEL
-BQAwEzERMA8GA1UEAwwIdGVzdC1pZHAwIBcNMjYxMDA2MTE0MTQ3WhgPMjEyNjA5
-MTIxMTQxNDdaMBMxETAPBgNVBAMMCHRlc3QtaWRwMIIBIjANBgkqhkiG9w0BAQEF
-AAOCAQ8AMIIBCgKCAQEAruXDE3pJcK6WQw1Xp3dTbXB10MiOq5gLGLWSIctcTxvj
-K67HljlLTwvkjoLIOU+zvNPhFxAOlecn9tX3J7kJr0wI3NisAKLmAysSuPR9x4Kw
-d9qRrwDnQ5Z46OweMwHnhmIxvahl0kfxrAuNEED0Nv6BQglVadKQh6iVrnQJEvtX
-yZDJJxMrpEBmLEwzr8p7uZTEXz4qyB51b52/bTq6FVnj/ALq32vLWFstJEn5Bn/p
-TdjuDJDpZSFECtcaeNik1Sex/4N4IhJUmXymMLzrWmcaxPME8reWZmo8DhccAI6l
-KlUTbN/E/3YjXuIpCytVL8kGxPppt6vn3LEozJwE8QIDAQABo1MwUTAdBgNVHQ4E
-FgQU/tL8BugWydTMHntCkTZEa0rrt80wHwYDVR0jBBgwFoAU/tL8BugWydTMHntC
-kTZEa0rrt80wDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAep6P
-k5b6xhLur0cblPEYx7ALAoLEY9ShbXrNpVrIQtfxDtdoKR+DITfjQkOUpaBGc8u3
-2Bwqpy3ZagEy1qAfPHHu5eKW+pTsPr8r0wggwls3HcLQfLePfz0T9lITDIXZiv1k
-eklKxw22l6uiRieS6bblCc2qjI9n4bq0ILz29OVdVeHwSCzuJ0tVCgsIuHw/KjbE
-1RXjkPPNbdMuvAdKpFQesG0vn92wmrmdFkzoF4kCgRhc+FZ0H7bQpZPR+OlGU0xw
-FZfZygkbiuckX84xnINQ7R1IEJMw/63fi/XqR80tMkB57I96KC+0NXZME+rqdV9d
-7h64CI1cyD4JUNMIWQ==
------END CERTIFICATE-----`
+import {
+  buildResponse,
+  makeIdpKeys,
+  memoryConnectionStore,
+  memoryRequestCache,
+  requestIdFrom,
+  TEST_CERTIFICATE as CERTIFICATE,
+} from './saml-fixtures'
 
 const TENANT = 'tenant-1'
 const SP = {
@@ -39,39 +24,9 @@ const VALID: SsoConnectionConfig = {
   idpCertificate: CERTIFICATE,
 }
 
-const memoryStore = (): SsoConnectionStore & {
-  rows: Map<string, SsoConnectionConfig>
-} => {
-  const rows = new Map<string, SsoConnectionConfig>()
-  return {
-    rows,
-    get: async (id) => rows.get(id) ?? null,
-    save: async (id, config) => {
-      rows.set(id, config)
-    },
-    remove: async (id) => {
-      rows.delete(id)
-    },
-  }
-}
-
-const memoryCache = (): SsoRequestCache & { entries: Map<string, string> } => {
-  const entries = new Map<string, string>()
-  return {
-    entries,
-    save: async (key, value) => {
-      entries.set(key, value)
-    },
-    get: async (key) => entries.get(key) ?? null,
-    remove: async (key) => {
-      entries.delete(key)
-    },
-  }
-}
-
 const build = (now = new Date('2030-01-01T00:00:00Z')) => {
-  const store = memoryStore()
-  const requestCache = memoryCache()
+  const store = memoryConnectionStore()
+  const requestCache = memoryRequestCache()
   const provider = new NodeSamlProvider({
     store,
     requestCache,
@@ -184,6 +139,171 @@ describe('NodeSamlProvider.completeLogin', () => {
 
     await expect(
       provider.completeLogin({ tenantId: TENANT, samlResponse }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+})
+
+describe('NodeSamlProvider.completeLogin with real signed assertions', () => {
+  const keys = makeIdpKeys()
+  const idp = {
+    idpEntityId: VALID.idpEntityId,
+    idpSsoUrl: VALID.idpSsoUrl,
+    idpCertificate: keys.publicKey,
+  }
+
+  const setup = async (tenant = TENANT) => {
+    const store = memoryConnectionStore({ [tenant]: idp })
+    const requestCache = memoryRequestCache()
+    const provider = new NodeSamlProvider({
+      store,
+      requestCache,
+      serviceProvider: () => SP,
+    })
+    const { redirectUrl } = await provider.startLogin(tenant, 'state-1')
+    const requestId = requestIdFrom(redirectUrl)
+    const respond = (
+      overrides: Partial<Parameters<typeof buildResponse>[0]> = {},
+    ) =>
+      buildResponse({
+        privateKey: keys.privateKey,
+        requestId,
+        idpEntityId: idp.idpEntityId,
+        spEntityId: SP.spEntityId,
+        acsUrl: SP.acsUrl,
+        email: 'Sam@Fund.com',
+        ...overrides,
+      })
+    return { provider, respond, requestCache, tenant }
+  }
+
+  it('accepts a signed assertion that answers our request and returns the verified identity', async () => {
+    const { provider, respond } = await setup()
+
+    const identity = await provider.completeLogin({
+      tenantId: TENANT,
+      samlResponse: respond(),
+    })
+
+    expect(identity).toMatchObject({
+      tenantId: TENANT,
+      email: 'sam@fund.com',
+      nameId: 'Sam@Fund.com',
+    })
+  })
+
+  it('reads the email from an attribute when the NameID is opaque', async () => {
+    const { provider, respond } = await setup()
+
+    const identity = await provider.completeLogin({
+      tenantId: TENANT,
+      samlResponse: respond({
+        email: undefined,
+        emailAttribute: 'Kim@Fund.com',
+      }),
+    })
+
+    expect(identity.email).toBe('kim@fund.com')
+    expect(identity.nameId).toBe('opaque-id')
+    expect(identity.attributes.email).toBe('Kim@Fund.com')
+  })
+
+  it('rejects an assertion with no email anywhere', async () => {
+    const { provider, respond } = await setup()
+
+    await expect(
+      provider.completeLogin({
+        tenantId: TENANT,
+        samlResponse: respond({
+          email: undefined,
+          emailAttribute: 'not-an-email',
+        }),
+      }),
+    ).rejects.toThrow('no usable email')
+  })
+
+  it('refuses an unsigned assertion', async () => {
+    const { provider, respond } = await setup()
+
+    await expect(
+      provider.completeLogin({
+        tenantId: TENANT,
+        samlResponse: respond({ sign: false }),
+      }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses an assertion edited after it was signed', async () => {
+    const { provider, respond } = await setup()
+    const xml = Buffer.from(respond(), 'base64').toString()
+    const forged = Buffer.from(
+      xml.replace('Sam@Fund.com', 'ceo@fund.com'),
+    ).toString('base64')
+
+    await expect(
+      provider.completeLogin({ tenantId: TENANT, samlResponse: forged }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses an assertion signed by a key the tenant does not trust', async () => {
+    const { provider, respond } = await setup()
+    const attacker = makeIdpKeys()
+
+    await expect(
+      provider.completeLogin({
+        tenantId: TENANT,
+        samlResponse: respond({ privateKey: attacker.privateKey }),
+      }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses an assertion issued for another audience', async () => {
+    const { provider, respond } = await setup()
+
+    await expect(
+      provider.completeLogin({
+        tenantId: TENANT,
+        samlResponse: respond({ audience: 'https://other-sp.example.com' }),
+      }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses a response to a request we never made', async () => {
+    const { provider, respond } = await setup()
+
+    await expect(
+      provider.completeLogin({
+        tenantId: TENANT,
+        samlResponse: respond({ requestId: '_never-issued' }),
+      }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses a replay: a request id works once', async () => {
+    const { provider, respond } = await setup()
+    const response = respond()
+
+    await expect(
+      provider.completeLogin({ tenantId: TENANT, samlResponse: response }),
+    ).resolves.toBeDefined()
+    await expect(
+      provider.completeLogin({ tenantId: TENANT, samlResponse: response }),
+    ).rejects.toBeInstanceOf(SsoVerificationError)
+  })
+
+  it('refuses a response that answers another tenant’s request', async () => {
+    const first = await setup('tenant-1')
+    const store = memoryConnectionStore({ 'tenant-2': idp })
+    const second = new NodeSamlProvider({
+      store,
+      requestCache: first.requestCache,
+      serviceProvider: () => SP,
+    })
+
+    await expect(
+      second.completeLogin({
+        tenantId: 'tenant-2',
+        samlResponse: first.respond(),
+      }),
     ).rejects.toBeInstanceOf(SsoVerificationError)
   })
 })

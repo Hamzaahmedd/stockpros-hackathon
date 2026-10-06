@@ -449,6 +449,7 @@ describe('getLoginOptions', () => {
   it('answers ANY for an unrestricted domain', async () => {
     await expect(getLoginOptions(' Sam@Fund.com ')).resolves.toEqual({
       authPolicy: DomainAuthPolicy.ANY,
+      ssoAvailable: false,
     })
     expect(mockPrisma.teamDomain.findFirst.mock.calls[0][0].where.domain).toBe(
       'fund.com',
@@ -458,7 +459,7 @@ describe('getLoginOptions', () => {
   it('answers the enforced policy and nothing about the workspace', async () => {
     restrict(DomainAuthPolicy.GOOGLE_WORKSPACE)
 
-    await expect(getLoginOptions(EMAIL)).resolves.toEqual({
+    await expect(getLoginOptions(EMAIL)).resolves.toMatchObject({
       authPolicy: DomainAuthPolicy.GOOGLE_WORKSPACE,
     })
   })

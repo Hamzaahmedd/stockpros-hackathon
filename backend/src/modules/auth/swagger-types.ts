@@ -42,7 +42,9 @@ export interface SetPlanResponse {
 /** Which sign-in methods a user's organization accepts. */
 export interface LoginOptionsResponse {
   /** ANY when the email's domain is unrestricted, unknown or public. @example "GOOGLE_ONLY" */
-  authPolicy: 'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE'
+  authPolicy: 'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE' | 'SAML_SSO'
+  /** True when the email's domain has SSO enabled, so the login screen can offer "Continue with SSO". */
+  ssoAvailable: boolean
 }
 
 export interface MagicLinkRequest {
@@ -105,8 +107,8 @@ export class AuthSwaggerController extends Controller {
 
   /**
    * Tells the login screen which sign-in methods the email's organization
-   * accepts (a verified domain can require Google or Google Workspace). Only
-   * the policy is returned; always `ANY` for unknown or public domains.
+   * accepts (a verified domain can require Google, Google Workspace or SSO). Only
+   * the policy and whether SSO is available are returned; always `ANY` for unknown or public domains.
    */
   @Post('login-options')
   @SuccessResponse(200, 'Login options')

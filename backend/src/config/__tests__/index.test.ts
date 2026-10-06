@@ -31,6 +31,7 @@ describe('readSecrets', () => {
     'POSTHOG_API_KEY',
     'GROQ_API_KEY',
     'CORS_ORIGINS',
+    'API_PUBLIC_URL',
     'SENDPK_API_KEY',
     'SENDPK_TEMPLATE_ID',
     'SAFEPAY_API_KEY',
@@ -99,6 +100,50 @@ describe('module load — resolveEnv / loadEnvConfig (via the assembled config)'
 
 describe('buildConfig', () => {
   const baseSecrets = readSecrets()
+
+  describe('apiPublicUrl', () => {
+    it('trims a trailing slash from API_PUBLIC_URL', () => {
+      const config = buildConfig(developmentConfig, {
+        ...baseSecrets,
+        apiPublicUrl: 'https://api.example.com/',
+      })
+      expect(config.server.apiPublicUrl).toBe('https://api.example.com')
+    })
+
+    it('defaults to localhost on the server port outside production', () => {
+      const config = buildConfig(developmentConfig, {
+        ...baseSecrets,
+        apiPublicUrl: '',
+      })
+      expect(config.server.apiPublicUrl).toBe(
+        `http://localhost:${config.server.port}`,
+      )
+    })
+
+    it('is empty in production when unset and SSO is off', () => {
+      const config = buildConfig(productionConfig, {
+        ...baseSecrets,
+        apiPublicUrl: '',
+      })
+      expect(config.server.apiPublicUrl).toBe('')
+    })
+
+    it('is required in production once SSO is enabled', () => {
+      const withSso = {
+        ...productionConfig,
+        features: { ...productionConfig.features, enableSso: true },
+      }
+      expect(() =>
+        buildConfig(withSso, { ...baseSecrets, apiPublicUrl: '' }),
+      ).toThrow('API_PUBLIC_URL is required')
+      expect(
+        buildConfig(withSso, {
+          ...baseSecrets,
+          apiPublicUrl: 'https://api.example.com',
+        }).server.apiPublicUrl,
+      ).toBe('https://api.example.com')
+    })
+  })
 
   it('parses comma-separated CORS_ORIGINS, trimming whitespace and trailing slashes', () => {
     const config = buildConfig(developmentConfig, {

@@ -496,7 +496,8 @@
 				"enum": [
 					"ANY",
 					"GOOGLE_ONLY",
-					"GOOGLE_WORKSPACE"
+					"GOOGLE_WORKSPACE",
+					"SAML_SSO"
 				],
 				"description": "Which sign-in methods are accepted for people on a verified domain."
 			},
@@ -1221,6 +1222,251 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"SsoConfigResponse": {
+				"properties": {
+					"domain": {
+						"type": "string",
+						"example": "fund.com"
+					},
+					"authPolicy": {
+						"$ref": "#/components/schemas/DomainAuthPolicyValue"
+					},
+					"enabled": {
+						"type": "boolean",
+						"description": "True once SSO has passed a test sign-in and been switched on for the domain."
+					},
+					"configured": {
+						"type": "boolean"
+					},
+					"spEntityId": {
+						"type": "string",
+						"description": "Give this to the IdP as the SP Entity ID / Audience."
+					},
+					"acsUrl": {
+						"type": "string",
+						"description": "Give this to the IdP as the ACS (Assertion Consumer Service) URL."
+					},
+					"idpEntityId": {
+						"type": "string",
+						"nullable": true
+					},
+					"idpSsoUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"certificateExpiresAt": {
+						"type": "string",
+						"nullable": true,
+						"description": "When the IdP's latest signing certificate expires, so admins can plan a rotation."
+					},
+					"testedAt": {
+						"type": "string",
+						"nullable": true,
+						"description": "Set by a passing test sign-in; cleared whenever the IdP settings change."
+					},
+					"lastLoginAt": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"domain",
+					"authPolicy",
+					"enabled",
+					"configured",
+					"spEntityId",
+					"acsUrl",
+					"idpEntityId",
+					"idpSsoUrl",
+					"certificateExpiresAt",
+					"testedAt",
+					"lastLoginAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SsoConfigResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/SsoConfigResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoMetadataXmlRequest": {
+				"properties": {
+					"source": {
+						"type": "string",
+						"enum": [
+							"METADATA_XML"
+						],
+						"nullable": false
+					},
+					"metadataXml": {
+						"type": "string",
+						"description": "The IdP's SAML metadata document (max 256 KB)."
+					}
+				},
+				"required": [
+					"source",
+					"metadataXml"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoMetadataUrlRequest": {
+				"properties": {
+					"source": {
+						"type": "string",
+						"enum": [
+							"METADATA_URL"
+						],
+						"nullable": false
+					},
+					"metadataUrl": {
+						"type": "string",
+						"description": "Public https URL of the IdP's metadata; fetched once, not stored as a live link.",
+						"example": "https://idp.example.com/metadata"
+					}
+				},
+				"required": [
+					"source",
+					"metadataUrl"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoManualRequest": {
+				"properties": {
+					"source": {
+						"type": "string",
+						"enum": [
+							"MANUAL"
+						],
+						"nullable": false
+					},
+					"idpEntityId": {
+						"type": "string"
+					},
+					"idpSsoUrl": {
+						"type": "string",
+						"description": "HTTP-Redirect sign-in URL; https only."
+					},
+					"idpCertificate": {
+						"type": "string",
+						"description": "PEM or base64 X.509 signing certificate(s)."
+					}
+				},
+				"required": [
+					"source",
+					"idpEntityId",
+					"idpSsoUrl",
+					"idpCertificate"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoConfigRequest": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/SsoMetadataXmlRequest"
+					},
+					{
+						"$ref": "#/components/schemas/SsoMetadataUrlRequest"
+					},
+					{
+						"$ref": "#/components/schemas/SsoManualRequest"
+					}
+				]
+			},
+			"DeleteSsoResponse": {
+				"properties": {
+					"revokedSessions": {
+						"type": "number",
+						"format": "double",
+						"description": "SSO sessions signed out because the connection is gone."
+					}
+				},
+				"required": [
+					"revokedSessions"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_DeleteSsoResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/DeleteSsoResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetSsoEnabledRequest": {
+				"properties": {
+					"enabled": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"enabled"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"StartSsoTestResponse": {
+				"properties": {
+					"redirectUrl": {
+						"type": "string",
+						"description": "Send the browser here; the IdP returns to the workspace security page with `sso_test=passed|failed`."
+					}
+				},
+				"required": [
+					"redirectUrl"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_StartSsoTestResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/StartSsoTestResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"UpdateInstructionsRequest": {
 				"properties": {
 					"orgInstructions": {
@@ -1751,6 +1997,143 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoStartResponse": {
+				"properties": {
+					"redirectUrl": {
+						"type": "string",
+						"description": "Send the browser here to sign in at the organization's identity provider."
+					},
+					"bindingToken": {
+						"type": "string",
+						"description": "Keep this in the browser (session storage) and send it back with the code; it ties the sign-in to the browser that started it."
+					}
+				},
+				"required": [
+					"redirectUrl",
+					"bindingToken"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SsoStartResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/SsoStartResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoStartRequest": {
+				"properties": {
+					"email": {
+						"type": "string",
+						"example": "analyst@fund.com",
+						"format": "email"
+					}
+				},
+				"required": [
+					"email"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoSessionUser": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"format": "email"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"userId",
+					"email",
+					"displayName"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoExchangeResponse": {
+				"properties": {
+					"requiresOnboarding": {
+						"type": "boolean"
+					},
+					"onboardingToken": {
+						"type": "string",
+						"description": "Present when `requiresOnboarding` is true."
+					},
+					"defaultDisplayName": {
+						"type": "string"
+					},
+					"accessToken": {
+						"type": "string"
+					},
+					"user": {
+						"$ref": "#/components/schemas/SsoSessionUser"
+					},
+					"requiresPhoneVerification": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"requiresOnboarding"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_SsoExchangeResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/SsoExchangeResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SsoExchangeRequest": {
+				"properties": {
+					"code": {
+						"type": "string",
+						"description": "The one-time `code` from the redirect to `/auth/sso/complete`."
+					},
+					"bindingToken": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"code",
+					"bindingToken"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -3584,14 +3967,20 @@
 						"enum": [
 							"ANY",
 							"GOOGLE_ONLY",
-							"GOOGLE_WORKSPACE"
+							"GOOGLE_WORKSPACE",
+							"SAML_SSO"
 						],
 						"description": "ANY when the email's domain is unrestricted, unknown or public.",
 						"example": "GOOGLE_ONLY"
+					},
+					"ssoAvailable": {
+						"type": "boolean",
+						"description": "True when the email's domain has SSO enabled, so the login screen can offer \"Continue with SSO\"."
 					}
 				},
 				"required": [
-					"authPolicy"
+					"authPolicy",
+					"ssoAvailable"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -5706,6 +6095,292 @@
 				}
 			}
 		},
+		"/api/v1/teams/domains/{domain}/sso": {
+			"get": {
+				"operationId": "GetSsoConfig",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SsoConfigResponse_"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Not an owner/admin, or SSO is not enabled",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Domain not found in your workspace",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SSO setup for a domain: the values to give the IdP, the stored IdP settings, and test status. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"put": {
+				"operationId": "SaveSsoConfig",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SsoConfigResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Domain not verified or invalid IdP settings",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "The domain currently requires SSO",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Saves the IdP's settings from metadata XML, a metadata URL (fetched over\nhttps from a public address only) or manual fields. Any change switches SSO\noff and clears the test result, so it must be re-tested and re-enabled.\nRefused (409) while the domain requires SSO. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SsoConfigRequest"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteSsoConfig",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_DeleteSsoResponse_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "SSO is not configured for this domain",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "The domain currently requires SSO",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Removes the SSO connection and signs out its SSO sessions. Refused (409) while the domain requires SSO. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/teams/domains/{domain}/sso/enabled": {
+			"patch": {
+				"operationId": "SetSsoEnabled",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SsoConfigResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Not configured, or not tested yet",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "The domain currently requires SSO",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Switches SSO sign-in on or off for the domain. Enabling needs a passing\ntest; disabling signs out SSO sessions and is refused (409) while the\ndomain requires SSO. Requiring SSO is a separate owner-only step\n(`PATCH domains/{domain}/auth-policy` with `SAML_SSO`). Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetSsoEnabledRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/teams/domains/{domain}/sso/test": {
+			"post": {
+				"operationId": "TestSsoConnection",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_StartSsoTestResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "SSO is not configured yet",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Starts a \"Test SSO connection\" sign-in. A passing test marks the\nconnection tested and, if the same admin signs in, upgrades their own\nsession to an SSO session. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/teams/instructions": {
 			"patch": {
 				"operationId": "UpdateInstructions",
@@ -6588,6 +7263,138 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/v1/auth/sso/start": {
+			"post": {
+				"operationId": "Start",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SsoStartResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "SSO is not available for this email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Starts a SAML sign-in for an email whose domain has SSO enabled. Answers\n403 `FORBIDDEN_FEATURE_DISABLED` while SSO is switched off.",
+				"tags": [
+					"Single Sign-On"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SsoStartRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/sso/{tenantId}/acs": {
+			"post": {
+				"operationId": "Acs",
+				"responses": {
+					"303": {
+						"description": "Redirect back to the app"
+					}
+				},
+				"description": "The ACS URL: the identity provider posts its `SAMLResponse` and\n`RelayState` here as `application/x-www-form-urlencoded`. The browser is\nalways redirected (303) back to the app, to `/auth/sso/complete?code=…` on\nsuccess or an error state; failure details are never shown.",
+				"tags": [
+					"Single Sign-On"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "tenantId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"RelayState": {
+										"type": "string"
+									},
+									"SAMLResponse": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"SAMLResponse"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/sso/exchange": {
+			"post": {
+				"operationId": "Exchange",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_SsoExchangeResponse_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Invalid or expired SSO sign-in",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Exchanges the one-time code (valid 60 seconds, single use) and the\nbrowser's binding token for a session, setting the refresh cookie. New\nusers get an onboarding token instead.",
+				"tags": [
+					"Single Sign-On"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SsoExchangeRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/search/symbol-lookup": {
@@ -8544,7 +9351,7 @@
 						}
 					}
 				},
-				"description": "Tells the login screen which sign-in methods the email's organization\naccepts (a verified domain can require Google or Google Workspace). Only\nthe policy is returned; always `ANY` for unknown or public domains.",
+				"description": "Tells the login screen which sign-in methods the email's organization\naccepts (a verified domain can require Google, Google Workspace or SSO). Only\nthe policy and whether SSO is available are returned; always `ANY` for unknown or public domains.",
 				"tags": [
 					"Authentication"
 				],
@@ -11037,6 +11844,10 @@
 		{
 			"name": "Authentication",
 			"description": "User login, OAuth, magic links, session refresh, and onboarding"
+		},
+		{
+			"name": "Single Sign-On",
+			"description": "Enterprise SAML sign-in: start, IdP callback and session exchange"
 		},
 		{
 			"name": "Access Control (RBAC)",

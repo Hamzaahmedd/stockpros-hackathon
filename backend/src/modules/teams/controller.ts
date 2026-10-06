@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../auth'
 import * as Admin from './admin-service'
 import * as AuthPolicy from './auth-policy'
 import * as JoinRequests from './join-requests'
+import * as SsoConfig from './sso-config'
 import * as TeamService from './service'
 import * as Workspace from './workspace-service'
 import {
@@ -32,6 +33,8 @@ import {
   searchQueryValidator,
   sharedScreenerValidator,
   sharedWatchlistValidator,
+  ssoConfigValidator,
+  ssoEnabledValidator,
   transferOwnershipValidator,
   userIdParamValidator,
   verifyDomainValidator,
@@ -211,6 +214,56 @@ export const setAuthPolicy = handle(
       req.user?.sessionId,
       validateOrThrow(joinPolicyParamValidator, req.params).domain,
       validateOrThrow(authPolicyValidator, req.body),
+    ),
+  }),
+)
+
+const domainParam = (req: AuthenticatedRequest): string =>
+  validateOrThrow(joinPolicyParamValidator, req.params).domain
+
+export const getSsoConfig = handle(
+  'SSO configuration',
+  async (req, userId) => ({
+    data: await SsoConfig.getSsoConfig(userId, domainParam(req)),
+  }),
+)
+
+export const saveSsoConfig = handle(
+  'SSO configuration saved',
+  async (req, userId) => ({
+    data: await SsoConfig.saveSsoConfig(
+      userId,
+      domainParam(req),
+      validateOrThrow(ssoConfigValidator, req.body),
+    ),
+  }),
+)
+
+export const deleteSsoConfig = handle(
+  'SSO configuration removed',
+  async (req, userId) => ({
+    data: await SsoConfig.deleteSsoConfig(userId, domainParam(req)),
+  }),
+)
+
+export const setSsoEnabled = handle(
+  'SSO setting updated',
+  async (req, userId) => ({
+    data: await SsoConfig.setSsoEnabled(
+      userId,
+      domainParam(req),
+      validateOrThrow(ssoEnabledValidator, req.body).enabled,
+    ),
+  }),
+)
+
+export const testSsoConnection = handle(
+  'SSO test started',
+  async (req, userId) => ({
+    data: await SsoConfig.startSsoConnectionTest(
+      userId,
+      req.user?.sessionId,
+      domainParam(req),
     ),
   }),
 )

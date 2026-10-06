@@ -6,7 +6,7 @@ export { verifyAccessToken } from './utils/jwt'
 // Public cross-module surface — other modules (e.g. payments, to apply a
 // webhook-confirmed plan upgrade) must import setMyPlan from here, never
 // from './service' directly (enforced by scripts/check-module-boundaries.cjs).
-export { setMyPlan } from './service'
+export { setMyPlan, ssoSignIn } from './service'
 
 import router from './routes'
 import { defineModule } from '../module-interface'

@@ -1,4 +1,3 @@
-import { X509Certificate } from 'node:crypto'
 import {
   SAML,
   ValidateInResponseTo,
@@ -7,7 +6,10 @@ import {
 } from '@node-saml/node-saml'
 import { z } from 'zod'
 import {
-  SsoConfigurationError,
+  splitCertificates,
+  validateConnectionConfig,
+} from '../connection-config'
+import {
   SsoVerificationError,
   type SsoCallbackPayload,
   type SsoConnectionConfig,
@@ -16,6 +18,7 @@ import {
   type SsoProvider,
   type SsoRequestCache,
   type SsoServiceProviderInfo,
+  type SsoWriteContext,
 } from '../provider'
 
 const REQUEST_TTL_MS = 5 * 60 * 1000
@@ -33,47 +36,12 @@ const EMAIL_ATTRIBUTES: readonly string[] = [
 
 const emailSchema = z.string().trim().toLowerCase().email()
 
-const connectionSchema = z.object({
-  idpEntityId: z.string().trim().min(1).max(1024),
-  idpSsoUrl: z
-    .string()
-    .trim()
-    .max(2048)
-    .regex(/^https:\/\//i, 'The IdP sign-in URL must use https')
-    .url(),
-  idpCertificate: z.string().trim().min(1).max(16_384),
-})
-
 export interface NodeSamlProviderOptions {
   store: SsoConnectionStore
   requestCache: SsoRequestCache
   /** SP identity for a tenant; the ACS URL is where the IdP posts its response. */
   serviceProvider: (tenantId: string) => SsoServiceProviderInfo
   now?: () => Date
-}
-
-const toPem = (certificate: string): string => {
-  if (certificate.includes('BEGIN CERTIFICATE')) return certificate
-  const body = certificate.replaceAll(/\s+/g, '')
-  const lines = body.match(/.{1,64}/g) ?? []
-  return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`
-}
-
-/** Rejects certificates that do not parse or are outside their validity window. */
-const assertUsableCertificate = (certificate: string, now: Date): void => {
-  let parsed: X509Certificate
-  try {
-    parsed = new X509Certificate(toPem(certificate))
-  } catch {
-    throw new SsoConfigurationError(
-      'The IdP certificate is not a valid X.509 certificate',
-    )
-  }
-  if (now < new Date(parsed.validFrom) || now > new Date(parsed.validTo)) {
-    throw new SsoConfigurationError(
-      'The IdP certificate is expired or not yet valid',
-    )
-  }
 }
 
 /** Scopes request ids to a tenant so one tenant's response can never consume another's request. */
@@ -88,12 +56,7 @@ const tenantCache = (
       return { value, createdAt: Date.now() }
     },
     getAsync: (key) => cache.get(scoped(key)),
-    removeAsync: async (key) => {
-      if (key === null) return null
-      const existing = await cache.get(scoped(key))
-      await cache.remove(scoped(key))
-      return existing
-    },
+    removeAsync: async (key) => (key === null ? null : cache.take(scoped(key))),
   }
 }
 
@@ -140,15 +103,10 @@ export class NodeSamlProvider implements SsoProvider {
   async upsertConnection(
     tenantId: string,
     config: SsoConnectionConfig,
+    context?: SsoWriteContext,
   ): Promise<SsoServiceProviderInfo> {
-    const parsed = connectionSchema.safeParse(config)
-    if (!parsed.success) {
-      throw new SsoConfigurationError(
-        parsed.error.issues[0]?.message ?? 'Invalid IdP settings',
-      )
-    }
-    assertUsableCertificate(parsed.data.idpCertificate, this.now())
-    await this.options.store.save(tenantId, parsed.data)
+    const valid = validateConnectionConfig(config, this.now())
+    await this.options.store.save(tenantId, valid, context)
     return this.options.serviceProvider(tenantId)
   }
 
@@ -182,13 +140,15 @@ export class NodeSamlProvider implements SsoProvider {
         cause: error,
       })
     }
-    if (!profile?.nameID) {
+    const requestId = profile?.inResponseTo
+    if (!profile?.nameID || typeof requestId !== 'string') {
       throw new SsoVerificationError('SAML response carried no subject')
     }
     return {
       tenantId: payload.tenantId,
       email: extractEmail(profile),
       nameId: profile.nameID,
+      requestId,
       attributes: extractAttributes(profile),
     }
   }
@@ -205,7 +165,7 @@ export class NodeSamlProvider implements SsoProvider {
       audience: sp.spEntityId,
       entryPoint: connection.idpSsoUrl,
       idpIssuer: connection.idpEntityId,
-      idpCert: toPem(connection.idpCertificate),
+      idpCert: splitCertificates(connection.idpCertificate),
       // The assertion itself must be signed; an unsigned assertion inside a signed envelope is refused.
       wantAssertionsSigned: true,
       wantAuthnResponseSigned: false,

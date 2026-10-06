@@ -21,6 +21,8 @@ import {
   resolveFallbackPlan,
   assertLoginAllowed,
   findAuthRestriction,
+  findSsoDomainForEmail,
+  findSsoTenantForEmail,
   isLoginAllowedByPolicy,
   nonCompliantSessionWhere,
 } from '../team-access'
@@ -378,6 +380,84 @@ describe('findAuthRestriction / assertLoginAllowed', () => {
     await expect(
       assertLoginAllowed('sam@fund.com', LoginMethod.MAGIC_LINK),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('findSsoDomainForEmail', () => {
+  const domain = { id: 'dom-1', teamId: 'team-1', domain: 'fund.com' }
+
+  it('returns the domain when the email is exactly on it', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(domain)
+
+    await expect(
+      findSsoDomainForEmail('tenant-1', 'sam@Fund.com'),
+    ).resolves.toEqual(domain)
+    expect(db.teamDomain.findFirst.mock.calls[0][0].where).toEqual({
+      ssoTenantId: 'tenant-1',
+      isVerified: true,
+      samlEnabled: true,
+      team: { status: 'ACTIVE' },
+    })
+  })
+
+  it('refuses an email on another domain, a subdomain or a look-alike', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(domain)
+
+    for (const email of [
+      'sam@other.com',
+      'sam@mail.fund.com',
+      'sam@fund.com.evil.io',
+      'not-an-email',
+    ]) {
+      await expect(findSsoDomainForEmail('tenant-1', email)).resolves.toBeNull()
+    }
+  })
+
+  it('returns null when the tenant has no live, verified domain', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(null)
+
+    await expect(
+      findSsoDomainForEmail('tenant-1', 'sam@fund.com'),
+    ).resolves.toBeNull()
+  })
+
+  it('can ignore the enabled flag, for the admin’s own test sign-in', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(domain)
+
+    await findSsoDomainForEmail('tenant-1', 'sam@fund.com', {
+      requireEnabled: false,
+    })
+
+    expect(db.teamDomain.findFirst.mock.calls[0][0].where).not.toHaveProperty(
+      'samlEnabled',
+    )
+  })
+})
+
+describe('findSsoTenantForEmail', () => {
+  it('returns the tenant of an enabled, verified, live domain', async () => {
+    db.teamDomain.findFirst.mockResolvedValue({ ssoTenantId: 'tenant-1' })
+
+    await expect(findSsoTenantForEmail('Sam@Fund.com')).resolves.toBe(
+      'tenant-1',
+    )
+    expect(db.teamDomain.findFirst.mock.calls[0][0].where).toMatchObject({
+      domain: 'fund.com',
+      isVerified: true,
+      samlEnabled: true,
+      team: { status: 'ACTIVE' },
+    })
+  })
+
+  it('returns null when there is none', async () => {
+    db.teamDomain.findFirst.mockResolvedValue(null)
+
+    await expect(findSsoTenantForEmail('sam@fund.com')).resolves.toBeNull()
+  })
+
+  it('returns null without querying when the email has no domain', async () => {
+    await expect(findSsoTenantForEmail('not-an-email')).resolves.toBeNull()
+    expect(db.teamDomain.findFirst).not.toHaveBeenCalled()
   })
 })
 

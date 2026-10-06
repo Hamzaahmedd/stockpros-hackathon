@@ -63,6 +63,8 @@ import { resolveUsageWindowStart, recordUsage } from '../../payments/public'
 import * as admin from '../admin-service'
 import router from '../routes'
 import * as authPolicy from '../auth-policy'
+import { SsoConfigSource } from '../../sso'
+import * as ssoConfig from '../sso-config'
 import * as joinRequests from '../join-requests'
 import * as service from '../service'
 import * as workspace from '../workspace-service'
@@ -164,6 +166,17 @@ const fixtures = (): Record<string, Row[]> => ({
       team: { status: 'ACTIVE', seatCapacity: 10 },
     },
   ],
+  teamSsoConnection: [
+    {
+      id: 'conn-A',
+      domainId: 'dom-A-open',
+      idpEntityId: 'https://idp-a.example.com',
+      idpSsoUrl: 'https://idp-a.example.com/sso',
+      idpCertificate: 'cert-a',
+      testedAt: new Date('2030-01-01'),
+    },
+  ],
+  userSession: [],
   teamDomain: [
     {
       id: 'dom-A',
@@ -189,6 +202,17 @@ const fixtures = (): Record<string, Row[]> => ({
       joinPolicy: 'REQUEST_APPROVAL',
       verificationToken: 'ta2',
       restrictOrgCreation: true,
+      authPolicy: 'ANY',
+      ssoTenantId: 'dom-A-open',
+      samlEnabled: true,
+      ssoConnection: {
+        domainId: 'dom-A-open',
+        idpEntityId: 'https://idp-a.example.com',
+        idpSsoUrl: 'https://idp-a.example.com/sso',
+        idpCertificate: 'cert-a',
+        testedAt: new Date('2030-01-01'),
+        lastLoginAt: null,
+      },
       team: { id: A, name: `Workspace ${A}`, status: 'ACTIVE' },
     },
     {
@@ -198,6 +222,10 @@ const fixtures = (): Record<string, Row[]> => ({
       isVerified: true,
       joinPolicy: 'REQUEST_APPROVAL',
       verificationToken: 'tb2',
+      authPolicy: 'ANY',
+      ssoTenantId: null,
+      samlEnabled: false,
+      ssoConnection: null,
       restrictOrgCreation: true,
       team: { id: B, name: `Workspace ${B}`, status: 'ACTIVE' },
     },
@@ -347,7 +375,10 @@ const asUser = (userId: string) =>
 
 beforeEach(() => {
   db = createFakeDb(fixtures())
-  Object.assign(config.features, { enablePaymentProcessor: false })
+  Object.assign(config.features, {
+    enablePaymentProcessor: false,
+    enableSso: true,
+  })
   ;(resolveUsageWindowStart as jest.Mock).mockResolvedValue(new Date(0))
   ;(recordUsage as jest.Mock).mockResolvedValue(undefined)
 })
@@ -640,7 +671,7 @@ const CASES: Record<string, Case> = {
     aRowsUntouched(before)
     expect(
       db.teamDomain.rows.find((d) => d.id === 'dom-A-open')?.authPolicy,
-    ).toBeUndefined()
+    ).toBe('ANY')
   },
   'only the owner may change sign-in policy': async () => {
     asUser('b-admin')
@@ -650,6 +681,32 @@ const CASES: Record<string, Case> = {
         confirmDomain: 'b-open.com',
       }),
     )
+  },
+  "managing another workspace's SSO connection": async () => {
+    asUser('b-owner')
+    const before = snapshotA()
+    const connections = JSON.stringify(db.teamSsoConnection.rows)
+    const manual = {
+      source: SsoConfigSource.MANUAL as const,
+      idpEntityId: 'https://idp.example.com',
+      idpSsoUrl: 'https://idp.example.com/sso',
+      idpCertificate: 'x',
+    }
+
+    await refused(ssoConfig.getSsoConfig('b-owner', 'a-open.com'))
+    await refused(ssoConfig.saveSsoConfig('b-owner', 'a-open.com', manual))
+    await refused(ssoConfig.deleteSsoConfig('b-owner', 'a-open.com'))
+    await refused(ssoConfig.setSsoEnabled('b-owner', 'a-open.com', true))
+    await refused(
+      ssoConfig.startSsoConnectionTest('b-owner', 'b-session', 'a-open.com'),
+    )
+
+    aRowsUntouched(before)
+    expect(JSON.stringify(db.teamSsoConnection.rows)).toBe(connections)
+    // The same calls on its own domain are not refused, so the refusals above are about tenancy.
+    await expect(
+      ssoConfig.getSsoConfig('b-owner', 'b-open.com'),
+    ).resolves.toMatchObject({ domain: 'b-open.com', configured: false })
   },
   'creating or accepting with no membership reaches nothing': async () => {
     asUser('nobody')
@@ -699,6 +756,13 @@ const ROUTE_CASES: Record<string, string> = {
     "setting another workspace's domain join policy",
   'PATCH /domains/:domain/auth-policy':
     "setting another workspace's domain sign-in policy",
+  'GET /domains/:domain/sso': "managing another workspace's SSO connection",
+  'PUT /domains/:domain/sso': "managing another workspace's SSO connection",
+  'DELETE /domains/:domain/sso': "managing another workspace's SSO connection",
+  'PATCH /domains/:domain/sso/enabled':
+    "managing another workspace's SSO connection",
+  'POST /domains/:domain/sso/test':
+    "managing another workspace's SSO connection",
   'GET /join-options': "listing join requests and options shows none of A's",
   'GET /join-requests/me':
     "listing join requests and options shows none of A's",

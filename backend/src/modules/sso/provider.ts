@@ -24,6 +24,8 @@ export interface SsoIdentity {
   /** Lower-cased. Callers must still check it belongs to the tenant's verified domain. */
   email: string
   nameId: string
+  /** The AuthnRequest this answers; each is single-use, so it keys the caller's replay guard. */
+  requestId: string
   attributes: Readonly<Record<string, string | readonly string[]>>
 }
 
@@ -33,11 +35,17 @@ export interface SsoCallbackPayload {
   samlResponse: string
 }
 
+/** Who is making a change, recorded with the stored connection. */
+export interface SsoWriteContext {
+  updatedByUserId?: string
+}
+
 export interface SsoProvider {
   /** Validates and stores the IdP settings, returning the values to give the IdP. */
   upsertConnection(
     tenantId: string,
     config: SsoConnectionConfig,
+    context?: SsoWriteContext,
   ): Promise<SsoServiceProviderInfo>
   deleteConnection(tenantId: string): Promise<void>
   /** Starts a sign-in. `relayState` is echoed back by the IdP and is the caller's to sign and check. */
@@ -52,7 +60,11 @@ export interface SsoProvider {
 /** Where connections live; implemented over the database in the service layer. */
 export interface SsoConnectionStore {
   get(tenantId: string): Promise<SsoConnectionConfig | null>
-  save(tenantId: string, config: SsoConnectionConfig): Promise<void>
+  save(
+    tenantId: string,
+    config: SsoConnectionConfig,
+    context?: SsoWriteContext,
+  ): Promise<void>
   remove(tenantId: string): Promise<void>
 }
 
@@ -63,7 +75,8 @@ export interface SsoConnectionStore {
 export interface SsoRequestCache {
   save(key: string, value: string, ttlMs: number): Promise<void>
   get(key: string): Promise<string | null>
-  remove(key: string): Promise<void>
+  /** Atomically reads and deletes the entry. */
+  take(key: string): Promise<string | null>
 }
 
 /** Raised when a callback cannot be trusted; the message is safe to log, never to show. */

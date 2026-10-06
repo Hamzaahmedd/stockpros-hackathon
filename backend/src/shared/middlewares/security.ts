@@ -109,6 +109,20 @@ export const phoneOtpVerifyLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+// Enterprise SSO (/api/v1/auth/sso). Generous per IP because a whole office
+// can share one address, while still capping floods of forged callbacks.
+export const ssoLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes window
+  limit: 60, // Allow up to 60 SSO requests per IP per 5 minutes
+  store: createRateLimitStore('rl:sso:'),
+  message: {
+    success: false,
+    message: 'Too many sign-in attempts. Try again later after 5 minutes.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})
+
 // Internal staff ops panel (/api/v1/admin). Reads are capped per IP before
 // authentication; writes are capped per signed-in staff member, so one
 // compromised or scripted staff account cannot bulk-modify customer records.

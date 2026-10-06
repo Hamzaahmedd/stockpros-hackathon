@@ -59,6 +59,7 @@ export const testConfig = {
     enablePhoneVerification: false,
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
+    enableSso: false,
   },
   sendpk: {
     mockProvider: true,

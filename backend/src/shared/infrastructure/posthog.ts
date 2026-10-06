@@ -29,6 +29,7 @@ export type PostHogEvent = (typeof PostHogEvent)[keyof typeof PostHogEvent]
 export const AuthMethod = {
   MagicLink: 'magic_link',
   Google: 'google',
+  Sso: 'sso',
 } as const
 export type AuthMethod = (typeof AuthMethod)[keyof typeof AuthMethod]
 

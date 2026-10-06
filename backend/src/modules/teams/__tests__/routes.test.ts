@@ -51,6 +51,11 @@ jest.mock('../controller', () => {
     'declineJoinRequest',
     'setJoinPolicy',
     'setAuthPolicy',
+    'getSsoConfig',
+    'saveSsoConfig',
+    'deleteSsoConfig',
+    'setSsoEnabled',
+    'testSsoConnection',
   ]
   return Object.fromEntries(names.map((n) => [n, jest.fn()]))
 })
@@ -123,7 +128,7 @@ describe('teams router', () => {
   })
 
   it('registers exactly the expected number of routes', () => {
-    expect(registered).toHaveLength(47)
+    expect(registered).toHaveLength(52)
   })
 
   it('applies the auth middleware before any route', () => {

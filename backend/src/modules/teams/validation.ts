@@ -9,6 +9,7 @@ import {
   TEAM_MAX_SEATS,
   teamNameValidator,
 } from '../payments/public'
+import { SsoConfigSource } from '../sso'
 import { ChartLayout, PreferenceTheme } from './constants'
 
 export const createTeamValidator = z.object({
@@ -201,6 +202,29 @@ export const joinPolicyParamValidator = z.object({ domain: domainValidator })
 export const joinPolicyValidator = z.object({
   joinPolicy: z.nativeEnum(TeamJoinPolicy),
 })
+
+export const ssoConfigValidator = z.discriminatedUnion('source', [
+  z.object({
+    source: z.literal(SsoConfigSource.METADATA_XML),
+    metadataXml: z
+      .string()
+      .min(1)
+      .max(256 * 1024),
+  }),
+  z.object({
+    source: z.literal(SsoConfigSource.METADATA_URL),
+    metadataUrl: z.string().trim().url().max(2048),
+  }),
+  z.object({
+    source: z.literal(SsoConfigSource.MANUAL),
+    idpEntityId: z.string().trim().min(1).max(1024),
+    idpSsoUrl: z.string().trim().url().max(2048),
+    idpCertificate: z.string().trim().min(1).max(32_768),
+  }),
+])
+export type SsoConfigInput = z.infer<typeof ssoConfigValidator>
+
+export const ssoEnabledValidator = z.object({ enabled: z.boolean() })
 
 export const authPolicyValidator = z.object({
   authPolicy: z.nativeEnum(DomainAuthPolicy),
