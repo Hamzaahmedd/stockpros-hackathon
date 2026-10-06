@@ -336,6 +336,22 @@ describe('completeOnboardingHandler', () => {
     )
   })
 
+  it('never forwards an email sent in the body', async () => {
+    ;(completeOnboardingFlow as jest.Mock).mockResolvedValue({
+      kind: 'profileUpdated',
+      user: { userId: 'user-1' },
+      requiresPhoneVerification: false,
+    })
+    const req = mockReq({
+      body: { displayName: 'Ada', email: 'victim@example.com' },
+    })
+
+    await controller.completeOnboardingHandler(req as any, mockRes(), next)
+
+    const params = (completeOnboardingFlow as jest.Mock).mock.calls.at(-1)[0]
+    expect(JSON.stringify(params)).not.toContain('victim@example.com')
+  })
+
   it('issues a session cookie and 201 status for a brand-new signup', async () => {
     ;(completeOnboardingFlow as jest.Mock).mockResolvedValue({
       kind: 'signupCompleted',

@@ -335,30 +335,21 @@ describe('onboarding', () => {
     ).rejects.toBeInstanceOf(LoginMethodRequiredError)
   })
 
-  it('refuses an unproven email sent in the body on a restricted domain', async () => {
-    restrict(DomainAuthPolicy.GOOGLE_ONLY)
+  it.each([
+    ['an unrestricted domain', null],
+    ['a restricted domain', DomainAuthPolicy.GOOGLE_ONLY],
+  ])(
+    'never creates an account without a token, on %s',
+    async (_name, policy) => {
+      restrict(policy)
 
-    await expect(
-      completeOnboardingFlow({
-        displayName: 'Sam',
-        emailFromBody: EMAIL,
-        ip: IP,
-        userAgent: UA,
-      }),
-    ).rejects.toBeInstanceOf(LoginMethodRequiredError)
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
-  })
-
-  it('still lets an unproven email through on an unrestricted domain', async () => {
-    await expect(
-      completeOnboardingFlow({
-        displayName: 'Sam',
-        emailFromBody: EMAIL,
-        ip: IP,
-        userAgent: UA,
-      }),
-    ).resolves.toMatchObject({ kind: 'signupCompleted' })
-  })
+      await expect(
+        completeOnboardingFlow({ displayName: 'Sam', ip: IP, userAgent: UA }),
+      ).rejects.toMatchObject({ statusCode: 401 })
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+      expect(mockPrisma.userSession.create).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('refresh backstop', () => {

@@ -525,7 +525,7 @@ describe('completeOnboardingFlow', () => {
     ).rejects.toThrow('Display name is required')
   })
 
-  it('rejects when neither an onboarding token nor an authenticated/body email is available', async () => {
+  it('rejects when neither an onboarding token nor an authenticated session is available', async () => {
     await expect(
       completeOnboardingFlow({
         displayName: 'Ada',
@@ -623,36 +623,72 @@ describe('completeOnboardingFlow', () => {
     }
   })
 
-  it('falls back to the body email when the bearer token is invalid', async () => {
-    mockPrisma.$transaction.mockImplementation(
-      async (fn: (tx: unknown) => unknown) => {
-        const tx = {
-          user: {
-            create: jest.fn().mockResolvedValue({ id: 'user-1' }),
-            findUniqueOrThrow: jest.fn().mockResolvedValue({
-              id: 'user-1',
-              email: 'body@example.com',
-              displayName: 'Ada',
-              status: UserStatus.ACTIVE,
-              phoneVerifiedAt: null,
-              userRoles: [{ roleId: 'role-default' }],
-            }),
-          },
-          userRole: { create: jest.fn().mockResolvedValue({}) },
-          rbacConfiguration: mockPrisma.rbacConfiguration,
-        }
-        return fn(tx)
-      },
+  describe('without proof of the email', () => {
+    const expectRefused = async (
+      params: Parameters<typeof completeOnboardingFlow>[0],
+    ) => {
+      await expect(completeOnboardingFlow(params)).rejects.toMatchObject({
+        statusCode: 401,
+        message: 'Onboarding token or authentication is required',
+      })
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+      expect(mockPrisma.userSession.create).not.toHaveBeenCalled()
+    }
+
+    const base = { displayName: 'Ada', ip: '127.0.0.1', userAgent: 'jest' }
+
+    it('creates no account and no session when there is no token at all', async () => {
+      await expectRefused(base)
+    })
+
+    it('creates no account for an invalid bearer token', async () => {
+      await expectRefused({ ...base, authHeader: 'Bearer not-a-real-token' })
+    })
+
+    it('does not let an onboarding token act as a bearer token', async () => {
+      const onboardingAsBearer = jwt.sign(
+        { sub: 'victim@example.com', type: 'onboarding' },
+        config.auth.accessTokenSecret,
+      )
+
+      await expectRefused({
+        ...base,
+        authHeader: `Bearer ${onboardingAsBearer}`,
+      })
+      expect(mockPrisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('refuses a bearer token whose user no longer exists', async () => {
+      const bearerToken = jwt.sign(
+        { sub: 'ghost-user' },
+        config.auth.accessTokenSecret,
+      )
+      mockPrisma.user.update.mockRejectedValue(new Error('not found'))
+
+      await expectRefused({ ...base, authHeader: `Bearer ${bearerToken}` })
+    })
+
+    it('refuses a bearer header that is not a Bearer scheme', async () => {
+      await expectRefused({ ...base, authHeader: 'Basic abc' })
+    })
+  })
+
+  it('rejects an expired onboarding token and creates nothing', async () => {
+    const expired = jwt.sign(
+      { sub: 'new@example.com', type: 'onboarding' },
+      config.auth.accessTokenSecret,
+      { expiresIn: -10 },
     )
 
-    const result = await completeOnboardingFlow({
-      displayName: 'Ada',
-      authHeader: 'Bearer not-a-real-token',
-      emailFromBody: 'body@example.com',
-      ip: '127.0.0.1',
-      userAgent: 'jest',
-    })
-    expect(result.kind).toBe('signupCompleted')
+    await expect(
+      completeOnboardingFlow({
+        onboardingToken: expired,
+        displayName: 'Ada',
+        ip: '127.0.0.1',
+        userAgent: 'jest',
+      }),
+    ).rejects.toThrow('Invalid or expired onboarding token')
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
   })
 })
 

@@ -35,7 +35,6 @@ export const completeOnboardingValidator = z.object({
     .string({ required_error: 'Display name is required' })
     .trim()
     .min(1, 'Display name is required'),
-  email: z.string().email('Invalid email format').optional(),
 })
 
 // ─── Phone Verification (WhatsApp OTP) ─────────────────────────────────────

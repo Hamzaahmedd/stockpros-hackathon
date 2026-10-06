@@ -864,20 +864,12 @@ export type OnboardingFlowResult =
       requiresPhoneVerification: boolean
     }
 
-// ─── Helper: resolve email from a bearer access token ────────────────────────
+// ─── Helper: update the profile of an already signed-in user ─────────────────
 
-async function resolveEmailFromBearer(
+async function updateProfileFromBearer(
   authHeader: string | undefined,
   resolvedName: string,
-): Promise<
-  | { email: string }
-  | {
-      kind: 'profileUpdated'
-      user: UserData
-      requiresPhoneVerification: boolean
-    }
-  | null
-> {
+): Promise<Extract<OnboardingFlowResult, { kind: 'profileUpdated' }> | null> {
   const bearerToken = authHeader?.startsWith('Bearer ')
     ? authHeader.substring(7)
     : null
@@ -886,7 +878,9 @@ async function resolveEmailFromBearer(
 
   try {
     const decoded = jwt.verify(bearerToken, ACCESS_TOKEN_SECRET) as TokenClaims
-    if (!decoded?.sub) return null
+    // Only a plain access token identifies a signed-in user. Tokens that
+    // carry a `type` (such as an onboarding token) must never act as a bearer.
+    if (!decoded?.sub || decoded.type) return null
 
     const updated = await prisma.user.update({
       where: { id: decoded.sub },
@@ -909,7 +903,7 @@ async function resolveEmailFromBearer(
       ),
     }
   } catch {
-    // invalid bearer token — fall through to body email
+    // invalid, expired or unknown-user bearer token: no identity
     return null
   }
 }
@@ -947,7 +941,6 @@ export async function completeOnboardingFlow(params: {
   onboardingToken?: string
   displayName?: string
   authHeader?: string
-  emailFromBody?: string
   ip: string
   userAgent: string
 }): Promise<OnboardingFlowResult> {
@@ -956,39 +949,23 @@ export async function completeOnboardingFlow(params: {
     throw new ValidationError('Display name is required')
   }
 
-  let email: string | undefined
-  // Unproven identities (an email sent in the body) count as the weakest method.
-  let login: OnboardingLogin = { method: LoginMethod.MAGIC_LINK }
-
-  if (params.onboardingToken) {
-    const identity = resolveIdentityFromOnboardingToken(params.onboardingToken)
-    email = identity.email
-    login = identity.login
-  }
-
-  if (!email) {
-    const bearerResult = await resolveEmailFromBearer(
+  // An account is only ever created for an email proven by an onboarding
+  // token (issued after a verified magic link or Google sign-in). An email
+  // merely stated in the request body proves nothing and is never accepted.
+  if (!params.onboardingToken) {
+    const updated = await updateProfileFromBearer(
       params.authHeader,
       resolvedName,
     )
-
-    if (bearerResult && 'kind' in bearerResult) {
-      return bearerResult as OnboardingFlowResult
-    }
-
-    email =
-      (bearerResult && 'email' in bearerResult
-        ? bearerResult.email
-        : undefined) ??
-      (typeof params.emailFromBody === 'string'
-        ? params.emailFromBody
-        : undefined)
+    if (updated) return updated
+    throw new UnauthorizedError(
+      'Onboarding token or authentication is required',
+    )
   }
 
-  if (!email) {
-    throw new ValidationError('Onboarding token or authentication is required')
-  }
-
+  const { email, login } = resolveIdentityFromOnboardingToken(
+    params.onboardingToken,
+  )
   const result = await completeOnboarding(
     email,
     resolvedName,

@@ -273,7 +273,7 @@ export const completeOnboardingHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const { onboardingToken, displayName, email } = validateOrThrow(
+    const { onboardingToken, displayName } = validateOrThrow(
       completeOnboardingValidator,
       req.body,
     )
@@ -281,7 +281,6 @@ export const completeOnboardingHandler = async (
     const result = await completeOnboardingFlow({
       onboardingToken,
       displayName,
-      emailFromBody: email,
       authHeader: req.headers.authorization,
       ip: req.ip || 'Unknown',
       userAgent: req.headers['user-agent'] || 'Unknown',

@@ -63,9 +63,8 @@ export interface GoogleLoginRequest {
 export interface OnboardingRequest {
   /** @example "Jordan Belfort" */
   displayName: string
+  /** Issued after a verified magic link or Google sign-in; required to create an account. */
   onboardingToken?: string
-  /** @format email @example "jordan@example.com" */
-  email?: string
 }
 
 export interface AuthTokensResponse {
@@ -154,6 +153,10 @@ export class AuthSwaggerController extends Controller {
    */
   @Post('onboarding')
   @SuccessResponse(200, 'Onboarding completed')
+  @Response<ApiErrorResponse>(
+    401,
+    'No valid onboarding token or bearer token (an email in the body is never accepted)',
+  )
   async completeOnboarding(
     @Body() body: OnboardingRequest,
   ): Promise<ApiResponse<UserProfile>> {
