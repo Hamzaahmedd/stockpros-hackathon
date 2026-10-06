@@ -47,8 +47,7 @@ export interface AdminTeam {
   orgInstructions: string | null;
   creditBalanceInPaisa: number;
   owner: { id: string; displayName: string | null; email: string };
-  /** `authPolicy` is absent until the search payload exposes it. */
-  domains: { id: string; domain: string; isVerified: boolean; authPolicy?: DomainAuthPolicy }[];
+  domains: { id: string; domain: string; isVerified: boolean; authPolicy: DomainAuthPolicy }[];
   members: { role: string; user: { id: string; displayName: string | null; email: string } }[];
   subscription: { id: string; status: string; currentPeriodEnd: string | null } | null;
 }

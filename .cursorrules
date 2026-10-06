@@ -16,6 +16,7 @@
 4. **Structured Logging & PII Redaction:** Use structured loggers (e.g., Pino) for all operational, error, and audit events. NEVER write or log raw credentials, authorization tokens, passwords, API keys, or personally identifiable information (PII) to system logs or external telemetry streams. Use automated redaction or explicit sanitization.
 5. **Audit Data Retention vs. PII Purging:** When executing account or entity deletion routines, purge or anonymize personal identity data from primary databases while maintaining immutable, non-PII system audit logs (`user_id` references only) for operational integrity.
 6. **Resource Safety & Non-Blocking Execution:** Avoid unhandled synchronous loops, memory-intensive background tasks, or blocking operations that could exhaust system CPU/RAM bounds.
+7. **Single Sign-In Gate & Tenant Isolation:** Every code path that proves an identity or creates a session (magic link, Google, onboarding, and any future method) must call `assertLoginAllowed` (`shared/infrastructure/team-access.ts`) and store the session through `persistSession` so a verified domain's sign-in policy cannot be bypassed. Every new `/teams` route must be added to `tenant-isolation.test.ts` (its guard fails otherwise), and team-scoped queries must filter on `teamId` explicitly.
 
 ## Automated Self-Review & Quality Checklist
 Before marking any task or code generation as complete:

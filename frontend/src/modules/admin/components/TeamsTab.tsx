@@ -133,7 +133,6 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
                       Force verify
                     </Button>
                   )}
-                  {/* The search payload may not carry authPolicy yet: then offer the reset for every verified domain. */}
                   {canWrite &&
                     domain.isVerified &&
                     domain.authPolicy !== DomainAuthPolicy.ANY && (
