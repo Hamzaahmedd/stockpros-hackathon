@@ -70,6 +70,7 @@ describe('deleteAccount — payment transaction retention', () => {
       teamInvite: { deleteMany: jest.fn() },
       adminAuditLog: { updateMany: jest.fn() },
       adminStepUp: { deleteMany: jest.fn() },
+      announcementUserState: { deleteMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
@@ -108,6 +109,7 @@ describe('deleteAccount — payment transaction retention', () => {
       teamInvite: deleteMany(),
       adminAuditLog: { updateMany: jest.fn() },
       adminStepUp: { deleteMany: jest.fn() },
+      announcementUserState: { deleteMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
@@ -122,6 +124,9 @@ describe('deleteAccount — payment transaction retention', () => {
       data: { ipAddress: null },
     })
     expect(tx.adminStepUp.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+    })
+    expect(tx.announcementUserState.deleteMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
     })
     expect(tx.user.update).toHaveBeenCalledWith(
@@ -178,6 +183,7 @@ describe('deleteAccount — team workspace guard', () => {
       teamInvite: deleteMany(),
       adminAuditLog: { updateMany: jest.fn() },
       adminStepUp: { deleteMany: jest.fn() },
+      announcementUserState: { deleteMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }
@@ -212,6 +218,7 @@ describe('deleteAccount — team workspace guard', () => {
       teamInvite: deleteMany(),
       adminAuditLog: { updateMany: jest.fn() },
       adminStepUp: { deleteMany: jest.fn() },
+      announcementUserState: { deleteMany: jest.fn() },
       team: { updateMany: jest.fn() },
       user: { update: jest.fn().mockResolvedValue({}) },
     }

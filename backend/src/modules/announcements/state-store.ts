@@ -1,6 +1,7 @@
 import config from '@/config'
 import { CACHE_TTL } from '../../shared/constants/cache-constants'
 import {
+  deleteCache,
   getRawRedisClient,
   resolveTtl,
 } from '../../shared/infrastructure/cache'
@@ -102,3 +103,7 @@ export const cacheUserStates = (
   userId: string,
   states: ReadonlyMap<string, UserAnnouncementState>,
 ): Promise<void> => writeRedis(userId, states, false)
+
+/** Drops a user's cached state (their rows are removed separately, in the account-deletion transaction). */
+export const forgetUserAnnouncementState = (userId: string): Promise<void> =>
+  deleteCache(ANNOUNCEMENT_CACHE_KEYS.userState(userId))

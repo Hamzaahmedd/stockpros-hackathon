@@ -41,6 +41,7 @@ import {
 import { convertToMilliseconds, hashToken } from '../../shared/utils'
 import { signToken, verifyRefreshToken } from './utils/jwt'
 import { buildMagicLinkEmail } from '../notifications/email-templates/index'
+import { forgetUserAnnouncementState } from '../announcements/public'
 import { enqueueAuthEmail } from '../notifications/public'
 import { AuthTokens, MeProfile, TokenClaims, UserData } from './types'
 import { normalizePakistaniNumber } from './utils/normalizePakistaniNumber'
@@ -403,6 +404,8 @@ export async function deleteAccount(userId: string): Promise<void> {
         tx.magicLinkToken.deleteMany({ where: { email: user.email } }),
         // Phone OTP records — purge alongside the rest of this account's PII
         tx.phoneOtp.deleteMany({ where: { userId } }),
+        // Seen/dismissed announcement state
+        tx.announcementUserState.deleteMany({ where: { userId } }),
         // Workspace seat (frees the one-team-per-user constraint)
         tx.teamMember.deleteMany({ where: { userId } }),
         // Pending invites addressed to this email (the invite row is PII)
@@ -446,6 +449,9 @@ export async function deleteAccount(userId: string): Promise<void> {
       timeout: 30000, // Extend transaction execution timeout to 30 seconds
     },
   )
+
+  // Best effort: the rows are gone, so a stale cached copy must not outlive them.
+  await forgetUserAnnouncementState(userId)
 
   logger.info(`[Auth] Account deleted for userId=${userId}`)
 }

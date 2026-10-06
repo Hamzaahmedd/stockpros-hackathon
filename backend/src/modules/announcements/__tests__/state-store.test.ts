@@ -18,7 +18,9 @@ const mockRedis = {
   multi: jest.fn(() => mockPipeline),
 }
 let mockClient: typeof mockRedis | null = mockRedis
+const mockDeleteCache = jest.fn()
 jest.mock('../../../shared/infrastructure/cache', () => ({
+  deleteCache: (...args: unknown[]) => mockDeleteCache(...args),
   getRawRedisClient: () => mockClient,
   resolveTtl: (seconds: number) => seconds,
 }))
@@ -28,7 +30,11 @@ import {
   ANNOUNCEMENT_CACHE_KEYS,
   USER_STATE_SENTINEL_FIELD,
 } from '../constants'
-import { cacheUserStates, loadUserStates } from '../state-store'
+import {
+  cacheUserStates,
+  forgetUserAnnouncementState,
+  loadUserStates,
+} from '../state-store'
 import { ANNOUNCEMENT_ID, OTHER_USER_ID, USER_ID } from './fixtures'
 
 const dbRow = {
@@ -147,5 +153,15 @@ describe('cacheUserStates', () => {
       '1|1|0',
     )
     expect(mockPipeline.expire).toHaveBeenCalled()
+  })
+})
+
+describe('forgetUserAnnouncementState', () => {
+  it('drops only the given user cached hash', async () => {
+    mockDeleteCache.mockResolvedValue(undefined)
+    await forgetUserAnnouncementState(USER_ID)
+    expect(mockDeleteCache).toHaveBeenCalledWith(
+      ANNOUNCEMENT_CACHE_KEYS.userState(USER_ID),
+    )
   })
 })

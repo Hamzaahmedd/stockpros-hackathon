@@ -6,6 +6,7 @@ export {
 export { requireAnnouncementsEnabled } from './guard'
 export { announcementsChanged } from './realtime'
 export { getBootAnnouncements } from './service'
+export { forgetUserAnnouncementState } from './state-store'
 export type {
   AnnouncementBootPayload,
   AnnouncementDto,
