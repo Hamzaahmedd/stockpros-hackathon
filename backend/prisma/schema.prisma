@@ -1095,6 +1095,7 @@ model Announcement {
   targetRoles     TeamRole[]               @default([]) @map("target_roles")
   startsAt        DateTime?                @map("starts_at") @db.Timestamptz(6)
   endsAt          DateTime?                @map("ends_at") @db.Timestamptz(6)
+  publishedAt     DateTime?                @map("published_at") @db.Timestamptz(6)
   status          AnnouncementStatus       @default(DRAFT)
   // Emergency kill switch: false hides the item everywhere without changing its status.
   isEnabled       Boolean                  @default(true) @map("is_enabled")
