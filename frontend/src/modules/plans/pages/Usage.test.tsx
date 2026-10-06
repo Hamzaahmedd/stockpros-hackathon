@@ -29,6 +29,9 @@ vi.mock('../components/QuotaMeter', () => ({
 vi.mock('../components/SpendCapControl', () => ({
   SpendCapControl: () => <div data-testid='spend-cap-control' />,
 }))
+vi.mock('../components/UsageAlertsToggle', () => ({
+  UsageAlertsToggle: () => <div data-testid='usage-alerts-toggle' />,
+}))
 vi.mock('../components/CreditLedgerPanel', () => ({
   CreditLedgerPanel: ({ scope }: { scope: string }) => (
     <div data-testid='ledger' data-scope={scope} />
@@ -100,12 +103,18 @@ describe('Usage page', () => {
     expect(await screen.findByTestId('spend-cap-control')).toBeInTheDocument()
   })
 
+  it('shows the email-alerts toggle next to the limit once the summary has loaded', async () => {
+    renderPage()
+    expect(await screen.findByTestId('usage-alerts-toggle')).toBeInTheDocument()
+  })
+
   it('still renders the history when the usage summary cannot be loaded', async () => {
     service.getMyUsage.mockRejectedValue(new Error('network'))
     renderPage()
 
     expect(await screen.findByTestId('history-signals')).toHaveTextContent('7')
     expect(screen.queryByTestId('spend-cap-control')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('usage-alerts-toggle')).not.toBeInTheDocument()
   })
 
   it('hides the meter’s own "Usage details" link on this page', async () => {

@@ -17,6 +17,7 @@ import { releaseLapsedMembership } from '../../shared/infrastructure/team-access
 import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import { SUBSCRIPTION_PERIOD_MS } from './constants'
 import { sendTeamReceiptEmail } from './receipt-email'
+import { resetLowBalanceAlert } from './usage-alerts'
 import type { SafepayWebhookEvent } from './types'
 
 /**
@@ -179,6 +180,7 @@ async function fulfillTopup(
       where: { id: userId },
       data: { creditBalanceInPaisa: { increment: amountPaisa } },
     })
+    await resetLowBalanceAlert(tx, userId)
   }
   await tx.creditLedger.create({
     data: {

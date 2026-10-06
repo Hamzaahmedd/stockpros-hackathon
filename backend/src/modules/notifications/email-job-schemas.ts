@@ -1,4 +1,4 @@
-import { AlertType, TeamRole } from '@prisma/client'
+import { AlertType, TeamRole, UsageAlertKind } from '@prisma/client'
 import { z } from 'zod'
 import { RENEWAL_REMINDER_VARIANTS } from './email-templates/subscription-renewal'
 import { JOIN_REQUEST_EMAIL_KINDS } from './email-templates/team-join-request'
@@ -84,6 +84,21 @@ export const paymentReceiptJobSchema = z.object({
   manageUrl: webUrl,
 })
 
+export const usageAlertJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id — never the address. */
+  userId: id,
+  kind: z.nativeEnum(UsageAlertKind),
+  userName: z.string(),
+  usedSignals: z.number().int().nonnegative(),
+  includedSignals: z.number().int().positive(),
+  resetsOn: z.string(),
+  creditBalance: z.string(),
+  spendLimit: z.string().optional(),
+  spentSoFar: z.string().optional(),
+  usageUrl: webUrl,
+})
+
 export const staffStepUpJobSchema = z.object({
   to: recipient,
   /** Log correlation id (the staff user) — never the address or the code. */
@@ -112,6 +127,7 @@ export type TeamInviteEmailJobPayload = z.infer<typeof teamInviteJobSchema>
 export type TeamJoinRequestEmailJobPayload = z.infer<
   typeof teamJoinRequestJobSchema
 >
+export type UsageAlertEmailJobPayload = z.infer<typeof usageAlertJobSchema>
 export type StaffStepUpEmailJobPayload = z.infer<typeof staffStepUpJobSchema>
 export type AdminActionAlertEmailJobPayload = z.infer<
   typeof adminActionAlertJobSchema

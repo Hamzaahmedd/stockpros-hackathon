@@ -22,9 +22,18 @@ export enum UsageSource {
   CREDIT = 'CREDIT',
 }
 
+/** Where the user stands in the billing cycle once this signal has been counted. */
+export interface MeterQuota {
+  used: number
+  limit: number
+  windowStart: Date
+  windowEnd: Date | null
+}
+
 export interface MeterResult {
   source: UsageSource
   costPaisa: number
+  quota: MeterQuota
 }
 
 const AI_SIGNAL_FEATURES: MeteredFeature[] = Object.values(MeteredFeature)
@@ -206,7 +215,8 @@ export async function consumeAiSignal(
   symbol?: string,
 ): Promise<MeterResult> {
   // Read-only lookup, safe outside the transaction.
-  const windowStart = await resolveUsageWindowStart(actor)
+  const window = await resolveUsageWindow(actor)
+  const windowStart = window.start
   const baseLimit = actor.membership
     ? TEAM_MONTHLY_AI_SIGNALS
     : PRO_MONTHLY_AI_SIGNALS
@@ -221,12 +231,18 @@ export async function consumeAiSignal(
         createdAt: { gte: windowStart },
       },
     })
+    const quota: MeterQuota = {
+      used: used + 1,
+      limit: baseLimit,
+      windowStart,
+      windowEnd: window.end,
+    }
     if (used < baseLimit) {
       await recordUsage(actor, feature, symbol, 0, tx)
-      return { source: UsageSource.BASE, costPaisa: 0 }
+      return { source: UsageSource.BASE, costPaisa: 0, quota }
     }
 
-    return consumeCredit(tx, actor, feature, symbol, windowStart)
+    return consumeCredit(tx, actor, feature, symbol, quota)
   })
 }
 
@@ -236,14 +252,14 @@ async function consumeCredit(
   actor: MeterActor,
   feature: MeteredFeature,
   symbol: string | undefined,
-  windowStart: Date,
+  quota: MeterQuota,
 ): Promise<MeterResult> {
   const cost = OVERAGE_COST_PAISA_PER_SIGNAL
   const { membership } = actor
 
   const cap = await resolveSpendCap(tx, actor)
   if (cap) {
-    const spentPaisa = await sumCreditSpend(tx, actor, windowStart)
+    const spentPaisa = await sumCreditSpend(tx, actor, quota.windowStart)
     if (spentPaisa + cost > cap.limitPaisa) {
       throw rejection(cap.reason, feature, actor)
     }
@@ -273,5 +289,5 @@ async function consumeCredit(
     },
   })
   await recordUsage(actor, feature, symbol, cost, tx)
-  return { source: UsageSource.CREDIT, costPaisa: cost }
+  return { source: UsageSource.CREDIT, costPaisa: cost, quota }
 }

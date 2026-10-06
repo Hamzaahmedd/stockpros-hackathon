@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom'
 import { CreditLedgerPanel } from '../components/CreditLedgerPanel'
 import { QuotaMeter } from '../components/QuotaMeter'
 import { SpendCapControl } from '../components/SpendCapControl'
+import { UsageAlertsToggle } from '../components/UsageAlertsToggle'
 import { UsageHistoryChart } from '../components/UsageHistoryChart'
 import { METERED_FEATURE_LABELS } from '../constants'
 import { usageService } from '../services'
@@ -101,7 +102,10 @@ export default function Usage() {
           <QuotaMeter key={meterKey} showDetailsLink={false} />
 
           {summary && (
-            <SpendCapControl usage={summary} onChanged={handleCapChanged} />
+            <>
+              <SpendCapControl usage={summary} onChanged={handleCapChanged} />
+              <UsageAlertsToggle usage={summary} onChanged={setSummary} />
+            </>
           )}
 
           {error && (

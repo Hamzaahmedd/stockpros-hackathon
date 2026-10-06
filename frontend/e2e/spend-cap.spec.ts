@@ -53,6 +53,7 @@ const usage = (cap: Cap, canSetSpendCap = true) => ({
       canTopUp: true,
       canSetSpendCap,
     },
+    alertsEnabled: true,
     spendCap: cap && {
       ...cap,
       remainingPaisa: Math.max(cap.monthlyLimitPaisa - cap.spentPaisa, 0),

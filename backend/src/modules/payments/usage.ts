@@ -49,6 +49,8 @@ export interface UsageSummary {
     /** Whether this caller sets their own spending limit (individual Pro); members' limits are set by workspace admins. */
     canSetSpendCap: boolean
   } | null
+  /** Whether usage-warning emails are on for this user (individuals receive them; workspace members do not yet). */
+  alertsEnabled: boolean
   /** Present only when a monthly credit cap applies: the member's (set by an admin) or the individual's own. */
   spendCap: {
     monthlyLimitPaisa: number
@@ -72,6 +74,7 @@ export async function getMyUsage(userId: string): Promise<UsageSummary> {
       plan: true,
       creditBalanceInPaisa: true,
       monthlyCreditLimitPaisa: true,
+      usageAlertsEnabled: true,
     },
   })
 
@@ -81,6 +84,7 @@ export async function getMyUsage(userId: string): Promise<UsageSummary> {
       metered: false,
       quota: null,
       credits: null,
+      alertsEnabled: user.usageAlertsEnabled,
       spendCap: null,
     }
   }
@@ -141,6 +145,7 @@ export async function getMyUsage(userId: string): Promise<UsageSummary> {
       canTopUp: !membership || isTeamAdminRole(membership.role),
       canSetSpendCap: !membership,
     },
+    alertsEnabled: user.usageAlertsEnabled,
     spendCap,
   }
 }

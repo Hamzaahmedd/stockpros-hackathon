@@ -4,11 +4,18 @@ import { Sidebar } from '@/shared/components/Sidebar'
 import { Button } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
 import { useTheme } from '@/shared/hooks/useTheme'
+import { apiErrorMessage } from '@/shared/utils/api-error'
 import { SECONDARY_ACTION_BTN } from '@/shared/utils/buttonStyles'
 import { useEffect, useState } from 'react'
 import { FiPlus, FiShield, FiX } from 'react-icons/fi'
 import { toast } from 'react-toastify'
-import type { Resource, Role, RolePermission } from '../types'
+import { rbacService } from '../services'
+import type { Resource, Role } from '../types'
+import {
+  diffPermissions,
+  missingActions,
+  type PermissionSelection,
+} from '../utils'
 
 const ACTION_DESCRIPTIONS: Record<string, Record<string, string>> = {
   core_app: {
@@ -57,9 +64,13 @@ const Roles = () => {
   const [addingRole, setAddingRole] = useState(false)
 
   // Edit Permissions state
-  const [rolePermissions, setRolePermissions] = useState<
-    Record<string, string[]>
-  >({}) // resourceName -> array of actions
+  const [rolePermissions, setRolePermissions] = useState<PermissionSelection>(
+    {},
+  ) // resourceName -> array of actions
+  // What the role held when the dialog opened, to work out what a save must add or revoke.
+  const [originalPermissions, setOriginalPermissions] =
+    useState<PermissionSelection>({})
+  const [enablingAction, setEnablingAction] = useState<string | null>(null)
   const [allSystemPermissions, setAllSystemPermissions] = useState<any[]>([])
   const [savingPermissions, setSavingPermissions] = useState(false)
 
@@ -105,12 +116,10 @@ const Roles = () => {
   const handleAddRole = async () => {
     setAddingRole(true)
     try {
-      const response = await api.post('/api/v1/rbac/add-role', {
-        name: newRoleName.toUpperCase(), // Must be ALL_CAPS_SNAKE_CASE
-        description: newRoleDesc,
-      })
-
-      const newRole = response.data.data || response.data
+      const newRole = await rbacService.createRole(
+        newRoleName.toUpperCase(), // Must be ALL_CAPS_SNAKE_CASE
+        newRoleDesc,
+      )
 
       // Update state instantly so it appears in the table
       setRoles((prev) => [...prev, newRole])
@@ -131,6 +140,7 @@ const Roles = () => {
   const openPermissionsModal = async (role: Role) => {
     setSelectedRole(role)
     setRolePermissions({})
+    setOriginalPermissions({})
 
     try {
       // Fetch all permissions to build the matrix AND current assignments
@@ -168,6 +178,7 @@ const Roles = () => {
         })
       }
       setRolePermissions(currentRolePerms)
+      setOriginalPermissions(structuredClone(currentRolePerms))
     } catch (err) {
       console.error('Error fetching permissions mapping', err)
     }
@@ -176,6 +187,7 @@ const Roles = () => {
   const closePermissionsModal = () => {
     setSelectedRole(null)
     setRolePermissions({})
+    setOriginalPermissions({})
   }
 
   const togglePermissionAction = (resourceName: string, action: string) => {
@@ -203,37 +215,53 @@ const Roles = () => {
     if (!selectedRole) return
     setSavingPermissions(true)
 
-    // Format into what API expects
-    const permissionsPayload: RolePermission[] = Object.keys(rolePermissions)
-      .filter((resName) => rolePermissions[resName].length > 0)
-      .map((resName) => ({
-        resourceName: resName,
-        actions: rolePermissions[resName],
-      }))
+    // Assign only adds and revoke only removes, so save the difference.
+    const { added, removed } = diffPermissions(
+      originalPermissions,
+      rolePermissions,
+    )
 
-    if (permissionsPayload.length === 0) {
-      toast.warning(
-        'Please select at least one permission or use revoke role endpoint instead.',
-      )
+    if (added.length === 0 && removed.length === 0) {
+      toast.info('No changes to save.')
       setSavingPermissions(false)
       return
     }
 
     try {
-      await api.post('/api/v1/rbac/assign-permissions', {
-        roleId: selectedRole.id,
-        permissions: permissionsPayload,
-      })
+      // Adds first: swapping write for read-only keeps the "write needs read" rule satisfied throughout.
+      if (added.length > 0) {
+        await rbacService.assignPermissions(selectedRole.id, added)
+      }
+      if (removed.length > 0) {
+        await rbacService.revokePermissions(selectedRole.id, removed)
+      }
       fetchData()
       closePermissionsModal()
       toast.success('Permissions updated successfully!')
     } catch (err: any) {
       console.error('Error saving permissions:', err)
       toast.error(
-        err?.response?.data?.message || 'Failed to assign permissions.',
+        err?.response?.data?.message || 'Failed to update permissions.',
       )
     } finally {
       setSavingPermissions(false)
+    }
+  }
+
+  // ====== ENABLE A SUPPORTED ACTION ======
+  const handleEnableAction = async (resourceName: string, action: string) => {
+    const key = `${resourceName}:${action}`
+    setEnablingAction(key)
+    try {
+      await rbacService.enableActions([
+        { name: resourceName, actions: [action] },
+      ])
+      setAllSystemPermissions(await rbacService.getPermissions())
+      toast.success(`"${action}" is now available on ${resourceName}.`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to enable action.'))
+    } finally {
+      setEnablingAction(null)
     }
   }
 
@@ -477,7 +505,9 @@ const Roles = () => {
                         </div>
 
                         <div className='flex max-w-[320px] flex-wrap justify-end gap-2'>
-                          {availableActions.length === 0 ? (
+                          {availableActions.length === 0 &&
+                          missingActions(resource.name, availableActions)
+                            .length === 0 ? (
                             <span className='text-[10px] font-bold uppercase italic tracking-widest text-gray-600'>
                               No actions defined
                             </span>
@@ -517,6 +547,26 @@ const Roles = () => {
                               )
                             })
                           )}
+                          {can('ROLE', 'canWrite') &&
+                            missingActions(resource.name, availableActions).map(
+                              (action) => (
+                                <button
+                                  key={`enable-${action}`}
+                                  type='button'
+                                  disabled={enablingAction !== null}
+                                  onClick={() =>
+                                    handleEnableAction(resource.name, action)
+                                  }
+                                  className='flex items-center gap-2 rounded-md border border-dashed border-border bg-background px-3 py-1.5 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary disabled:opacity-50'
+                                  title={`Create the "${action}" permission for ${resource.name} so it can be assigned`}
+                                >
+                                  <FiPlus className='text-[10px]' />
+                                  <span className='text-[10px] font-bold uppercase tracking-tight'>
+                                    Enable {action}
+                                  </span>
+                                </button>
+                              ),
+                            )}
                         </div>
                       </div>
                     )

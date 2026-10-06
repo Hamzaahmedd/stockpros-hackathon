@@ -60,6 +60,12 @@ export interface AssignPermissionsRequest {
   permissions: Array<{ resourceName: string; actions: string[] }>
 }
 
+export interface RevokeRoleRequest {
+  userId: string
+  /** Must match the roleId in the path. */
+  roleId: string
+}
+
 export interface AssignResourceActionsRequest {
   resources: Array<{ name: string; actions: string[] }>
 }
@@ -115,13 +121,21 @@ export class AccessControlSwaggerController extends Controller {
   }
 
   /**
-   * Revoke (delete) a role by id.
+   * Remove a role from a user (the role itself is not deleted). This is the
+   * only way to take away a user's last role: assign-role replaces the whole
+   * set and needs at least one. Requires ROLE:DELETE.
    */
   @Delete('roles/{roleId}')
   @Security('bearerAuth')
   @SuccessResponse(200, 'Role revoked')
-  @Response<ApiErrorResponse>(404, 'Role not found')
-  async revokeRole(@Path() roleId: string): Promise<ApiResponse> {
+  @Response<ApiErrorResponse>(
+    404,
+    'Role or user not found, or the user does not hold the role',
+  )
+  async revokeRole(
+    @Path() roleId: string,
+    @Body() body: RevokeRoleRequest,
+  ): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 

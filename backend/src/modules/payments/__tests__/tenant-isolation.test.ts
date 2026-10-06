@@ -33,6 +33,7 @@ import { TopupPackId } from '../constants'
 import { getCreditLedger } from '../ledger'
 import { getUsageHistory } from '../usage-history'
 import { setSpendCap } from '../spend-cap'
+import { setUsageAlertsEnabled } from '../usage-alerts'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import {
   createSeatAdditionCheckout,
@@ -321,6 +322,27 @@ describe('personal spending limit', () => {
       where: { id: 'solo' },
       data: { monthlyCreditLimitPaisa: 20_000 },
     })
+  })
+})
+
+describe('usage alert preference', () => {
+  it('only ever writes the caller’s own row, whichever workspace they are in', async () => {
+    for (const userId of ['a-owner', 'b-owner', 'b-member']) {
+      asUser(userId)
+      const update = jest.fn()
+      db.user.update = update
+      Object.assign(db, {
+        usageEvent: { count: jest.fn().mockResolvedValue(0) },
+      })
+
+      await setUsageAlertsEnabled(userId, false)
+
+      expect(update).toHaveBeenCalledTimes(1)
+      expect(update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { usageAlertsEnabled: false },
+      })
+    }
   })
 })
 

@@ -47,6 +47,11 @@ router.get(
   PaymentsController.getUsageHistoryHandler,
 )
 router.put(
+  '/usage-alerts',
+  authTokenMiddleware,
+  PaymentsController.setUsageAlertsHandler,
+)
+router.put(
   '/credits/spend-cap',
   authTokenMiddleware,
   PaymentsController.setSpendCapHandler,

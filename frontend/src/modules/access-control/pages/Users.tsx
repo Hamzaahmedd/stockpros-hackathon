@@ -4,6 +4,7 @@ import { Sidebar } from '@/shared/components/Sidebar'
 import { useEffect, useState } from 'react'
 import { FiCheck, FiShield, FiX } from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import { rbacService } from '../services'
 import type { Role, AccessControlUser as User } from '../types'
 
 const formatJoinedAt = (isoDate: string) => {
@@ -130,17 +131,30 @@ const Users = () => {
     )
   }
 
+  /** Removes every role the user holds; returns the (empty) remaining set. */
+  const revokeAllRoles = async (target: User) => {
+    const current = (target.userRoles ?? [])
+      .map((ur: any) => ur.role?.id || ur.roleId || ur.id)
+      .filter((id: unknown): id is string => typeof id === 'string')
+    await Promise.all(
+      current.map((roleId: string) =>
+        rbacService.revokeRoleFromUser(target.id, roleId),
+      ),
+    )
+    return []
+  }
+
   const handleSaveRoles = async () => {
     if (!selectedUser) return
     setSaving(true)
     try {
-      const response = await api.post('/api/v1/rbac/assign-role', {
-        userId: selectedUser.id,
-        roleIds: selectedRoleIds,
-      })
-
-      const { roles, userName, assignedBy } =
-        response.data.data || response.data
+      // Assigning replaces the whole set and needs at least one role, so
+      // taking away every role is done by revoking each one individually.
+      const roles =
+        selectedRoleIds.length > 0
+          ? (await rbacService.assignRoles(selectedUser.id, selectedRoleIds))
+              .roles
+          : await revokeAllRoles(selectedUser)
 
       // Update state instantly
       updateLocalUserState(selectedUser.id, roles)
@@ -151,7 +165,6 @@ const Users = () => {
       toast.success(
         `Roles updated for ${selectedUser.displayName || selectedUser.email || 'user'}`,
       )
-      console.log(`Assigned by: ${assignedBy}`)
 
       closeEditModal()
     } catch (err: any) {

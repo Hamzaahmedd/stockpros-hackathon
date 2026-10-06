@@ -13,6 +13,7 @@ export {
   enqueueStaffStepUpEmail,
   enqueueTeamInviteEmail,
   enqueueTeamJoinRequestEmail,
+  enqueueUsageAlertEmail,
 } from './infrastructure/email-worker'
 export { sendDailyDigestsToAllSubscribers } from './digest-service'
 export { runNotificationCleanupJob } from './notification-cleanup-job'
@@ -22,6 +23,7 @@ export type {
   PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
   TeamInviteEmailJobPayload,
+  UsageAlertEmailJobPayload,
 } from './types'
 export type { RenewalReminderVariant } from './email-templates/subscription-renewal'
 export type { MarketInterest } from './preferences'

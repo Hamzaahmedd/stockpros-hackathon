@@ -46,6 +46,7 @@ const makeTx = () => ({
   },
   user: { update: jest.fn(), updateMany: jest.fn() },
   creditLedger: { create: jest.fn() },
+  usageAlert: { deleteMany: jest.fn() },
   teamAuditLog: { create: jest.fn() },
   teamMember: { deleteMany: jest.fn() },
   subscription: { findUnique: jest.fn(), update: jest.fn() },
@@ -152,6 +153,10 @@ describe('TOPUP fulfilment', () => {
       where: { id: 'user-1' },
       data: { creditBalanceInPaisa: { increment: 100_000 } },
     })
+    // The low-balance warning is re-armed now that the balance is back up.
+    expect(tx.usageAlert.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', kind: 'LOW_BALANCE' },
+    })
     expect(tx.creditLedger.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'user-1',
@@ -171,6 +176,8 @@ describe('TOPUP fulfilment', () => {
       data: { creditBalanceInPaisa: { increment: 100_000 } },
     })
     expect(tx.user.update).not.toHaveBeenCalled()
+    // Warnings are personal; a workspace top-up does not touch them.
+    expect(tx.usageAlert.deleteMany).not.toHaveBeenCalled()
   })
 })
 

@@ -12,6 +12,7 @@ import {
 } from '../../shared/infrastructure/team-access'
 import { MeteredFeature } from './constants'
 import { consumeAiSignal, type MeterActor } from './credits'
+import { notifyUsageThresholds } from './usage-alerts'
 import { hasPaidPlan } from '../../shared/utils/plan'
 import { isMarketSpikeWindow } from '../../shared/utils/market-hours'
 
@@ -284,7 +285,9 @@ export const meterPaidAiSignal =
         req.params?.symbol ?? req.body?.symbol ?? req.query?.symbol
       // Only a plain string is a usable symbol (a query can carry arrays/objects).
       const symbol = typeof candidate === 'string' ? candidate : undefined
-      await consumeAiSignal(actor, feature, symbol)
+      const result = await consumeAiSignal(actor, feature, symbol)
+      // Fire and forget: a warning email must never slow down or fail the signal.
+      void notifyUsageThresholds(actor, result)
       next()
     } catch (err) {
       next(err)

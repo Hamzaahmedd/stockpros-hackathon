@@ -27,6 +27,7 @@ const summary = (overrides: Partial<UsageSummary> = {}): UsageSummary => ({
     canTopUp: true,
     canSetSpendCap: true,
   },
+  alertsEnabled: true,
   spendCap: null,
   ...overrides,
 })

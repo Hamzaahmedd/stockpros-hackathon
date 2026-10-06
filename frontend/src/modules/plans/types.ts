@@ -70,6 +70,8 @@ export type UsageSummary = {
     /** True for individual Pro users, who set their own limit; members' limits belong to workspace admins. */
     canSetSpendCap: boolean
   } | null
+  /** Whether usage-warning emails are on (individuals receive them; workspace members do not yet). */
+  alertsEnabled: boolean
   /** Present when a monthly credit cap applies: a member's (set by an admin) or the individual's own. */
   spendCap: {
     monthlyLimitPaisa: number

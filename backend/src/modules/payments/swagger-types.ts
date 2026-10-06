@@ -122,6 +122,11 @@ export interface SetSpendCapRequest {
   monthlyLimitPaisa: number | null
 }
 
+export interface SetUsageAlertsRequest {
+  /** Whether to email warnings about the allowance, credit balance and spending limit. */
+  enabled: boolean
+}
+
 export interface UsageSpendCapResponse {
   monthlyLimitPaisa: number
   spentPaisa: number
@@ -134,6 +139,8 @@ export interface UsageSummaryResponse {
   metered: boolean
   quota: UsageQuotaResponse | null
   credits: UsageCreditsResponse | null
+  /** Whether usage-warning emails are on (individuals receive them; workspace members do not yet). */
+  alertsEnabled: boolean
   /** Present only when a monthly credit cap applies (a member's, or the individual's own). */
   spendCap: UsageSpendCapResponse | null
 }
@@ -336,6 +343,22 @@ export class PaymentsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Usage fetched')
   async getMyUsage(): Promise<ApiResponse<UsageSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Turns the caller's usage-warning emails on or off. They are sent once per
+   * billing cycle at 80% and 100% of the included signals, when the credit
+   * balance can pay for fewer than 5 more signals, and at 90% of a personal
+   * spending limit. Individual users only for now. Returns the refreshed usage summary.
+   */
+  @Put('usage-alerts')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Usage alerts updated')
+  @Response<ApiErrorResponse>(400, 'enabled must be a boolean')
+  async setUsageAlerts(
+    @Body() body: SetUsageAlertsRequest,
+  ): Promise<ApiResponse<UsageSummaryResponse>> {
     throw new Error('tsoa spec-only')
   }
 

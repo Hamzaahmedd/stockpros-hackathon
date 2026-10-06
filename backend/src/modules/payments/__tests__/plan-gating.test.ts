@@ -31,6 +31,10 @@ jest.mock('../credits', () => ({
   consumeAiSignal: jest.fn(),
 }))
 
+jest.mock('../usage-alerts', () => ({
+  notifyUsageThresholds: jest.fn().mockResolvedValue(undefined),
+}))
+
 jest.mock('../constants', () => ({
   MeteredFeature: { AI_FORECAST: 'ai_forecast', AI_DECISION: 'ai_decision' },
 }))
@@ -44,6 +48,7 @@ import { incrementAndCheckQuota } from '../../../shared/infrastructure/usage-quo
 import { getActiveMembership } from '../../../shared/infrastructure/team-access'
 import { Action, Resource } from '../../access-control'
 import { MeteredFeature } from '../constants'
+import { notifyUsageThresholds } from '../usage-alerts'
 import { consumeAiSignal } from '../credits'
 import { OverageReason, OverageRequiredError } from '../../../shared/errors'
 import {
@@ -569,6 +574,34 @@ describe('meterPaidAiSignal', () => {
       'MSFT',
     )
     expect(next).toHaveBeenCalledWith()
+  })
+
+  it('hands the result to the usage-warning check without waiting on it', async () => {
+    const result = { source: 'BASE', costPaisa: 0, quota: { used: 240 } }
+    ;(consumeAiSignal as jest.Mock).mockResolvedValueOnce(result)
+    // Even a warning check that never settles cannot hold the request up.
+    ;(notifyUsageThresholds as jest.Mock).mockReturnValueOnce(
+      new Promise(() => undefined),
+    )
+    const { req, res, next } = mockReqRes('PRO')
+
+    await meterPaidAiSignal(MeteredFeature.AI_FORECAST)(req, res, next)
+
+    expect(notifyUsageThresholds).toHaveBeenCalledWith(
+      { userId: 'user-1', membership: null },
+      result,
+    )
+    expect(next).toHaveBeenCalledWith()
+  })
+
+  it('does not run the usage-warning check when the signal was refused', async () => {
+    ;(notifyUsageThresholds as jest.Mock).mockClear()
+    ;(consumeAiSignal as jest.Mock).mockRejectedValueOnce(new Error('no'))
+    const { req, res, next } = mockReqRes('PRO')
+
+    await meterPaidAiSignal(MeteredFeature.AI_FORECAST)(req, res, next)
+
+    expect(notifyUsageThresholds).not.toHaveBeenCalled()
   })
 
   it('uses a null membership for PRO users and reads the symbol from the query', async () => {

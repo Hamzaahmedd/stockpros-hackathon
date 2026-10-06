@@ -35,11 +35,13 @@ const asUser = (
   plan: string,
   creditBalanceInPaisa = 0,
   monthlyCreditLimitPaisa: number | null = null,
+  usageAlertsEnabled = true,
 ) =>
   db.user.findUniqueOrThrow.mockResolvedValue({
     plan,
     creditBalanceInPaisa,
     monthlyCreditLimitPaisa,
+    usageAlertsEnabled,
   })
 
 const asMember = (
@@ -74,6 +76,7 @@ describe('FREE users', () => {
       metered: false,
       quota: null,
       credits: null,
+      alertsEnabled: true,
       spendCap: null,
     })
     expect(db.usageEvent.count).not.toHaveBeenCalled()
@@ -175,6 +178,17 @@ describe('PRO users', () => {
       spentPaisa: 50_000,
       remainingPaisa: 0,
     })
+  })
+
+  it('reports whether usage-warning emails are on', async () => {
+    asUser('PRO', 0, null, true)
+    expect((await getMyUsage('user-1')).alertsEnabled).toBe(true)
+
+    asUser('PRO', 0, null, false)
+    expect((await getMyUsage('user-1')).alertsEnabled).toBe(false)
+
+    asUser('FREE', 0, null, false)
+    expect((await getMyUsage('user-1')).alertsEnabled).toBe(false)
   })
 
   it('rounds signalsAvailable down — a partial signal cannot be bought', async () => {

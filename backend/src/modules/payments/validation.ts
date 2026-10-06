@@ -101,6 +101,13 @@ export const creditLedgerQueryValidator = z.object({
   cursor: z.string().uuid('cursor must be a valid id').optional(),
 })
 
+export const usageAlertsValidator = z.object({
+  enabled: z.boolean({
+    required_error: 'enabled is required',
+    invalid_type_error: 'enabled must be a boolean',
+  }),
+})
+
 /** `null` removes the limit. */
 export const spendCapValidator = z.object({
   monthlyLimitPaisa: z

@@ -1,6 +1,7 @@
 import config from '@/config'
 import { SubscriptionPaymentMethod, TeamAuditAction } from '@prisma/client'
 import { setMyPlan } from '../auth'
+import { formatAmount } from './format'
 import {
   enqueueRenewalReminderEmail,
   type RenewalReminderVariant,
@@ -19,9 +20,6 @@ import {
   TEAM_EXPIRY_TX_TIMEOUT_MS,
   TEAM_SEAT_PRICE_PAISA,
 } from './constants'
-
-const formatAmount = (amountPaisa: number): string =>
-  `Rs ${(amountPaisa / 100).toLocaleString('en-PK')}`
 
 const formatDate = (date: Date): string =>
   date.toLocaleDateString('en-US', {

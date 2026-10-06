@@ -118,6 +118,12 @@ export const usageService = {
     return unwrapEnvelope(res)
   },
 
+  /** Turns the caller's usage-warning emails on or off. Returns the refreshed summary. */
+  setAlertsEnabled: async (enabled: boolean): Promise<UsageSummary> => {
+    const res = await api.put('/api/v1/payments/usage-alerts', { enabled })
+    return unwrapEnvelope(res)
+  },
+
   /** Daily usage and per-feature totals for a cycle, bucketed by calendar day in `timeZone`. */
   getHistory: async (
     range: UsageHistoryRange = 'current',

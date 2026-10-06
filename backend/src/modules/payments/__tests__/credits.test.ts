@@ -122,7 +122,17 @@ describe('consumeAiSignal — base quota', () => {
       'aapl',
     )
 
-    expect(result).toEqual({ source: UsageSource.BASE, costPaisa: 0 })
+    expect(result).toEqual({
+      source: UsageSource.BASE,
+      costPaisa: 0,
+      // This signal counted: 299 before, 300 now, out of 300.
+      quota: {
+        used: PRO_MONTHLY_AI_SIGNALS,
+        limit: PRO_MONTHLY_AI_SIGNALS,
+        windowStart: expect.any(Date),
+        windowEnd: expect.any(Date),
+      },
+    })
     // Even the free path runs as one locked transaction (no credits touched).
     expect(db.$transaction).toHaveBeenCalledTimes(1)
     expect(db.team.updateMany).not.toHaveBeenCalled()
@@ -178,6 +188,10 @@ describe('consumeAiSignal — overage', () => {
     expect(result).toEqual({
       source: UsageSource.CREDIT,
       costPaisa: OVERAGE_COST_PAISA_PER_SIGNAL,
+      quota: expect.objectContaining({
+        used: PRO_MONTHLY_AI_SIGNALS + 1,
+        limit: PRO_MONTHLY_AI_SIGNALS,
+      }),
     })
     expect(db.user.updateMany).toHaveBeenCalledWith({
       where: {

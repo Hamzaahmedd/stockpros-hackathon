@@ -16,6 +16,10 @@ jest.mock('../usage-history', () => ({ getUsageHistory: jest.fn() }))
 
 jest.mock('../spend-cap', () => ({ setSpendCap: jest.fn() }))
 
+jest.mock('../usage-alerts', () => ({
+  setUsageAlertsEnabled: jest.fn(),
+}))
+
 jest.mock('../receipts', () => ({
   getTeamReceipt: jest.fn(),
   listTeamTransactions: jest.fn(),
@@ -47,6 +51,7 @@ import { getCreditLedger } from '../ledger'
 import { getMyUsage } from '../usage'
 import { getUsageHistory } from '../usage-history'
 import { setSpendCap } from '../spend-cap'
+import { setUsageAlertsEnabled } from '../usage-alerts'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import { verifySafepaySignature } from '../signature'
 import {
@@ -579,6 +584,57 @@ describe('getMyUsageHandler', () => {
   it('forwards errors', async () => {
     ;(getMyUsage as jest.Mock).mockRejectedValue(new Error('boom'))
     await controller.getMyUsageHandler(mockReq() as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('setUsageAlertsHandler', () => {
+  it.each([true, false])(
+    'turns the alerts %s for the authenticated user only',
+    async (enabled) => {
+      ;(setUsageAlertsEnabled as jest.Mock).mockResolvedValue({
+        alertsEnabled: enabled,
+      })
+      const res = mockRes()
+
+      await controller.setUsageAlertsHandler(
+        mockReq({ body: { enabled, userId: 'someone-else' } }) as any,
+        res,
+        next,
+      )
+
+      expect(setUsageAlertsEnabled).toHaveBeenCalledWith('user-1', enabled)
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Usage alerts updated',
+          data: { alertsEnabled: enabled },
+        }),
+      )
+    },
+  )
+
+  it.each([{}, { enabled: 'yes' }, { enabled: 1 }, { enabled: null }])(
+    'rejects an invalid body (%o) before touching the service',
+    async (body) => {
+      ;(setUsageAlertsEnabled as jest.Mock).mockClear()
+      await controller.setUsageAlertsHandler(
+        mockReq({ body }) as any,
+        mockRes(),
+        next,
+      )
+      expect(setUsageAlertsEnabled).not.toHaveBeenCalled()
+      expect(next).toHaveBeenCalledWith(expect.any(Error))
+    },
+  )
+
+  it('forwards service errors', async () => {
+    ;(setUsageAlertsEnabled as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.setUsageAlertsHandler(
+      mockReq({ body: { enabled: true } }) as any,
+      mockRes(),
+      next,
+    )
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

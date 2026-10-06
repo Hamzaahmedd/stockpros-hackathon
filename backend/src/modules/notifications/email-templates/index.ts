@@ -27,6 +27,13 @@ export {
   type RenewalReminderVariant,
 } from './subscription-renewal'
 export {
+  buildUsageAlertEmail,
+  buildUsageAlertEmailHtml,
+  buildUsageAlertEmailText,
+  buildUsageAlertSubject,
+  type UsageAlertData,
+} from './usage-alert'
+export {
   buildPaymentReceiptEmail,
   buildPaymentReceiptEmailHtml,
   buildPaymentReceiptEmailText,

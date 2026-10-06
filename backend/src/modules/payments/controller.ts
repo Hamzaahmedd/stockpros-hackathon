@@ -17,6 +17,7 @@ import {
   createCheckoutValidator,
   creditLedgerQueryValidator,
   spendCapValidator,
+  usageAlertsValidator,
   subscriptionScopeQueryValidator,
   transactionIdParamValidator,
   transactionsQueryValidator,
@@ -35,6 +36,7 @@ import { getTeamReceipt, listTeamTransactions } from './receipts'
 import { getMyUsage } from './usage'
 import { getUsageHistory } from './usage-history'
 import { setSpendCap } from './spend-cap'
+import { setUsageAlertsEnabled } from './usage-alerts'
 import {
   createTeamCheckout,
   createTeamRenewalCheckout,
@@ -151,6 +153,21 @@ export const getMyUsageHandler = async (
     const data = await getMyUsage(getUserId(req))
 
     return sendSuccess(res, { message: 'Usage fetched', data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const setUsageAlertsHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { enabled } = validateOrThrow(usageAlertsValidator, req.body)
+    const data = await setUsageAlertsEnabled(getUserId(req), enabled)
+
+    return sendSuccess(res, { message: 'Usage alerts updated', data })
   } catch (error) {
     next(error)
   }

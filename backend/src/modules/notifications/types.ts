@@ -10,6 +10,7 @@ export type {
   StaffStepUpEmailJobPayload,
   TeamInviteEmailJobPayload,
   TeamJoinRequestEmailJobPayload,
+  UsageAlertEmailJobPayload,
 } from './email-job-schemas'
 
 export interface RawNewsInput {

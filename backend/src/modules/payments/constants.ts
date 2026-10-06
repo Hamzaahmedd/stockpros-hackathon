@@ -96,6 +96,13 @@ export const TEAM_MONTHLY_AI_SIGNALS = Math.floor(
 /** Credit drawn per AI signal once the base quota is exhausted (Rs 50). */
 export const OVERAGE_COST_PAISA_PER_SIGNAL = 5_000
 
+/** Warn when this share of the included monthly signals, or of the personal spending limit, is used. */
+export const QUOTA_WARNING_RATIO = 0.8
+export const SPEND_CAP_WARNING_RATIO = 0.9
+
+/** Warn when the credit balance can pay for fewer than this many more signals. */
+export const LOW_BALANCE_SIGNALS = 5
+
 /** Bounds for the spending limit an individual Pro user can set: one signal up to Rs 100,000. */
 export const USER_SPEND_CAP_MIN_PAISA = OVERAGE_COST_PAISA_PER_SIGNAL
 export const USER_SPEND_CAP_MAX_PAISA = 10_000_000

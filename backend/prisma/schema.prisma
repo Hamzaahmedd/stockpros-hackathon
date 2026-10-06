@@ -16,6 +16,8 @@ model User {
   inAppAlertsEnabled           Boolean      @default(true) @map("in_app_alerts_enabled")
   emailVolatilityAlertsEnabled Boolean      @default(true) @map("email_volatility_alerts_enabled")
   dailyDigestEnabled           Boolean      @default(true) @map("daily_digest_enabled")
+  // Email warnings about AI-signal and credit limits (usage_alerts); on by default.
+  usageAlertsEnabled           Boolean      @default(true) @map("usage_alerts_enabled")
   phoneNumber                  String?      @unique @map("phone_number")
   phoneVerifiedAt              DateTime?    @map("phone_verified_at") @db.Timestamptz(6)
   plan                         PlanTier     @default(FREE)
@@ -50,6 +52,7 @@ model User {
   newsSavedArticles NewsSavedArticle[]
   decisionRuns      DecisionRun[]
   feedbackEntries   Feedback[]
+  usageAlerts       UsageAlert[]
 
   // ── Payments feature ────────────────────────────────────────────────────────
   // PaymentTransaction / CreditLedger deliberately carry no FK to User: they
@@ -585,6 +588,14 @@ enum TeamAuditAction {
   SAML_DISABLED
 }
 
+// Which limit a usage-warning email is about.
+enum UsageAlertKind {
+  QUOTA_80
+  QUOTA_EXHAUSTED
+  LOW_BALANCE
+  CAP_90
+}
+
 enum CreditLedgerType {
   PURCHASE
   OVERAGE_CONSUMPTION
@@ -680,6 +691,23 @@ model CreditLedger {
   @@index([teamId], map: "idx_credit_ledger_team_id")
   @@index([createdAt], map: "idx_credit_ledger_created_at")
   @@map("credit_ledger")
+}
+
+// One row per usage-warning email sent. The unique key is the dedup: a warning
+// is claimed by inserting its row, so it goes out once per billing cycle even
+// if several requests cross the threshold together. LOW_BALANCE rows are
+// cleared when credits are topped up so the next dip can warn again.
+model UsageAlert {
+  id          String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  kind        UsageAlertKind
+  windowStart DateTime       @map("window_start") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, windowStart], map: "uniq_usage_alert_user_kind_window")
+  @@map("usage_alerts")
 }
 
 // ─── Subscription (PRO / TEAM billing cycle) ─────────────────────────────────

@@ -62,6 +62,95 @@ const renewalJob = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
+const usageAlertJob = (over: Record<string, unknown> = {}) => ({
+  to: 'a@example.com',
+  userId: 'user-1',
+  kind: 'QUOTA_80',
+  userName: 'Hamza',
+  usedSignals: 240,
+  includedSignals: 300,
+  resetsOn: 'Oct 10, 2030',
+  creditBalance: 'Rs 950',
+  usageUrl: 'https://app.example/usage',
+  ...over,
+})
+
+describe('usage alert emails', () => {
+  it('adds the job to the shared queue under the usage-alert name', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { enqueueUsageAlertEmail } = require('../email-worker')
+
+    await enqueueUsageAlertEmail(usageAlertJob())
+
+    const queue = deps.QueueMock.mock.results[0].value
+    expect(queue.add).toHaveBeenCalledWith('usage-alert', usageAlertJob())
+  })
+
+  it('skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueueUsageAlertEmail } = require('../email-worker')
+    await expect(
+      enqueueUsageAlertEmail(usageAlertJob()),
+    ).resolves.toBeUndefined()
+  })
+
+  it('routes a usage-alert job to its own template', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({ name: 'usage-alert', data: usageAlertJob() }),
+    ).resolves.toBeUndefined()
+
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    expect(emailConfig.transporter.sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'a@example.com',
+        subject: "You've used 80% of your monthly AI signals",
+      }),
+    )
+  })
+
+  it('rethrows a permanent SMTP failure', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    emailConfig.transporter.sendMail.mockRejectedValue(
+      Object.assign(new Error('550 mailbox unavailable'), {
+        responseCode: 550,
+      }),
+    )
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({ name: 'usage-alert', data: usageAlertJob() }),
+    ).rejects.toThrow('550 mailbox unavailable')
+  })
+
+  it.each([
+    ['an unknown kind', usageAlertJob({ kind: 'LOW_MOOD' })],
+    ['a non-URL link', usageAlertJob({ usageUrl: 'javascript:alert(1)x' })],
+    ['a bad recipient', usageAlertJob({ to: 'nope' })],
+    ['no user id', usageAlertJob({ userId: undefined })],
+    ['a negative count', usageAlertJob({ usedSignals: -1 })],
+  ])('drops a job with %s without sending', async (_label, data) => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(processor({ name: 'usage-alert', data })).rejects.toThrow(
+      'Invalid email job payload',
+    )
+
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    expect(emailConfig.transporter.sendMail).not.toHaveBeenCalled()
+  })
+})
+
 describe('enqueueEmail', () => {
   it('logs and skips enqueuing when Redis is unavailable', async () => {
     mockDeps(null)
