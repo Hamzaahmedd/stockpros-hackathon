@@ -7,6 +7,7 @@ import {
 } from './news-fetcher'
 import { toDateStr, daysAgo } from '../news'
 import { NEWS_RETENTION_DAYS, SYMBOL_FETCH_DAYS_BACK } from '../constants'
+import { alertJobFailure } from '../../../shared/infrastructure/job-alert'
 import { logger } from '../../../shared/infrastructure/logger'
 import { CACHE_TTL } from '../../../shared/constants'
 
@@ -108,9 +109,15 @@ export const startNewsCronJobs = async (): Promise<void> => {
     worker.on('completed', () =>
       logger.info(`[NewsCron] ${job.name} completed`),
     )
-    worker.on('failed', (_, err) =>
-      logger.error(`[NewsCron] ${job.name} failed: ${err.message}`),
-    )
+    worker.on('failed', (failed, err) => {
+      logger.error(`[NewsCron] ${job.name} failed: ${err.message}`)
+      void alertJobFailure({
+        queue: 'news-cron',
+        name: job.name,
+        job: failed,
+        error: err,
+      })
+    })
     workers.push(worker)
   }
 }

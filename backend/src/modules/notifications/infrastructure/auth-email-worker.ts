@@ -5,6 +5,7 @@ import {
   getLogoSrc,
 } from '../../../shared/infrastructure/config/email'
 import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
+import { alertJobFailure } from '../../../shared/infrastructure/job-alert'
 import { logger } from '../../../shared/infrastructure/logger'
 import { redactPii } from '../../../shared/utils/redact'
 import { buildMagicLinkEmail } from '../email-templates/index'
@@ -87,11 +88,12 @@ export const startAuthEmailWorker = (): void => {
     { connection, ...AUTH_EMAIL_QUEUE_OPTIONS },
   )
 
-  authEmailWorker.on('failed', (job, err) =>
+  authEmailWorker.on('failed', (job, err) => {
     logger.error(
       `[AuthEmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${redactPii(err.message)}`,
-    ),
-  )
+    )
+    void alertJobFailure({ queue: 'auth-email', job, error: err })
+  })
 
   logger.info('[AuthEmailWorker] Started')
 }

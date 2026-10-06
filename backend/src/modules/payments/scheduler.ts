@@ -2,6 +2,7 @@ import config from '@/config'
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../../shared/infrastructure/cache'
 import { CACHE_TTL } from '../../shared/constants'
+import { alertJobFailure } from '../../shared/infrastructure/job-alert'
 import { logger } from '../../shared/infrastructure/logger'
 import { runTeamInviteCleanupJob } from '../teams/public'
 import { runSubscriptionExpiryJob } from './subscription-job'
@@ -66,9 +67,15 @@ export const startSubscriptionCronJobs = async (): Promise<void> => {
     worker.on('completed', () =>
       logger.info(`[SubscriptionCron] ${job.name} completed`),
     )
-    worker.on('failed', (_, err) =>
-      logger.error(`[SubscriptionCron] ${job.name} failed: ${err.message}`),
-    )
+    worker.on('failed', (failed, err) => {
+      logger.error(`[SubscriptionCron] ${job.name} failed: ${err.message}`)
+      void alertJobFailure({
+        queue: 'subscription-cron',
+        name: job.name,
+        job: failed,
+        error: err,
+      })
+    })
     workers.push(worker)
   }
 }

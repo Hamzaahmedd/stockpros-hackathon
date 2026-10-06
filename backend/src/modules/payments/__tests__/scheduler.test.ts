@@ -2,6 +2,11 @@ const queueAdd = jest.fn().mockResolvedValue(undefined)
 const queueClose = jest.fn().mockResolvedValue(undefined)
 const workerClose = jest.fn().mockResolvedValue(undefined)
 const processors: Record<string, () => Promise<void>> = {}
+const failedHandlers: Record<string, (job: unknown, err: Error) => void> = {}
+const mockAlertJobFailure = jest.fn()
+jest.mock('../../../shared/infrastructure/job-alert', () => ({
+  alertJobFailure: (...args: unknown[]) => mockAlertJobFailure(...args),
+}))
 
 jest.mock('bullmq', () => ({
   Queue: jest.fn().mockImplementation((name: string) => ({
@@ -13,7 +18,14 @@ jest.mock('bullmq', () => ({
     .fn()
     .mockImplementation((name: string, processor: () => Promise<void>) => {
       processors[name] = processor
-      return { on: jest.fn(), close: workerClose }
+      return {
+        on: jest.fn(
+          (event: string, handler: (job: unknown, err: Error) => void) => {
+            if (event === 'failed') failedHandlers[name] = handler
+          },
+        ),
+        close: workerClose,
+      }
     }),
 }))
 
@@ -50,6 +62,29 @@ beforeEach(() => {
 afterEach(async () => {
   features.enableSubscriptionCron = original
   await stopSubscriptionCronJobs() // module keeps its workers between tests
+})
+
+describe('subscription cron failure alerts', () => {
+  it('alerts ops with the cron it belongs to when a job fails for good', async () => {
+    await startSubscriptionCronJobs()
+    const [name] = Object.keys(failedHandlers)
+    const failed = { id: 'j1', attemptsMade: 1 }
+    const error = new Error('db down')
+
+    failedHandlers[name](failed, error)
+
+    expect(mockAlertJobFailure).toHaveBeenCalledWith({
+      queue: 'subscription-cron',
+      name,
+      job: failed,
+      error,
+    })
+  })
+
+  it('covers every registered cron, including the invite cleanup', async () => {
+    await startSubscriptionCronJobs()
+    expect(Object.keys(failedHandlers).length).toBeGreaterThanOrEqual(2)
+  })
 })
 
 describe('startSubscriptionCronJobs', () => {

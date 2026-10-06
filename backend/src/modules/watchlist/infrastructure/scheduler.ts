@@ -11,6 +11,7 @@ import {
   sendDailyDigestsToAllSubscribers,
   runNotificationCleanupJob,
 } from '../../notifications/public'
+import { alertJobFailure } from '../../../shared/infrastructure/job-alert'
 import { logger } from '../../../shared/infrastructure/logger'
 import { getRedisClient } from '../../../shared/infrastructure/cache'
 import type { JobDefinition } from './types'
@@ -118,9 +119,15 @@ export const startCronScheduler = async (): Promise<void> => {
     worker.on('completed', () =>
       logger.info(`[CronScheduler] ${job.name} completed`),
     )
-    worker.on('failed', (_, err) =>
-      logger.error(`[CronScheduler] ${job.name} failed: ${err.message}`),
-    )
+    worker.on('failed', (failed, err) => {
+      logger.error(`[CronScheduler] ${job.name} failed: ${err.message}`)
+      void alertJobFailure({
+        queue: 'watchlist-cron',
+        name: job.name,
+        job: failed,
+        error: err,
+      })
+    })
 
     workers.push(worker)
     logger.info(

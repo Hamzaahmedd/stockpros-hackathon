@@ -6,6 +6,7 @@ import {
   getLogoSrc,
 } from '../../../shared/infrastructure/config/email'
 import { rethrowEmailError } from '../../../shared/infrastructure/email-delivery'
+import { alertJobFailure } from '../../../shared/infrastructure/job-alert'
 import { logger } from '../../../shared/infrastructure/logger'
 import { redactPii } from '../../../shared/utils/redact'
 import {
@@ -349,11 +350,12 @@ export const startEmailWorker = (): void => {
 
   // Provider errors often echo the recipient ("550 <user@x.com>: rejected");
   // the logger scrubs addresses from every message as a backstop.
-  emailWorker.on('failed', (job, err) =>
+  emailWorker.on('failed', (job, err) => {
     logger.error(
       `[EmailWorker] Job ${job?.id} failed after ${job?.attemptsMade} attempts: ${redactPii(err.message)}`,
-    ),
-  )
+    )
+    void alertJobFailure({ queue: 'email', job, error: err })
+  })
 
   logger.info('[EmailWorker] Started')
 }

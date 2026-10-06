@@ -137,6 +137,26 @@ describe('startAuthEmailWorker', () => {
     ).rejects.toThrow('550 mailbox unavailable')
   })
 
+  it('alerts ops about a job that failed for good, naming the queue', () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const alertJobFailure = jest.fn()
+    jest.doMock('../../../../shared/infrastructure/job-alert', () => ({
+      alertJobFailure,
+    }))
+    const { startAuthEmailWorker } = require('../auth-email-worker')
+    startAuthEmailWorker()
+
+    const job = { id: 'job-1', attemptsMade: 3 }
+    const error = new Error('smtp down')
+    deps.workerHandlers.failed(job, error)
+
+    expect(alertJobFailure).toHaveBeenCalledWith({
+      queue: 'auth-email',
+      job,
+      error,
+    })
+  })
+
   it('registers a failed-job handler that logs without throwing', () => {
     const deps = mockDeps({ host: 'localhost' })
     const { startAuthEmailWorker } = require('../auth-email-worker')
