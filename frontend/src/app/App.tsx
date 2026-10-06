@@ -147,6 +147,14 @@ export default function App() {
           }
         />
         <Route
+          path='/settings/workspace/security'
+          element={
+            <ProtectedRoute resource='CORE_APP'>
+              <TeamWorkspace initialTab='security' />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path='/settings/team'
           element={
             <ProtectedRoute resource='CORE_APP'>

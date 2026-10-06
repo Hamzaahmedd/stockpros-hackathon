@@ -24,6 +24,7 @@ export enum TeamAction {
   DELETE_TEAM = 'DELETE_TEAM',
   EXPORT_TEAM = 'EXPORT_TEAM',
   SET_AUTH_POLICY = 'SET_AUTH_POLICY',
+  MANAGE_SSO = 'MANAGE_SSO', // owners and admins; requiring SSO is SET_AUTH_POLICY
 }
 
 const OWNER_ONLY_ACTIONS: ReadonlySet<TeamAction> = new Set([

@@ -1,5 +1,13 @@
 const BINDING_KEY = 'sso_binding_token'
 
+/** Query parameter and value the login page is returned to after a failed IdP round trip. Mirror the backend `SsoReturnResult`. */
+export const SSO_LOGIN_PARAM = 'sso'
+
+export enum SsoReturnResult {
+  PASSED = 'passed',
+  FAILED = 'failed',
+}
+
 /** Keeps the binding token in this tab only; storage can be unavailable (private mode), so every access is guarded. */
 export const saveSsoBinding = (token: string): void => {
   try {

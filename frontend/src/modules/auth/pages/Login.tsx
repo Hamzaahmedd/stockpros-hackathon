@@ -31,7 +31,12 @@ import {
   loginPolicyNotice,
   SSO_FAILED_MESSAGE,
 } from '../utils/loginPolicy'
-import { isSafeRedirectUrl, saveSsoBinding } from '../utils/sso'
+import {
+  isSafeRedirectUrl,
+  saveSsoBinding,
+  SSO_LOGIN_PARAM,
+  SsoReturnResult,
+} from '../utils/sso'
 import { loginSchema, type LoginFormValues } from '../validation'
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
@@ -59,7 +64,7 @@ export const Login: React.FC = () => {
   const finishLogin = useFinishLogin()
   const [searchParams] = useSearchParams()
   // The identity provider round trip ended in failure (the app is told only that, never why).
-  const ssoFailed = searchParams.get('sso') === 'failed'
+  const ssoFailed = searchParams.get(SSO_LOGIN_PARAM) === SsoReturnResult.FAILED
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)

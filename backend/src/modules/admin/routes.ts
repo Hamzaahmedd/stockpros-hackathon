@@ -66,6 +66,17 @@ router.post(
   ...platformAdmin,
   AdminController.forceVerifyDomain,
 )
+router.get('/teams/domains/:domain/sso', ...support, AdminController.getTeamSso)
+router.post(
+  '/teams/domains/:domain/sso/disable',
+  ...platformAdmin,
+  AdminController.disableTeamSso,
+)
+router.post(
+  '/teams/domains/:domain/sso/reset',
+  ...platformAdmin,
+  AdminController.resetTeamSso,
+)
 router.post(
   '/teams/domains/:domain/reset-auth-policy',
   ...platformAdmin,

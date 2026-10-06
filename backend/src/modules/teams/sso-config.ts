@@ -2,7 +2,6 @@ import config from '@/config'
 import {
   DomainAuthPolicy,
   TeamAuditAction,
-  type Prisma,
   type TeamDomain,
   type TeamSsoConnection,
 } from '@prisma/client'
@@ -13,7 +12,10 @@ import {
   NotFoundError,
 } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
-import { TeamPermission } from '../../shared/infrastructure/team-access'
+import {
+  revokeSsoSessions,
+  TeamPermission,
+} from '../../shared/infrastructure/team-access'
 import { recordTeamAudit } from '../../shared/infrastructure/team-audit'
 import {
   certificateExpiry,
@@ -103,18 +105,6 @@ const assertNotEnforced = (record: TeamDomain): void => {
       'Change the sign-in policy away from SSO before changing the connection',
     )
   }
-}
-
-const revokeSsoSessions = async (
-  tx: Prisma.TransactionClient,
-  tenantId: string | null,
-): Promise<number> => {
-  if (!tenantId) return 0
-  const { count } = await tx.userSession.updateMany({
-    where: { ssoTenantId: tenantId, isRevoked: false },
-    data: { isRevoked: true },
-  })
-  return count
 }
 
 /** Turns what the admin supplied into IdP settings; anything wrong with it is theirs to fix (400). */

@@ -183,6 +183,19 @@ export async function findSsoTenantForEmail(
   return record?.ssoTenantId ?? null
 }
 
+/** Signs out every live session that came in through SSO tenant `tenantId`; returns how many. */
+export async function revokeSsoSessions(
+  client: DbClient,
+  tenantId: string | null,
+): Promise<number> {
+  if (!tenantId) return 0
+  const { count } = await client.userSession.updateMany({
+    where: { ssoTenantId: tenantId, isRevoked: false },
+    data: { isRevoked: true },
+  })
+  return count
+}
+
 /** The enforcing policy for an email's domain, or null when it is unrestricted. */
 export async function findAuthRestriction(email: string) {
   const domain = emailDomain(email)

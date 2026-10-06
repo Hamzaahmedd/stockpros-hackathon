@@ -40,6 +40,40 @@ export type TeamDomain = {
   authPolicy: DomainAuthPolicy
 }
 
+/** How an admin supplies their identity provider's settings. Mirrors the backend `SsoConfigSource`. */
+export enum SsoConfigSource {
+  METADATA_XML = 'METADATA_XML',
+  METADATA_URL = 'METADATA_URL',
+  MANUAL = 'MANUAL',
+}
+
+/** A domain's SSO setup (`GET /teams/domains/:domain/sso`). Never includes the certificate itself. */
+export type SsoConfig = {
+  domain: string
+  authPolicy: DomainAuthPolicy
+  /** People on the domain can sign in with SSO (needs a passing test first). */
+  enabled: boolean
+  configured: boolean
+  /** Give these two to the identity provider. */
+  spEntityId: string
+  acsUrl: string
+  idpEntityId: string | null
+  idpSsoUrl: string | null
+  certificateExpiresAt: string | null
+  testedAt: string | null
+  lastLoginAt: string | null
+}
+
+export type SsoConfigInput =
+  | { source: SsoConfigSource.METADATA_XML; metadataXml: string }
+  | { source: SsoConfigSource.METADATA_URL; metadataUrl: string }
+  | {
+      source: SsoConfigSource.MANUAL
+      idpEntityId: string
+      idpSsoUrl: string
+      idpCertificate: string
+    }
+
 /** Result of changing a domain's sign-in policy; `revokedSessions` is how many sessions were signed out. */
 export type DomainAuthPolicyResult = TeamDomain & { revokedSessions: number }
 

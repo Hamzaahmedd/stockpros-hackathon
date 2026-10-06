@@ -10,11 +10,15 @@ import { apiErrorMessage, formatPaisa, hasPlatformRole } from '../utils'
 import { CustomerIdentity } from './CustomerIdentity'
 import { ReasonModal } from './ReasonModal'
 import { SearchBar } from './SearchBar'
+import { SsoDetailsModal } from './SsoDetailsModal'
 
 type TeamAction =
   | { kind: 'capacity'; team: AdminTeam }
   | { kind: 'domain'; domainId: string; domain: string }
   | { kind: 'authReset'; domain: string }
+  | { kind: 'sso'; domain: string }
+  | { kind: 'ssoDisable'; domain: string }
+  | { kind: 'ssoReset'; domain: string }
   | { kind: 'member'; userId: string; email: string }
 
 /** Workspace lookup (SUPPORT_AGENT+) with capacity, domain and member overrides (PLATFORM_ADMIN+). */
@@ -128,6 +132,19 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
                   <Badge variant={domain.isVerified ? 'default' : 'secondary'}>
                     {domain.isVerified ? 'Verified' : 'Unverified'}
                   </Badge>
+                  {domain.samlEnabled && <Badge>SSO on</Badge>}
+                  {domain.isVerified && (
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      aria-label={`View SSO for ${domain.domain}`}
+                      onClick={() =>
+                        setAction({ kind: 'sso', domain: domain.domain })
+                      }
+                    >
+                      View SSO
+                    </Button>
+                  )}
                   {canWrite && !domain.isVerified && (
                     <Button
                       size='sm'
@@ -257,6 +274,47 @@ export function TeamsTab({ role }: Readonly<{ role: PlatformRole }>) {
             adminService.resetDomainAuthPolicy(action.domain, reason, ticketRef)
           }
           onClose={() => setAction(null)}
+          onDone={() => void search(lastQuery)}
+        />
+      )}
+
+      {action?.kind === 'sso' && (
+        <SsoDetailsModal
+          domain={action.domain}
+          canWrite={canWrite}
+          onDisable={() =>
+            setAction({ kind: 'ssoDisable', domain: action.domain })
+          }
+          onReset={() => setAction({ kind: 'ssoReset', domain: action.domain })}
+          onClose={() => setAction(null)}
+        />
+      )}
+
+      {action?.kind === 'ssoDisable' && (
+        <ReasonModal
+          title='Disable SSO'
+          description={`Turns SSO off for ${action.domain} and signs out everyone who signed in through it. If SSO was required, the domain goes back to accepting any sign-in method so people are not locked out.`}
+          confirmLabel='Disable SSO'
+          successMessage='SSO disabled'
+          onSubmit={(reason, ticketRef) =>
+            adminService.disableTeamSso(action.domain, reason, ticketRef)
+          }
+          onClose={() => setAction({ kind: 'sso', domain: action.domain })}
+          onDone={() => void search(lastQuery)}
+        />
+      )}
+
+      {action?.kind === 'ssoReset' && (
+        <ReasonModal
+          title='Reset SSO setup'
+          description={`Removes ${action.domain}'s SSO connection entirely so the customer can configure it again, and signs out its SSO sessions. If SSO was required, the domain goes back to accepting any sign-in method.`}
+          confirmLabel='Reset SSO'
+          successMessage='SSO setup reset'
+          destructive
+          onSubmit={(reason, ticketRef) =>
+            adminService.resetTeamSso(action.domain, reason, ticketRef)
+          }
+          onClose={() => setAction({ kind: 'sso', domain: action.domain })}
           onDone={() => void search(lastQuery)}
         />
       )}

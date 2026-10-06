@@ -191,6 +191,49 @@ export class AdminSwaggerController extends Controller {
   }
 
   /**
+   * SUPPORT_AGENT+. A domain's SSO setup for diagnosis: whether it is
+   * configured, tested and enabled, the IdP's entity id and sign-in URL, when
+   * its certificate expires, how many SSO sessions are live, and the recent
+   * SSO configuration trail (`SAML_CONFIG_UPDATED`, `SAML_ENABLED`,
+   * `SAML_DISABLED`). Certificates are never returned. Audited as a read.
+   */
+  @Get('teams/domains/{domain}/sso')
+  @Response<ApiErrorResponse>(404, 'Domain not found')
+  async getTeamSso(@Path() domain: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * PLATFORM_ADMIN+. Emergency off-switch for a broken IdP: turns SSO off,
+   * signs out its SSO sessions and, when the domain required SSO, puts it back
+   * to accepting any sign-in method. Audit-logged (`SAML_DISABLED`) and
+   * alerted; 409 when SSO is already off.
+   */
+  @Post('teams/domains/{domain}/sso/disable')
+  @Response<ApiErrorResponse>(409, 'SSO is already disabled for this domain')
+  async disableTeamSso(
+    @Path() domain: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * PLATFORM_ADMIN+. Removes the domain's SSO connection entirely so the
+   * customer can configure it again; also signs out its SSO sessions and, when
+   * SSO was required, returns the domain to any sign-in method. Audit-logged
+   * (`SAML_CONFIG_RESET`) and alerted; 409 when SSO is not configured.
+   */
+  @Post('teams/domains/{domain}/sso/reset')
+  @Response<ApiErrorResponse>(409, 'SSO is not configured for this domain')
+  async resetTeamSso(
+    @Path() domain: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
    * PLATFORM_ADMIN+. Emergency reset: puts a domain's sign-in policy back to
    * `ANY` (for an owner who locked their organization out). Audit-logged and
    * alerted; 409 when the domain already accepts any method.

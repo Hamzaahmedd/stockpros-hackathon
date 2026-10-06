@@ -13,6 +13,12 @@ export enum SsoFlowPurpose {
   TEST = 'TEST',
 }
 
+/** The result the app is told about after an IdP round trip (`?sso=` on login, `?sso_test=` on the security page). */
+export enum SsoReturnResult {
+  PASSED = 'passed',
+  FAILED = 'failed',
+}
+
 /** Where the browser lands after the IdP posts back to us. */
 export enum SsoCallbackOutcome {
   LOGIN_READY = 'LOGIN_READY',

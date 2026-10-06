@@ -42,6 +42,33 @@ export interface AdminUser {
   team: { teamId: string; role: string } | null
 }
 
+/** One entry of a domain's SSO configuration trail (`SAML_*` team audit actions). */
+export interface AdminSsoActivity {
+  id: string
+  action: string
+  actorUserId: string | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+
+/** A customer's SSO as staff see it (`GET /admin/teams/domains/:domain/sso`). */
+export interface AdminTeamSso {
+  domain: string
+  domainId: string
+  teamId: string
+  authPolicy: DomainAuthPolicy
+  enabled: boolean
+  configured: boolean
+  idpEntityId: string | null
+  idpSsoUrl: string | null
+  certificateExpiresAt: string | null
+  testedAt: string | null
+  lastLoginAt: string | null
+  updatedByUserId: string | null
+  activeSsoSessions: number
+  recentActivity: AdminSsoActivity[]
+}
+
 export interface AdminTeam {
   id: string
   name: string
@@ -60,6 +87,7 @@ export interface AdminTeam {
     domain: string
     isVerified: boolean
     authPolicy: DomainAuthPolicy
+    samlEnabled: boolean
   }[]
   members: {
     role: string

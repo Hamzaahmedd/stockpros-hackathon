@@ -10534,6 +10534,254 @@
 				}
 			}
 		},
+		"/api/v1/admin/teams/domains/{domain}/sso": {
+			"get": {
+				"operationId": "GetTeamSso",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Domain not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "SUPPORT_AGENT+. A domain's SSO setup for diagnosis: whether it is\nconfigured, tested and enabled, the IdP's entity id and sign-in URL, when\nits certificate expires, how many SSO sessions are live, and the recent\nSSO configuration trail (`SAML_CONFIG_UPDATED`, `SAML_ENABLED`,\n`SAML_DISABLED`). Certificates are never returned. Audited as a read.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/admin/teams/domains/{domain}/sso/disable": {
+			"post": {
+				"operationId": "DisableTeamSso",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "SSO is already disabled for this domain",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Emergency off-switch for a broken IdP: turns SSO off,\nsigns out its SSO sessions and, when the domain required SSO, puts it back\nto accepting any sign-in method. Audit-logged (`SAML_DISABLED`) and\nalerted; 409 when SSO is already off.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/admin/teams/domains/{domain}/sso/reset": {
+			"post": {
+				"operationId": "ResetTeamSso",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Staff session older than the configured maximum (STAFF_SESSION_EXPIRED): the session is revoked and the staff member must sign in again",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Tier workflow disabled (FORBIDDEN_FEATURE_DISABLED), insufficient platform role, step-up verification needed on a write (STEP_UP_REQUIRED), or a network outside config.admin.ipAllowlist (ADMIN_IP_NOT_ALLOWED)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "SSO is not configured for this domain",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Rate limited: 120 requests/min per IP, 20 writes/min per staff member",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "PLATFORM_ADMIN+. Removes the domain's SSO connection entirely so the\ncustomer can configure it again; also signs out its SSO sessions and, when\nSSO was required, returns the domain to any sign-in method. Audit-logged\n(`SAML_CONFIG_RESET`) and alerted; 409 when SSO is not configured.",
+				"tags": [
+					"Admin"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AdminReasonRequest"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/v1/admin/teams/domains/{domain}/reset-auth-policy": {
 			"post": {
 				"operationId": "ResetAuthPolicy",

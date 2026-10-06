@@ -28,7 +28,7 @@ beforeEach(() => {
 })
 
 describe('in-process key-value store (no Redis)', () => {
-  it('stores, reads and removes values', async () => {
+  it('stores, reads and consumes values', async () => {
     const kv = getKeyValueStore()
     await kv.set('a', '1', 60_000)
 
@@ -78,7 +78,6 @@ describe('Redis-backed key-value store', () => {
         return args.includes('NX') ? 'OK' : 'OK'
       }),
       get: jest.fn().mockResolvedValue('stored'),
-      del: jest.fn().mockResolvedValue(1),
       multi: jest.fn(() => multi),
     }
     return { redis, multi, calls }
@@ -126,13 +125,12 @@ describe('Redis-backed key-value store', () => {
     expect(await getKeyValueStore().take('k')).toBeNull()
   })
 
-  it('get and remove pass through', async () => {
+  it('get passes through', async () => {
     const { redis } = fakeRedis()
     mockRedis.current = redis
 
     expect(await getKeyValueStore().get('k')).toBe('stored')
-    await getKeyValueStore().remove('k')
-    expect(redis.del).toHaveBeenCalledWith('sso:k')
+    expect(redis.get).toHaveBeenCalledWith('sso:k')
   })
 })
 

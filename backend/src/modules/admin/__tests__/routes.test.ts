@@ -64,6 +64,11 @@ jest.mock('../teams-service', () => ({
   resetAuthPolicy: mockResolved(),
   forceRemoveMember: mockResolved(),
 }))
+jest.mock('../sso-service', () => ({
+  getTeamSso: mockResolved(),
+  disableSso: mockResolved(),
+  resetSso: mockResolved(),
+}))
 jest.mock('../billing-service', () => ({
   listWebhooks: mockResolved(),
   listCreditLedger: mockResolved(),
@@ -135,6 +140,19 @@ const ENDPOINTS: readonly Endpoint[] = [
   {
     method: 'post',
     path: '/teams/domains/fund.com/reset-auth-policy',
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  { method: 'get', path: '/teams/domains/fund.com/sso', min: 'SUPPORT_AGENT' },
+  {
+    method: 'post',
+    path: '/teams/domains/fund.com/sso/disable',
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: '/teams/domains/fund.com/sso/reset',
     min: 'PLATFORM_ADMIN',
     body: { reason: REASON },
   },
@@ -603,6 +621,26 @@ describe('alerts on risky staff actions', () => {
     expect(sent()).toEqual([
       expect.objectContaining({
         action: 'AUTH_POLICY_RESET',
+        targetType: 'TEAM_DOMAIN',
+        targetId: 'fund.com',
+      }),
+    ])
+  })
+
+  it.each([
+    ['disable', 'SAML_DISABLED'],
+    ['reset', 'SAML_CONFIG_RESET'],
+  ])('alerts when staff %s a domain’s SSO', async (path, action) => {
+    await as(
+      PlatformRole.PLATFORM_ADMIN,
+      'post',
+      `/teams/domains/fund.com/sso/${path}`,
+      { reason: REASON },
+    )
+    await flush()
+    expect(sent()).toEqual([
+      expect.objectContaining({
+        action,
         targetType: 'TEAM_DOMAIN',
         targetId: 'fund.com',
       }),

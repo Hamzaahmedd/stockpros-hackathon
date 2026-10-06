@@ -5,6 +5,7 @@ import { getUserId, sendSuccess } from '../../shared/utils'
 import { AdminTargetType, alertAdminAction } from '../access-control'
 import { AuthenticatedRequest } from '../auth'
 import * as Billing from './billing-service'
+import * as Sso from './sso-service'
 import * as System from './system-service'
 import * as StepUp from './step-up-service'
 import * as Teams from './teams-service'
@@ -164,6 +165,43 @@ export const forceVerifyDomain = handle('Domain verified', (req) => {
   const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
   return Teams.forceVerifyDomain(writeContext(req, reason, ticketRef), id)
 })
+
+export const getTeamSso = handle('SSO configuration fetched', (req) => {
+  const { domain } = validateOrThrow(domainParamValidator, req.params)
+  return Sso.getTeamSso(readContext(req), domain)
+})
+
+/** Runs a staff SSO write and sends the risky-action alert once it has committed. */
+const ssoWrite = (
+  message: string,
+  action: AdminAuditAction,
+  run: (ctx: AdminWriteContext, domain: string) => Promise<unknown>,
+) =>
+  handle(message, async (req) => {
+    const { domain } = validateOrThrow(domainParamValidator, req.params)
+    const { reason, ticketRef } = validateOrThrow(reasonBodyValidator, req.body)
+    const result = await run(writeContext(req, reason, ticketRef), domain)
+    void alertAdminAction({
+      adminId: getUserId(req),
+      action,
+      targetType: AdminTargetType.TEAM_DOMAIN,
+      targetId: domain,
+      ticketRef,
+    })
+    return result
+  })
+
+export const disableTeamSso = ssoWrite(
+  'SSO disabled',
+  AdminAuditAction.SAML_DISABLED,
+  Sso.disableSso,
+)
+
+export const resetTeamSso = ssoWrite(
+  'SSO configuration reset',
+  AdminAuditAction.SAML_CONFIG_RESET,
+  Sso.resetSso,
+)
 
 export const resetAuthPolicy = handle('Auth policy reset', async (req) => {
   const { domain } = validateOrThrow(domainParamValidator, req.params)

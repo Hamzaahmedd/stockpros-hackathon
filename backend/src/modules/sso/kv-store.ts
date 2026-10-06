@@ -15,7 +15,6 @@ export interface KeyValueStore {
   get(key: string): Promise<string | null>
   /** Atomically reads and deletes, so a value can be used once. */
   take(key: string): Promise<string | null>
-  remove(key: string): Promise<void>
 }
 
 const PREFIX = 'sso:'
@@ -47,9 +46,6 @@ const memoryStore: KeyValueStore = {
     memory.delete(key)
     return value
   },
-  remove: async (key) => {
-    memory.delete(key)
-  },
 }
 
 const redisStore = (
@@ -69,9 +65,6 @@ const redisStore = (
       .exec()
     const value = result?.[0]?.[1]
     return typeof value === 'string' ? value : null
-  },
-  remove: async (key) => {
-    await redis.del(PREFIX + key)
   },
 })
 

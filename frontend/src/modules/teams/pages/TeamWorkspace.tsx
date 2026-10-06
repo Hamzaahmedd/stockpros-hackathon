@@ -35,8 +35,8 @@ type WorkspaceTab =
   | 'security'
   | 'settings'
 
-// Who sees a tab: everyone, owners and admins, or (owner) only the owner.
-type TabAudience = 'all' | 'admin' | 'owner'
+// Who sees a tab: everyone, or owners and admins.
+type TabAudience = 'all' | 'admin'
 
 const TABS: { id: WorkspaceTab; label: string; audience: TabAudience }[] = [
   { id: 'overview', label: 'Overview', audience: 'all' },
@@ -48,25 +48,30 @@ const TABS: { id: WorkspaceTab; label: string; audience: TabAudience }[] = [
   { id: 'credits', label: 'Credits', audience: 'admin' },
   { id: 'billing', label: 'Billing', audience: 'admin' },
   { id: 'activity', label: 'Activity', audience: 'admin' },
-  { id: 'security', label: 'Security', audience: 'owner' },
+  // Owners choose the sign-in method; admins also set up single sign-on here.
+  { id: 'security', label: 'Security', audience: 'admin' },
   // Admins can rename; the rest of the tab is owner-only.
   { id: 'settings', label: 'Settings', audience: 'admin' },
 ]
 
 const canSeeTab = (audience: TabAudience, role: Team['role']): boolean => {
   if (audience === 'all') return true
-  return canDo(
-    role,
-    audience === 'owner' ? TeamAction.SET_AUTH_POLICY : TeamAction.MANAGE,
-  )
+  return canDo(role, TeamAction.MANAGE)
 }
 
-export default function TeamWorkspace() {
+interface TeamWorkspaceProps {
+  /** Which tab opens first (the workspace security route opens Security). */
+  initialTab?: WorkspaceTab
+}
+
+export default function TeamWorkspace({
+  initialTab = 'overview',
+}: Readonly<TeamWorkspaceProps>) {
   const { user } = useAuth()
   const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
   const [missing, setMissing] = useState(false)
-  const [tab, setTab] = useState<WorkspaceTab>('overview')
+  const [selectedTab, setTab] = useState<WorkspaceTab>(initialTab)
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +94,13 @@ export default function TeamWorkspace() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // A tab the caller may not see (a plain member opening the security route) falls back to Overview.
+  const tab: WorkspaceTab =
+    team &&
+    TABS.some((t) => t.id === selectedTab && canSeeTab(t.audience, team.role))
+      ? selectedTab
+      : 'overview'
 
   return (
     <div className='flex h-screen overflow-hidden bg-background text-foreground transition-all duration-300'>
@@ -189,10 +201,7 @@ export default function TeamWorkspace() {
                 <BillingTab team={team} reload={load} />
               )}
               {tab === 'activity' && isTeamAdmin(team.role) && <ActivityTab />}
-              {tab === 'security' &&
-                canDo(team.role, TeamAction.SET_AUTH_POLICY) && (
-                  <SecurityTab team={team} reload={load} />
-                )}
+              {tab === 'security' && <SecurityTab team={team} reload={load} />}
               {tab === 'settings' && isTeamAdmin(team.role) && (
                 <SettingsTab
                   team={team}

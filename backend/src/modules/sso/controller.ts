@@ -6,7 +6,7 @@ import { logger } from '../../shared/infrastructure/logger'
 import { sendSuccess } from '../../shared/utils/api-response'
 import { convertToMilliseconds } from '../../shared/utils'
 import { exchangeSsoCode, handleSsoCallback, startSsoLogin } from './service'
-import { SsoCallbackOutcome } from './types'
+import { SsoCallbackOutcome, SsoReturnResult } from './types'
 import {
   ssoAcsBodyValidator,
   ssoExchangeValidator,
@@ -24,11 +24,11 @@ const frontendRedirect = (
     case SsoCallbackOutcome.LOGIN_READY:
       return `${base}/auth/sso/complete?code=${encodeURIComponent(code ?? '')}`
     case SsoCallbackOutcome.LOGIN_FAILED:
-      return `${base}/login?sso=failed`
+      return `${base}/login?sso=${SsoReturnResult.FAILED}`
     case SsoCallbackOutcome.TEST_PASSED:
-      return `${base}/settings/workspace/security?sso_test=passed`
+      return `${base}/settings/workspace/security?sso_test=${SsoReturnResult.PASSED}`
     case SsoCallbackOutcome.TEST_FAILED:
-      return `${base}/settings/workspace/security?sso_test=failed`
+      return `${base}/settings/workspace/security?sso_test=${SsoReturnResult.FAILED}`
   }
 }
 

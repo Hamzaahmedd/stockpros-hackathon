@@ -9,6 +9,7 @@ import type {
   AdminPage,
   AdminQueueHealth,
   AdminTeam,
+  AdminTeamSso,
   CreditLedgerEntry,
   AdminUser,
   AdminWebhook,
@@ -101,6 +102,30 @@ export const adminService = {
       reason,
       ticketRef,
     })
+  },
+  getTeamSso: async (domain: string): Promise<AdminTeamSso> =>
+    unwrap(
+      await api.get(`${BASE}/teams/domains/${encodeURIComponent(domain)}/sso`),
+    ),
+  disableTeamSso: async (
+    domain: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(
+      `${BASE}/teams/domains/${encodeURIComponent(domain)}/sso/disable`,
+      { reason, ticketRef },
+    )
+  },
+  resetTeamSso: async (
+    domain: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(
+      `${BASE}/teams/domains/${encodeURIComponent(domain)}/sso/reset`,
+      { reason, ticketRef },
+    )
   },
   resetDomainAuthPolicy: async (
     domain: string,

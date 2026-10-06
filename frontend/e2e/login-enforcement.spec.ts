@@ -245,13 +245,35 @@ test.describe('workspace security tab', () => {
     await expect.poll(() => body).toEqual({ authPolicy: 'ANY' })
   })
 
-  for (const role of ['ADMIN', 'MEMBER'] as const) {
-    test(`the ${role} role does not see the Security tab`, async ({ page }) => {
-      await openWorkspace(page, role)
-      await expect(page.getByRole('tab', { name: 'Domains' })).toBeVisible()
-      await expect(page.getByRole('tab', { name: 'Security' })).toHaveCount(0)
-    })
-  }
+  test('an admin sees the Security tab but cannot change the sign-in method', async ({
+    page,
+  }) => {
+    await openWorkspace(page, 'ADMIN')
+    await page.route('**/api/v1/teams/domains/*/sso', (route) =>
+      route.fulfill({
+        status: 403,
+        json: {
+          success: false,
+          message: 'Single sign-on is not enabled',
+          statusCode: 403,
+          errorCode: 'FORBIDDEN_FEATURE_DISABLED',
+        },
+      }),
+    )
+
+    await page.getByRole('tab', { name: 'Security' }).click()
+
+    await expect(page.getByLabel('Sign-in method for fund.com')).toBeDisabled()
+    await expect(
+      page.getByText('Only the workspace owner can change this'),
+    ).toBeVisible()
+  })
+
+  test('a plain member does not see the Security tab', async ({ page }) => {
+    await openWorkspace(page, 'MEMBER')
+    await expect(page.getByRole('tab', { name: 'Domains' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Security' })).toHaveCount(0)
+  })
 })
 
 test.describe('staff panel', () => {

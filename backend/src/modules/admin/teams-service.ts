@@ -54,6 +54,7 @@ export async function searchTeams(
           domain: true,
           isVerified: true,
           authPolicy: true,
+          samlEnabled: true,
         },
       },
       members: {

@@ -23,6 +23,8 @@ import type {
   SeatReduction,
   SharedScreener,
   SharedWatchlist,
+  SsoConfig,
+  SsoConfigInput,
   Team,
   TeamAnalytics,
   TeamJoinPolicy,
@@ -50,6 +52,9 @@ const readPaidAction = (body: unknown): PaidActionResult => {
       typeof data.seatCapacity === 'number' ? data.seatCapacity : undefined,
   }
 }
+
+const ssoUrl = (domain: string): string =>
+  `${BASE}/domains/${encodeURIComponent(domain)}/sso`
 
 export const teamService = {
   getMyTeam: async (): Promise<Team> => unwrap(await api.get(`${BASE}/me`)),
@@ -131,6 +136,27 @@ export const teamService = {
         },
       ),
     ),
+
+  getSsoConfig: async (domain: string): Promise<SsoConfig> =>
+    unwrap(await api.get(ssoUrl(domain))),
+
+  /** Owner/admin. Any change switches SSO off and clears the test result. */
+  saveSsoConfig: async (
+    domain: string,
+    input: SsoConfigInput,
+  ): Promise<SsoConfig> => unwrap(await api.put(ssoUrl(domain), input)),
+
+  deleteSsoConfig: async (
+    domain: string,
+  ): Promise<{ revokedSessions: number }> =>
+    unwrap(await api.delete(ssoUrl(domain))),
+
+  setSsoEnabled: async (domain: string, enabled: boolean): Promise<SsoConfig> =>
+    unwrap(await api.patch(`${ssoUrl(domain)}/enabled`, { enabled })),
+
+  /** The identity provider address the browser is sent to for a test sign-in. */
+  startSsoTest: async (domain: string): Promise<{ redirectUrl: string }> =>
+    unwrap(await api.post(`${ssoUrl(domain)}/test`)),
 
   updateInstructions: async (orgInstructions: string | null): Promise<void> => {
     await api.patch(`${BASE}/instructions`, { orgInstructions })
