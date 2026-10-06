@@ -14,6 +14,8 @@ jest.mock('../usage', () => ({ getMyUsage: jest.fn() }))
 
 jest.mock('../usage-history', () => ({ getUsageHistory: jest.fn() }))
 
+jest.mock('../spend-cap', () => ({ setSpendCap: jest.fn() }))
+
 jest.mock('../receipts', () => ({
   getTeamReceipt: jest.fn(),
   listTeamTransactions: jest.fn(),
@@ -44,6 +46,7 @@ import {
 import { getCreditLedger } from '../ledger'
 import { getMyUsage } from '../usage'
 import { getUsageHistory } from '../usage-history'
+import { setSpendCap } from '../spend-cap'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import { verifySafepaySignature } from '../signature'
 import {
@@ -576,6 +579,63 @@ describe('getMyUsageHandler', () => {
   it('forwards errors', async () => {
     ;(getMyUsage as jest.Mock).mockRejectedValue(new Error('boom'))
     await controller.getMyUsageHandler(mockReq() as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('setSpendCapHandler', () => {
+  it('sets the limit for the authenticated user only, ignoring any user id in the body', async () => {
+    ;(setSpendCap as jest.Mock).mockResolvedValue({ spendCap: null })
+    const res = mockRes()
+
+    await controller.setSpendCapHandler(
+      mockReq({
+        body: { monthlyLimitPaisa: 50_000, userId: 'someone-else' },
+      }) as any,
+      res,
+      next,
+    )
+
+    expect(setSpendCap).toHaveBeenCalledWith('user-1', 50_000)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: 'Spending limit updated',
+      }),
+    )
+  })
+
+  it('removes the limit when given null', async () => {
+    ;(setSpendCap as jest.Mock).mockResolvedValue({})
+    await controller.setSpendCapHandler(
+      mockReq({ body: { monthlyLimitPaisa: null } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(setSpendCap).toHaveBeenCalledWith('user-1', null)
+  })
+
+  it.each([{}, { monthlyLimitPaisa: 1 }, { monthlyLimitPaisa: '50000' }])(
+    'rejects an invalid body (%o) before touching the service',
+    async (body) => {
+      ;(setSpendCap as jest.Mock).mockClear()
+      await controller.setSpendCapHandler(
+        mockReq({ body }) as any,
+        mockRes(),
+        next,
+      )
+      expect(setSpendCap).not.toHaveBeenCalled()
+      expect(next).toHaveBeenCalledWith(expect.any(Error))
+    },
+  )
+
+  it('forwards service errors', async () => {
+    ;(setSpendCap as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.setSpendCapHandler(
+      mockReq({ body: { monthlyLimitPaisa: 50_000 } }) as any,
+      mockRes(),
+      next,
+    )
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

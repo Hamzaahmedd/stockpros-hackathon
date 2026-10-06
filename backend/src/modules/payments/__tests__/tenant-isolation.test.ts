@@ -32,6 +32,7 @@ import { getActiveMembership } from '../../../shared/infrastructure/team-access'
 import { TopupPackId } from '../constants'
 import { getCreditLedger } from '../ledger'
 import { getUsageHistory } from '../usage-history'
+import { setSpendCap } from '../spend-cap'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import {
   createSeatAdditionCheckout,
@@ -281,6 +282,45 @@ describe('usage history', () => {
     expect(history.scope).toBe('USER')
     expect(boundValues()).not.toContain(A)
     expect(boundValues()).not.toContain(B)
+  })
+})
+
+describe('personal spending limit', () => {
+  beforeEach(() => {
+    db.user.rows.push({
+      id: 'solo',
+      displayName: 'Solo',
+      email: 's@x.com',
+      plan: 'PRO',
+    })
+    Object.assign(db, { usageEvent: { count: jest.fn().mockResolvedValue(0) } })
+    db.$queryRaw = jest.fn().mockResolvedValue([])
+  })
+
+  it.each(['a-owner', 'b-owner', 'b-member'])(
+    'workspace user %s cannot set one: limits for members belong to their admins',
+    async (userId) => {
+      asUser(userId)
+      db.user.update = jest.fn()
+      await expect(setSpendCap(userId, 20_000)).rejects.toMatchObject({
+        statusCode: 403,
+      })
+      expect(db.user.update).not.toHaveBeenCalled()
+    },
+  )
+
+  it('an individual only ever writes their own row', async () => {
+    asUser('solo')
+    const update = jest.fn()
+    db.user.update = update
+
+    await setSpendCap('solo', 20_000)
+
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'solo' },
+      data: { monthlyCreditLimitPaisa: 20_000 },
+    })
   })
 })
 

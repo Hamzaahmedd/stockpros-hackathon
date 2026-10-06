@@ -23,6 +23,9 @@ model User {
   platformRole                 PlatformRole @default(USER) @map("platform_role")
   // Prepaid overage credit pool for individual PRO users (integer paisa).
   creditBalanceInPaisa         Int          @default(0) @map("credit_balance_in_paisa")
+  // Optional self-set cap on credit spend per billing cycle for individual PRO
+  // users; null = no cap. Workspace members are capped by TeamMember instead.
+  monthlyCreditLimitPaisa      Int?         @map("monthly_credit_limit_paisa")
   // Personal UI preferences (theme, chart layout, indicators), overlaid on the
   // team's `defaultPreferences` when the user belongs to a workspace.
   preferences                  Json?

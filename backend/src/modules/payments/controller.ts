@@ -16,6 +16,7 @@ import { SAFEPAY_SIGNATURE_HEADER, verifySafepaySignature } from './signature'
 import {
   createCheckoutValidator,
   creditLedgerQueryValidator,
+  spendCapValidator,
   subscriptionScopeQueryValidator,
   transactionIdParamValidator,
   transactionsQueryValidator,
@@ -33,6 +34,7 @@ import { getCreditLedger } from './ledger'
 import { getTeamReceipt, listTeamTransactions } from './receipts'
 import { getMyUsage } from './usage'
 import { getUsageHistory } from './usage-history'
+import { setSpendCap } from './spend-cap'
 import {
   createTeamCheckout,
   createTeamRenewalCheckout,
@@ -149,6 +151,21 @@ export const getMyUsageHandler = async (
     const data = await getMyUsage(getUserId(req))
 
     return sendSuccess(res, { message: 'Usage fetched', data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const setSpendCapHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { monthlyLimitPaisa } = validateOrThrow(spendCapValidator, req.body)
+    const data = await setSpendCap(getUserId(req), monthlyLimitPaisa)
+
+    return sendSuccess(res, { message: 'Spending limit updated', data })
   } catch (error) {
     next(error)
   }

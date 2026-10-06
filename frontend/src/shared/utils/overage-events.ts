@@ -8,7 +8,10 @@ import { isRecord } from './type-guards'
 export const OVERAGE_REQUIRED_CODE = 'OVERAGE_REQUIRED'
 export const OVERAGE_REQUIRED_EVENT = 'stockpros:overage-required'
 
-export type OverageReason = 'INSUFFICIENT_CREDITS' | 'SPEND_LIMIT_REACHED'
+export type OverageReason =
+  | 'INSUFFICIENT_CREDITS'
+  | 'SPEND_LIMIT_REACHED'
+  | 'PERSONAL_SPEND_LIMIT_REACHED'
 
 export type OverageRequiredDetails = {
   code: typeof OVERAGE_REQUIRED_CODE
@@ -20,6 +23,7 @@ export type OverageRequiredDetails = {
 const OVERAGE_REASONS: readonly OverageReason[] = [
   'INSUFFICIENT_CREDITS',
   'SPEND_LIMIT_REACHED',
+  'PERSONAL_SPEND_LIMIT_REACHED',
 ]
 
 /** Runtime check that an untrusted value (an API body, an event detail) really is overage details. */

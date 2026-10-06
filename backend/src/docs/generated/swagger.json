@@ -2519,6 +2519,10 @@
 					"canTopUp": {
 						"type": "boolean",
 						"description": "False for plain team members, who cannot buy credits."
+					},
+					"canSetSpendCap": {
+						"type": "boolean",
+						"description": "True for individual Pro users, who set their own limit; members' limits are set by workspace admins."
 					}
 				},
 				"required": [
@@ -2526,7 +2530,8 @@
 					"balanceInPaisa",
 					"costPerSignalPaisa",
 					"signalsAvailable",
-					"canTopUp"
+					"canTopUp",
+					"canSetSpendCap"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -2591,7 +2596,7 @@
 							}
 						],
 						"nullable": true,
-						"description": "Team members with a monthly credit cap only."
+						"description": "Present only when a monthly credit cap applies (a member's, or the individual's own)."
 					}
 				},
 				"required": [
@@ -2619,6 +2624,22 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetSpendCapRequest": {
+				"properties": {
+					"monthlyLimitPaisa": {
+						"type": "number",
+						"format": "double",
+						"nullable": true,
+						"description": "Most credit (in paisa) to spend per billing cycle, 5,000 (one signal) to\n10,000,000; `null` removes the limit.",
+						"example": 100000
+					}
+				},
+				"required": [
+					"monthlyLimitPaisa"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -7860,6 +7881,63 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/payments/credits/spend-cap": {
+			"put": {
+				"operationId": "SetSpendCap",
+				"responses": {
+					"200": {
+						"description": "Spending limit updated",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UsageSummaryResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid limit",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "FREE plan, or a workspace member (admins set those limits)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Sets or removes the caller's own monthly limit on credit spend. Individual\nPro users only: workspace members are limited by their admins, and FREE has\nno credits. Once reached, AI signals past the included allowance are\nrefused with `OVERAGE_REQUIRED` / `PERSONAL_SPEND_LIMIT_REACHED` until the\nnext cycle or until the limit is raised. Returns the refreshed usage summary.",
+				"tags": [
+					"Payments"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetSpendCapRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/payments/me/usage/history": {

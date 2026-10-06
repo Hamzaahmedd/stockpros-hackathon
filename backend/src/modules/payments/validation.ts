@@ -6,6 +6,8 @@ import {
   TEAM_MAX_SEATS,
   TEAM_MIN_SEATS,
   TopupPackId,
+  USER_SPEND_CAP_MAX_PAISA,
+  USER_SPEND_CAP_MIN_PAISA,
   UsageHistoryRange,
 } from './constants'
 
@@ -97,6 +99,19 @@ export const creditLedgerQueryValidator = z.object({
   scope: subscriptionScopeValidator,
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().uuid('cursor must be a valid id').optional(),
+})
+
+/** `null` removes the limit. */
+export const spendCapValidator = z.object({
+  monthlyLimitPaisa: z
+    .number({
+      required_error: 'monthlyLimitPaisa is required (use null to remove it)',
+      invalid_type_error: 'monthlyLimitPaisa must be a number or null',
+    })
+    .int('monthlyLimitPaisa must be a whole number of paisa')
+    .min(USER_SPEND_CAP_MIN_PAISA, 'The limit must cover at least one signal')
+    .max(USER_SPEND_CAP_MAX_PAISA, 'The limit is too high')
+    .nullable(),
 })
 
 export const usageHistoryQueryValidator = z.object({

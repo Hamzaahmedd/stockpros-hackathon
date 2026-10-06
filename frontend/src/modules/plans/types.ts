@@ -67,8 +67,10 @@ export type UsageSummary = {
     signalsAvailable: number
     /** False for plain team members, who cannot buy credits. */
     canTopUp: boolean
+    /** True for individual Pro users, who set their own limit; members' limits belong to workspace admins. */
+    canSetSpendCap: boolean
   } | null
-  /** Team members with a monthly credit cap only. */
+  /** Present when a monthly credit cap applies: a member's (set by an admin) or the individual's own. */
   spendCap: {
     monthlyLimitPaisa: number
     spentPaisa: number

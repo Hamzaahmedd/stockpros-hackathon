@@ -4,6 +4,7 @@ import {
   Get,
   Path,
   Post,
+  Put,
   Query,
   Response,
   Route,
@@ -108,6 +109,17 @@ export interface UsageCreditsResponse {
   signalsAvailable: number
   /** False for plain team members, who cannot buy credits. */
   canTopUp: boolean
+  /** True for individual Pro users, who set their own limit; members' limits are set by workspace admins. */
+  canSetSpendCap: boolean
+}
+
+export interface SetSpendCapRequest {
+  /**
+   * Most credit (in paisa) to spend per billing cycle, 5,000 (one signal) to
+   * 10,000,000; `null` removes the limit.
+   * @example 100000
+   */
+  monthlyLimitPaisa: number | null
 }
 
 export interface UsageSpendCapResponse {
@@ -122,7 +134,7 @@ export interface UsageSummaryResponse {
   metered: boolean
   quota: UsageQuotaResponse | null
   credits: UsageCreditsResponse | null
-  /** Team members with a monthly credit cap only. */
+  /** Present only when a monthly credit cap applies (a member's, or the individual's own). */
   spendCap: UsageSpendCapResponse | null
 }
 
@@ -324,6 +336,27 @@ export class PaymentsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Usage fetched')
   async getMyUsage(): Promise<ApiResponse<UsageSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Sets or removes the caller's own monthly limit on credit spend. Individual
+   * Pro users only: workspace members are limited by their admins, and FREE has
+   * no credits. Once reached, AI signals past the included allowance are
+   * refused with `OVERAGE_REQUIRED` / `PERSONAL_SPEND_LIMIT_REACHED` until the
+   * next cycle or until the limit is raised. Returns the refreshed usage summary.
+   */
+  @Put('credits/spend-cap')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Spending limit updated')
+  @Response<ApiErrorResponse>(400, 'Invalid limit')
+  @Response<ApiErrorResponse>(
+    403,
+    'FREE plan, or a workspace member (admins set those limits)',
+  )
+  async setSpendCap(
+    @Body() body: SetSpendCapRequest,
+  ): Promise<ApiResponse<UsageSummaryResponse>> {
     throw new Error('tsoa spec-only')
   }
 

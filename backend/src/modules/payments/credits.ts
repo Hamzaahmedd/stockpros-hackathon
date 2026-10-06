@@ -109,6 +109,63 @@ export async function recordUsage(
 const canTopUp = (membership: ActiveMembership | null): boolean =>
   !membership || isTeamAdminRole(membership.role)
 
+type DbClient = Prisma.TransactionClient | typeof prisma
+
+export interface SpendCap {
+  limitPaisa: number
+  /** What the caller is told when it is hit, so the UI can point at who can change it. */
+  reason: OverageReason
+}
+
+/**
+ * The credit-spend cap that applies to this actor: the workspace admin's limit
+ * for a member, otherwise the user's own (individual Pro). Null = uncapped.
+ */
+export async function resolveSpendCap(
+  client: DbClient,
+  actor: MeterActor,
+): Promise<SpendCap | null> {
+  if (actor.membership) {
+    const limit = actor.membership.monthlyCreditLimitPaisa
+    return limit == null
+      ? null
+      : { limitPaisa: limit, reason: OverageReason.SPEND_LIMIT_REACHED }
+  }
+  const user = await client.user.findUnique({
+    where: { id: actor.userId },
+    select: { monthlyCreditLimitPaisa: true },
+  })
+  const limit = user?.monthlyCreditLimitPaisa
+  return limit == null
+    ? null
+    : {
+        limitPaisa: limit,
+        reason: OverageReason.PERSONAL_SPEND_LIMIT_REACHED,
+      }
+}
+
+/**
+ * Credit the actor has drawn since `windowStart`: their own draws inside the
+ * workspace for a member, or their personal-balance draws otherwise.
+ */
+export async function sumCreditSpend(
+  client: DbClient,
+  actor: MeterActor,
+  windowStart: Date,
+): Promise<number> {
+  const spent = await client.creditLedger.aggregate({
+    _sum: { amountPaisa: true },
+    where: {
+      userId: actor.userId,
+      teamId: actor.membership?.teamId ?? null,
+      type: CreditLedgerType.OVERAGE_CONSUMPTION,
+      createdAt: { gte: windowStart },
+    },
+  })
+  // Consumption rows are stored negative.
+  return Math.abs(spent._sum.amountPaisa ?? 0)
+}
+
 const rejection = (reason: OverageReason, feature: string, actor: MeterActor) =>
   new OverageRequiredError({
     reason,
@@ -184,21 +241,11 @@ async function consumeCredit(
   const cost = OVERAGE_COST_PAISA_PER_SIGNAL
   const { membership } = actor
 
-  const cap = membership?.monthlyCreditLimitPaisa
-  if (membership && cap != null) {
-    const spent = await tx.creditLedger.aggregate({
-      _sum: { amountPaisa: true },
-      where: {
-        userId: actor.userId,
-        teamId: membership.teamId,
-        type: CreditLedgerType.OVERAGE_CONSUMPTION,
-        createdAt: { gte: windowStart },
-      },
-    })
-    // Consumption rows are stored negative.
-    const spentPaisa = -(spent._sum.amountPaisa ?? 0)
-    if (spentPaisa + cost > cap) {
-      throw rejection(OverageReason.SPEND_LIMIT_REACHED, feature, actor)
+  const cap = await resolveSpendCap(tx, actor)
+  if (cap) {
+    const spentPaisa = await sumCreditSpend(tx, actor, windowStart)
+    if (spentPaisa + cost > cap.limitPaisa) {
+      throw rejection(cap.reason, feature, actor)
     }
   }
 

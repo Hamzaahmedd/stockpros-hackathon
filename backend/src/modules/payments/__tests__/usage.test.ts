@@ -31,8 +31,16 @@ const db = prisma as any
 const PERIOD_START = new Date('2026-09-10T00:00:00Z')
 const PERIOD_END = new Date('2026-10-10T00:00:00Z')
 
-const asUser = (plan: string, creditBalanceInPaisa = 0) =>
-  db.user.findUniqueOrThrow.mockResolvedValue({ plan, creditBalanceInPaisa })
+const asUser = (
+  plan: string,
+  creditBalanceInPaisa = 0,
+  monthlyCreditLimitPaisa: number | null = null,
+) =>
+  db.user.findUniqueOrThrow.mockResolvedValue({
+    plan,
+    creditBalanceInPaisa,
+    monthlyCreditLimitPaisa,
+  })
 
 const asMember = (
   role: TeamRole,
@@ -126,9 +134,47 @@ describe('PRO users', () => {
       costPerSignalPaisa: OVERAGE_COST_PAISA_PER_SIGNAL,
       signalsAvailable: 19, // 95,000 / 5,000
       canTopUp: true,
+      canSetSpendCap: true,
     })
     expect(spendCap).toBeNull()
     expect(db.team.findUniqueOrThrow).not.toHaveBeenCalled()
+  })
+
+  it('report their own spending limit, what they have spent and what is left', async () => {
+    asUser('PRO', 95_000, 20_000)
+    db.creditLedger.aggregate.mockResolvedValue({
+      _sum: { amountPaisa: -15_000 },
+    })
+
+    const { spendCap } = await getMyUsage('user-1')
+
+    expect(spendCap).toEqual({
+      monthlyLimitPaisa: 20_000,
+      spentPaisa: 15_000,
+      remainingPaisa: 5_000,
+    })
+    // Personal draws only: nothing from a workspace pool counts.
+    expect(db.creditLedger.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: 'user-1',
+          teamId: null,
+          createdAt: { gte: PERIOD_START },
+        }),
+      }),
+    )
+  })
+
+  it('show remaining 0 (never negative) when a lowered limit is already exceeded', async () => {
+    asUser('PRO', 95_000, 5_000)
+    db.creditLedger.aggregate.mockResolvedValue({
+      _sum: { amountPaisa: -50_000 },
+    })
+
+    expect((await getMyUsage('user-1')).spendCap).toMatchObject({
+      spentPaisa: 50_000,
+      remainingPaisa: 0,
+    })
   })
 
   it('rounds signalsAvailable down — a partial signal cannot be bought', async () => {
@@ -195,6 +241,7 @@ describe('TEAM members', () => {
       balanceInPaisa: 250_000,
       signalsAvailable: 50,
       canTopUp: false,
+      canSetSpendCap: false,
     })
 
     asMember(TeamRole.ADMIN)

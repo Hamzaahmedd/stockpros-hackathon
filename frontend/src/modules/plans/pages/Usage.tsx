@@ -13,10 +13,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CreditLedgerPanel } from '../components/CreditLedgerPanel'
 import { QuotaMeter } from '../components/QuotaMeter'
+import { SpendCapControl } from '../components/SpendCapControl'
 import { UsageHistoryChart } from '../components/UsageHistoryChart'
 import { METERED_FEATURE_LABELS } from '../constants'
 import { usageService } from '../services'
-import type { UsageHistory, UsageHistoryRange } from '../types'
+import type { UsageHistory, UsageHistoryRange, UsageSummary } from '../types'
 import { daysUntil, formatChartDay, formatPaisa } from '../utils'
 
 const RANGE_OPTIONS: { id: UsageHistoryRange; label: string }[] = [
@@ -45,6 +46,9 @@ export default function Usage() {
   const [range, setRange] = useState<UsageHistoryRange>('current')
   const [history, setHistory] = useState<UsageHistory | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [summary, setSummary] = useState<UsageSummary | null>(null)
+  // Bumped after the spending limit changes so the meter above reloads too.
+  const [meterKey, setMeterKey] = useState(0)
 
   const load = useCallback(async (nextRange: UsageHistoryRange) => {
     setError(null)
@@ -59,6 +63,19 @@ export default function Usage() {
   useEffect(() => {
     void load(range)
   }, [range, load])
+
+  useEffect(() => {
+    usageService
+      .getMyUsage()
+      .then(setSummary)
+      // The limit control is optional; the meter reports its own load failure.
+      .catch(() => setSummary(null))
+  }, [])
+
+  const handleCapChanged = (next: UsageSummary) => {
+    setSummary(next)
+    setMeterKey((key) => key + 1)
+  }
 
   const isTeamView = history?.scope === 'TEAM'
   const note = history ? resetNote(history) : null
@@ -81,7 +98,11 @@ export default function Usage() {
             </p>
           </header>
 
-          <QuotaMeter showDetailsLink={false} />
+          <QuotaMeter key={meterKey} showDetailsLink={false} />
+
+          {summary && (
+            <SpendCapControl usage={summary} onChanged={handleCapChanged} />
+          )}
 
           {error && (
             <div role='alert' className='flex items-center gap-3 text-sm'>

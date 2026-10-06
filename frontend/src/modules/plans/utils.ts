@@ -12,6 +12,21 @@ export const formatPaisa = (paisa: number): string =>
 export const clampSeats = (value: number, min: number, max: number): number =>
   Number.isFinite(value) ? Math.min(max, Math.max(min, Math.floor(value))) : min
 
+/**
+ * Whole paisa for a rupee amount typed by the user, or null when it is empty,
+ * not a number, or outside `[min, max]` paisa. Rounds to the nearest paisa.
+ */
+export const parseRupeesToPaisa = (
+  input: string,
+  min: number,
+  max: number,
+): number | null => {
+  const rupees = Number(input.trim())
+  if (input.trim() === '' || !Number.isFinite(rupees)) return null
+  const paisa = Math.round(rupees * 100)
+  return paisa >= min && paisa <= max ? paisa : null
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 /** "Oct 6" for a `YYYY-MM-DD` calendar day. Parsed as UTC so no time zone can shift it. */

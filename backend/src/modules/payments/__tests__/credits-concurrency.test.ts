@@ -14,7 +14,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
   },
 }))
 
-import { OverageRequiredError } from '../../../shared/errors'
+import { OverageReason, OverageRequiredError } from '../../../shared/errors'
 import {
   MeteredFeature,
   OVERAGE_COST_PAISA_PER_SIGNAL,
@@ -29,6 +29,8 @@ interface FakeDb {
   usageRows: { userId: string; costPaisa: number }[]
   ledgerRows: number[]
   balances: Map<string, number>
+  /** Personal spending limit per user (paisa); absent = uncapped. */
+  caps: Map<string, number>
 }
 
 /** `useLocks: false` turns `pg_advisory_xact_lock` into a no-op (a plain READ COMMITTED transaction). */
@@ -36,6 +38,7 @@ const makeFakeDb = (useLocks: boolean): FakeDb => {
   const usageRows: FakeDb['usageRows'] = []
   const ledgerRows: number[] = []
   const balances = new Map<string, number>()
+  const caps = new Map<string, number>()
   const tails = new Map<string, Promise<void>>()
 
   const acquire = async (key: string): Promise<() => void> => {
@@ -67,13 +70,20 @@ const makeFakeDb = (useLocks: boolean): FakeDb => {
       },
     },
     creditLedger: {
-      aggregate: async () => ({ _sum: { amountPaisa: null } }),
+      aggregate: async () => {
+        const sum = ledgerRows.reduce((total, amount) => total + amount, 0)
+        await tick() // read → (other transactions run here) → write
+        return { _sum: { amountPaisa: ledgerRows.length ? sum : null } }
+      },
       create: async ({ data }: any) => {
         await tick()
         ledgerRows.push(data.amountPaisa)
       },
     },
     user: {
+      findUnique: async ({ where }: any) => ({
+        monthlyCreditLimitPaisa: caps.get(where.id) ?? null,
+      }),
       updateMany: async ({ where, data }: any) => {
         await tick()
         const balance = balances.get(where.id) ?? 0
@@ -96,7 +106,7 @@ const makeFakeDb = (useLocks: boolean): FakeDb => {
       }
     },
   }
-  return { client, usageRows, ledgerRows, balances }
+  return { client, usageRows, ledgerRows, balances, caps }
 }
 
 const actor = { userId: 'user-1', membership: null }
@@ -188,6 +198,40 @@ describe('quota boundary under a concurrent burst', () => {
     expect(outcome.rejected).toBe(6)
     expect(db.usageRows).toHaveLength(before)
     expect(db.ledgerRows).toHaveLength(0)
+  })
+
+  it('a personal spending limit holds under a burst: exactly the capped number of signals are paid, the rest rejected', async () => {
+    const db = makeFakeDb(true)
+    seed(db, 1_000_000) // plenty of credit; only the limit can stop it
+    for (let i = 0; i < 5; i += 1)
+      db.usageRows.push({ userId: 'user-1', costPaisa: 0 })
+    db.caps.set('user-1', 3 * OVERAGE_COST_PAISA_PER_SIGNAL)
+
+    const results = await runBurst(db, 12)
+
+    expect(summarize(results)).toEqual({ base: 0, credit: 3, rejected: 9 })
+    expect(db.ledgerRows).toHaveLength(3)
+    expect(db.balances.get('user-1')).toBe(
+      1_000_000 - 3 * OVERAGE_COST_PAISA_PER_SIGNAL,
+    )
+    const reasons = results
+      .filter((r) => r.status === 'rejected')
+      .map((r) => (r as PromiseRejectedResult).reason.details.reason)
+    expect(new Set(reasons)).toEqual(
+      new Set([OverageReason.PERSONAL_SPEND_LIMIT_REACHED]),
+    )
+  })
+
+  it('CONTROL — the same capped burst without the lock overshoots the limit', async () => {
+    const db = makeFakeDb(false)
+    seed(db, 1_000_000)
+    for (let i = 0; i < 5; i += 1)
+      db.usageRows.push({ userId: 'user-1', costPaisa: 0 })
+    db.caps.set('user-1', 3 * OVERAGE_COST_PAISA_PER_SIGNAL)
+
+    await runBurst(db, 12)
+
+    expect(db.ledgerRows.length).toBeGreaterThan(3)
   })
 
   it('different users do not block each other (locks are per user)', async () => {

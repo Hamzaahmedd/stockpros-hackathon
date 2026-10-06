@@ -4,7 +4,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UsageHistory } from '../types'
 
-const service = vi.hoisted(() => ({ getHistory: vi.fn() }))
+const service = vi.hoisted(() => ({
+  getHistory: vi.fn(),
+  getMyUsage: vi.fn(),
+}))
 vi.mock('../services', () => ({ usageService: service }))
 vi.mock('@/shared/components/Sidebar', () => ({ Sidebar: () => null }))
 // jsdom has no ResizeObserver or layout, so recharts cannot draw; the numbers
@@ -22,6 +25,9 @@ vi.mock('../components/QuotaMeter', () => ({
   QuotaMeter: ({ showDetailsLink }: { showDetailsLink?: boolean }) => (
     <div data-testid='quota-meter' data-link={String(showDetailsLink)} />
   ),
+}))
+vi.mock('../components/SpendCapControl', () => ({
+  SpendCapControl: () => <div data-testid='spend-cap-control' />,
 }))
 vi.mock('../components/CreditLedgerPanel', () => ({
   CreditLedgerPanel: ({ scope }: { scope: string }) => (
@@ -71,6 +77,7 @@ const renderPage = () =>
 beforeEach(() => {
   vi.clearAllMocks()
   service.getHistory.mockResolvedValue(history())
+  service.getMyUsage.mockResolvedValue({ plan: 'PRO', metered: true })
 })
 
 describe('Usage page', () => {
@@ -86,6 +93,19 @@ describe('Usage page', () => {
     expect(screen.getByTestId('history-reset')).toHaveTextContent(
       /Resets Oct 10/,
     )
+  })
+
+  it('shows the spending-limit control once the usage summary has loaded', async () => {
+    renderPage()
+    expect(await screen.findByTestId('spend-cap-control')).toBeInTheDocument()
+  })
+
+  it('still renders the history when the usage summary cannot be loaded', async () => {
+    service.getMyUsage.mockRejectedValue(new Error('network'))
+    renderPage()
+
+    expect(await screen.findByTestId('history-signals')).toHaveTextContent('7')
+    expect(screen.queryByTestId('spend-cap-control')).not.toBeInTheDocument()
   })
 
   it('hides the meter’s own "Usage details" link on this page', async () => {

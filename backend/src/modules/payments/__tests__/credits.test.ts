@@ -4,7 +4,7 @@ jest.mock('../../../shared/infrastructure/database', () => ({
     usageEvent: { count: jest.fn(), create: jest.fn() },
     creditLedger: { aggregate: jest.fn(), create: jest.fn() },
     team: { updateMany: jest.fn() },
-    user: { updateMany: jest.fn() },
+    user: { updateMany: jest.fn(), findUnique: jest.fn() },
     $transaction: jest.fn(),
     $executeRaw: jest.fn(),
   },
@@ -314,6 +314,97 @@ describe('consumeAiSignal — per-member spend cap', () => {
   it('skips the cap check entirely when no limit is set', async () => {
     await consumeAiSignal(teamActor(), MeteredFeature.AI_FORECAST)
     expect(db.creditLedger.aggregate).not.toHaveBeenCalled()
+  })
+})
+
+describe('consumeAiSignal — personal spending limit (individual Pro)', () => {
+  const setLimit = (monthlyCreditLimitPaisa: number | null) =>
+    db.user.findUnique.mockResolvedValue({ monthlyCreditLimitPaisa })
+
+  beforeEach(() => {
+    db.usageEvent.count.mockResolvedValue(PRO_MONTHLY_AI_SIGNALS)
+    db.user.updateMany.mockResolvedValue({ count: 1 })
+  })
+
+  it('rejects with the personal-limit reason once spent + cost would exceed it, before touching the balance', async () => {
+    setLimit(10_000)
+    db.creditLedger.aggregate.mockResolvedValue({
+      _sum: { amountPaisa: -(10_000 - OVERAGE_COST_PAISA_PER_SIGNAL + 1) },
+    })
+
+    const error = await consumeAiSignal(
+      proActor,
+      MeteredFeature.AI_FORECAST,
+    ).catch((e) => e)
+
+    expect(error).toBeInstanceOf(OverageRequiredError)
+    expect(error.details.reason).toBe(
+      OverageReason.PERSONAL_SPEND_LIMIT_REACHED,
+    )
+    expect(error.details.canTopUp).toBe(true)
+    expect(db.user.updateMany).not.toHaveBeenCalled()
+    expect(db.creditLedger.create).not.toHaveBeenCalled()
+  })
+
+  it('allows spending exactly up to the limit', async () => {
+    setLimit(10_000)
+    db.creditLedger.aggregate.mockResolvedValue({
+      _sum: { amountPaisa: -(10_000 - OVERAGE_COST_PAISA_PER_SIGNAL) },
+    })
+
+    const result = await consumeAiSignal(proActor, MeteredFeature.AI_FORECAST)
+
+    expect(result.source).toBe(UsageSource.CREDIT)
+  })
+
+  it('counts only personal-balance draws in the window, never workspace-pool ones', async () => {
+    setLimit(10_000)
+    db.creditLedger.aggregate.mockResolvedValue({ _sum: { amountPaisa: null } })
+
+    await consumeAiSignal(proActor, MeteredFeature.AI_FORECAST)
+
+    expect(db.creditLedger.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: 'user-1',
+          teamId: null,
+          type: CreditLedgerType.OVERAGE_CONSUMPTION,
+        }),
+      }),
+    )
+  })
+
+  it('blocks all further paid signals when the limit was lowered below what is already spent', async () => {
+    setLimit(OVERAGE_COST_PAISA_PER_SIGNAL)
+    db.creditLedger.aggregate.mockResolvedValue({
+      _sum: { amountPaisa: -50_000 },
+    })
+
+    await expect(
+      consumeAiSignal(proActor, MeteredFeature.AI_FORECAST),
+    ).rejects.toMatchObject({
+      details: { reason: OverageReason.PERSONAL_SPEND_LIMIT_REACHED },
+    })
+  })
+
+  it('skips the aggregate entirely when the user has no limit (or no row)', async () => {
+    setLimit(null)
+    await consumeAiSignal(proActor, MeteredFeature.AI_FORECAST)
+    expect(db.creditLedger.aggregate).not.toHaveBeenCalled()
+
+    db.user.findUnique.mockResolvedValue(null)
+    await consumeAiSignal(proActor, MeteredFeature.AI_FORECAST)
+    expect(db.creditLedger.aggregate).not.toHaveBeenCalled()
+  })
+
+  it("a workspace member is limited by the admin's cap only: the user's own limit is not even read", async () => {
+    setLimit(5_000)
+    db.usageEvent.count.mockResolvedValue(TEAM_MONTHLY_AI_SIGNALS)
+    db.team.updateMany.mockResolvedValue({ count: 1 })
+
+    await consumeAiSignal(teamActor(), MeteredFeature.AI_FORECAST)
+
+    expect(db.user.findUnique).not.toHaveBeenCalled()
   })
 })
 

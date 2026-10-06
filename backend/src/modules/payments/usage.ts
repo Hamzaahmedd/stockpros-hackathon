@@ -1,4 +1,4 @@
-import { CreditLedgerType, PlanTier } from '@prisma/client'
+import { PlanTier } from '@prisma/client'
 import { prisma } from '../../shared/infrastructure/database'
 import {
   getActiveMembership,
@@ -12,6 +12,7 @@ import {
 } from './constants'
 import {
   resolveUsageWindow,
+  sumCreditSpend,
   UsageWindowSource,
   type MeterActor,
 } from './credits'
@@ -45,8 +46,10 @@ export interface UsageSummary {
     signalsAvailable: number
     /** Whether this caller may buy credits for that pool (false for plain team members). */
     canTopUp: boolean
+    /** Whether this caller sets their own spending limit (individual Pro); members' limits are set by workspace admins. */
+    canSetSpendCap: boolean
   } | null
-  /** Present only for team members who have a monthly credit cap set. */
+  /** Present only when a monthly credit cap applies: the member's (set by an admin) or the individual's own. */
   spendCap: {
     monthlyLimitPaisa: number
     spentPaisa: number
@@ -65,7 +68,11 @@ const AI_SIGNAL_FEATURES: MeteredFeature[] = Object.values(MeteredFeature)
 export async function getMyUsage(userId: string): Promise<UsageSummary> {
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { plan: true, creditBalanceInPaisa: true },
+    select: {
+      plan: true,
+      creditBalanceInPaisa: true,
+      monthlyCreditLimitPaisa: true,
+    },
   })
 
   if (user.plan === PlanTier.FREE) {
@@ -101,19 +108,11 @@ export async function getMyUsage(userId: string): Promise<UsageSummary> {
   const limit = membership ? TEAM_MONTHLY_AI_SIGNALS : PRO_MONTHLY_AI_SIGNALS
 
   let spendCap: UsageSummary['spendCap'] = null
-  const cap = membership?.monthlyCreditLimitPaisa
-  if (membership && cap != null) {
-    const spent = await prisma.creditLedger.aggregate({
-      _sum: { amountPaisa: true },
-      where: {
-        userId,
-        teamId: membership.teamId,
-        type: CreditLedgerType.OVERAGE_CONSUMPTION,
-        createdAt: { gte: window.start },
-      },
-    })
-    // Consumption rows are stored negative.
-    const spentPaisa = Math.abs(spent._sum.amountPaisa ?? 0)
+  const cap = membership
+    ? membership.monthlyCreditLimitPaisa
+    : user.monthlyCreditLimitPaisa
+  if (cap != null) {
+    const spentPaisa = await sumCreditSpend(prisma, actor, window.start)
     spendCap = {
       monthlyLimitPaisa: cap,
       spentPaisa,
@@ -140,6 +139,7 @@ export async function getMyUsage(userId: string): Promise<UsageSummary> {
         pool.creditBalanceInPaisa / OVERAGE_COST_PAISA_PER_SIGNAL,
       ),
       canTopUp: !membership || isTeamAdminRole(membership.role),
+      canSetSpendCap: !membership,
     },
     spendCap,
   }

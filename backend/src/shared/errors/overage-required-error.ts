@@ -2,7 +2,10 @@ import { AppError } from './app-error'
 
 export enum OverageReason {
   INSUFFICIENT_CREDITS = 'INSUFFICIENT_CREDITS',
+  /** The workspace admin's per-member cap. */
   SPEND_LIMIT_REACHED = 'SPEND_LIMIT_REACHED',
+  /** The limit an individual Pro user set for themselves. */
+  PERSONAL_SPEND_LIMIT_REACHED = 'PERSONAL_SPEND_LIMIT_REACHED',
 }
 
 export const OVERAGE_REQUIRED_CODE = 'OVERAGE_REQUIRED'

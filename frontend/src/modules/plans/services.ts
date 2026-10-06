@@ -108,6 +108,16 @@ export const usageService = {
     return unwrapEnvelope(res)
   },
 
+  /** Sets (or, with `null`, removes) the caller's own monthly credit spending limit. Returns the refreshed summary. */
+  setSpendCap: async (
+    monthlyLimitPaisa: number | null,
+  ): Promise<UsageSummary> => {
+    const res = await api.put('/api/v1/payments/credits/spend-cap', {
+      monthlyLimitPaisa,
+    })
+    return unwrapEnvelope(res)
+  },
+
   /** Daily usage and per-feature totals for a cycle, bucketed by calendar day in `timeZone`. */
   getHistory: async (
     range: UsageHistoryRange = 'current',

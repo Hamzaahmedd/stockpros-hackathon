@@ -11,6 +11,10 @@ export const TEAM_MAX_SEATS = 150
 /** Credit drawn per AI signal once the monthly quota is used up (Rs 50). */
 export const OVERAGE_COST_PAISA_PER_SIGNAL = 5_000
 
+/** Bounds the API accepts for a personal spending limit: one signal up to Rs 100,000. */
+export const USER_SPEND_CAP_MIN_PAISA = OVERAGE_COST_PAISA_PER_SIGNAL
+export const USER_SPEND_CAP_MAX_PAISA = 10_000_000
+
 export type TopupPackId = 'PACK_500' | 'PACK_1000' | 'PACK_2500'
 
 export const TOPUP_PACKS: readonly {

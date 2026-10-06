@@ -46,6 +46,11 @@ router.get(
   authTokenMiddleware,
   PaymentsController.getUsageHistoryHandler,
 )
+router.put(
+  '/credits/spend-cap',
+  authTokenMiddleware,
+  PaymentsController.setSpendCapHandler,
+)
 router.get(
   '/credits/ledger',
   authTokenMiddleware,
