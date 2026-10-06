@@ -60,6 +60,7 @@ export const testConfig = {
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
     enableSso: false,
+    enableAnnouncements: true,
   },
   sendpk: {
     mockProvider: true,

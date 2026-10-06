@@ -61,6 +61,7 @@ export const developmentConfig = {
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
     enableSso: true,
+    enableAnnouncements: true,
   },
   sendpk: {
     // Explicit, visible flag rather than inferring mock mode from a missing

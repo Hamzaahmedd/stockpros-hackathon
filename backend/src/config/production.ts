@@ -61,6 +61,7 @@ export const productionConfig = {
     pricingTiersEnabled: false,
     enablePaymentProcessor: false,
     enableSso: false,
+    enableAnnouncements: false,
   },
   sendpk: {
     mockProvider: false,

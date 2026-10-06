@@ -49,6 +49,13 @@ export const CACHE_TTL = {
     SYMBOL_LOOKUP: 60 * 60 * 24, // 24 hours (86,400 seconds)
   },
 
+  /** Feature announcements: shared active list (Redis) and per-user dismissal sets */
+  ANNOUNCEMENTS: {
+    ACTIVE_LIST: 5 * 60, // 5 minutes safety net; every admin write also deletes the key
+    DISMISSED_SET: 60 * 60 * 24 * 30, // 30 days
+    L1_MS: 5 * 1000, // 5 seconds in-process (bounds cross-instance staleness)
+  },
+
   /** BullMQ job retention ages (removeOnComplete/removeOnFail), in seconds */
   JOBS: {
     AUTH_EMAIL_COMPLETED: 60 * 60, // 1 hour

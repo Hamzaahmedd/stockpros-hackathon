@@ -12,6 +12,7 @@ export enum AdminTargetType {
   PAYMENT = 'PAYMENT',
   CREDIT_LEDGER = 'CREDIT_LEDGER',
   SYSTEM = 'SYSTEM',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
 }
 
 /** Stable `targetId` for read audits, which cover a result set rather than one record. */

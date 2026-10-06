@@ -36,13 +36,14 @@ model User {
   createdAt                    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  userSessions      UserSession[]
-  adminAuditLogs    AdminAuditLog[] @relation("AdminActions")
-  adminStepUps      AdminStepUp[]
-  phoneOtps         PhoneOtp[]
-  portfolios        Portfolio[]
-  assignedUserRoles UserRole[]      @relation("AssignedRoles")
-  userRoles         UserRole[]      @relation("UserRoles")
+  userSessions       UserSession[]
+  adminAuditLogs     AdminAuditLog[]         @relation("AdminActions")
+  announcementStates AnnouncementUserState[]
+  adminStepUps       AdminStepUp[]
+  phoneOtps          PhoneOtp[]
+  portfolios         Portfolio[]
+  assignedUserRoles  UserRole[]              @relation("AssignedRoles")
+  userRoles          UserRole[]              @relation("UserRoles")
 
   // ── Watchlist feature ──────────────────────────────────────────────────────
   watchlistItems    Watchlist[]
@@ -587,6 +588,12 @@ enum TeamAuditAction {
   SAML_ENABLED
   SAML_DISABLED
   SPEND_LIMIT_OVERRIDDEN
+  ANNOUNCEMENT_CREATED
+  ANNOUNCEMENT_UPDATED
+  ANNOUNCEMENT_PUBLISHED
+  ANNOUNCEMENT_KILL_SWITCH_TOGGLED
+  ANNOUNCEMENT_REANNOUNCED
+  ANNOUNCEMENT_ARCHIVED
 }
 
 // Which limit a usage-warning email is about.
@@ -1015,4 +1022,110 @@ model AdminStepUp {
   @@index([sessionId, consumedAt], map: "idx_admin_step_up_session_consumed")
   @@index([userId], map: "idx_admin_step_up_user_id")
   @@map("admin_step_ups")
+}
+
+enum AnnouncementPlacement {
+  MODAL
+  SPOTLIGHT
+  BANNER
+  BADGE
+  CHANGELOG
+}
+
+enum AnnouncementPlanTarget {
+  ALL
+  FREE
+  PRO
+  TEAM
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AnnouncementSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// Fixed UI hooks a spotlight may point at; never a free-form selector.
+enum AnnouncementAnchor {
+  NOTIFICATION_BELL
+  SIDEBAR_WORKSPACE
+  WATCHLIST_ADD
+  FORECAST_PANEL
+  PLANS_UPGRADE
+  SETTINGS_PREFERENCES
+}
+
+// Sidebar entries a badge may decorate.
+enum AnnouncementNavKey {
+  DASHBOARD
+  WATCHLIST
+  MARKET
+  FORECAST
+  NEWS
+  PLANS
+  WORKSPACE
+  SETTINGS
+}
+
+// Platform-global (not tenant-scoped) product announcements managed from the Ops Panel.
+model Announcement {
+  id              String                   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  title           String
+  body            String
+  ctaLabel        String?                  @map("cta_label")
+  ctaUrl          String?                  @map("cta_url")
+  imageUrl        String?                  @map("image_url")
+  placement       AnnouncementPlacement
+  severity        AnnouncementSeverity?
+  anchor          AnnouncementAnchor?
+  navKey          AnnouncementNavKey?      @map("nav_key")
+  priority        Int                      @default(0)
+  dismissible     Boolean                  @default(true)
+  // Also list the item in the notification-bell changelog drawer.
+  inChangelog     Boolean                  @default(true) @map("in_changelog")
+  // Plan tiers the item is shown to; [ALL] targets everyone.
+  targetPlans     AnnouncementPlanTarget[] @default([ALL]) @map("target_plans")
+  // Workspace roles the item is shown to; empty targets every role.
+  targetRoles     TeamRole[]               @default([]) @map("target_roles")
+  startsAt        DateTime?                @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime?                @map("ends_at") @db.Timestamptz(6)
+  status          AnnouncementStatus       @default(DRAFT)
+  // Emergency kill switch: false hides the item everywhere without changing its status.
+  isEnabled       Boolean                  @default(true) @map("is_enabled")
+  // Bumped on every write; drives optimistic concurrency and cache freshness.
+  version         Int                      @default(1)
+  // Bumped only by an explicit "re-announce"; dismissals recorded at an older epoch stop counting.
+  reannounceEpoch Int                      @default(1) @map("reannounce_epoch")
+  createdBy       String                   @map("created_by") @db.Uuid
+  updatedBy       String                   @map("updated_by") @db.Uuid
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userStates AnnouncementUserState[]
+
+  @@index([status, isEnabled], map: "idx_announcements_status_enabled")
+  @@index([startsAt, endsAt], map: "idx_announcements_window")
+  @@map("announcements")
+}
+
+// Per-user seen/dismissed state. Counts only while epoch matches the announcement's reannounceEpoch.
+model AnnouncementUserState {
+  userId         String    @map("user_id") @db.Uuid
+  announcementId String    @map("announcement_id") @db.Uuid
+  epoch          Int       @default(1)
+  seenAt         DateTime? @map("seen_at") @db.Timestamptz(6)
+  dismissedAt    DateTime? @map("dismissed_at") @db.Timestamptz(6)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, announcementId])
+  @@index([announcementId], map: "idx_announcement_states_announcement")
+  @@map("announcement_user_states")
 }
