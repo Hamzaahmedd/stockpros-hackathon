@@ -1,5 +1,9 @@
 // src/App.tsx
 import { Roles, Users } from '@/modules/access-control'
+import {
+  AnnouncementHost,
+  AnnouncementsProvider,
+} from '@/modules/announcements'
 import { AdminDashboard, STAFF_ROLES } from '@/modules/admin'
 import {
   Login,
@@ -56,8 +60,9 @@ const PostHogPageviewTracker = () => {
 
 export default function App() {
   return (
-    <>
+    <AnnouncementsProvider>
       <PostHogPageviewTracker />
+      <AnnouncementHost />
       <TopUpModalHost />
       <PendingInviteAcceptor />
       <PreferencesApplier />
@@ -286,6 +291,6 @@ export default function App() {
         {/* Catch-all route */}
         <Route path='*' element={<NotFound />} />
       </Routes>
-    </>
+    </AnnouncementsProvider>
   )
 }

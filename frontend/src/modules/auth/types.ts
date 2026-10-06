@@ -1,3 +1,5 @@
+import type { AnnouncementBoot } from '@/modules/announcements'
+
 export type PlanTier = 'FREE' | 'PRO' | 'TEAM'
 
 /** Internal staff access level; `USER` for regular customers. Mirrors the backend `PlatformRole` enum. */
@@ -68,6 +70,8 @@ export type AuthContextValue = {
   loading: boolean
   pricingTiersEnabled: boolean
   enablePaymentProcessor: boolean
+  /** What the server chose to show this user on boot; null while announcements are off. */
+  announcements: AnnouncementBoot | null
   sendMagicLink: (email: string) => Promise<boolean>
   login: (email: string) => Promise<boolean>
   register: (payload: { email: string }) => Promise<void>

@@ -76,6 +76,8 @@ export interface AnnouncementListResponse extends ApiResponse<
   unreadCount: number
 }
 
+export interface AnnouncementBootResponse extends ApiResponse<AnnouncementBoot> {}
+
 export interface AnnouncementsMarkedResponse extends ApiResponse {
   updated: number
 }
@@ -88,6 +90,19 @@ export interface AnnouncementsMarkedResponse extends ApiResponse {
 @Route('api/v1/announcements')
 @Tags('Announcements')
 export class AnnouncementsSwaggerController extends Controller {
+  /**
+   * Everything the app evaluates on boot for the caller (modal, banner,
+   * spotlight, badges, changelog). The app refetches this when staff change
+   * an announcement, instead of reloading the whole profile.
+   */
+  @Get('boot')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Announcements returned')
+  @Response<ApiErrorResponse>(401, 'Unauthorized')
+  async getBoot(): Promise<AnnouncementBootResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
   /**
    * The caller's changelog (notification-bell "What's new" drawer): published,
    * enabled, scheduled-in announcements targeted at their plan and workspace

@@ -176,6 +176,27 @@ describe('createAnnouncementValidator', () => {
       expect(check({ placement: 'CHANGELOG' })).toEqual([])
     })
 
+    it('keeps a MODAL or SPOTLIGHT dismissible, but lets a banner or badge stay', () => {
+      expect(check({ dismissible: false })).toContain('dismissible')
+      expect(
+        check({
+          placement: 'SPOTLIGHT',
+          anchor: 'WATCHLIST_ADD',
+          dismissible: false,
+        }),
+      ).toContain('dismissible')
+      expect(
+        check({
+          placement: 'BANNER',
+          severity: 'CRITICAL',
+          dismissible: false,
+        }),
+      ).toEqual([])
+      expect(
+        check({ placement: 'BADGE', navKey: 'PLANS', dismissible: false }),
+      ).toEqual([])
+    })
+
     it('needs a CTA label and URL together', () => {
       expect(check({ ctaLabel: 'Try it' })).toContain('ctaUrl')
       expect(check({ ctaUrl: '/plans' })).toContain('ctaUrl')

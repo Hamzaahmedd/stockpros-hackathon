@@ -79,6 +79,10 @@ class SocketManager {
       this.emitLocal(SocketEvent.PlanRestricted, payload),
     )
 
+    this.socket.on(SocketEvent.AnnouncementsChanged, (payload: any) =>
+      this.emitLocal(SocketEvent.AnnouncementsChanged, payload),
+    )
+
     this.socket.on('connect_error', (err: any) => {
       this.connected = false
       this.emitLocal('connect_error', err)

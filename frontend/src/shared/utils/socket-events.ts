@@ -14,5 +14,7 @@ export const SocketEvent = {
   FinnhubError: 'finnhub_error',
   Notification: 'notification',
   PlanRestricted: 'plan_restricted',
+  // Content-free signal: refetch announcements through the authenticated API.
+  AnnouncementsChanged: 'announcements_changed',
 } as const
 export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent]

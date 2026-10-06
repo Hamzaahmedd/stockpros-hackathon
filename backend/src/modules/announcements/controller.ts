@@ -3,6 +3,7 @@ import { validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import type { AuthenticatedRequest } from '../auth'
 import {
+  getBootPayload,
   listChangelog,
   markAllSeen,
   recordAction,
@@ -13,6 +14,23 @@ import {
   announcementIdParamValidator,
   changelogQueryValidator,
 } from './validation'
+
+export const getBoot = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const payload = await getBootPayload(userId, await resolveAudience(userId))
+    return sendSuccess(res, {
+      message: 'Announcements retrieved successfully.',
+      data: payload,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 
 export const getChangelog = async (
   req: AuthenticatedRequest,

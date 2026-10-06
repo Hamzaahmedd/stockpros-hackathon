@@ -1,3 +1,4 @@
+import { AnnouncementAnchor, anchorProps } from '@/modules/announcements'
 import { OrgContextBanner } from '@/shared/components/OrgContextBanner'
 // pages/Forecast.tsx
 import { ReportDownloadButton } from '@/shared/components/ReportDownloadButton'
@@ -228,7 +229,10 @@ const Forecast: React.FC = () => {
     }
 
     return (
-      <div className='space-y-6 fade-in'>
+      <div
+        className='space-y-6 fade-in'
+        {...anchorProps(AnnouncementAnchor.FORECAST_PANEL)}
+      >
         {/* Chart Section */}
         <Card title='Price Forecast Chart'>
           <div className='mt-6'>

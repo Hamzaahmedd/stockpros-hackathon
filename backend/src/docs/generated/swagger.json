@@ -4282,6 +4282,92 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"AnnouncementChangelog": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/AnnouncementItem"
+						},
+						"type": "array"
+					},
+					"unreadCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"unreadCount"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementBoot": {
+				"description": "The `announcements` slice of the `GET /api/v1/auth/me` response. Null when the feature is off.",
+				"properties": {
+					"modal": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"banner": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"spotlight": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"badges": {
+						"items": {
+							"$ref": "#/components/schemas/AnnouncementItem"
+						},
+						"type": "array"
+					},
+					"changelog": {
+						"$ref": "#/components/schemas/AnnouncementChangelog"
+					}
+				},
+				"required": [
+					"modal",
+					"banner",
+					"spotlight",
+					"badges",
+					"changelog"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementBootResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/AnnouncementBoot"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"AnnouncementListResponse": {
 				"properties": {
 					"success": {
@@ -4602,73 +4688,6 @@
 				"required": [
 					"success",
 					"message"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"AnnouncementChangelog": {
-				"properties": {
-					"items": {
-						"items": {
-							"$ref": "#/components/schemas/AnnouncementItem"
-						},
-						"type": "array"
-					},
-					"unreadCount": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"items",
-					"unreadCount"
-				],
-				"type": "object",
-				"additionalProperties": true
-			},
-			"AnnouncementBoot": {
-				"description": "The `announcements` slice of the `GET /api/v1/auth/me` response. Null when the feature is off.",
-				"properties": {
-					"modal": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/AnnouncementItem"
-							}
-						],
-						"nullable": true
-					},
-					"banner": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/AnnouncementItem"
-							}
-						],
-						"nullable": true
-					},
-					"spotlight": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/AnnouncementItem"
-							}
-						],
-						"nullable": true
-					},
-					"badges": {
-						"items": {
-							"$ref": "#/components/schemas/AnnouncementItem"
-						},
-						"type": "array"
-					},
-					"changelog": {
-						"$ref": "#/components/schemas/AnnouncementChangelog"
-					}
-				},
-				"required": [
-					"modal",
-					"banner",
-					"spotlight",
-					"badges",
-					"changelog"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -10835,6 +10854,43 @@
 				"description": "Get a comprehensive dashboard summary: portfolio metrics, market movers, and recent activity.\nCombines data from multiple modules for a single-request page load.",
 				"tags": [
 					"Dashboard"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/announcements/boot": {
+			"get": {
+				"operationId": "GetBoot",
+				"responses": {
+					"200": {
+						"description": "Announcements returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AnnouncementBootResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Everything the app evaluates on boot for the caller (modal, banner,\nspotlight, badges, changelog). The app refetches this when staff change\nan announcement, instead of reloading the whole profile.",
+				"tags": [
+					"Announcements"
 				],
 				"security": [
 					{

@@ -19,12 +19,14 @@ jest.mock('../../auth', () => ({
   },
 }))
 
+const mockGetBootPayload = jest.fn()
 const mockListChangelog = jest.fn()
 const mockMarkAllSeen = jest.fn()
 const mockRecordAction = jest.fn()
 const mockResolveAudience = jest.fn()
 jest.mock('../service', () => ({
   StateAction: { SEEN: 'SEEN', DISMISSED: 'DISMISSED' },
+  getBootPayload: (...args: unknown[]) => mockGetBootPayload(...args),
   listChangelog: (...args: unknown[]) => mockListChangelog(...args),
   markAllSeen: (...args: unknown[]) => mockMarkAllSeen(...args),
   recordAction: (...args: unknown[]) => mockRecordAction(...args),
@@ -63,6 +65,7 @@ afterAll(() => setEnabled(true))
 describe('feature flag', () => {
   it.each([
     ['get', BASE],
+    ['get', `${BASE}/boot`],
     ['post', `${BASE}/seen`],
     ['post', `${BASE}/${ANNOUNCEMENT_ID}/seen`],
     ['post', `${BASE}/${ANNOUNCEMENT_ID}/dismiss`],
@@ -77,11 +80,27 @@ describe('feature flag', () => {
 describe('authentication', () => {
   it.each([
     ['get', BASE],
+    ['get', `${BASE}/boot`],
     ['post', `${BASE}/seen`],
     ['post', `${BASE}/${ANNOUNCEMENT_ID}/dismiss`],
   ] as const)('rejects an anonymous %s %s', async (method, url) => {
     const res = await request(app)[method](url)
     expect(res.status).toBe(401)
+  })
+})
+
+describe('GET /boot', () => {
+  it('returns the evaluated payload for the session user only', async () => {
+    const payload = { modal: null, banner: null, badges: [] }
+    mockGetBootPayload.mockResolvedValue(payload)
+
+    const res = await request(app)
+      .get(`${BASE}/boot?userId=${OTHER_USER_ID}`)
+      .set('x-user-id', USER_ID)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual(payload)
+    expect(mockGetBootPayload).toHaveBeenCalledWith(USER_ID, AUDIENCE)
   })
 })
 

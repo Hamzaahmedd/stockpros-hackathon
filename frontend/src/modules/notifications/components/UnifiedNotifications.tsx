@@ -12,6 +12,12 @@ import { formatTimeAgo, newsService } from '@/modules/news'
 import { notificationService } from '../services'
 import type { NewsSummary, NewsSummaryItem } from '@/modules/news'
 import { useTheme } from '@/shared/hooks/useTheme'
+import {
+  AnnouncementAnchor,
+  WhatsNewList,
+  anchorProps,
+  useAnnouncements,
+} from '@/modules/announcements'
 import { useAuth } from '@/modules/auth'
 import { useSocket } from '@/shared/hooks/useSocket'
 import { socketManager } from '@/shared/utils/socketManager'
@@ -25,7 +31,15 @@ export const UnifiedNotifications: React.FC = () => {
   const { connected } = useSocket()
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [activeTab, setActiveTab] = useState<'news' | 'alerts'>('news')
+  const {
+    enabled: announcementsEnabled,
+    boot,
+    markAllSeen,
+  } = useAnnouncements()
+  const whatsNewUnread = boot?.changelog.unreadCount ?? 0
+  const [activeTab, setActiveTab] = useState<'news' | 'alerts' | 'whatsnew'>(
+    'news',
+  )
   const [newsSummary, setNewsSummary] = useState<NewsSummary | null>(null)
   const [notifSummary, setNotifSummary] = useState<any>(null)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -333,12 +347,15 @@ export const UnifiedNotifications: React.FC = () => {
   }
 
   const totalUnread =
-    (newsSummary?.unreadCount || 0) + (notifSummary?.unreadCount || 0)
+    (newsSummary?.unreadCount || 0) +
+    (notifSummary?.unreadCount || 0) +
+    whatsNewUnread
 
   return (
     <div className='relative' ref={dropdownRef}>
       <button
         ref={triggerRef}
+        {...anchorProps(AnnouncementAnchor.NOTIFICATION_BELL)}
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => {
           notificationService.getSummary().catch(() => {})
@@ -403,16 +420,42 @@ export const UnifiedNotifications: React.FC = () => {
                 </span>
               )}
             </button>
+            {announcementsEnabled && (
+              <button
+                onClick={() => setActiveTab('whatsnew')}
+                className={`flex flex-1 items-center justify-center gap-3 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === 'whatsnew'
+                    ? 'border border-gray-200 bg-white text-cyan-600 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
+                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              >
+                What&apos;s New
+                {whatsNewUnread > 0 && (
+                  <span className='rounded-full bg-cyan-500 px-2 py-0.5 text-[9px] font-black text-white'>
+                    {whatsNewUnread}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Header Row */}
           <div className='flex items-center justify-between border-b border-gray-100 bg-white/50 px-6 py-5 dark:border-white/5 dark:bg-white/[0.01]'>
             <div>
               <h3 className='text-lg font-black uppercase tracking-widest text-gray-900 dark:text-white'>
-                {activeTab === 'news' ? 'Market Insights' : 'Action Center'}
+                {activeTab === 'news' && 'Market Insights'}
+                {activeTab === 'alerts' && 'Action Center'}
+                {activeTab === 'whatsnew' && "What's New"}
               </h3>
             </div>
-            {activeTab === 'news' ? (
+            {activeTab === 'whatsnew' ? (
+              <button
+                onClick={() => void markAllSeen()}
+                className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
+              >
+                <FiCheck size={14} /> MARK ALL READ
+              </button>
+            ) : activeTab === 'news' ? (
               <div className='flex items-center gap-2'>
                 <button
                   onClick={async () => {
@@ -446,7 +489,9 @@ export const UnifiedNotifications: React.FC = () => {
 
           {/* Content Scroll Area */}
           <div className='custom-scrollbar-unified max-h-[600px] overflow-y-auto'>
-            {loading && activeTab === 'news' && !newsSummary ? (
+            {activeTab === 'whatsnew' ? (
+              <WhatsNewList onOpen={() => setIsOpen(false)} />
+            ) : loading && activeTab === 'news' && !newsSummary ? (
               <div className='p-20 text-center'>
                 <Skeleton className='mx-auto mb-6 h-12 w-12 rounded-full' />
                 <p className='animate-pulse text-[10px] font-extrabold uppercase tracking-[0.4em] text-gray-400 dark:text-gray-500'>

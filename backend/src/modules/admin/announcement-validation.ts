@@ -113,6 +113,7 @@ export const announcementContentShape = {
 
 type ContentRuleInput = {
   placement?: AnnouncementPlacement
+  dismissible?: boolean
   severity?: AnnouncementSeverity | null
   anchor?: AnnouncementAnchor | null
   navKey?: AnnouncementNavKey | null
@@ -125,6 +126,10 @@ type ContentRuleInput = {
 
 const issue = (ctx: z.RefinementCtx, path: string, message: string): void =>
   ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message })
+
+/** Placements that block or cover the UI, so a user must always be able to close them. */
+const INTERRUPTIVE_PLACEMENTS: ReadonlySet<AnnouncementPlacement | undefined> =
+  new Set([AnnouncementPlacement.MODAL, AnnouncementPlacement.SPOTLIGHT])
 
 /** Rules that tie fields together; run on the full, merged announcement. */
 export const refineAnnouncementContent = (
@@ -156,6 +161,9 @@ export const refineAnnouncementContent = (
       'inChangelog',
       'a CHANGELOG announcement must be listed in the changelog',
     )
+  }
+  if (INTERRUPTIVE_PLACEMENTS.has(placement) && data.dismissible === false) {
+    issue(ctx, 'dismissible', 'a MODAL or SPOTLIGHT must be dismissible')
   }
   if (Boolean(data.ctaLabel) !== Boolean(data.ctaUrl)) {
     issue(ctx, 'ctaUrl', 'ctaLabel and ctaUrl must be provided together')

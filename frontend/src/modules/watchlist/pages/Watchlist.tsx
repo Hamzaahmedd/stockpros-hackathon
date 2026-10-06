@@ -1,3 +1,4 @@
+import { AnnouncementAnchor, anchorProps } from '@/modules/announcements'
 import { useAuth } from '@/modules/auth/hooks/useAuth'
 import api from '@/shared/api/axios'
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal'
@@ -267,6 +268,7 @@ const Watchlist: React.FC = () => {
           <Button
             onClick={() => setShowAddModal(true)}
             className='flex items-center gap-2'
+            {...anchorProps(AnnouncementAnchor.WATCHLIST_ADD)}
           >
             <FiPlus /> Add Ticker
           </Button>

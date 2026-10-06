@@ -14,6 +14,7 @@ import {
   getAccessToken,
   setAccessToken,
 } from '@/shared/utils/token'
+import type { AnnouncementBoot } from '@/modules/announcements'
 import type { AuthContextValue, ScreenPermissions, User } from '../types'
 
 // ------------------------
@@ -31,6 +32,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
   const [pricingTiersEnabled, setPricingTiersEnabled] = useState(false)
   const [enablePaymentProcessor, setEnablePaymentProcessor] = useState(false)
+  const [announcements, setAnnouncements] = useState<AnnouncementBoot | null>(
+    null,
+  )
 
   // ------------------------
   // /me
@@ -56,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setScreenPermissions({})
       setPricingTiersEnabled(false)
       setEnablePaymentProcessor(false)
+      setAnnouncements(null)
       setLoading(false)
       return null
     }
@@ -71,12 +76,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setScreenPermissions(screensRes.data?.data || screensRes.data || {})
       setPricingTiersEnabled(Boolean(meRes.data?.pricingTiersEnabled))
       setEnablePaymentProcessor(Boolean(meRes.data?.enablePaymentProcessor))
+      setAnnouncements(meRes.data?.announcements ?? null)
       return fetchedUser
     } catch {
       setUser(null)
       setScreenPermissions({})
       setPricingTiersEnabled(false)
       setEnablePaymentProcessor(false)
+      setAnnouncements(null)
       return null
     } finally {
       setLoading(false)
@@ -132,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     posthog.reset()
     setUser(null)
     setScreenPermissions({})
+    setAnnouncements(null)
   }
 
   const can = useCallback(
@@ -148,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       loading,
       pricingTiersEnabled,
       enablePaymentProcessor,
+      announcements,
       sendMagicLink,
       login,
       register,
@@ -162,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       loading,
       pricingTiersEnabled,
       enablePaymentProcessor,
+      announcements,
       can,
       fetchMe,
     ],

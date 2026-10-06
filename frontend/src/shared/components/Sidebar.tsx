@@ -1,3 +1,9 @@
+import {
+  AnnouncementAnchor,
+  NavBadgePill,
+  anchorProps,
+  useNavBadge,
+} from '@/modules/announcements'
 import { LogoutModal, useAuth } from '@/modules/auth'
 import { FeedbackWidget } from '@/modules/feedback'
 import { UnifiedNotifications } from '@/modules/notifications'
@@ -37,6 +43,13 @@ interface NavItemProps {
   readonly collapsed?: boolean
 }
 
+/** Sidebar entries a spotlight can point at. */
+const NAV_ANCHORS: Readonly<Record<string, AnnouncementAnchor>> = {
+  '/teams': AnnouncementAnchor.SIDEBAR_WORKSPACE,
+  '/plans': AnnouncementAnchor.PLANS_UPGRADE,
+  '/settings': AnnouncementAnchor.SETTINGS_PREFERENCES,
+}
+
 function NavItem({
   to,
   icon,
@@ -44,9 +57,14 @@ function NavItem({
   active = false,
   collapsed = false,
 }: NavItemProps) {
+  const { badge, onVisit } = useNavBadge(to)
+  const anchor = NAV_ANCHORS[to]
+
   return (
     <Link
       to={to}
+      onClick={onVisit}
+      {...(anchor ? anchorProps(anchor) : {})}
       onMouseEnter={() => preloader.preloadRoute(to)}
       onMouseLeave={() => preloader.cancelPreloadRoute(to)}
       onFocus={() => preloader.preloadRoute(to)}
@@ -54,11 +72,12 @@ function NavItem({
         active
           ? 'bg-secondary font-medium text-secondary-foreground'
           : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
-      } ${collapsed ? 'justify-center px-0' : 'w-full'}`}
+      } ${collapsed ? 'relative justify-center px-0' : 'relative w-full'}`}
       title={collapsed ? label : ''}
     >
       <span className='text-lg'>{icon}</span>
       {!collapsed && <span className='text-sm font-medium'>{label}</span>}
+      {badge && <NavBadgePill badge={badge} collapsed={collapsed} />}
     </Link>
   )
 }
