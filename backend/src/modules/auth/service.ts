@@ -469,6 +469,11 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
           },
         },
       },
+      teamMembers: {
+        where: { team: { status: TeamStatus.ACTIVE } },
+        select: { role: true },
+        take: 1,
+      },
     },
   })
 
@@ -482,6 +487,7 @@ export async function fetchMe(userId: string): Promise<MeProfile> {
     userRoles: user.userRoles,
     plan: user.plan,
     platformRole: user.platformRole,
+    workspaceRole: user.teamMembers[0]?.role ?? null,
   }
 }
 

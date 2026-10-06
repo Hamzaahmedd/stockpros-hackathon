@@ -4170,6 +4170,172 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"AnnouncementItem": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"example": "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f"
+					},
+					"title": {
+						"type": "string"
+					},
+					"body": {
+						"type": "string",
+						"description": "Plain text. Clients must render it as text, never as HTML."
+					},
+					"ctaLabel": {
+						"type": "string",
+						"nullable": true
+					},
+					"ctaUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "A relative app path or an https URL."
+					},
+					"imageUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"placement": {
+						"type": "string",
+						"enum": [
+							"MODAL",
+							"SPOTLIGHT",
+							"BANNER",
+							"BADGE",
+							"CHANGELOG"
+						],
+						"example": "MODAL"
+					},
+					"severity": {
+						"type": "string",
+						"enum": [
+							"INFO",
+							"WARNING",
+							"CRITICAL",
+							null
+						],
+						"nullable": true
+					},
+					"anchor": {
+						"type": "string",
+						"enum": [
+							"NOTIFICATION_BELL",
+							"SIDEBAR_WORKSPACE",
+							"WATCHLIST_ADD",
+							"FORECAST_PANEL",
+							"PLANS_UPGRADE",
+							"SETTINGS_PREFERENCES",
+							null
+						],
+						"nullable": true,
+						"description": "Fixed UI anchor a SPOTLIGHT points at."
+					},
+					"navKey": {
+						"type": "string",
+						"enum": [
+							"DASHBOARD",
+							"WATCHLIST",
+							"MARKET",
+							"FORECAST",
+							"NEWS",
+							"PLANS",
+							"WORKSPACE",
+							"SETTINGS",
+							null
+						],
+						"nullable": true,
+						"description": "Sidebar entry a BADGE decorates."
+					},
+					"priority": {
+						"type": "number",
+						"format": "double"
+					},
+					"dismissible": {
+						"type": "boolean"
+					},
+					"publishedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"unread": {
+						"type": "boolean",
+						"description": "True until the caller has seen or dismissed it."
+					}
+				},
+				"required": [
+					"id",
+					"title",
+					"body",
+					"ctaLabel",
+					"ctaUrl",
+					"imageUrl",
+					"placement",
+					"severity",
+					"anchor",
+					"navKey",
+					"priority",
+					"dismissible",
+					"publishedAt",
+					"unread"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementListResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/AnnouncementItem"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					},
+					"unreadCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"total",
+					"unreadCount"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementsMarkedResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {},
+					"updated": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"updated"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"MagicLinkRequest": {
 				"properties": {
 					"email": {
@@ -4286,6 +4452,18 @@
 						],
 						"description": "Internal staff access level; USER for regular customers.",
 						"example": "USER"
+					},
+					"workspaceRole": {
+						"type": "string",
+						"enum": [
+							"OWNER",
+							"ADMIN",
+							"MEMBER",
+							null
+						],
+						"nullable": true,
+						"description": "Role in the active workspace; null for solo accounts.",
+						"example": null
 					}
 				},
 				"required": [
@@ -4294,7 +4472,8 @@
 					"displayName",
 					"userRoles",
 					"plan",
-					"platformRole"
+					"platformRole",
+					"workspaceRole"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -4423,6 +4602,114 @@
 				"required": [
 					"success",
 					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementChangelog": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/AnnouncementItem"
+						},
+						"type": "array"
+					},
+					"unreadCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"unreadCount"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"AnnouncementBoot": {
+				"description": "The `announcements` slice of the `GET /api/v1/auth/me` response. Null when the feature is off.",
+				"properties": {
+					"modal": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"banner": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"spotlight": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementItem"
+							}
+						],
+						"nullable": true
+					},
+					"badges": {
+						"items": {
+							"$ref": "#/components/schemas/AnnouncementItem"
+						},
+						"type": "array"
+					},
+					"changelog": {
+						"$ref": "#/components/schemas/AnnouncementChangelog"
+					}
+				},
+				"required": [
+					"modal",
+					"banner",
+					"spotlight",
+					"badges",
+					"changelog"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MeResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/UserProfile"
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserProfile"
+					},
+					"pricingTiersEnabled": {
+						"type": "boolean"
+					},
+					"enablePaymentProcessor": {
+						"type": "boolean"
+					},
+					"announcements": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/AnnouncementBoot"
+							}
+						],
+						"nullable": true,
+						"description": "Announcements for the caller (modal, banner, spotlight, badges, changelog). Null when `features.enableAnnouncements` is off or loading them failed."
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"user",
+					"pricingTiersEnabled",
+					"enablePaymentProcessor",
+					"announcements"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -9708,6 +9995,255 @@
 				"parameters": []
 			}
 		},
+		"/api/v1/announcements": {
+			"get": {
+				"operationId": "GetChangelog",
+				"responses": {
+					"200": {
+						"description": "Announcements returned",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AnnouncementListResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid query",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "The caller's changelog (notification-bell \"What's new\" drawer): published,\nenabled, scheduled-in announcements targeted at their plan and workspace\nrole, newest first. Dismissed items stay listed, marked read.",
+				"tags": [
+					"Announcements"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Page size (1-50, default 20)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Items to skip (default 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/announcements/seen": {
+			"post": {
+				"operationId": "MarkAllSeen",
+				"responses": {
+					"200": {
+						"description": "Announcements marked as seen",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AnnouncementsMarkedResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Marks every changelog entry the caller can see as read.",
+				"tags": [
+					"Announcements"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/announcements/{id}/seen": {
+			"post": {
+				"operationId": "MarkSeen",
+				"responses": {
+					"200": {
+						"description": "Announcement marked as seen",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Not published, or switched off",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Marks one announcement as read for the caller. Idempotent.",
+				"tags": [
+					"Announcements"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Announcement id",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/announcements/{id}/dismiss": {
+			"post": {
+				"operationId": "Dismiss",
+				"responses": {
+					"200": {
+						"description": "Announcement dismissed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unauthorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Not published, or switched off",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "The announcement is not dismissible",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Dismisses an announcement for the caller so it never shows again (until\nstaff explicitly re-announce it). Idempotent.",
+				"tags": [
+					"Announcements"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Announcement id",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/auth/magic-link": {
 			"post": {
 				"operationId": "SendMagicLink",
@@ -10016,7 +10552,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse_UserProfile_"
+									"$ref": "#/components/schemas/MeResponse"
 								}
 							}
 						}

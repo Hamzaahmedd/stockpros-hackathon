@@ -1,6 +1,14 @@
-import { AnnouncementStatus, type Prisma } from '@prisma/client'
+import config from '@/config'
+import {
+  AnnouncementStatus,
+  type PlanTier,
+  type Prisma,
+  TeamRole,
+  TeamStatus,
+} from '@prisma/client'
 import { ConflictError, NotFoundError } from '../../shared/errors'
 import { prisma } from '../../shared/infrastructure/database'
+import { logger } from '../../shared/infrastructure/logger'
 import { getActiveAnnouncements } from './active-cache'
 import { CHANGELOG_DEFAULT_PAGE_SIZE } from './constants'
 import { cacheUserStates, loadUserStates } from './state-store'
@@ -176,4 +184,48 @@ export const markAllSeen = async (
   )
   await cacheUserStates(userId, updates)
   return updates.size
+}
+
+/** Solo accounts (no active workspace) are treated as the OWNER of their own account. */
+export const toAudience = (
+  plan: PlanTier,
+  workspaceRole: TeamRole | null,
+): AudienceContext => ({ plan, role: workspaceRole ?? TeamRole.OWNER })
+
+export const resolveAudience = async (
+  userId: string,
+): Promise<AudienceContext> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      plan: true,
+      teamMembers: {
+        where: { team: { status: TeamStatus.ACTIVE } },
+        select: { role: true },
+        take: 1,
+      },
+    },
+  })
+  if (!user) throw new NotFoundError('User not found')
+  return toAudience(user.plan, user.teamMembers[0]?.role ?? null)
+}
+
+/**
+ * The announcements slice of /auth/me. Never throws: a problem here must not
+ * stop the app from booting, so it degrades to "no announcements".
+ */
+export const getBootAnnouncements = async (
+  userId: string,
+  plan: PlanTier,
+  workspaceRole: TeamRole | null,
+): Promise<AnnouncementBootPayload | null> => {
+  if (!config.features.enableAnnouncements) return null
+  try {
+    return await getBootPayload(userId, toAudience(plan, workspaceRole))
+  } catch (err) {
+    logger.warn(
+      `[Announcements] boot payload failed: ${err instanceof Error ? err.message : String(err)}`,
+    )
+    return null
+  }
 }

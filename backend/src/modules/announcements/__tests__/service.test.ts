@@ -1,4 +1,5 @@
 const mockPrisma: any = {
+  user: { findUnique: jest.fn() },
   announcement: { findUnique: jest.fn() },
   announcementUserState: { upsert: jest.fn((args: unknown) => args) },
   $transaction: jest.fn(),
@@ -21,15 +22,19 @@ jest.mock('../state-store', () => ({
   cacheUserStates: (...args: unknown[]) => mockCacheStates(...args),
 }))
 
+import config from '@/config'
 import { AnnouncementStatus, TeamRole } from '@prisma/client'
 import { ConflictError, NotFoundError } from '../../../shared/errors'
 import {
+  getBootAnnouncements,
   getBootPayload,
   listChangelog,
   markAllSeen,
   nextUserState,
   recordAction,
+  resolveAudience,
   StateAction,
+  toAudience,
 } from '../service'
 import {
   ANNOUNCEMENT_ID,
@@ -231,5 +236,76 @@ describe('markAllSeen', () => {
     expect(await markAllSeen(USER_ID, OWNER_FREE, new Date(NOW_MS))).toBe(0)
     expect(mockPrisma.$transaction).not.toHaveBeenCalled()
     expect(mockCacheStates).not.toHaveBeenCalled()
+  })
+})
+
+describe('toAudience', () => {
+  it('maps solo accounts to OWNER and keeps a workspace role', () => {
+    expect(toAudience('FREE', null)).toEqual({
+      plan: 'FREE',
+      role: TeamRole.OWNER,
+    })
+    expect(toAudience('TEAM', TeamRole.MEMBER)).toEqual({
+      plan: 'TEAM',
+      role: TeamRole.MEMBER,
+    })
+  })
+})
+
+describe('resolveAudience', () => {
+  it('reads the plan and the role from an ACTIVE workspace only', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      plan: 'TEAM',
+      teamMembers: [{ role: TeamRole.ADMIN }],
+    })
+
+    expect(await resolveAudience(USER_ID)).toEqual({
+      plan: 'TEAM',
+      role: TeamRole.ADMIN,
+    })
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: USER_ID },
+        select: expect.objectContaining({
+          teamMembers: expect.objectContaining({
+            where: { team: { status: 'ACTIVE' } },
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('treats a user without a workspace as OWNER and rejects an unknown user', async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce({
+      plan: 'FREE',
+      teamMembers: [],
+    })
+    expect((await resolveAudience(USER_ID)).role).toBe(TeamRole.OWNER)
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null)
+    await expect(resolveAudience(USER_ID)).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+describe('getBootAnnouncements', () => {
+  afterEach(() => {
+    Object.assign(config.features, { enableAnnouncements: true })
+  })
+
+  it('returns null without touching the caches while the feature is off', async () => {
+    Object.assign(config.features, { enableAnnouncements: false })
+    expect(await getBootAnnouncements(USER_ID, 'FREE', null)).toBeNull()
+    expect(mockGetActive).not.toHaveBeenCalled()
+  })
+
+  it('returns the evaluated payload', async () => {
+    mockGetActive.mockResolvedValue([makeAnnouncement()])
+    const payload = await getBootAnnouncements(USER_ID, 'FREE', null)
+    expect(payload?.modal).not.toBeNull()
+  })
+
+  it('degrades to null instead of failing the app boot', async () => {
+    mockGetActive.mockRejectedValue(new Error('db down'))
+    expect(await getBootAnnouncements(USER_ID, 'FREE', null)).toBeNull()
   })
 })

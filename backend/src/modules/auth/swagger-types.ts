@@ -12,6 +12,7 @@ import {
 } from 'tsoa'
 
 import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
+import type { AnnouncementBoot } from '../announcements/public'
 
 // ─── Auth models ──────────────────────────────────────────────────────────────
 
@@ -27,6 +28,16 @@ export interface UserProfile {
   plan: 'FREE' | 'PRO'
   /** Internal staff access level; USER for regular customers. @example "USER" */
   platformRole: 'USER' | 'SUPPORT_AGENT' | 'PLATFORM_ADMIN' | 'SUPER_ADMIN'
+  /** Role in the active workspace; null for solo accounts. @example null */
+  workspaceRole: 'OWNER' | 'ADMIN' | 'MEMBER' | null
+}
+
+export interface MeResponse extends ApiResponse<UserProfile> {
+  user: UserProfile
+  pricingTiersEnabled: boolean
+  enablePaymentProcessor: boolean
+  /** Announcements for the caller (modal, banner, spotlight, badges, changelog). Null when `features.enableAnnouncements` is off or loading them failed. */
+  announcements: AnnouncementBoot | null
 }
 
 export interface SetPlanRequest {
@@ -193,7 +204,7 @@ export class AuthSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'User profile returned')
   @Response<ApiErrorResponse>(401, 'Unauthorized')
-  async getMe(): Promise<ApiResponse<UserProfile>> {
+  async getMe(): Promise<MeResponse> {
     throw new Error('tsoa spec-only')
   }
 

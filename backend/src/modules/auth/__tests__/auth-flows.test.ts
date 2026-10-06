@@ -209,6 +209,7 @@ describe('fetchMe', () => {
       phoneVerifiedAt: null,
       plan: 'FREE',
       userRoles: [],
+      teamMembers: [],
     })
 
     const result = await fetchMe('user-1')
@@ -219,7 +220,22 @@ describe('fetchMe', () => {
       phoneVerifiedAt: null,
       userRoles: [],
       plan: 'FREE',
+      workspaceRole: null,
     })
+  })
+
+  it('reports the role held in an active workspace', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'a@example.com',
+      displayName: 'Ada',
+      phoneVerifiedAt: null,
+      plan: 'TEAM',
+      userRoles: [],
+      teamMembers: [{ role: 'ADMIN' }],
+    })
+
+    expect((await fetchMe('user-1')).workspaceRole).toBe('ADMIN')
   })
 })
 

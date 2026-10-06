@@ -1,4 +1,9 @@
-import type { PlanTier, PlatformRole, UserStatus } from '@prisma/client'
+import type {
+  PlanTier,
+  PlatformRole,
+  TeamRole,
+  UserStatus,
+} from '@prisma/client'
 import type { SignOptions } from 'jsonwebtoken'
 
 export type TokenExpiry = SignOptions['expiresIn']
@@ -49,6 +54,8 @@ export interface MeProfile {
   userRoles: Array<{ role: { name: string } }>
   plan: PlanTier
   platformRole: PlatformRole
+  /** Role in the user's active workspace; null for solo accounts. */
+  workspaceRole: TeamRole | null
 }
 
 export type { AuthenticatedRequest } from '../../shared/request-types'

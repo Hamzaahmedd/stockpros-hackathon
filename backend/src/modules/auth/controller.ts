@@ -9,6 +9,7 @@ import {
 } from '../../shared/errors'
 import { defaultCookieOptions } from '../../shared/infrastructure/config/cookie'
 import { getActiveMembership } from '../../shared/infrastructure/team-access'
+import { getBootAnnouncements } from '../announcements/public'
 import {
   convertToMilliseconds,
   getUserId,
@@ -45,6 +46,11 @@ export const getMyInfo = async (
   try {
     const userId = getUserId(req)
     const myDetails = await fetchMe(userId)
+    const announcements = await getBootAnnouncements(
+      userId,
+      myDetails.plan,
+      myDetails.workspaceRole,
+    )
 
     return sendSuccess(res, {
       message: 'My details fetched successfully',
@@ -52,6 +58,7 @@ export const getMyInfo = async (
         user: myDetails,
         pricingTiersEnabled: config.features.pricingTiersEnabled,
         enablePaymentProcessor: config.features.enablePaymentProcessor,
+        announcements,
       },
     })
   } catch (error) {

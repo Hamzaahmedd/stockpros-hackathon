@@ -4,6 +4,12 @@ jest.mock('../../../shared/infrastructure/team-access', () => ({
   getActiveMembership: jest.fn().mockResolvedValue(null),
 }))
 
+const mockGetBootAnnouncements = jest.fn()
+jest.mock('../../announcements/public', () => ({
+  getBootAnnouncements: (...args: unknown[]) =>
+    mockGetBootAnnouncements(...args),
+}))
+
 jest.mock('../service', () => ({
   completeOnboardingFlow: jest.fn(),
   deleteAccount: jest.fn(),
@@ -56,6 +62,7 @@ const next = jest.fn()
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetBootAnnouncements.mockResolvedValue(null)
 })
 
 describe('getMyInfo', () => {
@@ -67,11 +74,38 @@ describe('getMyInfo', () => {
     await controller.getMyInfo(req as any, res, next)
 
     expect(fetchMe).toHaveBeenCalledWith('user-1')
+    expect(mockGetBootAnnouncements).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      undefined,
+    )
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         pricingTiersEnabled: config.features.pricingTiersEnabled,
         user: { userId: 'user-1' },
       }),
+    )
+  })
+
+  it('merges the announcements slice into the boot payload', async () => {
+    const slice = { modal: null, banner: null }
+    ;(fetchMe as jest.Mock).mockResolvedValue({
+      userId: 'user-1',
+      plan: 'PRO',
+      workspaceRole: 'ADMIN',
+    })
+    mockGetBootAnnouncements.mockResolvedValue(slice)
+    const res = mockRes()
+
+    await controller.getMyInfo(mockReq() as any, res, next)
+
+    expect(mockGetBootAnnouncements).toHaveBeenCalledWith(
+      'user-1',
+      'PRO',
+      'ADMIN',
+    )
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ announcements: slice }),
     )
   })
 
