@@ -24,6 +24,7 @@ async function assertOwnerKeepsAccess(
   actorSessionId: string | undefined,
   domain: string,
   policy: DomainAuthPolicy,
+  domainSsoTenantId: string | null,
 ): Promise<void> {
   const owner = await prisma.user.findUniqueOrThrow({
     where: { id: actorId },
@@ -34,18 +35,40 @@ async function assertOwnerKeepsAccess(
   const session = actorSessionId
     ? await prisma.userSession.findFirst({
         where: { id: actorSessionId, userId: actorId, isRevoked: false },
-        select: { loginMethod: true, googleHd: true },
+        select: { loginMethod: true, googleHd: true, ssoTenantId: true },
       })
     : null
   const compliant =
     session !== null &&
-    isLoginAllowedByPolicy(policy, domain, {
-      method: session.loginMethod,
-      googleHd: session.googleHd,
-    })
+    isLoginAllowedByPolicy(
+      policy,
+      domain,
+      {
+        method: session.loginMethod,
+        googleHd: session.googleHd,
+        ssoTenantId: session.ssoTenantId,
+      },
+      domainSsoTenantId,
+    )
   if (!compliant) {
     throw new ConflictError(
       'Sign in with Google (with your Google Workspace account for this domain if you choose Workspace only) before enforcing this policy, or you would lock yourself out',
+    )
+  }
+}
+
+/** SAML_SSO is only enforceable once a connection exists, is enabled and passed its test sign-in. */
+async function assertSsoReady(
+  domainId: string,
+  samlEnabled: boolean,
+): Promise<void> {
+  const connection = await prisma.teamSsoConnection.findUnique({
+    where: { domainId },
+    select: { testedAt: true },
+  })
+  if (!samlEnabled || !connection?.testedAt) {
+    throw new BadRequestError(
+      'Configure SSO and complete a successful test sign-in before requiring it',
     )
   }
 }
@@ -70,6 +93,10 @@ export async function setAuthPolicy(
   })
   if (!record) throw new NotFoundError('Domain not found in your workspace')
 
+  if (input.authPolicy === DomainAuthPolicy.SAML_SSO) {
+    await assertSsoReady(record.id, record.samlEnabled)
+  }
+
   const restricting = input.authPolicy !== DomainAuthPolicy.ANY
   if (restricting) {
     if (!record.isVerified) {
@@ -83,6 +110,7 @@ export async function setAuthPolicy(
       actorSessionId,
       domain,
       input.authPolicy,
+      record.ssoTenantId,
     )
   }
 
@@ -100,7 +128,11 @@ export async function setAuthPolicy(
       },
     })
 
-    const nonCompliant = nonCompliantSessionWhere(input.authPolicy, domain)
+    const nonCompliant = nonCompliantSessionWhere(
+      input.authPolicy,
+      domain,
+      record.ssoTenantId,
+    )
     const revoked = nonCompliant
       ? await tx.userSession.updateMany({
           where: {

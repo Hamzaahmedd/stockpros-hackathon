@@ -28,6 +28,7 @@ export enum DomainAuthPolicy {
   ANY = 'ANY',
   GOOGLE_ONLY = 'GOOGLE_ONLY',
   GOOGLE_WORKSPACE = 'GOOGLE_WORKSPACE',
+  SAML_SSO = 'SAML_SSO',
 }
 
 export type RequestMagicLinkDto = {

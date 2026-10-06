@@ -266,6 +266,33 @@ describe('isLoginAllowedByPolicy', () => {
       allowed({ method: LoginMethod.MAGIC_LINK, googleHd: 'fund.com' }),
     ).toBe(false)
   })
+
+  it('SAML_SSO accepts only an SSO login through the domain’s own tenant', () => {
+    const allowed = (
+      evidence: Parameters<typeof isLoginAllowedByPolicy>[2],
+      tenant: string | null = 'tenant-1',
+    ) =>
+      isLoginAllowedByPolicy(
+        DomainAuthPolicy.SAML_SSO,
+        'fund.com',
+        evidence,
+        tenant,
+      )
+
+    expect(allowed({ method: LoginMethod.SSO, ssoTenantId: 'tenant-1' })).toBe(
+      true,
+    )
+    expect(allowed({ method: LoginMethod.SSO, ssoTenantId: 'tenant-2' })).toBe(
+      false,
+    )
+    expect(allowed({ method: LoginMethod.SSO })).toBe(false)
+    expect(allowed(GOOGLE)).toBe(false)
+    expect(allowed({ method: LoginMethod.MAGIC_LINK })).toBe(false)
+    // A domain with no tenant on record cannot be satisfied by anything.
+    expect(
+      allowed({ method: LoginMethod.SSO, ssoTenantId: 'tenant-1' }, null),
+    ).toBe(false)
+  })
 })
 
 describe('findAuthRestriction / assertLoginAllowed', () => {
@@ -285,6 +312,7 @@ describe('findAuthRestriction / assertLoginAllowed', () => {
   it.each([
     [DomainAuthPolicy.GOOGLE_ONLY, 'requires signing in with Google'],
     [DomainAuthPolicy.GOOGLE_WORKSPACE, 'Google Workspace account'],
+    [DomainAuthPolicy.SAML_SSO, 'single sign-on'],
   ])(
     'refuses a magic link under %s with a clear message',
     async (policy, text) => {
@@ -314,6 +342,31 @@ describe('findAuthRestriction / assertLoginAllowed', () => {
     await expect(
       assertLoginAllowed('sam@fund.com', LoginMethod.GOOGLE, 'fund.com'),
     ).resolves.toBeUndefined()
+  })
+
+  it('accepts an SSO login through the domain’s own tenant under SAML_SSO', async () => {
+    db.teamDomain.findFirst.mockResolvedValue({
+      domain: 'fund.com',
+      authPolicy: DomainAuthPolicy.SAML_SSO,
+      ssoTenantId: 'tenant-1',
+    })
+
+    await expect(
+      assertLoginAllowed(
+        'sam@fund.com',
+        LoginMethod.SSO,
+        undefined,
+        'tenant-1',
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      assertLoginAllowed(
+        'sam@fund.com',
+        LoginMethod.SSO,
+        undefined,
+        'other-tenant',
+      ),
+    ).rejects.toBeInstanceOf(LoginMethodRequiredError)
   })
 
   it('ignores a stray ANY record rather than refusing', async () => {
@@ -352,6 +405,36 @@ describe('nonCompliantSessionWhere', () => {
         { loginMethod: { not: LoginMethod.GOOGLE } },
         { googleHd: null },
         { googleHd: { not: 'fund.com' } },
+      ],
+    })
+  })
+
+  it('SAML_SSO targets every session not created through the domain’s tenant', () => {
+    expect(
+      nonCompliantSessionWhere(
+        DomainAuthPolicy.SAML_SSO,
+        'fund.com',
+        'tenant-1',
+      ),
+    ).toEqual({
+      OR: [
+        { loginMethod: null },
+        { loginMethod: { not: LoginMethod.SSO } },
+        { ssoTenantId: null },
+        { ssoTenantId: { not: 'tenant-1' } },
+      ],
+    })
+  })
+
+  it('SAML_SSO without a tenant matches every session, since none can comply', () => {
+    expect(
+      nonCompliantSessionWhere(DomainAuthPolicy.SAML_SSO, 'fund.com'),
+    ).toEqual({
+      OR: [
+        { loginMethod: null },
+        { loginMethod: { not: LoginMethod.SSO } },
+        { ssoTenantId: null },
+        { ssoTenantId: { not: '' } },
       ],
     })
   })

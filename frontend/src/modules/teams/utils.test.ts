@@ -57,7 +57,12 @@ describe('domain auth policy helpers', () => {
   it('labels every policy', () => {
     expect(
       Object.values(DomainAuthPolicy).map((p) => AUTH_POLICY_LABELS[p]),
-    ).toEqual(['Any method', 'Google sign-in only', 'Google Workspace only'])
+    ).toEqual([
+      'Any method',
+      'Google sign-in only',
+      'Google Workspace only',
+      'Single sign-on (SAML) only',
+    ])
   })
 
   it('treats everything but ANY as stricter', () => {

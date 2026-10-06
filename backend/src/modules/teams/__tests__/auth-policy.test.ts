@@ -2,6 +2,7 @@ const mockPrisma: any = {
   user: { findUniqueOrThrow: jest.fn() },
   userSession: { findFirst: jest.fn(), updateMany: jest.fn() },
   teamDomain: { findFirst: jest.fn(), update: jest.fn() },
+  teamSsoConnection: { findUnique: jest.fn() },
   $transaction: jest.fn(),
 }
 
@@ -153,7 +154,7 @@ describe('setAuthPolicy', () => {
       })
       expect(mockPrisma.userSession.findFirst).toHaveBeenCalledWith({
         where: { id: SESSION, userId: OWNER, isRevoked: false },
-        select: { loginMethod: true, googleHd: true },
+        select: { loginMethod: true, googleHd: true, ssoTenantId: true },
       })
     })
 
@@ -216,6 +217,63 @@ describe('setAuthPolicy', () => {
       }),
     )
     expect(result).toMatchObject({ revokedSessions: 3 })
+  })
+
+  describe('SAML_SSO', () => {
+    const ssoDomain = {
+      ...verifiedDomain,
+      ssoTenantId: 'tenant-1',
+      samlEnabled: true,
+    }
+    const ssoSession = {
+      loginMethod: LoginMethod.SSO,
+      googleHd: null,
+      ssoTenantId: 'tenant-1',
+    }
+
+    it.each([
+      ['SSO is not enabled', { ...ssoDomain, samlEnabled: false }, new Date()],
+      ['the connection was never tested', ssoDomain, null],
+    ])('refuses while %s', async (_label, domain, testedAt) => {
+      mockPrisma.teamDomain.findFirst.mockResolvedValue(domain)
+      mockPrisma.teamSsoConnection.findUnique.mockResolvedValue(
+        testedAt ? { testedAt } : null,
+      )
+
+      await expect(set(DomainAuthPolicy.SAML_SSO)).rejects.toThrow(
+        'complete a successful test sign-in',
+      )
+      expect(mockPrisma.teamDomain.update).not.toHaveBeenCalled()
+    })
+
+    it('refuses when the owner is not signed in through SSO themselves', async () => {
+      mockPrisma.teamDomain.findFirst.mockResolvedValue(ssoDomain)
+      mockPrisma.teamSsoConnection.findUnique.mockResolvedValue({
+        testedAt: new Date(),
+      })
+
+      await expect(set(DomainAuthPolicy.SAML_SSO)).rejects.toThrow(
+        'lock yourself out',
+      )
+    })
+
+    it('applies the policy and signs out sessions not created through the tenant', async () => {
+      mockPrisma.teamDomain.findFirst.mockResolvedValue(ssoDomain)
+      mockPrisma.teamSsoConnection.findUnique.mockResolvedValue({
+        testedAt: new Date(),
+      })
+      mockPrisma.userSession.findFirst.mockResolvedValue(ssoSession)
+
+      await set(DomainAuthPolicy.SAML_SSO)
+
+      const where = mockPrisma.userSession.updateMany.mock.calls[0][0].where
+      expect(JSON.stringify(where)).toContain('tenant-1')
+      expect(mockPrisma.teamDomain.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { authPolicy: DomainAuthPolicy.SAML_SSO },
+        }),
+      )
+    })
   })
 
   it('also requires matching Workspace domains for GOOGLE_WORKSPACE', async () => {

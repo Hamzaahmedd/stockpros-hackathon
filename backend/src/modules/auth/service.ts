@@ -110,6 +110,7 @@ async function persistSession(params: {
   userAgent: string
   loginMethod: LoginMethod
   googleHd?: string | null
+  ssoTenantId?: string | null
 }): Promise<void> {
   const refreshTokenExpiryMs =
     convertToMilliseconds(REFRESH_TOKEN_EXPIRY as string) || 604800000
@@ -124,6 +125,7 @@ async function persistSession(params: {
       expiresAt: new Date(Date.now() + refreshTokenExpiryMs),
       loginMethod: params.loginMethod,
       googleHd: params.googleHd ?? null,
+      ssoTenantId: params.ssoTenantId ?? null,
     },
   })
 }
@@ -137,15 +139,22 @@ async function revokeIfNonCompliant(session: {
   id: string
   loginMethod: LoginMethod | null
   googleHd: string | null
+  ssoTenantId: string | null
   user: { email: string }
 }): Promise<void> {
   const restriction = await findAuthRestriction(session.user.email)
   if (
     !restriction ||
-    isLoginAllowedByPolicy(restriction.authPolicy, restriction.domain, {
-      method: session.loginMethod,
-      googleHd: session.googleHd,
-    })
+    isLoginAllowedByPolicy(
+      restriction.authPolicy,
+      restriction.domain,
+      {
+        method: session.loginMethod,
+        googleHd: session.googleHd,
+        ssoTenantId: session.ssoTenantId,
+      },
+      restriction.ssoTenantId,
+    )
   ) {
     return
   }

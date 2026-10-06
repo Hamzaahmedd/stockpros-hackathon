@@ -61,7 +61,8 @@ export type TeamJoinPolicyValue =
   'INVITE_ONLY' | 'REQUEST_APPROVAL' | 'AUTO_APPROVE'
 
 /** Which sign-in methods are accepted for people on a verified domain. */
-export type DomainAuthPolicyValue = 'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE'
+export type DomainAuthPolicyValue =
+  'ANY' | 'GOOGLE_ONLY' | 'GOOGLE_WORKSPACE' | 'SAML_SSO'
 
 export interface SetAuthPolicyRequest {
   authPolicy: DomainAuthPolicyValue

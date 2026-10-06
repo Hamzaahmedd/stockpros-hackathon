@@ -80,6 +80,8 @@ model UserSession {
   // by any restricted domain policy) and, for Google, the Workspace domain (`hd`) of the account.
   loginMethod      LoginMethod? @map("login_method")
   googleHd         String?      @map("google_hd")
+  // For SSO sessions, the TeamDomain.ssoTenantId that authenticated them.
+  ssoTenantId      String?      @map("sso_tenant_id")
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -521,12 +523,19 @@ enum DomainAuthPolicy {
   ANY
   GOOGLE_ONLY
   GOOGLE_WORKSPACE
+  SAML_SSO
 }
 
 // How a session was established; compared against DomainAuthPolicy.
 enum LoginMethod {
   MAGIC_LINK
   GOOGLE
+  SSO
+}
+
+// Protocol of an enterprise SSO connection (v1 ships SAML only).
+enum SsoProtocol {
+  SAML
 }
 
 enum JoinRequestStatus {
@@ -568,6 +577,9 @@ enum TeamAuditAction {
   TEAM_DELETED
   TEAM_EXPORTED
   SUBSCRIPTION_EXPIRED
+  SAML_CONFIG_UPDATED
+  SAML_ENABLED
+  SAML_DISABLED
 }
 
 enum CreditLedgerType {
@@ -599,6 +611,8 @@ enum AdminAuditAction {
   CUSTOMER_DATA_VIEWED
   CUSTOMER_DATA_REVEALED
   AUTH_POLICY_RESET
+  SAML_CONFIG_RESET
+  SAML_DISABLED
 }
 
 enum SubscriptionPaymentMethod {
@@ -758,11 +772,36 @@ model TeamDomain {
   restrictOrgCreation Boolean          @default(true) @map("restrict_org_creation")
   joinPolicy          TeamJoinPolicy   @default(INVITE_ONLY) @map("join_policy")
   authPolicy          DomainAuthPolicy @default(ANY) @map("auth_policy")
+  // Broker-agnostic tenant key for enterprise SSO; null until a connection is configured.
+  ssoTenantId         String?          @unique @map("sso_tenant_id")
+  samlEnabled         Boolean          @default(false) @map("saml_enabled")
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team          Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  ssoConnection TeamSsoConnection?
 
   @@index([teamId], map: "idx_team_domains_team_id")
   @@map("team_domains")
+}
+
+// Identity-provider settings for a domain's SSO. Holds public IdP metadata only (no secrets).
+model TeamSsoConnection {
+  id              String      @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  domainId        String      @unique @map("domain_id") @db.Uuid
+  protocol        SsoProtocol @default(SAML)
+  idpEntityId     String      @map("idp_entity_id")
+  idpSsoUrl       String      @map("idp_sso_url")
+  idpCertificate  String      @map("idp_certificate")
+  idpMetadataXml  String?     @map("idp_metadata_xml")
+  // Set by a successful "Test SSO connection"; required before SAML_SSO can be enforced.
+  testedAt        DateTime?   @map("tested_at") @db.Timestamptz(6)
+  lastLoginAt     DateTime?   @map("last_login_at") @db.Timestamptz(6)
+  updatedByUserId String?     @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  domain TeamDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("team_sso_connections")
 }
 
 model TeamMember {

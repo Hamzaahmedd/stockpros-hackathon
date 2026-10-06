@@ -28,6 +28,7 @@ export enum TeamPermission {
   TEAM_DELETE = 'TEAM_DELETE',
   TEAM_EXPORT = 'TEAM_EXPORT',
   SECURITY_MANAGE = 'SECURITY_MANAGE',
+  SSO_MANAGE = 'SSO_MANAGE',
 }
 
 const ADMIN_PERMISSIONS: readonly TeamPermission[] = [
@@ -38,6 +39,7 @@ const ADMIN_PERMISSIONS: readonly TeamPermission[] = [
   TeamPermission.SETTINGS_MANAGE,
   TeamPermission.AUDIT_READ,
   TeamPermission.ANALYTICS_READ,
+  TeamPermission.SSO_MANAGE,
 ]
 
 // A single table, so custom (Enterprise) roles can later be rows instead of code.
@@ -107,13 +109,19 @@ export interface LoginEvidence {
   method: LoginMethod | null
   /** The Google Workspace domain (`hd` claim) of the account, when it has one. */
   googleHd?: string | null
+  /** The SSO tenant that authenticated the login, when the method is SSO. */
+  ssoTenantId?: string | null
 }
 
-/** Pure policy check: does this evidence satisfy `policy` for users of `domain`? */
+/**
+ * Pure policy check: does this evidence satisfy `policy` for users of `domain`?
+ * `domainSsoTenantId` is the domain's own SSO tenant (SAML_SSO only accepts it).
+ */
 export const isLoginAllowedByPolicy = (
   policy: DomainAuthPolicy,
   domain: string,
   evidence: LoginEvidence,
+  domainSsoTenantId?: string | null,
 ): boolean => {
   switch (policy) {
     case DomainAuthPolicy.ANY:
@@ -124,6 +132,12 @@ export const isLoginAllowedByPolicy = (
       return (
         evidence.method === LoginMethod.GOOGLE &&
         evidence.googleHd?.toLowerCase() === domain
+      )
+    case DomainAuthPolicy.SAML_SSO:
+      return (
+        evidence.method === LoginMethod.SSO &&
+        !!domainSsoTenantId &&
+        evidence.ssoTenantId === domainSsoTenantId
       )
   }
 }
@@ -139,7 +153,7 @@ export async function findAuthRestriction(email: string) {
       authPolicy: { not: DomainAuthPolicy.ANY },
       team: { status: TeamStatus.ACTIVE },
     },
-    select: { domain: true, authPolicy: true },
+    select: { domain: true, authPolicy: true, ssoTenantId: true },
   })
 }
 
@@ -151,6 +165,8 @@ const REQUIRED_METHOD_MESSAGES: Record<
     'Your organization requires signing in with Google',
   [DomainAuthPolicy.GOOGLE_WORKSPACE]:
     'Your organization requires signing in with your Google Workspace account',
+  [DomainAuthPolicy.SAML_SSO]:
+    'Your organization requires signing in with single sign-on (SSO)',
 }
 
 /**
@@ -161,15 +177,18 @@ export async function assertLoginAllowed(
   email: string,
   method: LoginMethod | null,
   googleHd?: string | null,
+  ssoTenantId?: string | null,
 ): Promise<void> {
   const restriction = await findAuthRestriction(email)
   if (
     restriction &&
     restriction.authPolicy !== DomainAuthPolicy.ANY &&
-    !isLoginAllowedByPolicy(restriction.authPolicy, restriction.domain, {
-      method,
-      googleHd,
-    })
+    !isLoginAllowedByPolicy(
+      restriction.authPolicy,
+      restriction.domain,
+      { method, googleHd, ssoTenantId },
+      restriction.ssoTenantId,
+    )
   ) {
     throw new LoginMethodRequiredError(
       REQUIRED_METHOD_MESSAGES[restriction.authPolicy],
@@ -181,6 +200,7 @@ export async function assertLoginAllowed(
 export const nonCompliantSessionWhere = (
   policy: DomainAuthPolicy,
   domain: string,
+  domainSsoTenantId?: string | null,
 ): Prisma.UserSessionWhereInput | null => {
   switch (policy) {
     case DomainAuthPolicy.ANY:
@@ -199,6 +219,16 @@ export const nonCompliantSessionWhere = (
           { loginMethod: { not: LoginMethod.GOOGLE } },
           { googleHd: null },
           { googleHd: { not: domain } },
+        ],
+      }
+    case DomainAuthPolicy.SAML_SSO:
+      // No tenant on record means no session can satisfy the policy.
+      return {
+        OR: [
+          { loginMethod: null },
+          { loginMethod: { not: LoginMethod.SSO } },
+          { ssoTenantId: null },
+          { ssoTenantId: { not: domainSsoTenantId ?? '' } },
         ],
       }
   }

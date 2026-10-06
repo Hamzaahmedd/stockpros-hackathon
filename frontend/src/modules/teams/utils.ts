@@ -75,6 +75,7 @@ export const AUTH_POLICY_LABELS: Record<DomainAuthPolicy, string> = {
   [DomainAuthPolicy.ANY]: 'Any method',
   [DomainAuthPolicy.GOOGLE_ONLY]: 'Google sign-in only',
   [DomainAuthPolicy.GOOGLE_WORKSPACE]: 'Google Workspace only',
+  [DomainAuthPolicy.SAML_SSO]: 'Single sign-on (SAML) only',
 }
 
 export const AUTH_POLICIES: readonly DomainAuthPolicy[] =

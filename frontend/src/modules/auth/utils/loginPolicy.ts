@@ -7,6 +7,9 @@ export const LOGIN_METHOD_REQUIRED_CODE = 'LOGIN_METHOD_REQUIRED'
 export const DEFAULT_LOGIN_METHOD_MESSAGE =
   'Your organization requires signing in with Google'
 
+const SSO_REQUIRED_MESSAGE =
+  'Your organization requires signing in with single sign-on (SSO)'
+
 const DOMAIN_AUTH_POLICIES: readonly DomainAuthPolicy[] =
   Object.values(DomainAuthPolicy)
 
@@ -21,6 +24,9 @@ export const isGoogleRequired = (policy: DomainAuthPolicy): boolean =>
 
 /** The inline notice shown on the login form for a restricted domain; null when unrestricted. */
 export const loginPolicyNotice = (policy: DomainAuthPolicy): string | null => {
+  if (policy === DomainAuthPolicy.SAML_SSO) {
+    return SSO_REQUIRED_MESSAGE
+  }
   if (policy === DomainAuthPolicy.GOOGLE_WORKSPACE) {
     return `${DEFAULT_LOGIN_METHOD_MESSAGE} — use your company Google Workspace account`
   }
