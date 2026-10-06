@@ -52,6 +52,14 @@ jobs:
       - name: Module boundary check
         run: npm run architecture:check
 
+      # Regenerates the OpenAPI spec and fails if it differs from what is
+      # committed: catches an endpoint changed without regenerating the docs,
+      # and a generated file that was hand-formatted or edited.
+      - name: OpenAPI spec is up to date
+        run: |
+          npm run tsoa:spec
+          git diff --exit-code -- src/docs/generated
+
       # No-op until prisma/migrations exists (see backend/docs/migrations.md);
       # after adoption it needs SHADOW_DATABASE_URL, an empty disposable Postgres.
       - name: Migration drift check

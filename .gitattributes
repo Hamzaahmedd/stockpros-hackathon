@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Generated files: collapsed in pull request diffs.
+backend/src/docs/generated/** linguist-generated=true
