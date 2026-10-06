@@ -18,9 +18,21 @@ export const parseDomainAuthPolicy = (
 ): DomainAuthPolicy | undefined =>
   DOMAIN_AUTH_POLICIES.find((policy) => policy === value)
 
-/** True when the policy forbids magic-link login. */
+/** True when the policy requires signing in with Google. */
 export const isGoogleRequired = (policy: DomainAuthPolicy): boolean =>
+  policy === DomainAuthPolicy.GOOGLE_ONLY ||
+  policy === DomainAuthPolicy.GOOGLE_WORKSPACE
+
+/** True when the policy requires single sign-on. */
+export const isSsoRequired = (policy: DomainAuthPolicy): boolean =>
+  policy === DomainAuthPolicy.SAML_SSO
+
+/** Any restriction forbids the magic link. */
+export const isMagicLinkBlocked = (policy: DomainAuthPolicy): boolean =>
   policy !== DomainAuthPolicy.ANY
+
+export const SSO_FAILED_MESSAGE =
+  'Single sign-on did not complete. Please try again, or contact your administrator if it keeps happening.'
 
 /** The inline notice shown on the login form for a restricted domain; null when unrestricted. */
 export const loginPolicyNotice = (policy: DomainAuthPolicy): string | null => {

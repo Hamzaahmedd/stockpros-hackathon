@@ -3,6 +3,8 @@ import { DomainAuthPolicy } from '../types'
 import {
   DEFAULT_LOGIN_METHOD_MESSAGE,
   isGoogleRequired,
+  isMagicLinkBlocked,
+  isSsoRequired,
   loginMethodRequiredMessage,
   loginPolicyNotice,
   parseDomainAuthPolicy,
@@ -23,10 +25,28 @@ describe('parseDomainAuthPolicy', () => {
 })
 
 describe('isGoogleRequired', () => {
-  it('is false only for unrestricted domains', () => {
+  it('is true only for the Google policies', () => {
     expect(isGoogleRequired(DomainAuthPolicy.ANY)).toBe(false)
     expect(isGoogleRequired(DomainAuthPolicy.GOOGLE_ONLY)).toBe(true)
     expect(isGoogleRequired(DomainAuthPolicy.GOOGLE_WORKSPACE)).toBe(true)
+    expect(isGoogleRequired(DomainAuthPolicy.SAML_SSO)).toBe(false)
+  })
+})
+
+describe('isSsoRequired', () => {
+  it('is true only for the SSO policy', () => {
+    expect(isSsoRequired(DomainAuthPolicy.SAML_SSO)).toBe(true)
+    expect(isSsoRequired(DomainAuthPolicy.ANY)).toBe(false)
+    expect(isSsoRequired(DomainAuthPolicy.GOOGLE_ONLY)).toBe(false)
+  })
+})
+
+describe('isMagicLinkBlocked', () => {
+  it('is false only for unrestricted domains', () => {
+    expect(isMagicLinkBlocked(DomainAuthPolicy.ANY)).toBe(false)
+    expect(isMagicLinkBlocked(DomainAuthPolicy.GOOGLE_ONLY)).toBe(true)
+    expect(isMagicLinkBlocked(DomainAuthPolicy.GOOGLE_WORKSPACE)).toBe(true)
+    expect(isMagicLinkBlocked(DomainAuthPolicy.SAML_SSO)).toBe(true)
   })
 })
 
@@ -39,6 +59,13 @@ describe('loginPolicyNotice', () => {
     expect(loginPolicyNotice(DomainAuthPolicy.GOOGLE_ONLY)).toBe(
       DEFAULT_LOGIN_METHOD_MESSAGE,
     )
+  })
+
+  it('asks for single sign-on, not Google, when SSO is required', () => {
+    const notice = loginPolicyNotice(DomainAuthPolicy.SAML_SSO)
+
+    expect(notice).toContain('single sign-on')
+    expect(notice).not.toContain('Google')
   })
 
   it('mentions the Workspace account when one is required', () => {

@@ -31,6 +31,29 @@ export enum DomainAuthPolicy {
   SAML_SSO = 'SAML_SSO',
 }
 
+/** What the login screen needs to know about an email's organization. Mirrors `POST /auth/login-options`. */
+export interface LoginOptions {
+  authPolicy: DomainAuthPolicy
+  /** True when the organization has SSO switched on, so "Continue with SSO" can be offered. */
+  ssoAvailable: boolean
+}
+
+/** Result of `POST /auth/sso/start`. */
+export interface SsoStartResult {
+  redirectUrl: string
+  /** Kept by this browser only; the sign-in cannot be completed without it. */
+  bindingToken: string
+}
+
+/** The shared shape of a sign-in response (Google, SSO): either a session or an onboarding step. */
+export interface SignInResponse {
+  requiresOnboarding?: boolean
+  requiresPhoneVerification?: boolean
+  onboardingToken?: string
+  defaultDisplayName?: string
+  accessToken?: string
+}
+
 export type RequestMagicLinkDto = {
   email: string
 }

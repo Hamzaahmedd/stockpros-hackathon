@@ -1,6 +1,11 @@
 import api from '@/shared/api/axios'
 import { unwrapEnvelope } from '@/shared/api/envelope'
-import { DomainAuthPolicy, type OnboardingDto } from './types'
+import {
+  DomainAuthPolicy,
+  type LoginOptions,
+  type OnboardingDto,
+  type SsoStartResult,
+} from './types'
 import { parseDomainAuthPolicy } from './utils/loginPolicy'
 
 export const requestMagicLink = (email: string) =>
@@ -28,16 +33,34 @@ export const requestPhoneOtp = (phoneNumber: string) =>
 export const verifyPhoneOtp = (code: string) =>
   api.post('/api/v1/auth/phone-verification/verify', { code })
 
-/** The sign-in policy of the email's company domain. Never throws: any failure means "no restriction". */
-export const getLoginAuthPolicy = async (
-  email: string,
-): Promise<DomainAuthPolicy> => {
+const NO_RESTRICTION: LoginOptions = {
+  authPolicy: DomainAuthPolicy.ANY,
+  ssoAvailable: false,
+}
+
+/** How the email's company domain lets people sign in. Never throws: any failure means "no restriction". */
+export const getLoginOptions = async (email: string): Promise<LoginOptions> => {
   try {
-    const data = unwrapEnvelope<{ authPolicy?: string }>(
-      await api.post('/api/v1/auth/login-options', { email }),
-    )
-    return parseDomainAuthPolicy(data.authPolicy ?? '') ?? DomainAuthPolicy.ANY
+    const data = unwrapEnvelope<{
+      authPolicy?: string
+      ssoAvailable?: boolean
+    }>(await api.post('/api/v1/auth/login-options', { email }))
+    return {
+      authPolicy:
+        parseDomainAuthPolicy(data.authPolicy ?? '') ?? DomainAuthPolicy.ANY,
+      ssoAvailable: data.ssoAvailable === true,
+    }
   } catch {
-    return DomainAuthPolicy.ANY
+    return NO_RESTRICTION
   }
 }
+
+/** Starts a single sign-in; the browser is then sent to `redirectUrl`. */
+export const startSsoLogin = async (email: string): Promise<SsoStartResult> =>
+  unwrapEnvelope<SsoStartResult>(
+    await api.post('/api/v1/auth/sso/start', { email }),
+  )
+
+/** Trades the one-time code, plus this browser's binding token, for a session. */
+export const exchangeSsoCode = (code: string, bindingToken: string) =>
+  api.post('/api/v1/auth/sso/exchange', { code, bindingToken })

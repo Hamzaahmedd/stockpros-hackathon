@@ -5,6 +5,7 @@ import {
   Login,
   Onboarding,
   ProtectedRoute,
+  SsoComplete,
   VerifyMagicLink,
   VerifyPhone,
   VerifyPhoneGuard,
@@ -86,6 +87,7 @@ export default function App() {
           }
         />
         <Route path='/auth/onboarding' element={<Onboarding />} />
+        <Route path='/auth/sso/complete' element={<SsoComplete />} />
 
         {/* Protected routes */}
         <Route

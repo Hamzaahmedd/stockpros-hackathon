@@ -2,30 +2,36 @@ import { useAuth } from '@/modules/auth/hooks/useAuth'
 import api from '@/shared/api/axios'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { GOOGLE_CLIENT_ID } from '@/shared/config'
-import { setAccessToken } from '@/shared/utils/token'
+import { apiErrorMessage } from '@/shared/utils/api-error'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   CheckCircle2,
+  KeyRound,
   Mail,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react'
-import posthog from 'posthog-js'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { AuthLayout } from '../components/AuthLayout'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
-import { useLoginAuthPolicy } from '../hooks/useLoginAuthPolicy'
-import { googleLogin } from '../services'
+import { useFinishLogin } from '../hooks/useFinishLogin'
+import { useLoginOptions } from '../hooks/useLoginOptions'
+import { useRedirectWhenSignedIn } from '../hooks/useRedirectWhenSignedIn'
+import { googleLogin, startSsoLogin } from '../services'
 import {
   isGoogleRequired,
+  isMagicLinkBlocked,
+  isSsoRequired,
   loginMethodRequiredMessage,
   loginPolicyNotice,
+  SSO_FAILED_MESSAGE,
 } from '../utils/loginPolicy'
+import { isSafeRedirectUrl, saveSsoBinding } from '../utils/sso'
 import { loginSchema, type LoginFormValues } from '../validation'
 
 // Minimal typings for the Google Identity Services SDK loaded in index.html
@@ -49,12 +55,16 @@ declare global {
 }
 
 export const Login: React.FC = () => {
-  const navigate = useNavigate()
-  const { loading, user, can, refreshMe } = useAuth()
+  const { loading } = useAuth()
+  const finishLogin = useFinishLogin()
+  const [searchParams] = useSearchParams()
+  // The identity provider round trip ended in failure (the app is told only that, never why).
+  const ssoFailed = searchParams.get('sso') === 'failed'
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isSsoLoading, setIsSsoLoading] = useState(false)
   // Set once a Google sign-in response says phone verification is required,
   // so the "already logged in" effect below doesn't race an imperative
   // navigate to /auth/verify-phone and bounce the user back to the dashboard.
@@ -76,9 +86,13 @@ export const Login: React.FC = () => {
   )
 
   const email = watch('email')
-  const authPolicy = useLoginAuthPolicy(email)
+  const { authPolicy, ssoAvailable } = useLoginOptions(email)
+  const ssoRequired = isSsoRequired(authPolicy)
   const policyNotice = blockedMessage ?? loginPolicyNotice(authPolicy)
-  const googleRequired = blockedMessage !== null || isGoogleRequired(authPolicy)
+  const googleRequired =
+    !ssoRequired && (blockedMessage !== null || isGoogleRequired(authPolicy))
+  const magicLinkBlocked =
+    blockedMessage !== null || isMagicLinkBlocked(authPolicy)
 
   // A refusal belongs to the email it was issued for.
   useEffect(() => {
@@ -86,18 +100,7 @@ export const Login: React.FC = () => {
   }, [email])
 
   // Redirect if already logged in
-  useEffect(() => {
-    if (user && !phoneVerificationPending) {
-      const isAdminOnly =
-        !can('CORE_APP', 'canRead') && can('ACCESS_CONTROL', 'canRead')
-
-      if (isAdminOnly) {
-        navigate('/access-control/users', { replace: true })
-      } else {
-        navigate('/dashboard', { replace: true })
-      }
-    }
-  }, [user, can, navigate, phoneVerificationPending])
+  useRedirectWhenSignedIn(phoneVerificationPending)
 
   // Resend cooldown timer
   useEffect(() => {
@@ -145,45 +148,10 @@ export const Login: React.FC = () => {
       setIsGoogleLoading(true)
       try {
         const response = await googleLogin(credential)
-        const {
-          requiresOnboarding,
-          requiresPhoneVerification,
-          onboardingToken,
-          defaultDisplayName,
-          accessToken,
-        } = response.data || {}
-
-        if (requiresOnboarding && onboardingToken) {
-          sessionStorage.setItem('onboarding_token', onboardingToken)
-          if (defaultDisplayName) {
-            sessionStorage.setItem(
-              'onboarding_display_name',
-              defaultDisplayName,
-            )
-          }
-          toast.success('Welcome! Let’s finish setting up your profile.')
-          navigate('/auth/onboarding', { replace: true })
-          return
-        }
-
-        if (!accessToken) {
-          toast.error('Google sign-in failed. Please try again.')
-          return
-        }
-
-        setAccessToken(accessToken)
-        const signedInUser = await refreshMe()
-        if (signedInUser) posthog.identify(signedInUser.userId)
-        toast.success('Signed in with Google successfully')
-
-        // Phone verification (when required) takes priority over the
-        // "already logged in" redirect effect below — checked before it.
-        if (requiresPhoneVerification) {
-          setPhoneVerificationPending(true)
-          navigate('/auth/verify-phone', { replace: true })
-          return
-        }
-        // Otherwise the "already logged in" redirect effect above takes over once `user` is set
+        await finishLogin(response.data || {}, {
+          providerName: 'Google',
+          onPhoneVerification: () => setPhoneVerificationPending(true),
+        })
       } catch (err: any) {
         const methodRequired = loginMethodRequiredMessage(err)
         if (methodRequired) {
@@ -198,8 +166,26 @@ export const Login: React.FC = () => {
         setIsGoogleLoading(false)
       }
     },
-    [navigate, refreshMe],
+    [finishLogin],
   )
+
+  // ─── Continue with SSO ───────────────────────────────────────────────────
+  const handleSso = async () => {
+    setIsSsoLoading(true)
+    try {
+      const { redirectUrl, bindingToken } = await startSsoLogin(email)
+      if (!isSafeRedirectUrl(redirectUrl)) {
+        toast.error(SSO_FAILED_MESSAGE)
+        setIsSsoLoading(false)
+        return
+      }
+      saveSsoBinding(bindingToken)
+      window.location.assign(redirectUrl)
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, SSO_FAILED_MESSAGE))
+      setIsSsoLoading(false)
+    }
+  }
 
   // Initialize Google Identity Services and render the official sign-in button
   useEffect(() => {
@@ -330,7 +316,8 @@ export const Login: React.FC = () => {
         {GOOGLE_CLIENT_ID && (
           <div className='space-y-5'>
             <div
-              className={`relative h-12 overflow-hidden rounded-lg ${googleRequired ? 'shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400' : ''}`}
+              className={`relative h-12 overflow-hidden rounded-lg ${googleRequired ? 'shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400' : ''} ${ssoRequired ? 'pointer-events-none opacity-40' : ''}`}
+              aria-hidden={ssoRequired}
             >
               <div ref={googleButtonRef} className='absolute left-0 top-0' />
               {isGoogleLoading && (
@@ -368,6 +355,15 @@ export const Login: React.FC = () => {
             label=''
             className='h-12 w-full rounded-lg border-gray-800 bg-gray-950/60 text-white transition-all placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/25'
           />
+          {ssoFailed && !policyNotice && (
+            <div
+              role='alert'
+              className='mt-3 flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-100'
+            >
+              <ShieldAlert className='mt-0.5 h-4 w-4 shrink-0 text-red-400' />
+              <span>{SSO_FAILED_MESSAGE}</span>
+            </div>
+          )}
           {policyNotice && (
             <div
               role='alert'
@@ -379,9 +375,25 @@ export const Login: React.FC = () => {
           )}
         </div>
 
+        {ssoAvailable && (
+          <Button
+            type='button'
+            onClick={handleSso}
+            disabled={isSsoLoading}
+            className={`flex h-12 w-full items-center justify-center gap-2 text-base font-bold transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50 ${ssoRequired ? 'border border-cyan-400/40 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400' : 'border border-gray-700 bg-gray-800 text-white hover:bg-gray-700'}`}
+          >
+            {isSsoLoading ? (
+              <Skeleton className='h-4 w-4 rounded-full bg-white/30' />
+            ) : (
+              <KeyRound className='h-4 w-4' />
+            )}
+            <span>{isSsoLoading ? 'Redirecting...' : 'Continue with SSO'}</span>
+          </Button>
+        )}
+
         <Button
           type='submit'
-          disabled={formState.isSubmitting || isSubmitting || googleRequired}
+          disabled={formState.isSubmitting || isSubmitting || magicLinkBlocked}
           className='mt-4 flex h-12 w-full items-center justify-center gap-2 border border-cyan-400/40 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 text-base font-bold text-white shadow-lg shadow-cyan-950/40 transition-all duration-300 hover:border-cyan-400 hover:from-blue-600 hover:via-cyan-600 hover:to-cyan-500 hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
         >
           {formState.isSubmitting || isSubmitting ? (

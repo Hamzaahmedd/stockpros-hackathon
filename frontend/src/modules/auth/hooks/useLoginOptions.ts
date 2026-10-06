@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
-import { getLoginAuthPolicy } from '../services'
-import { DomainAuthPolicy } from '../types'
+import { getLoginOptions } from '../services'
+import { DomainAuthPolicy, type LoginOptions } from '../types'
 import { loginSchema } from '../validation'
 
 const LOOKUP_DEBOUNCE_MS = 400
 
+const UNRESTRICTED: LoginOptions = {
+  authPolicy: DomainAuthPolicy.ANY,
+  ssoAvailable: false,
+}
+
 /**
- * The sign-in policy of the typed email's domain. Looks up only once the email
- * is valid and typing has paused; a response for an earlier email is dropped.
+ * How the typed email's domain lets people sign in (policy and SSO). Looks up
+ * only once the email is valid and typing has paused; a response for an
+ * earlier email is dropped.
  */
-export const useLoginAuthPolicy = (email: string): DomainAuthPolicy => {
+export const useLoginOptions = (email: string): LoginOptions => {
   const [result, setResult] = useState<{
     email: string
-    policy: DomainAuthPolicy
+    options: LoginOptions
   } | null>(null)
 
   useEffect(() => {
@@ -21,8 +27,8 @@ export const useLoginAuthPolicy = (email: string): DomainAuthPolicy => {
     const normalized = parsed.data.email
     let stale = false
     const timer = setTimeout(() => {
-      void getLoginAuthPolicy(normalized).then((policy) => {
-        if (!stale) setResult({ email: normalized, policy })
+      void getLoginOptions(normalized).then((options) => {
+        if (!stale) setResult({ email: normalized, options })
       })
     }, LOOKUP_DEBOUNCE_MS)
     return () => {
@@ -33,6 +39,6 @@ export const useLoginAuthPolicy = (email: string): DomainAuthPolicy => {
 
   const parsed = loginSchema.safeParse({ email })
   return parsed.success && result?.email === parsed.data.email
-    ? result.policy
-    : DomainAuthPolicy.ANY
+    ? result.options
+    : UNRESTRICTED
 }
