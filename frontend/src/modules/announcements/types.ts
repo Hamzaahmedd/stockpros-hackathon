@@ -68,3 +68,24 @@ export interface AnnouncementBoot {
   badges: Announcement[]
   changelog: AnnouncementChangelog
 }
+
+export enum AnnouncementStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED',
+}
+
+/** Plan tiers an announcement can target; `ALL` covers every plan. */
+export enum AnnouncementPlanTarget {
+  ALL = 'ALL',
+  FREE = 'FREE',
+  PRO = 'PRO',
+  TEAM = 'TEAM',
+}
+
+/** Workspace roles an announcement can target. Solo accounts count as OWNER. */
+export enum AnnouncementTeamRole {
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER',
+}

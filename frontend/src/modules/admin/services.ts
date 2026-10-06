@@ -1,8 +1,12 @@
 import type { PlanTier } from '@/modules/auth/types'
 import api from '@/shared/api/axios'
 import { unwrapEnvelope } from '@/shared/api/envelope'
+import type { AnnouncementPayload } from './announcement-form'
 import type { CreditTarget } from './constants'
 import type {
+  AdminAnnouncement,
+  AdminAnnouncementDetail,
+  AnnouncementFilters,
   TimelinePage,
   RevealedUser,
   AdminAuditEntry,
@@ -243,4 +247,87 @@ export const adminService = {
         params: compact({ ...filters, page }),
       }),
     ),
+
+  // Announcements
+  listAnnouncements: async (
+    filters: AnnouncementFilters,
+    page: number,
+  ): Promise<AdminPage<AdminAnnouncement>> =>
+    unwrap(
+      await api.get(`${BASE}/announcements`, {
+        params: compact({ ...filters, page }),
+      }),
+    ),
+  getAnnouncement: async (id: string): Promise<AdminAnnouncementDetail> =>
+    unwrap(await api.get(`${BASE}/announcements/${id}`)),
+  createAnnouncement: async (
+    payload: AnnouncementPayload,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/announcements`, { ...payload, reason, ticketRef })
+  },
+  updateAnnouncement: async (
+    id: string,
+    payload: AnnouncementPayload,
+    expectedVersion: number,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.patch(`${BASE}/announcements/${id}`, {
+      ...payload,
+      expectedVersion,
+      reason,
+      ticketRef,
+    })
+  },
+  publishAnnouncement: async (
+    id: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/announcements/${id}/publish`, {
+      reason,
+      ticketRef,
+    })
+  },
+  disableAnnouncement: async (
+    id: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/announcements/${id}/disable`, {
+      reason,
+      ticketRef,
+    })
+  },
+  enableAnnouncement: async (
+    id: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/announcements/${id}/enable`, {
+      reason,
+      ticketRef,
+    })
+  },
+  reannounceAnnouncement: async (
+    id: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE}/announcements/${id}/reannounce`, {
+      reason,
+      ticketRef,
+    })
+  },
+  archiveAnnouncement: async (
+    id: string,
+    reason: string,
+    ticketRef?: string,
+  ): Promise<void> => {
+    await api.delete(`${BASE}/announcements/${id}`, {
+      data: { reason, ticketRef },
+    })
+  },
 }

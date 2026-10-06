@@ -3,6 +3,15 @@ import type {
   PlanTier,
   PlatformRole,
 } from '@/modules/auth/types'
+import type {
+  AnnouncementAnchor,
+  AnnouncementNavKey,
+  AnnouncementPlacement,
+  AnnouncementPlanTarget,
+  AnnouncementSeverity,
+  AnnouncementStatus,
+  AnnouncementTeamRole,
+} from '@/modules/announcements'
 import type { UsageSummary } from '@/modules/plans/types'
 import type {
   ADMIN_AUDIT_ACTIONS,
@@ -209,4 +218,44 @@ export type BlockedReason = (typeof BLOCKED_REASONS)[number]
 export type AdminUserUsage = UsageSummary & {
   userId: string
   blockedReason: BlockedReason | null
+}
+
+/** `GET /admin/announcements`: an announcement as staff see it, with its lifecycle state. */
+export interface AdminAnnouncement {
+  id: string
+  title: string
+  body: string
+  ctaLabel: string | null
+  ctaUrl: string | null
+  imageUrl: string | null
+  placement: AnnouncementPlacement
+  severity: AnnouncementSeverity | null
+  anchor: AnnouncementAnchor | null
+  navKey: AnnouncementNavKey | null
+  priority: number
+  dismissible: boolean
+  inChangelog: boolean
+  targetPlans: AnnouncementPlanTarget[]
+  targetRoles: AnnouncementTeamRole[]
+  startsAt: string | null
+  endsAt: string | null
+  publishedAt: string | null
+  status: AnnouncementStatus
+  /** The kill switch: false hides it everywhere without changing its status. */
+  isEnabled: boolean
+  /** Bumped on every write; sent back as `expectedVersion` so a stale edit is refused. */
+  version: number
+  /** Bumped by "re-announce"; earlier dismissals stop counting. */
+  reannounceEpoch: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminAnnouncementDetail extends AdminAnnouncement {
+  engagement: { seen: number; dismissed: number }
+}
+
+export interface AnnouncementFilters {
+  status?: AnnouncementStatus
+  placement?: AnnouncementPlacement
 }

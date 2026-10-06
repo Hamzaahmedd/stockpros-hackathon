@@ -7,6 +7,15 @@ export {
 } from './hooks/useAnnouncements'
 export { useNavBadge } from './hooks/useNavBadge'
 export { announcementService } from './services'
-export { AnnouncementAnchor, AnnouncementNavKey } from './types'
+export { SEVERITY_STYLES } from './styles'
+export {
+  AnnouncementAnchor,
+  AnnouncementNavKey,
+  AnnouncementPlacement,
+  AnnouncementPlanTarget,
+  AnnouncementSeverity,
+  AnnouncementStatus,
+  AnnouncementTeamRole,
+} from './types'
 export type { AnnouncementBoot } from './types'
 export { anchorProps } from './utils'

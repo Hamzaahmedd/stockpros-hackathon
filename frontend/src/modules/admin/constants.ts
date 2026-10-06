@@ -43,6 +43,7 @@ export enum AdminTab {
   BILLING = 'billing',
   TELEMETRY = 'telemetry',
   SYSTEM = 'system',
+  ANNOUNCEMENTS = 'announcements',
 }
 
 export enum CreditTarget {
@@ -82,6 +83,12 @@ export const ADMIN_AUDIT_ACTIONS = [
   'SAML_CONFIG_RESET',
   'SAML_DISABLED',
   'SPEND_LIMIT_OVERRIDDEN',
+  'ANNOUNCEMENT_CREATED',
+  'ANNOUNCEMENT_UPDATED',
+  'ANNOUNCEMENT_PUBLISHED',
+  'ANNOUNCEMENT_KILL_SWITCH_TOGGLED',
+  'ANNOUNCEMENT_REANNOUNCED',
+  'ANNOUNCEMENT_ARCHIVED',
 ] as const
 
 export const BLOCKED_REASONS = [
@@ -102,3 +109,10 @@ export {
   USER_SPEND_CAP_MAX_PAISA,
   USER_SPEND_CAP_MIN_PAISA,
 } from '@/modules/plans/constants'
+
+/** Content limits for announcements. Mirror the API's validation. */
+export const ANNOUNCEMENT_TITLE_MAX = 120
+export const ANNOUNCEMENT_BODY_MAX = 1000
+export const ANNOUNCEMENT_CTA_LABEL_MAX = 40
+export const ANNOUNCEMENT_PRIORITY_MIN = -100
+export const ANNOUNCEMENT_PRIORITY_MAX = 100

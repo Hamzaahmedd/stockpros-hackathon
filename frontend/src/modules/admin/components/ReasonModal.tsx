@@ -23,6 +23,8 @@ interface Props {
   canSubmit?: boolean
   /** Makes the support ticket mandatory (e.g. when the customer is told which ticket it cites). */
   ticketRequired?: boolean
+  /** Tailwind max-width class for the dialog (forms with a preview need more room). */
+  widthClass?: string
   onSubmit: (reason: string, ticketRef?: string) => Promise<void>
   onClose: () => void
   onDone: () => void
@@ -38,6 +40,7 @@ export function ReasonModal({
   children,
   canSubmit = true,
   ticketRequired = false,
+  widthClass,
   onSubmit,
   onClose,
   onDone,
@@ -86,7 +89,13 @@ export function ReasonModal({
   }
 
   return (
-    <Modal isOpen onClose={onClose} title={title} description={description}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={title}
+      description={description}
+      widthClass={widthClass}
+    >
       <div className='space-y-4'>
         {children}
         <div>

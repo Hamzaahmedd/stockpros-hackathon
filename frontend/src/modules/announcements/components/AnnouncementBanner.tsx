@@ -1,15 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { FiAlertOctagon, FiAlertTriangle, FiInfo, FiX } from 'react-icons/fi'
 import { useAnnouncements } from '../hooks/useAnnouncements'
+import { SEVERITY_STYLES } from '../styles'
 import { AnnouncementSeverity, type Announcement } from '../types'
 import { AnnouncementCta } from './AnnouncementCta'
-
-const STYLES: Record<AnnouncementSeverity, string> = {
-  [AnnouncementSeverity.INFO]:
-    'border-primary/40 bg-primary text-primary-foreground',
-  [AnnouncementSeverity.WARNING]: 'border-amber-500/60 bg-amber-500 text-black',
-  [AnnouncementSeverity.CRITICAL]: 'border-red-600 bg-red-600 text-white',
-}
 
 const ICONS: Record<AnnouncementSeverity, typeof FiInfo> = {
   [AnnouncementSeverity.INFO]: FiInfo,
@@ -42,7 +36,7 @@ export function AnnouncementBanner({
     <div
       ref={ref}
       role={severity === AnnouncementSeverity.CRITICAL ? 'alert' : 'status'}
-      className={`fixed inset-x-0 top-0 z-[100] flex items-center gap-3 border-b px-4 py-2 text-sm ${STYLES[severity]}`}
+      className={`fixed inset-x-0 top-0 z-[100] flex items-center gap-3 border-b px-4 py-2 text-sm ${SEVERITY_STYLES[severity]}`}
     >
       <Icon className='shrink-0' aria-hidden />
       <p className='min-w-0 flex-1 break-words'>

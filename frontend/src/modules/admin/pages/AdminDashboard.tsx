@@ -1,8 +1,10 @@
+import { useAnnouncements } from '@/modules/announcements'
 import { useAuth } from '@/modules/auth/hooks/useAuth'
 import { Sidebar } from '@/shared/components/Sidebar'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { useState } from 'react'
+import { AnnouncementsTab } from '../components/AnnouncementsTab'
 import { BillingTab } from '../components/BillingTab'
 import { SystemTab } from '../components/SystemTab'
 import { TeamsTab } from '../components/TeamsTab'
@@ -18,11 +20,16 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: AdminTab.SYSTEM, label: 'System & audit log' },
 ]
 
+const ANNOUNCEMENTS_TAB = { id: AdminTab.ANNOUNCEMENTS, label: 'Announcements' }
+
 /** Internal staff ops panel. Mounted only for staff roles in the tier-based workflow (see App routes). */
 export default function AdminDashboard() {
   const { user } = useAuth()
   const [tab, setTab] = useState<AdminTab>(AdminTab.USERS)
   const role = user?.platformRole ?? 'USER'
+  // The tab only exists while the feature is on for this deployment.
+  const { enabled: announcementsEnabled } = useAnnouncements()
+  const tabs = announcementsEnabled ? [...TABS, ANNOUNCEMENTS_TAB] : TABS
 
   return (
     <div className='flex h-screen overflow-hidden bg-background text-foreground transition-all duration-300'>
@@ -42,7 +49,7 @@ export default function AdminDashboard() {
             aria-label='Admin sections'
             className='mb-6 flex flex-wrap gap-2 border-b border-border pb-3'
           >
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <Button
                 key={t.id}
                 type='button'
@@ -62,6 +69,9 @@ export default function AdminDashboard() {
           {tab === AdminTab.BILLING && <BillingTab role={role} />}
           {tab === AdminTab.TELEMETRY && <TelemetryTab />}
           {tab === AdminTab.SYSTEM && <SystemTab role={role} />}
+          {tab === AdminTab.ANNOUNCEMENTS && announcementsEnabled && (
+            <AnnouncementsTab role={role} />
+          )}
         </div>
       </main>
     </div>
