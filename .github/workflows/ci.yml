@@ -109,6 +109,9 @@ jobs:
       - name: Lint (ESLint)
         run: npm run lint
 
+      - name: Format check (Prettier)
+        run: npm run format:check
+
       - name: Unit and component tests (Vitest)
         run: npm test
 

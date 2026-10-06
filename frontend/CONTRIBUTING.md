@@ -74,6 +74,12 @@ git push origin vX.Y.Z
 - Provide a summary of changes
 - Request a review from relevant team members
 
+## Formatting
+Code is formatted with Prettier (config in `.prettierrc`, including Tailwind class sorting) and CI fails on drift.
+- `npm run format` rewrites `src/` and `e2e/`; `npm run format:check` only reports.
+- Format before committing, or enable format-on-save in your editor.
+- The one-off commit that formatted the whole codebase is listed in `.git-blame-ignore-revs`. Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame` skips it (GitHub does this automatically).
+
 ## Testing Requirements
 - Write unit and integration tests for all major changes.
 - Ensure CI/CD checks pass before merging.

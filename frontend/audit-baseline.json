@@ -1,6 +1,13 @@
 [
+  { "name": "braces", "severity": "high", "reason": "No patched release exists (3.0.3 is the latest). Reached only through Tailwind 3 build-time globbing; clears with the Tailwind 4 migration." },
+  { "name": "chokidar", "severity": "high", "reason": "Flagged only because it depends on braces. Build-time file watching; clears with the Tailwind 4 migration." },
   { "name": "esbuild", "severity": "moderate" },
+  { "name": "fast-glob", "severity": "high", "reason": "Flagged only because it depends on micromatch/braces. Build-time only; clears with the Tailwind 4 migration." },
+  { "name": "micromatch", "severity": "high", "reason": "Flagged only because it depends on braces. Build-time only; clears with the Tailwind 4 migration." },
   { "name": "react-router", "severity": "moderate" },
   { "name": "react-router-dom", "severity": "moderate" },
-  { "name": "vite", "severity": "high" }
+  { "name": "tailwindcss", "severity": "high", "reason": "Flagged through braces/micromatch/postcss-selector-parser; the fix is Tailwind 4 (major). Build-time CSS tooling, not bundled into the app." },
+  { "name": "tinypool", "severity": "critical", "reason": "Vitest 3 worker pool. Fixed only in tinypool 2.1.2+, which Vitest 3 does not support; fix is Vitest 4 (needs Vite 6+). Dev-only." },
+  { "name": "vite", "severity": "high" },
+  { "name": "vitest", "severity": "critical", "reason": "No patched 3.x release; fix is Vitest 4, which needs Vite 6+. Dev-only test runner, never shipped." }
 ]

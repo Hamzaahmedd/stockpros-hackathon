@@ -280,6 +280,7 @@ python tools/convert.py <input_model_path> <output_model_path>
 | Frontend   | `npm run dev`                     | Start Vite dev server                                       |
 | Frontend   | `npm run build`                   | Production build                                            |
 | Frontend   | `npm run preview`                 | Preview production build                                    |
+| Frontend   | `npm run format` / `format:check` | Format `src/` and `e2e/` with Prettier (Tailwind class sorting included) / fail on drift; `format:check` runs in CI. The one-off reformat commit is listed in `.git-blame-ignore-revs` (`git config blame.ignoreRevsFile .git-blame-ignore-revs`) |
 | Frontend   | `npm run typecheck`               | Type-check without emitting                                 |
 | Frontend   | `npm run lint`                    | Run ESLint (`any` is an error in `modules/admin` and `src/test`, a warning elsewhere) |
 | Frontend   | `npm test`                        | Run Vitest unit/component tests (`npm run test:watch` to watch) |
