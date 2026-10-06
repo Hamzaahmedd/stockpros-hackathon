@@ -71,9 +71,16 @@ test.describe('Sending feedback', () => {
     page,
   }) => {
     await signIn(page, false)
-    let body: Record<string, any> | null = null
+    interface SentFeedback {
+      metadata: {
+        appVersion: string
+        userAgent: string
+        viewport: { width: number; height: number }
+      }
+    }
+    let body: SentFeedback | null = null
     await page.route('**/api/v1/feedback', (route) => {
-      body = route.request().postDataJSON()
+      body = route.request().postDataJSON() as SentFeedback
       return route.fulfill({
         status: 201,
         json: { success: true, data: { id: 'fb-1' } },

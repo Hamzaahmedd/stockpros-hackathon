@@ -23,6 +23,7 @@ const mockRateLimitDeps = (
         nodeEnv: configOverrides.nodeEnv ?? 'test',
         corsOrigins: configOverrides.corsOrigins ?? [],
       },
+      feedback: { submitLimitPerMinute: 5 },
     },
   }))
   jest.doMock('../../infrastructure/logger', () => ({
@@ -78,6 +79,9 @@ describe('rate limiter store selection', () => {
     expect(security.adminWriteLimiter.store).toMatchObject({
       prefix: 'rl:admin-write:',
     })
+    expect(security.feedbackSubmitLimiter.store).toMatchObject({
+      prefix: 'rl:feedback-submit:',
+    })
   })
 
   it('gives each limiter its own store instance', () => {
@@ -86,6 +90,32 @@ describe('rate limiter store selection', () => {
 
     expect(security.emailMagicLinkLimiter.store).not.toBe(
       security.loginLimiter.store,
+    )
+  })
+})
+
+describe('feedbackSubmitLimiter', () => {
+  it('allows the configured number of submissions a minute, per signed-in user', () => {
+    mockRateLimitDeps(null)
+    const { feedbackSubmitLimiter } = require('../security')
+    expect(feedbackSubmitLimiter.limit).toBe(5)
+    expect(feedbackSubmitLimiter.windowMs).toBe(60_000)
+  })
+
+  it('keys by user, falling back to the IP and then to unknown', () => {
+    mockRateLimitDeps(null)
+    const { feedbackSubmitLimiter } = require('../security')
+    expect(
+      feedbackSubmitLimiter.keyGenerator({
+        user: { userId: 'u1' },
+        ip: '1.2.3.4',
+      }),
+    ).toBe('feedback-submit:u1')
+    expect(feedbackSubmitLimiter.keyGenerator({ ip: '1.2.3.4' })).toBe(
+      'feedback-submit:1.2.3.4',
+    )
+    expect(feedbackSubmitLimiter.keyGenerator({})).toBe(
+      'feedback-submit:unknown',
     )
   })
 })
