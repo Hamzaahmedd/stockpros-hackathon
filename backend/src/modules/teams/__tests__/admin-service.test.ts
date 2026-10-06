@@ -19,6 +19,7 @@ const mockPrisma: any = {
     deleteMany: jest.fn(),
   },
   teamDomain: { findMany: jest.fn(), deleteMany: jest.fn() },
+  teamJoinRequest: { deleteMany: jest.fn() },
   teamAuditLog: {
     create: jest.fn(),
     findFirst: jest.fn(),

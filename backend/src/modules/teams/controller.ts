@@ -3,6 +3,7 @@ import { validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AuthenticatedRequest } from '../auth'
 import * as Admin from './admin-service'
+import * as JoinRequests from './join-requests'
 import * as TeamService from './service'
 import * as Workspace from './workspace-service'
 import {
@@ -19,6 +20,9 @@ import {
   idParamValidator,
   notesQueryValidator,
   instructionsValidator,
+  joinPolicyParamValidator,
+  joinPolicyValidator,
+  joinRequestValidator,
   preferencesValidator,
   reduceSeatsValidator,
   renameTeamValidator,
@@ -133,6 +137,69 @@ export const verifyDomain = handle('Domain checked', async (req, userId) => ({
     validateOrThrow(verifyDomainValidator, req.body).domain,
   ),
 }))
+
+export const listJoinOptions = handle('Join options', async (_req, userId) => ({
+  data: await JoinRequests.listJoinOptions(userId),
+}))
+
+export const getMyJoinRequest = handle(
+  'Your join request',
+  async (_req, userId) => ({
+    data: await JoinRequests.getMyJoinRequest(userId),
+  }),
+)
+
+export const requestToJoin = handle(
+  'Join request processed',
+  async (req, userId) => ({
+    data: await JoinRequests.requestToJoin(
+      userId,
+      validateOrThrow(joinRequestValidator, req.body).teamId,
+    ),
+  }),
+  201,
+)
+
+export const cancelMyJoinRequest = handle(
+  'Join request cancelled',
+  async (_req, userId) => {
+    await JoinRequests.cancelMyJoinRequest(userId)
+  },
+)
+
+export const listJoinRequests = handle(
+  'Join requests',
+  async (_req, userId) => ({
+    data: await JoinRequests.listJoinRequests(userId),
+  }),
+)
+
+export const approveJoinRequest = handle(
+  'Join request approved',
+  async (req, userId) => {
+    const { id } = validateOrThrow(idParamValidator, req.params)
+    await JoinRequests.approveJoinRequest(userId, id)
+  },
+)
+
+export const declineJoinRequest = handle(
+  'Join request declined',
+  async (req, userId) => {
+    const { id } = validateOrThrow(idParamValidator, req.params)
+    await JoinRequests.declineJoinRequest(userId, id)
+  },
+)
+
+export const setJoinPolicy = handle(
+  'Join policy updated',
+  async (req, userId) => ({
+    data: await JoinRequests.setJoinPolicy(
+      userId,
+      validateOrThrow(joinPolicyParamValidator, req.params).domain,
+      validateOrThrow(joinPolicyValidator, req.body).joinPolicy,
+    ),
+  }),
+)
 
 export const updateInstructions = handle(
   'Instructions updated',

@@ -1,5 +1,6 @@
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { fetchDashboardData } from "../services";
+import { JoinWorkspaceBanner } from "@/modules/teams";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -311,6 +312,8 @@ export const Dashboard: React.FC = () => {
 
             <main id="main-content" className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
                 <div className="max-w-[1400px] mx-auto space-y-8">
+                    <JoinWorkspaceBanner onJoined={() => navigate('/teams')} />
+
                     {/* Header */}
                     <div className="flex flex-col gap-1">
                         <div className="text-2xl md:text-3xl font-bold tracking-tight">

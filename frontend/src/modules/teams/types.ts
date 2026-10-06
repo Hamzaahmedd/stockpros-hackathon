@@ -14,11 +14,59 @@ export type SeatUtilization = {
   available: number;
 };
 
+/** What a verified domain lets colleagues do. Mirrors the backend `TeamJoinPolicy` enum. */
+export enum TeamJoinPolicy {
+  INVITE_ONLY = "INVITE_ONLY",
+  REQUEST_APPROVAL = "REQUEST_APPROVAL",
+  AUTO_APPROVE = "AUTO_APPROVE",
+}
+
+/** Mirrors the backend `JoinRequestStatus` enum. */
+export enum JoinRequestStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  DECLINED = "DECLINED",
+  CANCELLED = "CANCELLED",
+}
+
 export type TeamDomain = {
   id: string;
   domain: string;
   isVerified: boolean;
   restrictOrgCreation: boolean;
+  joinPolicy: TeamJoinPolicy;
+};
+
+/** A workspace the caller's verified email domain lets them join (never INVITE_ONLY). */
+export type JoinOption = {
+  teamId: string;
+  teamName: string;
+  domain: string;
+  joinPolicy: Exclude<TeamJoinPolicy, TeamJoinPolicy.INVITE_ONLY>;
+};
+
+export type MyJoinRequest = {
+  id: string;
+  teamId: string;
+  teamName: string;
+  status: JoinRequestStatus.PENDING;
+  createdAt: string;
+};
+
+/** `APPROVED` means the caller joined at once (auto-approve domain). */
+export type JoinRequestResult = {
+  teamId: string;
+  status: JoinRequestStatus.PENDING | JoinRequestStatus.APPROVED;
+};
+
+/** A pending request as an owner/admin sees it. */
+export type JoinRequest = {
+  id: string;
+  userId: string;
+  displayName: string;
+  email: string;
+  status: JoinRequestStatus;
+  createdAt: string;
 };
 
 export type TeamSubscription = {

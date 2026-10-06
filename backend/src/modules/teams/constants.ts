@@ -35,3 +35,6 @@ export enum ChartLayout {
 
 /** Deleting a workspace touches every member and asset row; allow more than Prisma's 5 s default. */
 export const TEAM_DELETE_TX_TIMEOUT_MS = 30_000
+
+/** After an admin declines a join request, the same person must wait this long before asking again. */
+export const JOIN_REQUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000

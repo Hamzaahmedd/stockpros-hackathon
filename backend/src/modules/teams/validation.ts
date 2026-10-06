@@ -1,4 +1,4 @@
-import { TeamAuditAction } from '@prisma/client'
+import { TeamAuditAction, TeamJoinPolicy } from '@prisma/client'
 import { z } from 'zod'
 import {
   seatCountValidator,
@@ -187,3 +187,13 @@ export const auditLogQueryValidator = z.object({
 })
 
 export type AuditLogQuery = z.infer<typeof auditLogQueryValidator>
+
+export const joinRequestValidator = z.object({
+  teamId: z.string().uuid('teamId must be a valid id'),
+})
+
+export const joinPolicyParamValidator = z.object({ domain: domainValidator })
+
+export const joinPolicyValidator = z.object({
+  joinPolicy: z.nativeEnum(TeamJoinPolicy),
+})

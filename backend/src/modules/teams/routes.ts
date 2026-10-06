@@ -1,5 +1,6 @@
 import express from 'express'
 import { authTokenMiddleware } from '../auth'
+import { joinRequestLimiter } from '../../shared/middlewares/security'
 import * as TeamsController from './controller'
 
 const router = express.Router()
@@ -34,9 +35,21 @@ router.patch(
   TeamsController.setMemberCreditLimit,
 )
 
+// ─── Join requests (people on a verified company domain) ─────────────────────
+// `/join-requests/me` is registered before `/join-requests/:id/...` so "me"
+// is never read as an id.
+router.get('/join-options', TeamsController.listJoinOptions)
+router.get('/join-requests/me', TeamsController.getMyJoinRequest)
+router.delete('/join-requests/me', TeamsController.cancelMyJoinRequest)
+router.post('/join-requests', joinRequestLimiter, TeamsController.requestToJoin)
+router.get('/join-requests', TeamsController.listJoinRequests)
+router.post('/join-requests/:id/approve', TeamsController.approveJoinRequest)
+router.post('/join-requests/:id/decline', TeamsController.declineJoinRequest)
+
 // ─── Domains, instructions & preferences ─────────────────────────────────────
 router.post('/domains', TeamsController.addDomain)
 router.post('/domains/verify', TeamsController.verifyDomain)
+router.patch('/domains/:domain/join-policy', TeamsController.setJoinPolicy)
 router.patch('/instructions', TeamsController.updateInstructions)
 router.get('/preferences', TeamsController.getPreferences)
 router.patch('/preferences', TeamsController.updateMyPreferences)

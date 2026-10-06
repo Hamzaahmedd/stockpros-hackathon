@@ -15,6 +15,9 @@ export const RENEWAL_REMINDER_JOB_NAME = 'subscription-renewal-reminder'
 // Team workspace invites ride the same queue for the same reasons.
 export const TEAM_INVITE_JOB_NAME = 'team-invite'
 
+// Join-request notifications (to admins, and the decision to the requester) ride it too.
+export const TEAM_JOIN_REQUEST_JOB_NAME = 'team-join-request'
+
 // Payment receipts for team workspaces ride the same queue too.
 export const PAYMENT_RECEIPT_JOB_NAME = 'payment-receipt'
 

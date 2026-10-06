@@ -288,6 +288,7 @@ export async function deleteTeam(actorId: string, confirmName: string) {
         tx.sharedScreener.deleteMany({ where: { teamId: actor.teamId } }),
         tx.sharedResearchNote.deleteMany({ where: { teamId: actor.teamId } }),
         tx.teamInvite.deleteMany({ where: { teamId: actor.teamId } }),
+        tx.teamJoinRequest.deleteMany({ where: { teamId: actor.teamId } }),
         tx.teamDomain.deleteMany({ where: { teamId: actor.teamId } }),
         tx.teamMember.deleteMany({ where: { teamId: actor.teamId } }),
       ])

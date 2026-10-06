@@ -11,8 +11,14 @@ import { Input } from "@/shared/components/ui/input";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { teamService } from "../services";
-import type { DomainVerification, Team } from "../types";
-import { apiErrorMessage, isTeamAdmin } from "../utils";
+import type { DomainVerification, Team, TeamDomain } from "../types";
+import {
+  apiErrorMessage,
+  isTeamAdmin,
+  JOIN_POLICIES,
+  JOIN_POLICY_LABELS,
+  parseJoinPolicy,
+} from "../utils";
 
 interface DomainsTabProps {
   team: Team;
@@ -71,6 +77,21 @@ export function DomainsTab({ team, reload }: DomainsTabProps) {
     }
   };
 
+  const handlePolicyChange = async (d: TeamDomain, value: string) => {
+    const joinPolicy = parseJoinPolicy(value);
+    if (busy || !joinPolicy || joinPolicy === d.joinPolicy) return;
+    setBusy(true);
+    try {
+      await teamService.setDomainJoinPolicy(d.domain, joinPolicy);
+      toast.success(`${d.domain}: ${JOIN_POLICY_LABELS[joinPolicy]}`);
+      reload();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Failed to update join policy"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -112,6 +133,32 @@ export function DomainsTab({ team, reload }: DomainsTabProps) {
                         </Button>
                       )}
                     </div>
+                    {admin && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        <label htmlFor={`join-policy-${d.id}`} className="font-medium">
+                          Join policy
+                        </label>
+                        <select
+                          id={`join-policy-${d.id}`}
+                          aria-label={`Join policy for ${d.domain}`}
+                          value={d.joinPolicy}
+                          disabled={busy || !d.isVerified}
+                          onChange={(e) => void handlePolicyChange(d, e.target.value)}
+                          className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+                        >
+                          {JOIN_POLICIES.map((policy) => (
+                            <option key={policy} value={policy}>
+                              {JOIN_POLICY_LABELS[policy]}
+                            </option>
+                          ))}
+                        </select>
+                        {!d.isVerified && (
+                          <span className="text-xs text-muted-foreground">
+                            Verify this domain to let colleagues join.
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {!d.isVerified && <DnsInstructions info={info} />}
                   </li>
                 );

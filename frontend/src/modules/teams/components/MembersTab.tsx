@@ -25,6 +25,7 @@ import {
 } from "../utils";
 import { CreditLimitModal } from "./CreditLimitModal";
 import { InviteMemberModal } from "./InviteMemberModal";
+import { JoinRequests } from "./JoinRequests";
 import { PendingInvites } from "./PendingInvites";
 
 interface MembersTabProps {
@@ -209,6 +210,8 @@ export function MembersTab({ team, reloadTeam, currentUserId }: MembersTabProps)
           </Table>
         </div>
       )}
+
+      {admin && <JoinRequests onChanged={refresh} />}
 
       {admin && (
         <PendingInvites refreshKey={invitesKey} onChanged={reloadTeam} />

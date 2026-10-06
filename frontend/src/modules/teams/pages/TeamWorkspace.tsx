@@ -10,6 +10,7 @@ import { CreditLedgerPanel } from "@/modules/plans/components/CreditLedgerPanel"
 import { ActivityTab } from "../components/ActivityTab";
 import { BillingTab } from "../components/BillingTab";
 import { DomainsTab } from "../components/DomainsTab";
+import { JoinWorkspaceBanner } from "../components/JoinWorkspaceBanner";
 import { MembersTab } from "../components/MembersTab";
 import { OverviewTab } from "../components/OverviewTab";
 import { PreferencesPanel } from "../components/PreferencesPanel";
@@ -88,7 +89,8 @@ export default function TeamWorkspace() {
           {loading ? (
             <Skeleton className="h-64 w-full" />
           ) : missing || !team ? (
-            <div className="py-16 text-center">
+            <div className="space-y-6 py-16 text-center">
+              <JoinWorkspaceBanner onJoined={() => void load()} />
               <h1 className="text-2xl font-bold">No team workspace yet</h1>
               <p className="mt-2 text-muted-foreground">
                 Create a workspace to share watchlists, research and AI credits with your team.

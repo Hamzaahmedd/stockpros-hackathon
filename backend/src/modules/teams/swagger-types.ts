@@ -56,11 +56,55 @@ export interface SeatUtilization {
   available: number
 }
 
+/** How people on a verified company domain can get into the workspace. */
+export type TeamJoinPolicyValue =
+  'INVITE_ONLY' | 'REQUEST_APPROVAL' | 'AUTO_APPROVE'
+
+export interface JoinOptionResponse {
+  teamId: string
+  teamName: string
+  /** @example "fund.com" */
+  domain: string
+  joinPolicy: Exclude<TeamJoinPolicyValue, 'INVITE_ONLY'>
+}
+
+export interface MyJoinRequestResponse {
+  id: string
+  teamId: string
+  teamName: string
+  status: 'PENDING'
+  createdAt: string
+}
+
+export interface JoinRequestSummary {
+  id: string
+  userId: string
+  displayName: string
+  email: string
+  status: 'PENDING'
+  createdAt: string
+}
+
+export interface RequestToJoinBody {
+  teamId: string
+}
+
+export interface RequestToJoinResponse {
+  teamId: string
+  /** APPROVED means the policy is AUTO_APPROVE and the caller joined immediately. */
+  status: 'PENDING' | 'APPROVED'
+}
+
+export interface SetJoinPolicyRequest {
+  joinPolicy: TeamJoinPolicyValue
+}
+
 export interface TeamDomainSummary {
   id: string
   domain: string
   isVerified: boolean
   restrictOrgCreation: boolean
+  joinPolicy: TeamJoinPolicyValue
 }
 
 export interface TeamResponse {
@@ -336,6 +380,77 @@ export class TeamsSwaggerController extends Controller {
   async verifyDomain(
     @Body() body: VerifyDomainRequest,
   ): Promise<ApiResponse<DomainVerificationResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Workspaces the caller could ask to join: a verified company domain matching
+   * the caller's email, opened up by its admins. Empty when the caller already
+   * has a workspace or uses a public mailbox domain.
+   */
+  @Get('join-options')
+  async listJoinOptions(): Promise<ApiResponse<JoinOptionResponse[]>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** The caller's pending join request, or `null`. */
+  @Get('join-requests/me')
+  async getMyJoinRequest(): Promise<ApiResponse<MyJoinRequestResponse | null>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Cancels the caller's pending join request. */
+  @Delete('join-requests/me')
+  @Response<ApiErrorResponse>(404, 'No pending request')
+  async cancelMyJoinRequest(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Asks to join a workspace. AUTO_APPROVE joins immediately (seat capacity
+   * permitting); REQUEST_APPROVAL queues a request and emails the admins.
+   * Rate limited, and a declined user waits 24 hours before asking again.
+   */
+  @Post('join-requests')
+  @SuccessResponse(201, 'Join request processed')
+  @Response<ApiErrorResponse>(404, 'Workspace not open to join requests')
+  @Response<ApiErrorResponse>(
+    409,
+    'Already in a workspace, no free seats or recently declined',
+  )
+  @Response<ApiErrorResponse>(429, 'Too many requests')
+  async requestToJoin(
+    @Body() body: RequestToJoinBody,
+  ): Promise<ApiResponse<RequestToJoinResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Pending join requests for the caller's workspace. Owner/admin only. */
+  @Get('join-requests')
+  async listJoinRequests(): Promise<ApiResponse<JoinRequestSummary[]>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Approves a pending request and seats the requester as a MEMBER. Owner/admin only. */
+  @Post('join-requests/{id}/approve')
+  @Response<ApiErrorResponse>(409, 'No free seats or already handled')
+  async approveJoinRequest(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Declines a pending request. Owner/admin only. */
+  @Post('join-requests/{id}/decline')
+  @Response<ApiErrorResponse>(409, 'Already handled')
+  async declineJoinRequest(@Path() id: string): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** Sets who may join through a verified domain. Owner/admin only; the domain must be verified to leave INVITE_ONLY. */
+  @Patch('domains/{domain}/join-policy')
+  async setJoinPolicy(
+    @Path() domain: string,
+    @Body() body: SetJoinPolicyRequest,
+  ): Promise<ApiResponse<TeamDomainSummary>> {
     throw new Error('tsoa spec-only')
   }
 

@@ -143,6 +143,27 @@ export const adminWriteLimiter = rateLimit({
   },
 })
 
+// Asking to join a workspace emails its admins, so it is capped per signed-in
+// user (a declined user is also held back by a 24h cooldown in the service).
+export const joinRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  limit: 5, // Allow up to 5 join requests per user per hour
+  store: createRateLimitStore('rl:join-request:'),
+  keyGenerator: (req: Request): string => {
+    const userId = (req as { user?: { userId?: string } }).user?.userId
+    return `join-request:${userId || req.ip || 'unknown'}`
+  },
+  message: {
+    success: false,
+    message: 'Too many join requests. Please try again later.',
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  validate: {
+    keyGeneratorIpFallback: false,
+  },
+})
+
 export const securityMiddleware = (app: Application): void => {
   // Global Rate Limiting
   app.use(

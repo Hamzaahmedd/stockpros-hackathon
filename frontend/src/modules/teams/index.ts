@@ -5,3 +5,4 @@ export { PendingInviteAcceptor } from "./components/PendingInviteAcceptor";
 export { PreferencesApplier } from "./components/PreferencesApplier";
 export { PreferencesPanel } from "./components/PreferencesPanel";
 export { INVITE_ROUTES } from "./pendingInvite";
+export { JoinWorkspaceBanner } from "./components/JoinWorkspaceBanner";

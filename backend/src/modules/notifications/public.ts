@@ -12,6 +12,7 @@ export {
   enqueueRenewalReminderEmail,
   enqueueStaffStepUpEmail,
   enqueueTeamInviteEmail,
+  enqueueTeamJoinRequestEmail,
 } from './infrastructure/email-worker'
 export { sendDailyDigestsToAllSubscribers } from './digest-service'
 export { runNotificationCleanupJob } from './notification-cleanup-job'

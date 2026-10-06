@@ -6,6 +6,10 @@ import type {
   DomainVerification,
   InvitableRole,
   InviteResult,
+  JoinOption,
+  JoinRequest,
+  JoinRequestResult,
+  MyJoinRequest,
   PaidActionResult,
   PendingInvite,
   PreferencesPatch,
@@ -16,6 +20,7 @@ import type {
   SharedWatchlist,
   Team,
   TeamAnalytics,
+  TeamJoinPolicy,
   TeamMember,
   TeamReceipt,
   TeamRole,
@@ -86,6 +91,15 @@ export const teamService = {
   verifyDomain: async (domain: string): Promise<DomainVerification> =>
     unwrap(await api.post(`${BASE}/domains/verify`, { domain })),
 
+  setDomainJoinPolicy: async (
+    domain: string,
+    joinPolicy: TeamJoinPolicy,
+  ): Promise<void> => {
+    await api.patch(`${BASE}/domains/${encodeURIComponent(domain)}/join-policy`, {
+      joinPolicy,
+    });
+  },
+
   updateInstructions: async (orgInstructions: string | null): Promise<void> => {
     await api.patch(`${BASE}/instructions`, { orgInstructions });
   },
@@ -131,6 +145,35 @@ export const teamService = {
 
   resendInvite: async (id: string): Promise<InviteResult> =>
     unwrap(await api.post(`${BASE}/invites/${id}/resend`)),
+
+  // ─── Request to join ────────────────────────────────────────────────────────
+  listJoinOptions: async (): Promise<JoinOption[]> => {
+    const options = unwrap<JoinOption[]>(await api.get(`${BASE}/join-options`));
+    return Array.isArray(options) ? options : [];
+  },
+
+  getMyJoinRequest: async (): Promise<MyJoinRequest | null> =>
+    unwrap<MyJoinRequest | null>(await api.get(`${BASE}/join-requests/me`)) ?? null,
+
+  requestToJoin: async (teamId: string): Promise<JoinRequestResult> =>
+    unwrap(await api.post(`${BASE}/join-requests`, { teamId })),
+
+  cancelMyJoinRequest: async (): Promise<void> => {
+    await api.delete(`${BASE}/join-requests/me`);
+  },
+
+  listJoinRequests: async (): Promise<JoinRequest[]> => {
+    const requests = unwrap<JoinRequest[]>(await api.get(`${BASE}/join-requests`));
+    return Array.isArray(requests) ? requests : [];
+  },
+
+  approveJoinRequest: async (id: string): Promise<void> => {
+    await api.post(`${BASE}/join-requests/${id}/approve`);
+  },
+
+  declineJoinRequest: async (id: string): Promise<void> => {
+    await api.post(`${BASE}/join-requests/${id}/decline`);
+  },
 
   // ─── Workspace lifecycle ────────────────────────────────────────────────────
   rename: async (name: string): Promise<void> => {

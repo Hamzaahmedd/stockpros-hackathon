@@ -6,8 +6,10 @@
  * and the test notices.
  *
  * It supports only what those tests use: equality plus `in`, `not`, `gt` and
- * `gte`. Any other operator fails closed (matches nothing) rather than
- * silently matching everything.
+ * `gte`, a relation filter matched against a nested object already on the row
+ * (the row "as loaded with include"), and compound unique keys such as
+ * `teamId_userId`. Any other operator fails closed (matches nothing) rather
+ * than silently matching everything.
  */
 export type Row = Record<string, any>
 
@@ -36,10 +38,28 @@ const matchesCondition = (value: any, condition: any): boolean => {
   }
 }
 
+const isNestedCondition = (condition: any): boolean =>
+  condition !== null &&
+  typeof condition === 'object' &&
+  !(condition instanceof Date) &&
+  !OPERATORS.some((name) => name in condition)
+
 export const matches = (row: Row, where: Row = {}): boolean =>
-  Object.entries(where).every(([key, condition]) =>
-    matchesCondition(row[key], condition),
-  )
+  Object.entries(where).every(([key, condition]) => {
+    if (!isNestedCondition(condition)) {
+      return matchesCondition(row[key], condition)
+    }
+    const target = row[key]
+    // A relation filter reads the related row embedded on this one.
+    if (target !== null && typeof target === 'object') {
+      return matches(target, condition)
+    }
+    // A compound unique key (`teamId_userId`) is just its fields side by side.
+    if (target === undefined && key.includes('_')) {
+      return matches(row, condition)
+    }
+    return false
+  })
 
 export const createFakeModel = (name: string, initial: Row[]) => {
   const rows: Row[] = initial.map((row) => ({ ...row }))
@@ -79,6 +99,17 @@ export const createFakeModel = (name: string, initial: Row[]) => {
       const row = { id: `${name}-new-${counter}`, ...data }
       rows.push(row)
       return { ...row }
+    },
+    upsert: async ({ where, create, update }: Row) => {
+      const row = find(where)[0]
+      if (row) {
+        Object.assign(row, update)
+        return { ...row }
+      }
+      counter += 1
+      const created = { id: `${name}-new-${counter}`, ...create }
+      rows.push(created)
+      return { ...created }
     },
     update: async ({ where, data }: Row) => {
       const row = find(where)[0]

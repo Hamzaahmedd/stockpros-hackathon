@@ -831,3 +831,95 @@ describe('staff security emails', () => {
     expect(logged).not.toContain('staff@venturedive.com')
   })
 })
+
+describe('team join-request emails', () => {
+  const payload = {
+    to: 'admin@fund.com',
+    requestId: 'jr-1',
+    teamId: 'team-1',
+    kind: 'REQUESTED',
+    teamName: 'Alpha Fund',
+    requesterName: 'Sam Lee',
+    actionUrl: 'https://app.example/teams',
+  }
+
+  it('logs and skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueueTeamJoinRequestEmail } = require('../email-worker')
+    await expect(enqueueTeamJoinRequestEmail(payload)).resolves.toBeUndefined()
+  })
+
+  it("enqueues under the 'team-join-request' job name on the shared email queue", async () => {
+    const { QueueMock } = mockDeps({ host: 'localhost' })
+    const { enqueueTeamJoinRequestEmail } = require('../email-worker')
+
+    await enqueueTeamJoinRequestEmail(payload)
+
+    expect(QueueMock.mock.results[0].value.add).toHaveBeenCalledWith(
+      'team-join-request',
+      payload,
+    )
+  })
+
+  it('renders and sends the email when the worker processes a team-join-request job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await worker.processor({
+      id: 'job-7',
+      name: 'team-join-request',
+      data: payload,
+    })
+
+    expect(transporter.sendMail).toHaveBeenCalledTimes(1)
+    const mail = transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('admin@fund.com')
+    expect(mail.subject).toBe('Sam Lee asked to join Alpha Fund on StockPros')
+    expect(mail.html).toContain(payload.actionUrl)
+  })
+
+  it('rethrows delivery failures so BullMQ retries the job', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const {
+      transporter,
+    } = require('../../../../shared/infrastructure/config/email')
+    transporter.sendMail.mockRejectedValueOnce(new Error('smtp down'))
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await expect(
+      worker.processor({ name: 'team-join-request', data: payload }),
+    ).rejects.toThrow()
+  })
+
+  it('logs the request and team ids only, never the address', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { logger } = require('../../../../shared/infrastructure/logger')
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const worker = deps.WorkerMock.mock.results[0].value
+    await worker.processor({
+      id: 'job-8',
+      name: 'team-join-request',
+      data: payload,
+    })
+
+    expect(logger.info).toHaveBeenCalledWith(
+      '[EmailWorker] Team join-request email sent',
+      {
+        jobId: 'job-8',
+        requestId: 'jr-1',
+        teamId: 'team-1',
+        kind: 'REQUESTED',
+      },
+    )
+    expect(JSON.stringify(logger.info.mock.calls)).not.toContain('@')
+  })
+})

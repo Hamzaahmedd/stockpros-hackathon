@@ -46,6 +46,7 @@ jest.mock('../../payments/public', () => ({
 }))
 jest.mock('../../notifications/public', () => ({
   enqueueTeamInviteEmail: jest.fn().mockResolvedValue(undefined),
+  enqueueTeamJoinRequestEmail: jest.fn().mockResolvedValue(undefined),
 }))
 jest.mock('../domain-verification', () => ({
   checkDomainTxtRecord: jest.fn().mockResolvedValue(false),
@@ -61,6 +62,7 @@ import { hashToken } from '../../../shared/utils'
 import { resolveUsageWindowStart, recordUsage } from '../../payments/public'
 import * as admin from '../admin-service'
 import router from '../routes'
+import * as joinRequests from '../join-requests'
 import * as service from '../service'
 import * as workspace from '../workspace-service'
 
@@ -72,6 +74,7 @@ const TABLES = [
   'teamMember',
   'teamInvite',
   'teamDomain',
+  'teamJoinRequest',
   'sharedWatchlist',
   'sharedScreener',
   'sharedResearchNote',
@@ -124,6 +127,8 @@ const fixtures = (): Record<string, Row[]> => ({
     user('b-owner', 'b-owner@x.com'),
     user('b-admin', 'b-admin@x.com'),
     user('b-member', 'b-member@x.com'),
+    user('a-cand', 'a-cand@a-open.com'),
+    user('b-cand', 'b-cand@b-open.com'),
   ],
   team: [team(A, 'a-owner'), team(B, 'b-owner')],
   teamMember: [
@@ -174,6 +179,47 @@ const fixtures = (): Record<string, Row[]> => ({
       isVerified: false,
       verificationToken: 'tb',
       restrictOrgCreation: true,
+    },
+    {
+      id: 'dom-A-open',
+      teamId: A,
+      domain: 'a-open.com',
+      isVerified: true,
+      joinPolicy: 'REQUEST_APPROVAL',
+      verificationToken: 'ta2',
+      restrictOrgCreation: true,
+      team: { id: A, name: `Workspace ${A}`, status: 'ACTIVE' },
+    },
+    {
+      id: 'dom-B-open',
+      teamId: B,
+      domain: 'b-open.com',
+      isVerified: true,
+      joinPolicy: 'REQUEST_APPROVAL',
+      verificationToken: 'tb2',
+      restrictOrgCreation: true,
+      team: { id: B, name: `Workspace ${B}`, status: 'ACTIVE' },
+    },
+  ],
+  // Verified, open domains. `team` is the row as loaded with `include`.
+  teamJoinRequest: [
+    {
+      id: 'jr-A',
+      teamId: A,
+      userId: 'a-cand',
+      status: 'PENDING',
+      createdAt: new Date('2030-01-01'),
+      user: { displayName: 'Name of a-cand', email: 'a-cand@a-open.com' },
+      team: { name: `Workspace ${A}`, status: 'ACTIVE' },
+    },
+    {
+      id: 'jr-B',
+      teamId: B,
+      userId: 'b-cand',
+      status: 'PENDING',
+      createdAt: new Date('2030-01-01'),
+      user: { displayName: 'Name of b-cand', email: 'b-cand@b-open.com' },
+      team: { name: `Workspace ${B}`, status: 'ACTIVE' },
     },
   ],
   sharedWatchlist: [
@@ -530,6 +576,57 @@ const CASES: Record<string, Case> = {
       'b-owner',
     ])
   },
+  'asking to join another workspace with a different email domain':
+    async () => {
+      asUser('b-cand')
+      const before = snapshotA()
+      await refused(joinRequests.requestToJoin('b-cand', A))
+      aRowsUntouched(before)
+      expect(
+        db.teamJoinRequest.rows.filter((r) => r.teamId === A),
+      ).toHaveLength(1)
+    },
+  "deciding another workspace's join request": async () => {
+    asUser('b-owner')
+    const before = snapshotA()
+    await refused(joinRequests.approveJoinRequest('b-owner', 'jr-A'))
+    await refused(joinRequests.declineJoinRequest('b-owner', 'jr-A'))
+    aRowsUntouched(before)
+    expect(db.teamMember.rows.some((m) => m.userId === 'a-cand')).toBe(false)
+  },
+  "listing join requests and options shows none of A's": async () => {
+    asUser('b-admin')
+    const listed = await joinRequests.listJoinRequests('b-admin')
+    expect(listed.map((request) => request.id)).toEqual(['jr-B'])
+
+    asUser('b-cand')
+    const options = await joinRequests.listJoinOptions('b-cand')
+    expect(options.map((option) => option.teamId)).toEqual([B])
+    expect(await joinRequests.getMyJoinRequest('b-cand')).toMatchObject({
+      teamId: B,
+    })
+  },
+  "cancelling a join request only ever touches the caller's own": async () => {
+    asUser('b-cand')
+    const before = snapshotA()
+    await joinRequests.cancelMyJoinRequest('b-cand')
+    aRowsUntouched(before)
+    expect(db.teamJoinRequest.rows.find((r) => r.id === 'jr-B')?.status).toBe(
+      'CANCELLED',
+    )
+  },
+  "setting another workspace's domain join policy": async () => {
+    asUser('b-owner')
+    const before = snapshotA()
+    await refused(
+      joinRequests.setJoinPolicy(
+        'b-owner',
+        'a-open.com',
+        'AUTO_APPROVE' as any,
+      ),
+    )
+    aRowsUntouched(before)
+  },
   'creating or accepting with no membership reaches nothing': async () => {
     asUser('nobody')
     await expect(service.getMyTeam('nobody')).rejects.toMatchObject({
@@ -574,6 +671,20 @@ const ROUTE_CASES: Record<string, string> = {
     "setting another workspace's member credit limit",
   'POST /domains': 'every workspace write by an admin lands on B only',
   'POST /domains/verify': "verifying another workspace's domain",
+  'PATCH /domains/:domain/join-policy':
+    "setting another workspace's domain join policy",
+  'GET /join-options': "listing join requests and options shows none of A's",
+  'GET /join-requests/me':
+    "listing join requests and options shows none of A's",
+  'DELETE /join-requests/me':
+    "cancelling a join request only ever touches the caller's own",
+  'POST /join-requests':
+    'asking to join another workspace with a different email domain',
+  'GET /join-requests': "listing join requests and options shows none of A's",
+  'POST /join-requests/:id/approve':
+    "deciding another workspace's join request",
+  'POST /join-requests/:id/decline':
+    "deciding another workspace's join request",
   'PATCH /instructions': 'every workspace write by an admin lands on B only',
   'GET /preferences': PERSONAL,
   'PATCH /preferences': PERSONAL,

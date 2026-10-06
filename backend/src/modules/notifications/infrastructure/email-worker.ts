@@ -15,12 +15,14 @@ import {
   renewalReminderJobSchema,
   staffStepUpJobSchema,
   teamInviteJobSchema,
+  teamJoinRequestJobSchema,
   type AdminActionAlertEmailJobPayload,
   type EmailJobPayload,
   type PaymentReceiptEmailJobPayload,
   type RenewalReminderEmailJobPayload,
   type StaffStepUpEmailJobPayload,
   type TeamInviteEmailJobPayload,
+  type TeamJoinRequestEmailJobPayload,
 } from '../email-job-schemas'
 import { buildPaymentReceiptEmail } from '../email-templates/payment-receipt'
 import { buildAlertEmail } from '../email-templates/watchlist-alert'
@@ -30,6 +32,7 @@ import {
   buildStaffStepUpEmail,
 } from '../email-templates/staff-security'
 import { buildTeamInviteEmail } from '../email-templates/team-invite'
+import { buildTeamJoinRequestEmail } from '../email-templates/team-join-request'
 import {
   ADMIN_ACTION_ALERT_JOB_NAME,
   ALERT_EMAIL_DEFAULT_JOB_OPTIONS,
@@ -40,6 +43,7 @@ import {
   RENEWAL_REMINDER_JOB_NAME,
   STAFF_STEP_UP_JOB_NAME,
   TEAM_INVITE_JOB_NAME,
+  TEAM_JOIN_REQUEST_JOB_NAME,
 } from './alert-email.config'
 
 type EmailQueueJobPayload =
@@ -48,6 +52,7 @@ type EmailQueueJobPayload =
   | AdminActionAlertEmailJobPayload
   | RenewalReminderEmailJobPayload
   | TeamInviteEmailJobPayload
+  | TeamJoinRequestEmailJobPayload
   | PaymentReceiptEmailJobPayload
 
 interface JobRef {
@@ -170,6 +175,28 @@ const sendTeamInviteEmail = async (job: JobRef): Promise<void> => {
   })
 }
 
+const sendTeamJoinRequestEmail = async (job: JobRef): Promise<void> => {
+  const { to, requestId, teamId, ...content } = parsePayload(
+    teamJoinRequestJobSchema,
+    job,
+  )
+  const { subject, html, text } = buildTeamJoinRequestEmail(
+    content,
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  logger.info('[EmailWorker] Team join-request email sent', {
+    jobId: job.id,
+    requestId,
+    teamId,
+    kind: content.kind,
+  })
+}
+
 const sendPaymentReceiptEmail = async (job: JobRef): Promise<void> => {
   const { to, transactionId, teamId, ...receipt } = parsePayload(
     paymentReceiptJobSchema,
@@ -254,6 +281,9 @@ export const startEmailWorker = (): void => {
       if (job.name === TEAM_INVITE_JOB_NAME) {
         return sendTeamInviteEmail(job)
       }
+      if (job.name === TEAM_JOIN_REQUEST_JOB_NAME) {
+        return sendTeamJoinRequestEmail(job)
+      }
       if (job.name === STAFF_STEP_UP_JOB_NAME) {
         return sendStaffStepUpEmail(job)
       }
@@ -328,6 +358,20 @@ export const enqueueTeamInviteEmail = async (
   } else {
     logger.warn(
       '[EmailWorker] Skipping team invite enqueue - Redis not connected',
+    )
+  }
+}
+
+/** Add a join-request notification (admin alert or requester decision) to the same queue. */
+export const enqueueTeamJoinRequestEmail = async (
+  payload: TeamJoinRequestEmailJobPayload,
+): Promise<void> => {
+  const queue = getEmailQueue()
+  if (queue) {
+    await queue.add(TEAM_JOIN_REQUEST_JOB_NAME, payload)
+  } else {
+    logger.warn(
+      '[EmailWorker] Skipping team join-request enqueue - Redis not connected',
     )
   }
 }

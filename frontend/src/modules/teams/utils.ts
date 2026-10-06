@@ -1,8 +1,10 @@
-import type {
-  ChartLayout,
-  InvitableRole,
-  PreferenceTheme,
-  TeamRole,
+import {
+  TeamJoinPolicy,
+  type ChartLayout,
+  type InvitableRole,
+  type JoinOption,
+  type PreferenceTheme,
+  type TeamRole,
 } from "./types";
 
 /** Owners and admins manage the workspace; plain members get read access. */
@@ -49,6 +51,23 @@ export const parseChartLayout = (value: string): ChartLayout | "" =>
 
 export const parseInvitableRole = (value: string): InvitableRole | undefined =>
   INVITABLE_ROLES.find((role) => role === value);
+
+export const JOIN_POLICY_LABELS: Record<TeamJoinPolicy, string> = {
+  [TeamJoinPolicy.INVITE_ONLY]: "Invite only",
+  [TeamJoinPolicy.REQUEST_APPROVAL]: "Require admin approval",
+  [TeamJoinPolicy.AUTO_APPROVE]: "Auto-approve",
+};
+
+export const JOIN_POLICIES: readonly TeamJoinPolicy[] = Object.values(TeamJoinPolicy);
+
+export const parseJoinPolicy = (value: string): TeamJoinPolicy | undefined =>
+  JOIN_POLICIES.find((policy) => policy === value);
+
+/** Button copy for a join option: auto-approve joins at once, otherwise it asks an admin. */
+export const joinActionLabel = (option: JoinOption): string =>
+  option.joinPolicy === TeamJoinPolicy.AUTO_APPROVE
+    ? `Join ${option.teamName}`
+    : `Request to join ${option.teamName}`;
 
 export const formatDate = (value: string | null): string =>
   value

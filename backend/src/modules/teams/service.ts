@@ -163,6 +163,7 @@ export async function getMyTeam(userId: string) {
             domain: true,
             isVerified: true,
             restrictOrgCreation: true,
+            joinPolicy: true,
           },
         },
         subscription: {
@@ -400,6 +401,42 @@ export async function dispatchInviteEmail(
   }
 }
 
+/**
+ * The one place a person takes a seat, shared by invite acceptance and the
+ * join-request flows so capacity and one-workspace-per-user are enforced
+ * identically. Locks the team row, releases a lapsed membership, re-reads
+ * capacity under the lock (it may have changed since the caller looked), then
+ * seats the user and moves them onto the TEAM plan. Must run inside `tx`.
+ */
+export async function seatMember(
+  tx: Prisma.TransactionClient,
+  seat: { teamId: string; userId: string; role: TeamRole },
+): Promise<void> {
+  await lockTeamRow(tx, seat.teamId)
+
+  await releaseLapsedMembership(tx, seat.userId)
+  if (await tx.teamMember.findUnique({ where: { userId: seat.userId } })) {
+    throw new ConflictError('You already belong to a workspace')
+  }
+  const [team, seated] = await Promise.all([
+    tx.team.findUniqueOrThrow({
+      where: { id: seat.teamId },
+      select: { seatCapacity: true, scheduledSeatCapacity: true },
+    }),
+    tx.teamMember.count({ where: { teamId: seat.teamId } }),
+  ])
+  if (seated >= effectiveSeatCapacity(team)) {
+    throw new ConflictError('This workspace has no free seats')
+  }
+  await tx.teamMember.create({
+    data: { teamId: seat.teamId, userId: seat.userId, role: seat.role },
+  })
+  await tx.user.update({
+    where: { id: seat.userId },
+    data: { plan: PlanTier.TEAM },
+  })
+}
+
 export async function acceptInvite(userId: string, rawToken: string) {
   const invite = await prisma.teamInvite.findUnique({
     where: { token: hashToken(rawToken) },
@@ -421,31 +458,12 @@ export async function acceptInvite(userId: string, rawToken: string) {
   }
 
   await prisma.$transaction(async (tx) => {
-    await lockTeamRow(tx, invite.teamId)
-
-    await releaseLapsedMembership(tx, userId)
-    if (await tx.teamMember.findUnique({ where: { userId } })) {
-      throw new ConflictError('You already belong to a workspace')
-    }
-    // Capacity is re-read under the lock: it may have changed since the invite was loaded.
-    const [team, seated] = await Promise.all([
-      tx.team.findUniqueOrThrow({
-        where: { id: invite.teamId },
-        select: { seatCapacity: true, scheduledSeatCapacity: true },
-      }),
-      tx.teamMember.count({ where: { teamId: invite.teamId } }),
-    ])
-    if (seated >= effectiveSeatCapacity(team)) {
-      throw new ConflictError('This workspace has no free seats')
-    }
-    await tx.teamMember.create({
-      data: { teamId: invite.teamId, userId, role: invite.role },
+    await seatMember(tx, {
+      teamId: invite.teamId,
+      userId,
+      role: invite.role,
     })
     await tx.teamInvite.delete({ where: { id: invite.id } })
-    await tx.user.update({
-      where: { id: userId },
-      data: { plan: PlanTier.TEAM },
-    })
     await recordTeamAudit(tx, {
       teamId: invite.teamId,
       actorUserId: userId,

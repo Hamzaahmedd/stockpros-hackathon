@@ -482,6 +482,15 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"TeamJoinPolicyValue": {
+				"type": "string",
+				"enum": [
+					"INVITE_ONLY",
+					"REQUEST_APPROVAL",
+					"AUTO_APPROVE"
+				],
+				"description": "How people on a verified company domain can get into the workspace."
+			},
 			"TeamDomainSummary": {
 				"properties": {
 					"id": {
@@ -495,13 +504,17 @@
 					},
 					"restrictOrgCreation": {
 						"type": "boolean"
+					},
+					"joinPolicy": {
+						"$ref": "#/components/schemas/TeamJoinPolicyValue"
 					}
 				},
 				"required": [
 					"id",
 					"domain",
 					"isVerified",
-					"restrictOrgCreation"
+					"restrictOrgCreation",
+					"joinPolicy"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -865,6 +878,258 @@
 				},
 				"required": [
 					"domain"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"Exclude_TeamJoinPolicyValue.INVITE_ONLY_": {
+				"type": "string",
+				"enum": [
+					"REQUEST_APPROVAL",
+					"AUTO_APPROVE"
+				],
+				"description": "Exclude from T those types that are assignable to U"
+			},
+			"JoinOptionResponse": {
+				"properties": {
+					"teamId": {
+						"type": "string"
+					},
+					"teamName": {
+						"type": "string"
+					},
+					"domain": {
+						"type": "string",
+						"example": "fund.com"
+					},
+					"joinPolicy": {
+						"$ref": "#/components/schemas/Exclude_TeamJoinPolicyValue.INVITE_ONLY_"
+					}
+				},
+				"required": [
+					"teamId",
+					"teamName",
+					"domain",
+					"joinPolicy"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_JoinOptionResponse-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/JoinOptionResponse"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"MyJoinRequestResponse": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"teamId": {
+						"type": "string"
+					},
+					"teamName": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"PENDING"
+						],
+						"nullable": false
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"teamId",
+					"teamName",
+					"status",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_MyJoinRequestResponse-or-null_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/MyJoinRequestResponse"
+							}
+						],
+						"nullable": true
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RequestToJoinResponse": {
+				"properties": {
+					"teamId": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"PENDING",
+							"APPROVED"
+						],
+						"description": "APPROVED means the policy is AUTO_APPROVE and the caller joined immediately."
+					}
+				},
+				"required": [
+					"teamId",
+					"status"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_RequestToJoinResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/RequestToJoinResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RequestToJoinBody": {
+				"properties": {
+					"teamId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"teamId"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"JoinRequestSummary": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"PENDING"
+						],
+						"nullable": false
+					},
+					"createdAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"displayName",
+					"email",
+					"status",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_JoinRequestSummary-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/JoinRequestSummary"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_TeamDomainSummary_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/TeamDomainSummary"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"SetJoinPolicyRequest": {
+				"properties": {
+					"joinPolicy": {
+						"$ref": "#/components/schemas/TeamJoinPolicyValue"
+					}
+				},
+				"required": [
+					"joinPolicy"
 				],
 				"type": "object",
 				"additionalProperties": true
@@ -4928,6 +5193,325 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/VerifyDomainRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/teams/join-options": {
+			"get": {
+				"operationId": "ListJoinOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_JoinOptionResponse-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Workspaces the caller could ask to join: a verified company domain matching\nthe caller's email, opened up by its admins. Empty when the caller already\nhas a workspace or uses a public mailbox domain.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/teams/join-requests/me": {
+			"get": {
+				"operationId": "GetMyJoinRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_MyJoinRequestResponse-or-null_"
+								}
+							}
+						}
+					}
+				},
+				"description": "The caller's pending join request, or `null`.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			},
+			"delete": {
+				"operationId": "CancelMyJoinRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No pending request",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Cancels the caller's pending join request.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/teams/join-requests": {
+			"post": {
+				"operationId": "RequestToJoin",
+				"responses": {
+					"201": {
+						"description": "Join request processed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_RequestToJoinResponse_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Workspace not open to join requests",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Already in a workspace, no free seats or recently declined",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Too many requests",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Asks to join a workspace. AUTO_APPROVE joins immediately (seat capacity\npermitting); REQUEST_APPROVAL queues a request and emails the admins.\nRate limited, and a declined user waits 24 hours before asking again.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestToJoinBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "ListJoinRequests",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_JoinRequestSummary-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Pending join requests for the caller's workspace. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/teams/join-requests/{id}/approve": {
+			"post": {
+				"operationId": "ApproveJoinRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "No free seats or already handled",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Approves a pending request and seats the requester as a MEMBER. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/teams/join-requests/{id}/decline": {
+			"post": {
+				"operationId": "DeclineJoinRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Already handled",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Declines a pending request. Owner/admin only.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/teams/domains/{domain}/join-policy": {
+			"patch": {
+				"operationId": "SetJoinPolicy",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_TeamDomainSummary_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Sets who may join through a verified domain. Owner/admin only; the domain must be verified to leave INVITE_ONLY.",
+				"tags": [
+					"Teams"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "domain",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SetJoinPolicyRequest"
 							}
 						}
 					}

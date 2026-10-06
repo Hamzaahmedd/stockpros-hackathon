@@ -1,6 +1,7 @@
 import { AlertType, TeamRole } from '@prisma/client'
 import { z } from 'zod'
 import { RENEWAL_REMINDER_VARIANTS } from './email-templates/subscription-renewal'
+import { JOIN_REQUEST_EMAIL_KINDS } from './email-templates/team-join-request'
 
 // Job payloads round-trip through Redis, so what a worker reads is not
 // guaranteed to be what the producer wrote (stale jobs from an older deploy,
@@ -58,6 +59,17 @@ export const teamInviteJobSchema = z.object({
   expiresAt: z.string().datetime(),
 })
 
+export const teamJoinRequestJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id: the request, never the address. */
+  requestId: id,
+  teamId: id,
+  kind: z.enum(JOIN_REQUEST_EMAIL_KINDS),
+  teamName: z.string(),
+  requesterName: z.string(),
+  actionUrl: webUrl,
+})
+
 export const paymentReceiptJobSchema = z.object({
   to: recipient,
   /** Log correlation id — never the address. */
@@ -97,6 +109,9 @@ export type RenewalReminderEmailJobPayload = z.infer<
   typeof renewalReminderJobSchema
 >
 export type TeamInviteEmailJobPayload = z.infer<typeof teamInviteJobSchema>
+export type TeamJoinRequestEmailJobPayload = z.infer<
+  typeof teamJoinRequestJobSchema
+>
 export type StaffStepUpEmailJobPayload = z.infer<typeof staffStepUpJobSchema>
 export type AdminActionAlertEmailJobPayload = z.infer<
   typeof adminActionAlertJobSchema
