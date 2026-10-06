@@ -1,64 +1,26 @@
 import dns from 'node:dns'
 import https from 'node:https'
 import net from 'node:net'
+import ipaddr from 'ipaddr.js'
 import { SsoConfigurationError } from './provider'
 
 const FETCH_TIMEOUT_MS = 5000
 export const MAX_METADATA_BYTES = 256 * 1024
 
-const IPV4_BLOCKED: readonly (readonly [number, number])[] = [
-  // [network as uint32, prefix length]
-  [0x00000000, 8], // this network
-  [0x0a000000, 8], // private
-  [0x64400000, 10], // carrier-grade NAT
-  [0x7f000000, 8], // loopback
-  [0xa9fe0000, 16], // link-local, including cloud metadata
-  [0xac100000, 12], // private
-  [0xc0000000, 24], // IETF protocol assignments
-  [0xc0a80000, 16], // private
-  [0xc6120000, 15], // benchmarking
-  [0xe0000000, 4], // multicast
-  [0xf0000000, 4], // reserved and broadcast
+// ipaddr.js (1.x) predates the benchmarking block, so it is refused explicitly.
+const EXTRA_BLOCKED_IPV4: readonly [ipaddr.IPv4, number][] = [
+  ipaddr.IPv4.parseCIDR('198.18.0.0/15'),
 ]
 
-const ipv4ToInt = (address: string): number =>
-  address
-    .split('.')
-    .reduce((total, octet) => (total << 8) + Number(octet), 0) >>> 0
-
-const isBlockedIpv4 = (address: string): boolean => {
-  const value = ipv4ToInt(address)
-  return IPV4_BLOCKED.some(([network, prefix]) => {
-    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0
-    return (value & mask) >>> 0 === network
-  })
-}
-
-const MAPPED_IPV4 = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i
-
-const isBlockedIpv6 = (address: string): boolean => {
-  const lower = address.toLowerCase()
-  const mapped = MAPPED_IPV4.exec(lower)
-  if (mapped) return isBlockedIpv4(mapped[1])
-  return (
-    lower === '::' ||
-    lower === '::1' ||
-    /^f[cd]/.test(lower) || // unique local fc00::/7
-    /^fe[89ab]/.test(lower) || // link-local fe80::/10
-    /^ff/.test(lower) // multicast
-  )
-}
-
-/** True only for globally routable unicast addresses. */
+/** True only for globally routable unicast addresses (IPv4-mapped IPv6 is judged as the IPv4 it carries). */
 export const isPublicAddress = (address: string): boolean => {
-  switch (net.isIP(address)) {
-    case 4:
-      return !isBlockedIpv4(address)
-    case 6:
-      return !isBlockedIpv6(address)
-    default:
-      return false
-  }
+  if (!ipaddr.isValid(address)) return false
+  const parsed = ipaddr.process(address)
+  if (parsed.range() !== 'unicast') return false
+  return !(
+    parsed.kind() === 'ipv4' &&
+    EXTRA_BLOCKED_IPV4.some((cidr) => (parsed as ipaddr.IPv4).match(cidr))
+  )
 }
 
 /**
@@ -108,6 +70,15 @@ export const fetchMetadataDocument = (rawUrl: string): Promise<string> =>
     if (url.protocol !== 'https:' || url.username || url.password) {
       return reject(
         new SsoConfigurationError('The metadata URL must use https'),
+      )
+    }
+    // Node never calls `lookup` for an IP literal, so the address in the URL is judged here.
+    const host = url.hostname.replace(/^\[|\]$/g, '')
+    if (net.isIP(host) !== 0 && !isPublicAddress(host)) {
+      return reject(
+        new SsoConfigurationError(
+          'The metadata URL must be publicly reachable',
+        ),
       )
     }
 

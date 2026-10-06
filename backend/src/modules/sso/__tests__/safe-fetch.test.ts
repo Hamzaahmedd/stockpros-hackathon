@@ -29,6 +29,7 @@ describe('isPublicAddress', () => {
     '93.184.216.34',
     '2606:4700:4700::1111',
     '::ffff:8.8.8.8',
+    '::ffff:808:808',
   ])('accepts %s', (address) => {
     expect(isPublicAddress(address)).toBe(true)
   })
@@ -52,6 +53,11 @@ describe('isPublicAddress', () => {
     'ff02::1',
     '::ffff:10.0.0.1',
     '::ffff:127.0.0.1',
+    '::ffff:7f00:1',
+    '::ffff:a00:1',
+    '64:ff9b::7f00:1',
+    '198.18.0.1',
+    '2001:db8::1',
     'not-an-ip',
     '',
   ])('refuses %s', (address) => {
@@ -160,6 +166,30 @@ describe('fetchMetadataDocument', () => {
       SsoConfigurationError,
     )
     expect(mockGet).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    'https://127.0.0.1/',
+    'https://10.0.0.5:8443/metadata',
+    'https://169.254.169.254/latest/meta-data',
+    'https://2130706433/',
+    'https://0x7f.1/',
+    'https://[::1]/',
+    'https://[::ffff:7f00:1]/',
+    'https://[fd00::1]/',
+  ])('refuses the IP literal %s without making a request', async (url) => {
+    await expect(fetchMetadataDocument(url)).rejects.toThrow(
+      'publicly reachable',
+    )
+    expect(mockGet).not.toHaveBeenCalled()
+  })
+
+  it('allows a public IP literal through to the request', async () => {
+    respondWith(200, [Buffer.from('<md/>')])
+
+    await expect(
+      fetchMetadataDocument('https://8.8.8.8/metadata'),
+    ).resolves.toBe('<md/>')
   })
 
   it('refuses a non-200 answer, including a redirect', async () => {

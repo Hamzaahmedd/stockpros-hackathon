@@ -343,6 +343,34 @@ describe('deleteSsoConfig', () => {
 })
 
 describe('setSsoEnabled', () => {
+  it('asks for the owner-only permission to enable, and the manage permission to disable', async () => {
+    await setSsoEnabled(ACTOR, DOMAIN, true)
+    expect(requireMembership).toHaveBeenLastCalledWith(ACTOR, {
+      permission: TeamPermission.SECURITY_MANAGE,
+    })
+
+    mockDb.teamDomain.findFirst.mockResolvedValue(
+      domainRecord({ samlEnabled: true }),
+    )
+    await setSsoEnabled(ACTOR, DOMAIN, false)
+    expect(requireMembership).toHaveBeenLastCalledWith(ACTOR, {
+      permission: TeamPermission.SSO_MANAGE,
+    })
+  })
+
+  it('does not let an admin enable SSO, so they cannot switch on an IdP they control', async () => {
+    ;(requireMembership as jest.Mock).mockRejectedValue(
+      Object.assign(new Error('Only the workspace owner can do this'), {
+        statusCode: 403,
+      }),
+    )
+
+    await expect(setSsoEnabled(ACTOR, DOMAIN, true)).rejects.toMatchObject({
+      statusCode: 403,
+    })
+    expect(mockDb.teamDomain.update).not.toHaveBeenCalled()
+  })
+
   it('enables SSO once a test has passed', async () => {
     await setSsoEnabled(ACTOR, DOMAIN, true)
 

@@ -6304,7 +6304,7 @@
 						}
 					}
 				},
-				"description": "Switches SSO sign-in on or off for the domain. Enabling needs a passing\ntest; disabling signs out SSO sessions and is refused (409) while the\ndomain requires SSO. Requiring SSO is a separate owner-only step\n(`PATCH domains/{domain}/auth-policy` with `SAML_SSO`). Owner/admin only.",
+				"description": "Switches SSO sign-in on or off for the domain. **Enabling is owner only**\n(403 for admins: whoever controls the IdP settings could otherwise assert any\nemail on the domain) and needs a passing test. Disabling is owner/admin,\nsigns out SSO sessions and is refused (409) while the domain requires SSO.\nRequiring SSO is a separate owner-only step\n(`PATCH domains/{domain}/auth-policy` with `SAML_SSO`).",
 				"tags": [
 					"Teams"
 				],

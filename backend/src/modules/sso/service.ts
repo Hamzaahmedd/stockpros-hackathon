@@ -174,6 +174,8 @@ export async function handleSsoCallback(params: {
       tenantId: params.tenantId,
       purpose: state.purpose,
       reason: error.message,
+      // What the SAML library objected to (expired, bad signature...): operational detail, never user data.
+      detail: error.cause instanceof Error ? error.cause.message : undefined,
     })
     return { outcome: failure(state) }
   }

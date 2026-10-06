@@ -51,12 +51,13 @@ const onConfigChange = vi.fn()
 const onChanged = vi.fn()
 const assign = vi.fn()
 
-const renderPanel = async (domain: TeamDomain = DOMAIN) => {
+const renderPanel = async (domain: TeamDomain = DOMAIN, canEnable = true) => {
   const view = render(
     <SsoPanel
       domain={domain}
       onConfigChange={onConfigChange}
       onChanged={onChanged}
+      canEnable={canEnable}
     />,
   )
   await screen.findByRole('region', { name: /single sign-on for fund.com/i })
@@ -99,6 +100,7 @@ describe('SsoPanel loading', () => {
         domain={DOMAIN}
         onConfigChange={onConfigChange}
         onChanged={onChanged}
+        canEnable
       />,
     )
 
@@ -115,6 +117,7 @@ describe('SsoPanel loading', () => {
         domain={DOMAIN}
         onConfigChange={onConfigChange}
         onChanged={onChanged}
+        canEnable
       />,
     )
 
@@ -339,6 +342,39 @@ describe('testing and enabling', () => {
     await renderPanel()
 
     expect(screen.getByRole('button', { name: 'Enable SSO' })).toBeDisabled()
+  })
+
+  it('leaves the Enable switch to the owner: an admin can configure and test but not switch SSO on', async () => {
+    service.getSsoConfig.mockResolvedValue({
+      ...CONFIG,
+      testedAt: '2030-01-01T00:00:00Z',
+    })
+    await renderPanel(DOMAIN, false)
+
+    expect(screen.getByRole('button', { name: 'Enable SSO' })).toBeDisabled()
+    expect(
+      screen.getByText(/only the workspace owner can switch sso on/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Test SSO connection' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'Update connection' }),
+    ).toBeEnabled()
+  })
+
+  it('lets an admin switch SSO off', async () => {
+    service.getSsoConfig.mockResolvedValue({
+      ...CONFIG,
+      enabled: true,
+      testedAt: '2030-01-01T00:00:00Z',
+    })
+    await renderPanel(DOMAIN, false)
+
+    expect(screen.getByRole('button', { name: 'Disable SSO' })).toBeEnabled()
+    expect(
+      screen.queryByText(/only the workspace owner/i),
+    ).not.toBeInTheDocument()
   })
 
   it('enables after a passing test', async () => {

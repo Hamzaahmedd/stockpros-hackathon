@@ -252,6 +252,7 @@ export function SecurityTab({ team, reload }: Readonly<SecurityTabProps>) {
                 domain={d}
                 onConfigChange={handleSsoConfig}
                 onChanged={reload}
+                canEnable={isOwner}
               />
             ))}
           </CardContent>

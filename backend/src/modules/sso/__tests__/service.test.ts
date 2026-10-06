@@ -36,6 +36,7 @@ import {
   findSsoDomainForEmail,
   findSsoTenantForEmail,
 } from '../../../shared/infrastructure/team-access'
+import { logger } from '../../../shared/infrastructure/logger'
 import { recordTeamAudit } from '../../../shared/infrastructure/team-audit'
 import { ssoSignIn } from '../../auth'
 import { SsoVerificationError } from '../provider'
@@ -183,6 +184,25 @@ describe('handleSsoCallback', () => {
     await expect(callback(await startedFlow())).resolves.toEqual({
       outcome: SsoCallbackOutcome.LOGIN_FAILED,
     })
+  })
+
+  it('logs what the SAML library objected to, without the assertion or the email', async () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => logger)
+    mockProvider.completeLogin.mockRejectedValue(
+      new SsoVerificationError('SAML response failed verification', {
+        cause: new Error('SAML assertion expired'),
+      }),
+    )
+
+    await callback(await startedFlow())
+
+    expect(warn).toHaveBeenCalledWith('[SSO] assertion rejected', {
+      tenantId: TENANT,
+      purpose: SsoFlowPurpose.LOGIN,
+      reason: 'SAML response failed verification',
+      detail: 'SAML assertion expired',
+    })
+    warn.mockRestore()
   })
 
   it('turns a rejected assertion into a failed test for a TEST flow', async () => {

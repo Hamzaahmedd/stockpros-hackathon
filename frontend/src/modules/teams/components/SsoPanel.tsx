@@ -31,6 +31,8 @@ interface SsoPanelProps {
   onConfigChange: (domain: string, config: SsoConfig | null) => void
   /** Something other pages show (such as the domain's policy) may have changed. */
   onChanged: () => void
+  /** Switching SSO on is the owner's call; admins can configure, test and switch it off. */
+  canEnable: boolean
 }
 
 enum LoadState {
@@ -53,6 +55,7 @@ export function SsoPanel({
   domain,
   onConfigChange,
   onChanged,
+  canEnable,
 }: Readonly<SsoPanelProps>) {
   const name = domain.domain
   const [config, setConfig] = useState<SsoConfig | null>(null)
@@ -340,7 +343,7 @@ export function SsoPanel({
               <Button
                 type='button'
                 size='sm'
-                disabled={busy || config.testedAt === null}
+                disabled={busy || !canEnable || config.testedAt === null}
                 onClick={() => void toggle(true)}
               >
                 Enable SSO
@@ -356,6 +359,12 @@ export function SsoPanel({
               Remove connection
             </Button>
           </div>
+          {!canEnable && !config.enabled && (
+            <p className='text-xs text-muted-foreground'>
+              Only the workspace owner can switch SSO on, after checking these
+              settings.
+            </p>
+          )}
           {required && (
             <p className='text-xs text-muted-foreground'>
               Everyone on this domain must sign in with SSO, so the connection

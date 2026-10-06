@@ -589,10 +589,12 @@ export class TeamsSwaggerController extends Controller {
   }
 
   /**
-   * Switches SSO sign-in on or off for the domain. Enabling needs a passing
-   * test; disabling signs out SSO sessions and is refused (409) while the
-   * domain requires SSO. Requiring SSO is a separate owner-only step
-   * (`PATCH domains/{domain}/auth-policy` with `SAML_SSO`). Owner/admin only.
+   * Switches SSO sign-in on or off for the domain. **Enabling is owner only**
+   * (403 for admins: whoever controls the IdP settings could otherwise assert any
+   * email on the domain) and needs a passing test. Disabling is owner/admin,
+   * signs out SSO sessions and is refused (409) while the domain requires SSO.
+   * Requiring SSO is a separate owner-only step
+   * (`PATCH domains/{domain}/auth-policy` with `SAML_SSO`).
    */
   @Patch('domains/{domain}/sso/enabled')
   @Response<ApiErrorResponse>(400, 'Not configured, or not tested yet')

@@ -247,7 +247,7 @@ test.describe('workspace single sign-on setup', () => {
     await expect(page).not.toHaveURL(/sso_test/)
   })
 
-  test('an admin can set SSO up but not change the sign-in method', async ({
+  test('an admin can set SSO up and test it, but only the owner switches it on', async ({
     page,
   }) => {
     await signInAs(page, 'ADMIN')
@@ -260,7 +260,10 @@ test.describe('workspace single sign-on setup', () => {
     await expect(sso(page).getByText('Tested, not enabled')).toBeVisible()
     await expect(
       sso(page).getByRole('button', { name: 'Enable SSO' }),
-    ).toBeEnabled()
+    ).toBeDisabled()
+    await expect(
+      sso(page).getByText('Only the workspace owner can switch SSO on'),
+    ).toBeVisible()
     await expect(page.getByLabel('Sign-in method for fund.com')).toBeDisabled()
   })
 

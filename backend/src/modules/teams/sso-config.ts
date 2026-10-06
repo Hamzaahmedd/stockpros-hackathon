@@ -75,13 +75,12 @@ const view = (record: DomainWithConnection): SsoConfigView => {
 async function loadDomain(
   actorId: string,
   domain: string,
+  permission: TeamPermission = TeamPermission.SSO_MANAGE,
 ): Promise<{ teamId: string; record: DomainWithConnection }> {
   if (!config.features.enableSso) {
     throw new FeatureDisabledError('Single sign-on is not enabled')
   }
-  const { teamId } = await requireMembership(actorId, {
-    permission: TeamPermission.SSO_MANAGE,
-  })
+  const { teamId } = await requireMembership(actorId, { permission })
   const record = await prisma.teamDomain.findFirst({
     where: { teamId, domain },
     include: { ssoConnection: true },
@@ -221,13 +220,22 @@ export async function deleteSsoConfig(
   })
 }
 
-/** Enabling needs a passing test; disabling is refused while SSO is required, and signs SSO users out. */
+/**
+ * Switching SSO on is the owner's decision: whoever controls the IdP settings can
+ * assert any email on the domain, so an admin who may configure it must not also
+ * be able to turn it on. Enabling needs a passing test; disabling (any manager)
+ * is refused while SSO is required, and signs SSO users out.
+ */
 export async function setSsoEnabled(
   actorId: string,
   domain: string,
   enabled: boolean,
 ): Promise<SsoConfigView> {
-  const { teamId, record } = await loadDomain(actorId, domain)
+  const { teamId, record } = await loadDomain(
+    actorId,
+    domain,
+    enabled ? TeamPermission.SECURITY_MANAGE : TeamPermission.SSO_MANAGE,
+  )
   if (!record.ssoConnection) {
     throw new BadRequestError('Configure SSO before enabling it')
   }
