@@ -10,6 +10,7 @@ import {
   adminRateLimiter,
   adminWriteLimiter,
 } from '../../shared/middlewares/security'
+import { requireAnnouncementsEnabled } from '../announcements/public'
 import * as AdminController from './controller'
 
 const router = Router()
@@ -115,6 +116,48 @@ router.post(
   '/subscriptions/:id/extend',
   ...platformAdmin,
   AdminController.extendSubscription,
+)
+
+// ─── Announcements ───────────────────────────────────────────────────────────
+// Every route needs the feature on. Switching an announcement OFF (emergency kill
+// switch) is open to support staff; every other write is platform-admin only.
+router.use('/announcements', requireAnnouncementsEnabled)
+router.get('/announcements', ...support, AdminController.listAnnouncements)
+router.get('/announcements/:id', ...support, AdminController.getAnnouncement)
+router.post(
+  '/announcements',
+  ...platformAdmin,
+  AdminController.createAnnouncement,
+)
+router.patch(
+  '/announcements/:id',
+  ...platformAdmin,
+  AdminController.updateAnnouncement,
+)
+router.delete(
+  '/announcements/:id',
+  ...platformAdmin,
+  AdminController.archiveAnnouncement,
+)
+router.post(
+  '/announcements/:id/publish',
+  ...platformAdmin,
+  AdminController.publishAnnouncement,
+)
+router.post(
+  '/announcements/:id/disable',
+  ...supportWrite,
+  AdminController.disableAnnouncement,
+)
+router.post(
+  '/announcements/:id/enable',
+  ...platformAdmin,
+  AdminController.enableAnnouncement,
+)
+router.post(
+  '/announcements/:id/reannounce',
+  ...platformAdmin,
+  AdminController.reannounceAnnouncement,
 )
 
 // ─── Telemetry ───────────────────────────────────────────────────────────────

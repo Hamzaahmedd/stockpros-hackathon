@@ -4,6 +4,7 @@ import { UnauthorizedError, validateOrThrow } from '../../shared/errors'
 import { getUserId, sendSuccess } from '../../shared/utils'
 import { AdminTargetType, alertAdminAction } from '../access-control'
 import { AuthenticatedRequest } from '../auth'
+import * as Announcements from './announcements-service'
 import * as Billing from './billing-service'
 import * as Sso from './sso-service'
 import * as System from './system-service'
@@ -16,6 +17,12 @@ import { AdminCreditTarget, MARKET_EMERGENCY_TARGET_ID } from './constants'
 import type { AdminReadContext, AdminWriteContext } from './types'
 import { notifySpendLimitChanged } from './spend-limit-notice'
 import * as Users from './users-service'
+import {
+  announcementActionValidator,
+  announcementListQueryValidator,
+  createAnnouncementValidator,
+  updateAnnouncementValidator,
+} from './announcement-validation'
 import {
   auditLogQueryValidator,
   capacityValidator,
@@ -355,4 +362,73 @@ export const setMarketEmergency = handle(
 
 export const listAuditLogs = handle('Audit logs fetched', (req) =>
   System.listAuditLogs(validateOrThrow(auditLogQueryValidator, req.query)),
+)
+
+// ─── Announcements ───────────────────────────────────────────────────────────
+export const listAnnouncements = handle('Announcements fetched', (req) =>
+  Announcements.listAnnouncements(
+    validateOrThrow(announcementListQueryValidator, req.query),
+  ),
+)
+
+export const getAnnouncement = handle('Announcement fetched', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  return Announcements.getAnnouncement(id)
+})
+
+export const createAnnouncement = handle('Announcement created', (req) => {
+  const input = validateOrThrow(createAnnouncementValidator, req.body)
+  return Announcements.createAnnouncement(
+    writeContext(req, input.reason, input.ticketRef),
+    input,
+  )
+})
+
+export const updateAnnouncement = handle('Announcement updated', (req) => {
+  const { id } = validateOrThrow(idParamValidator, req.params)
+  const input = validateOrThrow(updateAnnouncementValidator, req.body)
+  return Announcements.updateAnnouncement(
+    writeContext(req, input.reason, input.ticketRef),
+    id,
+    input,
+  )
+})
+
+/** Builds a handler for the id-only lifecycle actions, which carry just a reason and ticket. */
+const announcementAction = (
+  message: string,
+  run: (ctx: AdminWriteContext, id: string) => Promise<unknown>,
+) =>
+  handle(message, (req) => {
+    const { id } = validateOrThrow(idParamValidator, req.params)
+    const { reason, ticketRef } = validateOrThrow(
+      announcementActionValidator,
+      req.body,
+    )
+    return run(writeContext(req, reason, ticketRef), id)
+  })
+
+export const publishAnnouncement = announcementAction(
+  'Announcement published',
+  Announcements.publishAnnouncement,
+)
+
+export const disableAnnouncement = announcementAction(
+  'Announcement switched off',
+  (ctx, id) => Announcements.setAnnouncementEnabled(ctx, id, false),
+)
+
+export const enableAnnouncement = announcementAction(
+  'Announcement switched on',
+  (ctx, id) => Announcements.setAnnouncementEnabled(ctx, id, true),
+)
+
+export const reannounceAnnouncement = announcementAction(
+  'Announcement re-announced',
+  Announcements.reannounceAnnouncement,
+)
+
+export const archiveAnnouncement = announcementAction(
+  'Announcement archived',
+  Announcements.archiveAnnouncement,
 )

@@ -12,5 +12,7 @@ export const SocketEvent = {
   Error: 'error',
   Notification: 'notification',
   PlanRestricted: 'plan_restricted',
+  // Content-free signal: clients refetch announcements through the authenticated API.
+  AnnouncementsChanged: 'announcements_changed',
 } as const
 export type SocketEvent = (typeof SocketEvent)[keyof typeof SocketEvent]

@@ -49,3 +49,11 @@ export enum AdminQueueName {
   ALERT_EMAIL = 'alert-email',
   AUTH_EMAIL = 'auth-email',
 }
+
+/** Content limits for staff-authored announcements. */
+export const ANNOUNCEMENT_TITLE_MAX = 120
+export const ANNOUNCEMENT_BODY_MAX = 1000
+export const ANNOUNCEMENT_CTA_LABEL_MAX = 40
+export const ANNOUNCEMENT_URL_MAX = 2048
+export const ANNOUNCEMENT_PRIORITY_MIN = -100
+export const ANNOUNCEMENT_PRIORITY_MAX = 100

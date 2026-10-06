@@ -83,6 +83,16 @@ jest.mock('../billing-service', () => ({
   adjustCredits: mockResolved(),
   extendSubscription: mockResolved(),
 }))
+jest.mock('../announcements-service', () => ({
+  listAnnouncements: mockResolved(),
+  getAnnouncement: mockResolved(),
+  createAnnouncement: mockResolved(),
+  updateAnnouncement: mockResolved(),
+  publishAnnouncement: mockResolved(),
+  setAnnouncementEnabled: mockResolved(),
+  reannounceAnnouncement: mockResolved(),
+  archiveAnnouncement: mockResolved(),
+}))
 jest.mock('../step-up-service', () => ({
   requestStepUp: mockResolved(),
   verifyStepUp: mockResolved(),
@@ -199,6 +209,55 @@ const ENDPOINTS: readonly Endpoint[] = [
     min: 'PLATFORM_ADMIN',
     body: { currentPeriodEnd: '2030-01-01T00:00:00.000Z', reason: REASON },
   },
+  { method: 'get', path: '/announcements?limit=10', min: 'SUPPORT_AGENT' },
+  { method: 'get', path: `/announcements/${ID}`, min: 'SUPPORT_AGENT' },
+  {
+    method: 'post',
+    path: '/announcements',
+    min: 'PLATFORM_ADMIN',
+    body: {
+      title: 'Meet the new forecast panel',
+      body: 'Faster, clearer signals.',
+      placement: 'MODAL',
+      reason: REASON,
+    },
+  },
+  {
+    method: 'patch',
+    path: `/announcements/${ID}`,
+    min: 'PLATFORM_ADMIN',
+    body: { title: 'New title', expectedVersion: 1, reason: REASON },
+  },
+  {
+    method: 'delete',
+    path: `/announcements/${ID}`,
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: `/announcements/${ID}/publish`,
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: `/announcements/${ID}/disable`,
+    min: 'SUPPORT_AGENT',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: `/announcements/${ID}/enable`,
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
+  {
+    method: 'post',
+    path: `/announcements/${ID}/reannounce`,
+    min: 'PLATFORM_ADMIN',
+    body: { reason: REASON },
+  },
   { method: 'get', path: '/billing/credit-ledger', min: 'SUPPORT_AGENT' },
   { method: 'get', path: '/telemetry/queues', min: 'SUPPORT_AGENT' },
   { method: 'get', path: '/system/market-status', min: 'SUPPORT_AGENT' },
@@ -252,6 +311,25 @@ beforeEach(() => {
 
 afterEach(() => {
   ;(config.features as any).pricingTiersEnabled = originalFlag
+})
+
+describe('announcements feature flag', () => {
+  const original = config.features.enableAnnouncements
+  afterEach(() => {
+    ;(config.features as any).enableAnnouncements = original
+  })
+
+  it.each(
+    ENDPOINTS.filter((endpoint) => endpoint.path.startsWith('/announcements')),
+  )(
+    'answers 403 on $method $path while announcements are off',
+    async (endpoint) => {
+      ;(config.features as any).enableAnnouncements = false
+      const res = await call(endpoint, PlatformRole.SUPER_ADMIN)
+      expect(res.status).toBe(403)
+      expect(res.body.errorCode).toBe('FORBIDDEN_FEATURE_DISABLED')
+    },
+  )
 })
 
 describe('tier gate (pricingTiersEnabled: false)', () => {

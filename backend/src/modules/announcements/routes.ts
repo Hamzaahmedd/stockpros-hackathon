@@ -1,21 +1,9 @@
-import { NextFunction, Request, Response, Router } from 'express'
-import config from '@/config'
-import { FeatureDisabledError } from '../../shared/errors'
+import { Router } from 'express'
 import { authTokenMiddleware } from '../auth'
 import * as AnnouncementsController from './controller'
+import { requireAnnouncementsEnabled } from './guard'
 
 const router = Router()
-
-const requireAnnouncementsEnabled = (
-  _req: Request,
-  _res: Response,
-  next: NextFunction,
-) =>
-  next(
-    config.features.enableAnnouncements
-      ? undefined
-      : new FeatureDisabledError('Announcements are not enabled'),
-  )
 
 router.use(requireAnnouncementsEnabled, authTokenMiddleware)
 

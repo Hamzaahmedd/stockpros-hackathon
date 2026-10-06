@@ -386,3 +386,248 @@ export class AdminSwaggerController extends Controller {
     throw new Error('tsoa spec-only')
   }
 }
+
+// ─── Announcements (staff) ──────────────────────────────────────────────────
+// Every route below also answers `403 FORBIDDEN_FEATURE_DISABLED` while
+// `features.enableAnnouncements` is off. Every write needs step-up verification,
+// a `reason`, and appends one audit row in the same transaction. A staff write
+// refreshes the shared cache and tells connected clients to refetch.
+
+type AnnouncementPlacementName =
+  'MODAL' | 'SPOTLIGHT' | 'BANNER' | 'BADGE' | 'CHANGELOG'
+type AnnouncementStatusName = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+type AnnouncementPlanName = 'ALL' | 'FREE' | 'PRO' | 'TEAM'
+type AnnouncementRoleName = 'OWNER' | 'ADMIN' | 'MEMBER'
+
+export interface AnnouncementContentFields {
+  /** @maxLength 120 */
+  title: string
+  /**
+   * Plain text, shown as text (never HTML).
+   * @maxLength 1000
+   */
+  body: string
+  /** Required together with `ctaUrl`. @maxLength 40 */
+  ctaLabel?: string | null
+  /** An in-app path ("/plans") or an https URL without credentials. */
+  ctaUrl?: string | null
+  /** https only. */
+  imageUrl?: string | null
+  placement: AnnouncementPlacementName
+  /** Required for a BANNER, forbidden otherwise. */
+  severity?: 'INFO' | 'WARNING' | 'CRITICAL' | null
+  /** Required for a SPOTLIGHT, forbidden otherwise. A fixed UI hook, never a selector. */
+  anchor?:
+    | 'NOTIFICATION_BELL'
+    | 'SIDEBAR_WORKSPACE'
+    | 'WATCHLIST_ADD'
+    | 'FORECAST_PANEL'
+    | 'PLANS_UPGRADE'
+    | 'SETTINGS_PREFERENCES'
+    | null
+  /** Required for a BADGE, forbidden otherwise. */
+  navKey?:
+    | 'DASHBOARD'
+    | 'WATCHLIST'
+    | 'MARKET'
+    | 'FORECAST'
+    | 'NEWS'
+    | 'PLANS'
+    | 'WORKSPACE'
+    | 'SETTINGS'
+    | null
+  /**
+   * Higher wins when several compete for one placement.
+   * @minimum -100
+   * @maximum 100
+   * @default 0
+   */
+  priority?: number
+  /** @default true */
+  dismissible?: boolean
+  /** Also list in the notification-bell changelog. Always true for a CHANGELOG placement. @default true */
+  inChangelog?: boolean
+  /** `ALL` (the default) absorbs any other entry. */
+  targetPlans?: AnnouncementPlanName[]
+  /** Workspace roles; empty (the default) targets every role. Solo accounts count as OWNER. */
+  targetRoles?: AnnouncementRoleName[]
+  /**
+   * ISO 8601 with offset; evaluated in UTC at request time.
+   * @format date-time
+   */
+  startsAt?: string | null
+  /**
+   * Must be after `startsAt`.
+   * @format date-time
+   */
+  endsAt?: string | null
+}
+
+export interface CreateAnnouncementRequest
+  extends AnnouncementContentFields, AdminReasonRequest {}
+
+export interface UpdateAnnouncementRequest
+  extends Partial<AnnouncementContentFields>, AdminReasonRequest {
+  /**
+   * The `version` the editor last saw; a mismatch answers 409.
+   * @minimum 1
+   */
+  expectedVersion: number
+}
+
+export interface AdminAnnouncement {
+  id: string
+  title: string
+  body: string
+  ctaLabel: string | null
+  ctaUrl: string | null
+  imageUrl: string | null
+  placement: AnnouncementPlacementName
+  severity: 'INFO' | 'WARNING' | 'CRITICAL' | null
+  anchor: string | null
+  navKey: string | null
+  priority: number
+  dismissible: boolean
+  inChangelog: boolean
+  targetPlans: AnnouncementPlanName[]
+  targetRoles: AnnouncementRoleName[]
+  startsAt: string | null
+  endsAt: string | null
+  publishedAt: string | null
+  status: AnnouncementStatusName
+  /** The kill switch: false hides it everywhere without changing its status. */
+  isEnabled: boolean
+  /** Bumped on every write. */
+  version: number
+  /** Bumped by "re-announce"; dismissals from older epochs no longer count. */
+  reannounceEpoch: number
+  createdBy: string
+  updatedBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminAnnouncementDetail extends AdminAnnouncement {
+  /** Users who have seen / dismissed it in the current epoch. */
+  engagement: { seen: number; dismissed: number }
+}
+
+export interface AdminAnnouncementList {
+  items: AdminAnnouncement[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface AdminAnnouncementSwitchResult extends AdminAnnouncement {
+  /** False when it was already in the requested state (nothing written, nothing audited). */
+  changed: boolean
+}
+
+@Route('api/v1/admin/announcements')
+@Tags('Admin')
+@Security('bearerAuth')
+@Response<ApiErrorResponse>(403, 'Insufficient role, or the feature is off')
+export class AdminAnnouncementsSwaggerController extends Controller {
+  /**
+   * SUPPORT_AGENT. Lists announcements, newest first.
+   * @param status Filter by lifecycle status
+   * @param placement Filter by placement
+   * @param page 1-based page
+   * @param limit Page size (1-100, default 25)
+   */
+  @Get('')
+  async listAnnouncements(
+    @Query() status?: AnnouncementStatusName,
+    @Query() placement?: AnnouncementPlacementName,
+    @Query() page?: number,
+    @Query() limit?: number,
+  ): Promise<ApiResponse<AdminAnnouncementList>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT. One announcement with how many users have seen and dismissed it. */
+  @Get('{id}')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  async getAnnouncement(
+    @Path() id: string,
+  ): Promise<ApiResponse<AdminAnnouncementDetail>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Creates a DRAFT. Drafts are never shown to users. */
+  @Post('')
+  @Response<ApiErrorResponse>(400, 'Invalid content')
+  async createAnnouncement(
+    @Body() body: CreateAnnouncementRequest,
+  ): Promise<ApiResponse<AdminAnnouncement>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Edits any subset of the content. Permanent dismissals are kept (use re-announce to reset them). 409 for a stale `expectedVersion`, an archived announcement or no change. */
+  @Patch('{id}')
+  @Response<ApiErrorResponse>(400, 'Invalid content')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Stale version, archived, or no change')
+  async updateAnnouncement(
+    @Path() id: string,
+    @Body() body: UpdateAnnouncementRequest,
+  ): Promise<ApiResponse<AdminAnnouncement>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Archives (soft delete); it is never served again. */
+  @Delete('{id}')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Already archived')
+  async archiveAnnouncement(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse<AdminAnnouncement>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Publishes a DRAFT (stamps `publishedAt`). 409 unless it is a draft whose window has not ended. */
+  @Post('{id}/publish')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Not a draft, or its window has ended')
+  async publishAnnouncement(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse<AdminAnnouncement>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** SUPPORT_AGENT. Emergency kill switch: hides the announcement everywhere (cache refreshed, clients told to refetch). Already off is a no-op (`changed: false`). */
+  @Post('{id}/disable')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Archived')
+  async disableAnnouncement(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse<AdminAnnouncementSwitchResult>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Switches a disabled announcement back on. */
+  @Post('{id}/enable')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Archived')
+  async enableAnnouncement(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse<AdminAnnouncementSwitchResult>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /** PLATFORM_ADMIN. Starts a new epoch so every user's earlier dismissal and read state stops counting and they see it again. 409 unless published. */
+  @Post('{id}/reannounce')
+  @Response<ApiErrorResponse>(404, 'Not found')
+  @Response<ApiErrorResponse>(409, 'Not published')
+  async reannounceAnnouncement(
+    @Path() id: string,
+    @Body() body: AdminReasonRequest,
+  ): Promise<ApiResponse<AdminAnnouncement>> {
+    throw new Error('tsoa spec-only')
+  }
+}

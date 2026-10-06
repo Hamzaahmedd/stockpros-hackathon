@@ -3,6 +3,8 @@ export {
   getActiveAnnouncements,
   invalidateActiveAnnouncements,
 } from './active-cache'
+export { requireAnnouncementsEnabled } from './guard'
+export { announcementsChanged } from './realtime'
 export { getBootAnnouncements } from './service'
 export type {
   AnnouncementBootPayload,
