@@ -13,6 +13,7 @@ import {
   alertEmailJobSchema,
   paymentReceiptJobSchema,
   renewalReminderJobSchema,
+  spendLimitChangedJobSchema,
   staffStepUpJobSchema,
   teamInviteJobSchema,
   teamJoinRequestJobSchema,
@@ -21,6 +22,7 @@ import {
   type EmailJobPayload,
   type PaymentReceiptEmailJobPayload,
   type RenewalReminderEmailJobPayload,
+  type SpendLimitChangedEmailJobPayload,
   type StaffStepUpEmailJobPayload,
   type TeamInviteEmailJobPayload,
   type TeamJoinRequestEmailJobPayload,
@@ -35,6 +37,7 @@ import {
 } from '../email-templates/staff-security'
 import { buildTeamInviteEmail } from '../email-templates/team-invite'
 import { buildTeamJoinRequestEmail } from '../email-templates/team-join-request'
+import { buildSpendLimitChangedEmail } from '../email-templates/spend-limit-changed'
 import { buildUsageAlertEmail } from '../email-templates/usage-alert'
 import {
   ADMIN_ACTION_ALERT_JOB_NAME,
@@ -44,6 +47,7 @@ import {
   ALERT_EMAIL_QUEUE_OPTIONS,
   PAYMENT_RECEIPT_JOB_NAME,
   RENEWAL_REMINDER_JOB_NAME,
+  SPEND_LIMIT_CHANGED_JOB_NAME,
   STAFF_STEP_UP_JOB_NAME,
   TEAM_INVITE_JOB_NAME,
   TEAM_JOIN_REQUEST_JOB_NAME,
@@ -59,6 +63,7 @@ type EmailQueueJobPayload =
   | TeamJoinRequestEmailJobPayload
   | PaymentReceiptEmailJobPayload
   | UsageAlertEmailJobPayload
+  | SpendLimitChangedEmailJobPayload
 
 interface JobRef {
   id?: string
@@ -238,6 +243,27 @@ const sendUsageAlertEmail = async (job: JobRef): Promise<void> => {
   })
 }
 
+const sendSpendLimitChangedEmail = async (job: JobRef): Promise<void> => {
+  const { to, userId, ...change } = parsePayload(
+    spendLimitChangedJobSchema,
+    job,
+  )
+  const { subject, html, text } = buildSpendLimitChangedEmail(
+    change,
+    getLogoSrc(),
+  )
+  try {
+    await transporter.sendMail({ to, subject, text, html })
+  } catch (err) {
+    rethrowEmailError(err)
+  }
+  logger.info('[EmailWorker] Spend limit change notice sent', {
+    jobId: job.id,
+    userId,
+    ticketRef: change.ticketRef,
+  })
+}
+
 const sendStaffStepUpEmail = async (job: JobRef): Promise<void> => {
   const { to, userId, code, expiryMinutes } = parsePayload(
     staffStepUpJobSchema,
@@ -306,6 +332,9 @@ export const startEmailWorker = (): void => {
       }
       if (job.name === USAGE_ALERT_JOB_NAME) {
         return sendUsageAlertEmail(job)
+      }
+      if (job.name === SPEND_LIMIT_CHANGED_JOB_NAME) {
+        return sendSpendLimitChangedEmail(job)
       }
       if (job.name === STAFF_STEP_UP_JOB_NAME) {
         return sendStaffStepUpEmail(job)
@@ -381,6 +410,20 @@ export const enqueueUsageAlertEmail = async (
   } else {
     logger.warn(
       '[EmailWorker] Skipping usage alert enqueue - Redis not connected',
+    )
+  }
+}
+
+/** Add a job telling a customer that staff changed their spending limit (same queue, retries from its defaults). */
+export const enqueueSpendLimitChangedEmail = async (
+  payload: SpendLimitChangedEmailJobPayload,
+): Promise<void> => {
+  const queue = getEmailQueue()
+  if (queue) {
+    await queue.add(SPEND_LIMIT_CHANGED_JOB_NAME, payload)
+  } else {
+    logger.warn(
+      '[EmailWorker] Skipping spend limit notice enqueue - Redis not connected',
     )
   }
 }

@@ -34,6 +34,13 @@ export {
   type UsageAlertData,
 } from './usage-alert'
 export {
+  buildSpendLimitChangedEmail,
+  buildSpendLimitChangedEmailHtml,
+  buildSpendLimitChangedEmailText,
+  buildSpendLimitChangedSubject,
+  type SpendLimitChangedData,
+} from './spend-limit-changed'
+export {
   buildPaymentReceiptEmail,
   buildPaymentReceiptEmailHtml,
   buildPaymentReceiptEmailText,

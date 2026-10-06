@@ -170,7 +170,7 @@ export function SpendLimitCard({
       {editing && (
         <ReasonModal
           title='Change spending limit'
-          description={`Sets the monthly credit limit ${user.email} placed on themselves. Audited with the previous and new value.`}
+          description={`Sets the monthly credit limit ${user.email} placed on themselves. Audited with the previous and new value, and the customer is emailed the change and the ticket.`}
           confirmLabel='Save limit'
           successMessage='Spending limit updated'
           canSubmit={validLimit}

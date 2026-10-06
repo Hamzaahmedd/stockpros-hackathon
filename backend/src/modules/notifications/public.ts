@@ -10,6 +10,7 @@ export {
   enqueuePaymentReceiptEmail,
   getEmailQueue,
   enqueueRenewalReminderEmail,
+  enqueueSpendLimitChangedEmail,
   enqueueStaffStepUpEmail,
   enqueueTeamInviteEmail,
   enqueueTeamJoinRequestEmail,
@@ -22,6 +23,7 @@ export type {
   AuthEmailJobPayload,
   PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
+  SpendLimitChangedEmailJobPayload,
   TeamInviteEmailJobPayload,
   UsageAlertEmailJobPayload,
 } from './types'

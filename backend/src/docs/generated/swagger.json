@@ -10562,7 +10562,7 @@
 						}
 					}
 				},
-				"description": "PLATFORM_ADMIN. Sets or removes (null) an individual Pro user's own monthly credit-spend limit on their behalf. Needs a reason and a ticketRef, step-up verification, and appends one `SPEND_LIMIT_OVERRIDDEN` audit row (previous and new limit) in the same transaction. 409 for FREE users, workspace members (their cap belongs to a workspace admin) and a no-op change.",
+				"description": "PLATFORM_ADMIN. Sets or removes (null) an individual Pro user's own monthly credit-spend limit on their behalf. Needs a reason and a ticketRef, step-up verification, and appends one `SPEND_LIMIT_OVERRIDDEN` audit row (previous and new limit) in the same transaction. After it commits the customer is emailed the previous limit, the new limit and the ticketRef (best effort: a mail problem never fails or rolls back the change). 409 for FREE users, workspace members (their cap belongs to a workspace admin) and a no-op change.",
 				"tags": [
 					"Admin"
 				],

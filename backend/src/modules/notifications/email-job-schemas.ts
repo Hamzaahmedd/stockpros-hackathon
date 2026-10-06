@@ -99,6 +99,17 @@ export const usageAlertJobSchema = z.object({
   usageUrl: webUrl,
 })
 
+export const spendLimitChangedJobSchema = z.object({
+  to: recipient,
+  /** Log correlation id — never the address. */
+  userId: id,
+  userName: z.string(),
+  previousLimit: z.string(),
+  newLimit: z.string(),
+  ticketRef: z.string().min(1),
+  usageUrl: webUrl,
+})
+
 export const staffStepUpJobSchema = z.object({
   to: recipient,
   /** Log correlation id (the staff user) — never the address or the code. */
@@ -128,6 +139,9 @@ export type TeamJoinRequestEmailJobPayload = z.infer<
   typeof teamJoinRequestJobSchema
 >
 export type UsageAlertEmailJobPayload = z.infer<typeof usageAlertJobSchema>
+export type SpendLimitChangedEmailJobPayload = z.infer<
+  typeof spendLimitChangedJobSchema
+>
 export type StaffStepUpEmailJobPayload = z.infer<typeof staffStepUpJobSchema>
 export type AdminActionAlertEmailJobPayload = z.infer<
   typeof adminActionAlertJobSchema

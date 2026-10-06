@@ -151,6 +151,99 @@ describe('usage alert emails', () => {
   })
 })
 
+const spendLimitChangedJob = (over: Record<string, unknown> = {}) => ({
+  to: 'a@example.com',
+  userId: 'user-1',
+  userName: 'Hamza',
+  previousLimit: 'Rs 500',
+  newLimit: 'Rs 1,200',
+  ticketRef: 'SUP-4821',
+  usageUrl: 'https://app.example/usage',
+  ...over,
+})
+
+describe('spend limit changed emails', () => {
+  it('adds the job to the shared queue under the spend-limit-changed name', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { enqueueSpendLimitChangedEmail } = require('../email-worker')
+
+    await enqueueSpendLimitChangedEmail(spendLimitChangedJob())
+
+    const queue = deps.QueueMock.mock.results[0].value
+    expect(queue.add).toHaveBeenCalledWith(
+      'spend-limit-changed',
+      spendLimitChangedJob(),
+    )
+  })
+
+  it('skips enqueuing when Redis is unavailable', async () => {
+    mockDeps(null)
+    const { enqueueSpendLimitChangedEmail } = require('../email-worker')
+    await expect(
+      enqueueSpendLimitChangedEmail(spendLimitChangedJob()),
+    ).resolves.toBeUndefined()
+  })
+
+  it('routes the job to its own template with the ticket and both limits', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({ name: 'spend-limit-changed', data: spendLimitChangedJob() }),
+    ).resolves.toBeUndefined()
+
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    const mail = emailConfig.transporter.sendMail.mock.calls[0][0]
+    expect(mail.to).toBe('a@example.com')
+    expect(mail.subject).toBe(
+      'Your monthly spending limit was changed by StockPros support',
+    )
+    expect(mail.text).toContain('from Rs 500 to Rs 1,200')
+    expect(mail.text).toContain('SUP-4821')
+  })
+
+  it('rethrows a permanent SMTP failure', async () => {
+    const deps = mockDeps({ host: 'localhost' })
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    emailConfig.transporter.sendMail.mockRejectedValue(
+      Object.assign(new Error('550 mailbox unavailable'), {
+        responseCode: 550,
+      }),
+    )
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({ name: 'spend-limit-changed', data: spendLimitChangedJob() }),
+    ).rejects.toThrow('550 mailbox unavailable')
+  })
+
+  it.each([
+    ['a bad recipient', spendLimitChangedJob({ to: 'nope' })],
+    ['no ticket', spendLimitChangedJob({ ticketRef: '' })],
+    [
+      'a non-URL link',
+      spendLimitChangedJob({ usageUrl: 'javascript:alert(1)x' }),
+    ],
+    ['no user id', spendLimitChangedJob({ userId: undefined })],
+  ])('drops a job with %s without sending', async (_label, data) => {
+    const deps = mockDeps({ host: 'localhost' })
+    const { startEmailWorker } = require('../email-worker')
+    startEmailWorker()
+
+    const { processor } = deps.WorkerMock.mock.results[0].value
+    await expect(
+      processor({ name: 'spend-limit-changed', data }),
+    ).rejects.toThrow('Invalid email job payload')
+
+    const emailConfig = require('../../../../shared/infrastructure/config/email')
+    expect(emailConfig.transporter.sendMail).not.toHaveBeenCalled()
+  })
+})
+
 describe('enqueueEmail', () => {
   it('logs and skips enqueuing when Redis is unavailable', async () => {
     mockDeps(null)

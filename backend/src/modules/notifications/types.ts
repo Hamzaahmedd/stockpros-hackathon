@@ -7,6 +7,7 @@ export type {
   EmailJobPayload,
   PaymentReceiptEmailJobPayload,
   RenewalReminderEmailJobPayload,
+  SpendLimitChangedEmailJobPayload,
   StaffStepUpEmailJobPayload,
   TeamInviteEmailJobPayload,
   TeamJoinRequestEmailJobPayload,

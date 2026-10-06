@@ -24,6 +24,9 @@ export const PAYMENT_RECEIPT_JOB_NAME = 'payment-receipt'
 // Usage warnings (80% of allowance, low credit, near the spending limit) ride it too.
 export const USAGE_ALERT_JOB_NAME = 'usage-alert'
 
+// Telling a customer that staff changed their spending limit rides it too.
+export const SPEND_LIMIT_CHANGED_JOB_NAME = 'spend-limit-changed'
+
 // Staff security emails (step-up codes, risky-action alerts) ride the same queue.
 export const STAFF_STEP_UP_JOB_NAME = 'staff-step-up'
 export const ADMIN_ACTION_ALERT_JOB_NAME = 'admin-action-alert'

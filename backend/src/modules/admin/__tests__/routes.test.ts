@@ -51,12 +51,18 @@ jest.mock('../../notifications/public', () => ({
 }))
 
 const mockResolved = () => jest.fn().mockResolvedValue({ ok: true })
+const mockOverrideSpendLimit = jest.fn().mockResolvedValue({ ok: true })
+const mockNotifySpendLimitChanged = jest.fn().mockResolvedValue(undefined)
 jest.mock('../users-service', () => ({
   searchUsers: mockResolved(),
   overridePlan: mockResolved(),
-  overrideSpendLimit: mockResolved(),
+  overrideSpendLimit: (...args: unknown[]) => mockOverrideSpendLimit(...args),
   invalidateSessions: mockResolved(),
   revealUser: mockResolved(),
+}))
+jest.mock('../spend-limit-notice', () => ({
+  notifySpendLimitChanged: (...args: unknown[]) =>
+    mockNotifySpendLimitChanged(...args),
 }))
 jest.mock('../teams-service', () => ({
   searchTeams: mockResolved(),
@@ -101,6 +107,7 @@ import { PlatformRole } from '@prisma/client'
 import express from 'express'
 import request from 'supertest'
 import { errorHandler } from '../../../shared/middlewares/error-handler'
+import { ConflictError } from '../../../shared/errors'
 import { PLATFORM_ROLE_RANK } from '../../access-control'
 import router from '../routes'
 
@@ -716,5 +723,70 @@ describe('alerts on risky staff actions', () => {
     })
     await flush()
     expect(sent()).toEqual([])
+  })
+})
+
+describe('customer notice on a spend-limit override', () => {
+  const body = {
+    monthlyLimitPaisa: 120_000,
+    reason: REASON,
+    ticketRef: 'SUP-4821',
+  }
+  const post = (role: PlatformRole, payload: object = body) =>
+    request(app)
+      .post(`/api/v1/admin/users/${ID}/spend-limit`)
+      .set('x-user-id', role)
+      .send(payload)
+  const flush = () => new Promise((resolve) => setImmediate(resolve))
+
+  beforeEach(() => {
+    ;(config.features as any).pricingTiersEnabled = true
+    mockNotifySpendLimitChanged.mockClear()
+    mockOverrideSpendLimit.mockReset()
+    mockOverrideSpendLimit.mockResolvedValue({
+      userId: ID,
+      previousLimitPaisa: 50_000,
+      monthlyLimitPaisa: 120_000,
+    })
+  })
+
+  it('emails the customer the change and the ticket after a successful override', async () => {
+    const res = await post(PlatformRole.PLATFORM_ADMIN)
+    expect(res.status).toBe(200)
+    await flush()
+
+    expect(mockOverrideSpendLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: REASON, ticketRef: 'SUP-4821' }),
+      ID,
+      120_000,
+    )
+    expect(mockNotifySpendLimitChanged).toHaveBeenCalledTimes(1)
+    expect(mockNotifySpendLimitChanged).toHaveBeenCalledWith({
+      userId: ID,
+      previousLimitPaisa: 50_000,
+      monthlyLimitPaisa: 120_000,
+      ticketRef: 'SUP-4821',
+    })
+  })
+
+  it('does not email when the override is refused', async () => {
+    mockOverrideSpendLimit.mockRejectedValue(
+      new ConflictError('The spending limit is already set to that value'),
+    )
+    const res = await post(PlatformRole.PLATFORM_ADMIN)
+    expect(res.status).toBe(409)
+    await flush()
+    expect(mockNotifySpendLimitChanged).not.toHaveBeenCalled()
+  })
+
+  it('does not email when the request is invalid or the role is too low', async () => {
+    const { ticketRef: _omitted, ...withoutTicket } = body
+    expect(
+      (await post(PlatformRole.PLATFORM_ADMIN, withoutTicket)).status,
+    ).toBe(400)
+    expect((await post(PlatformRole.SUPPORT_AGENT)).status).toBe(403)
+    await flush()
+    expect(mockOverrideSpendLimit).not.toHaveBeenCalled()
+    expect(mockNotifySpendLimitChanged).not.toHaveBeenCalled()
   })
 })

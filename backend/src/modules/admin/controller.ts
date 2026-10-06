@@ -14,6 +14,7 @@ import * as Timeline from './timeline-service'
 import * as Usage from './usage-service'
 import { AdminCreditTarget, MARKET_EMERGENCY_TARGET_ID } from './constants'
 import type { AdminReadContext, AdminWriteContext } from './types'
+import { notifySpendLimitChanged } from './spend-limit-notice'
 import * as Users from './users-service'
 import {
   auditLogQueryValidator,
@@ -93,18 +94,24 @@ export const overridePlan = handle('Plan overridden', async (req) => {
   return result
 })
 
-export const overrideSpendLimit = handle('Spend limit overridden', (req) => {
-  const { id } = validateOrThrow(idParamValidator, req.params)
-  const { monthlyLimitPaisa, reason, ticketRef } = validateOrThrow(
-    spendLimitValidator,
-    req.body,
-  )
-  return Users.overrideSpendLimit(
-    writeContext(req, reason, ticketRef),
-    id,
-    monthlyLimitPaisa,
-  )
-})
+export const overrideSpendLimit = handle(
+  'Spend limit overridden',
+  async (req) => {
+    const { id } = validateOrThrow(idParamValidator, req.params)
+    const { monthlyLimitPaisa, reason, ticketRef } = validateOrThrow(
+      spendLimitValidator,
+      req.body,
+    )
+    const result = await Users.overrideSpendLimit(
+      writeContext(req, reason, ticketRef),
+      id,
+      monthlyLimitPaisa,
+    )
+    // After the commit, and never awaited: a mail problem must not fail the change.
+    void notifySpendLimitChanged({ ...result, ticketRef })
+    return result
+  },
+)
 
 export const getUserTimeline = handle('Timeline fetched', (req) => {
   const { id } = validateOrThrow(idParamValidator, req.params)
