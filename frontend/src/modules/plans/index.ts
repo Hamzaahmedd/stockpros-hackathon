@@ -1,4 +1,5 @@
 export { default as Plans } from './pages/Plans'
 export { default as PaymentResult } from './pages/PaymentResult'
 export { default as ManageSubscription } from './pages/ManageSubscription'
+export { default as Usage } from './pages/Usage'
 export { TopUpModalHost } from './components/TopUpModalHost'

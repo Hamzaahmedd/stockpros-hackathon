@@ -126,6 +126,48 @@ export interface UsageSummaryResponse {
   spendCap: UsageSpendCapResponse | null
 }
 
+export interface UsageHistoryDayResponse {
+  /**
+   * Calendar day in the requested time zone.
+   * @example "2026-10-06"
+   */
+  date: string
+  signals: number
+  creditSpentPaisa: number
+}
+
+export interface UsageHistoryFeatureResponse {
+  /** @example "ai_forecast" */
+  feature: 'ai_forecast' | 'ai_decision'
+  signals: number
+  creditSpentPaisa: number
+}
+
+export interface UsageHistoryWindowResponse {
+  start: string
+  /** When the allowance resets; null only if it cannot be determined. */
+  end: string | null
+  /** @example "SUBSCRIPTION_PERIOD" */
+  source: 'SUBSCRIPTION_PERIOD' | 'CALENDAR_MONTH'
+}
+
+export interface UsageHistoryResponse {
+  plan: 'FREE' | 'PRO' | 'TEAM'
+  /** False for FREE (daily quotas apply instead), in which case there is no history. */
+  metered: boolean
+  /** `TEAM` = whole workspace (owner/admin); `USER` = the caller's own usage. Null when not metered. */
+  scope: 'USER' | 'TEAM' | null
+  /** @example "current" */
+  range: 'current' | 'previous'
+  /** Time zone the daily buckets were cut in. */
+  timezone: string
+  window: UsageHistoryWindowResponse | null
+  totals: { signals: number; creditSpentPaisa: number }
+  /** Every calendar day of the window so far, zero-filled, oldest first. */
+  daily: UsageHistoryDayResponse[]
+  byFeature: UsageHistoryFeatureResponse[]
+}
+
 export interface CreditLedgerEntryResponse {
   id: string
   /** Signed paisa: purchases/refunds positive, overage consumption negative. */
@@ -282,6 +324,24 @@ export class PaymentsSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Usage fetched')
   async getMyUsage(): Promise<ApiResponse<UsageSummaryResponse>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Daily AI-signal usage for the current (or previous) billing cycle, with a
+   * per-feature breakdown, zero-filled by calendar day in the caller's time
+   * zone. A workspace owner/admin gets the whole workspace; a plain member or a
+   * Pro user gets their own usage. FREE returns `metered: false`. Always registered.
+   */
+  @Get('me/usage/history')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Usage history fetched')
+  @Response<ApiErrorResponse>(400, 'Invalid range or time zone')
+  async getUsageHistory(
+    @Query() range?: 'current' | 'previous',
+    /** IANA time zone for the daily buckets. @example "Asia/Karachi" */
+    @Query() tz?: string,
+  ): Promise<ApiResponse<UsageHistoryResponse>> {
     throw new Error('tsoa spec-only')
   }
 

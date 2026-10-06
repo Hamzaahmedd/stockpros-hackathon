@@ -2623,6 +2623,192 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"UsageHistoryWindowResponse": {
+				"properties": {
+					"start": {
+						"type": "string"
+					},
+					"end": {
+						"type": "string",
+						"nullable": true,
+						"description": "When the allowance resets; null only if it cannot be determined."
+					},
+					"source": {
+						"type": "string",
+						"enum": [
+							"SUBSCRIPTION_PERIOD",
+							"CALENDAR_MONTH"
+						],
+						"example": "SUBSCRIPTION_PERIOD"
+					}
+				},
+				"required": [
+					"start",
+					"end",
+					"source"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UsageHistoryDayResponse": {
+				"properties": {
+					"date": {
+						"type": "string",
+						"description": "Calendar day in the requested time zone.",
+						"example": "2026-10-06"
+					},
+					"signals": {
+						"type": "number",
+						"format": "double"
+					},
+					"creditSpentPaisa": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"date",
+					"signals",
+					"creditSpentPaisa"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UsageHistoryFeatureResponse": {
+				"properties": {
+					"feature": {
+						"type": "string",
+						"enum": [
+							"ai_forecast",
+							"ai_decision"
+						],
+						"example": "ai_forecast"
+					},
+					"signals": {
+						"type": "number",
+						"format": "double"
+					},
+					"creditSpentPaisa": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"feature",
+					"signals",
+					"creditSpentPaisa"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"UsageHistoryResponse": {
+				"properties": {
+					"plan": {
+						"type": "string",
+						"enum": [
+							"FREE",
+							"PRO",
+							"TEAM"
+						]
+					},
+					"metered": {
+						"type": "boolean",
+						"description": "False for FREE (daily quotas apply instead), in which case there is no history."
+					},
+					"scope": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"TEAM",
+							null
+						],
+						"nullable": true,
+						"description": "`TEAM` = whole workspace (owner/admin); `USER` = the caller's own usage. Null when not metered."
+					},
+					"range": {
+						"type": "string",
+						"enum": [
+							"current",
+							"previous"
+						],
+						"example": "current"
+					},
+					"timezone": {
+						"type": "string",
+						"description": "Time zone the daily buckets were cut in."
+					},
+					"window": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/UsageHistoryWindowResponse"
+							}
+						],
+						"nullable": true
+					},
+					"totals": {
+						"properties": {
+							"creditSpentPaisa": {
+								"type": "number",
+								"format": "double"
+							},
+							"signals": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"creditSpentPaisa",
+							"signals"
+						],
+						"type": "object"
+					},
+					"daily": {
+						"items": {
+							"$ref": "#/components/schemas/UsageHistoryDayResponse"
+						},
+						"type": "array",
+						"description": "Every calendar day of the window so far, zero-filled, oldest first."
+					},
+					"byFeature": {
+						"items": {
+							"$ref": "#/components/schemas/UsageHistoryFeatureResponse"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"plan",
+					"metered",
+					"scope",
+					"range",
+					"timezone",
+					"window",
+					"totals",
+					"daily",
+					"byFeature"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_UsageHistoryResponse_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/UsageHistoryResponse"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"CreditLedgerEntryResponse": {
 				"properties": {
 					"id": {
@@ -7674,6 +7860,65 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/payments/me/usage/history": {
+			"get": {
+				"operationId": "GetUsageHistory",
+				"responses": {
+					"200": {
+						"description": "Usage history fetched",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_UsageHistoryResponse_"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid range or time zone",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Daily AI-signal usage for the current (or previous) billing cycle, with a\nper-feature breakdown, zero-filled by calendar day in the caller's time\nzone. A workspace owner/admin gets the whole workspace; a plain member or a\nPro user gets their own usage. FREE returns `metered: false`. Always registered.",
+				"tags": [
+					"Payments"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "range",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"current",
+								"previous"
+							]
+						}
+					},
+					{
+						"description": "IANA time zone for the daily buckets.",
+						"in": "query",
+						"name": "tz",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/v1/payments/credits/ledger": {

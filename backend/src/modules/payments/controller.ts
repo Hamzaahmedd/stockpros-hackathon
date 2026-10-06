@@ -20,6 +20,7 @@ import {
   transactionIdParamValidator,
   transactionsQueryValidator,
   toggleAutoRenewValidator,
+  usageHistoryQueryValidator,
   verifyTrackerValidator,
 } from './validation'
 import type {
@@ -31,6 +32,7 @@ import { CheckoutPlan, SubscriptionScope } from './constants'
 import { getCreditLedger } from './ledger'
 import { getTeamReceipt, listTeamTransactions } from './receipts'
 import { getMyUsage } from './usage'
+import { getUsageHistory } from './usage-history'
 import {
   createTeamCheckout,
   createTeamRenewalCheckout,
@@ -147,6 +149,21 @@ export const getMyUsageHandler = async (
     const data = await getMyUsage(getUserId(req))
 
     return sendSuccess(res, { message: 'Usage fetched', data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getUsageHistoryHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const query = validateOrThrow(usageHistoryQueryValidator, req.query)
+    const data = await getUsageHistory(getUserId(req), query.range, query.tz)
+
+    return sendSuccess(res, { message: 'Usage history fetched', data })
   } catch (error) {
     next(error)
   }

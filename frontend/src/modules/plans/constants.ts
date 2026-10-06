@@ -1,6 +1,8 @@
 // Display-only mirrors of the backend pricing table (payments/constants.ts).
 // The server always derives the amount charged — these never reach the API.
 
+import type { MeteredFeature } from './types'
+
 export const PRO_PRICE_PAISA = 599_900
 export const TEAM_SEAT_PRICE_PAISA = 749_900
 export const TEAM_MIN_SEATS = 2
@@ -20,3 +22,9 @@ export const TOPUP_PACKS: readonly {
   { id: 'PACK_1000', pricePaisa: 100_000, signals: 20 },
   { id: 'PACK_2500', pricePaisa: 250_000, signals: 50 },
 ]
+
+/** Display names for the metered AI actions, keyed by the API's feature id. */
+export const METERED_FEATURE_LABELS: Record<MeteredFeature, string> = {
+  ai_forecast: 'AI forecast',
+  ai_decision: 'Market decision',
+}

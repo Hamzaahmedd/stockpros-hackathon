@@ -12,6 +12,8 @@ jest.mock('../ledger', () => ({ getCreditLedger: jest.fn() }))
 
 jest.mock('../usage', () => ({ getMyUsage: jest.fn() }))
 
+jest.mock('../usage-history', () => ({ getUsageHistory: jest.fn() }))
+
 jest.mock('../receipts', () => ({
   getTeamReceipt: jest.fn(),
   listTeamTransactions: jest.fn(),
@@ -41,6 +43,7 @@ import {
 } from '../service'
 import { getCreditLedger } from '../ledger'
 import { getMyUsage } from '../usage'
+import { getUsageHistory } from '../usage-history'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import { verifySafepaySignature } from '../signature'
 import {
@@ -573,6 +576,68 @@ describe('getMyUsageHandler', () => {
   it('forwards errors', async () => {
     ;(getMyUsage as jest.Mock).mockRejectedValue(new Error('boom'))
     await controller.getMyUsageHandler(mockReq() as any, mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+  })
+})
+
+describe('getUsageHistoryHandler', () => {
+  it('defaults to the current cycle in UTC and scopes to the authenticated user', async () => {
+    ;(getUsageHistory as jest.Mock).mockResolvedValue({ metered: true })
+    const res = mockRes()
+
+    // A user id smuggled into the query is ignored: only the token's user counts.
+    await controller.getUsageHistoryHandler(
+      mockReq({ query: { userId: 'someone-else' } }) as any,
+      res,
+      next,
+    )
+
+    expect(getUsageHistory).toHaveBeenCalledWith('user-1', 'current', 'UTC')
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: 'Usage history fetched',
+        data: { metered: true },
+      }),
+    )
+  })
+
+  it('passes the requested range and time zone through', async () => {
+    ;(getUsageHistory as jest.Mock).mockResolvedValue({})
+    await controller.getUsageHistoryHandler(
+      mockReq({ query: { range: 'previous', tz: 'Asia/Karachi' } }) as any,
+      mockRes(),
+      next,
+    )
+    expect(getUsageHistory).toHaveBeenCalledWith(
+      'user-1',
+      'previous',
+      'Asia/Karachi',
+    )
+  })
+
+  it.each([
+    { range: 'last-year' },
+    { tz: 'Mars/Olympus' },
+    { tz: '+05:00' },
+    { tz: "UTC'; DROP TABLE usage_events;--" },
+  ])(
+    'rejects an invalid query (%o) before touching the service',
+    async (query) => {
+      ;(getUsageHistory as jest.Mock).mockClear()
+      await controller.getUsageHistoryHandler(
+        mockReq({ query }) as any,
+        mockRes(),
+        next,
+      )
+      expect(getUsageHistory).not.toHaveBeenCalled()
+      expect(next).toHaveBeenCalledWith(expect.any(Error))
+    },
+  )
+
+  it('forwards service errors', async () => {
+    ;(getUsageHistory as jest.Mock).mockRejectedValue(new Error('boom'))
+    await controller.getUsageHistoryHandler(mockReq() as any, mockRes(), next)
     expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

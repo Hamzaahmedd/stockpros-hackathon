@@ -69,6 +69,21 @@ export enum MeteredFeature {
   AI_DECISION = 'ai_decision',
 }
 
+/** Which billing cycle the usage history covers. */
+export enum UsageHistoryRange {
+  CURRENT = 'current',
+  PREVIOUS = 'previous',
+}
+
+/** Whose usage a history response aggregates: the caller's own, or the whole workspace (owner/admin). */
+export enum UsageHistoryScope {
+  USER = 'USER',
+  TEAM = 'TEAM',
+}
+
+/** Time zone used to bucket daily usage when the client sends none. */
+export const DEFAULT_USAGE_TIME_ZONE = 'UTC'
+
 /** Unmetered usage recorded only for team analytics. */
 export const SEARCH_USAGE_FEATURE = 'search'
 

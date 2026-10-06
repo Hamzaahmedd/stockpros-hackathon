@@ -31,6 +31,7 @@ import { PaymentKind, TeamRole } from '@prisma/client'
 import { getActiveMembership } from '../../../shared/infrastructure/team-access'
 import { TopupPackId } from '../constants'
 import { getCreditLedger } from '../ledger'
+import { getUsageHistory } from '../usage-history'
 import { getTeamReceipt, listTeamTransactions } from '../receipts'
 import {
   createSeatAdditionCheckout,
@@ -242,6 +243,44 @@ describe('credit ledger', () => {
       limit: 25,
     } as never)
     expect(other.entries).toEqual([])
+  })
+})
+
+describe('usage history', () => {
+  // The aggregate is a raw SQL query the in-memory db cannot execute, so this
+  // asserts the tenant predicate bound into it: which team id it filters on.
+  const boundValues = (): unknown[] => {
+    const query = (db.$queryRaw as unknown as jest.Mock).mock.calls.at(-1)[0]
+    return query.values
+  }
+
+  beforeEach(() => {
+    db.$queryRaw = jest.fn().mockResolvedValue([])
+  })
+
+  it("an admin's workspace aggregate filters on their own team, never another", async () => {
+    asUser('b-owner')
+    const history = await getUsageHistory('b-owner')
+    expect(history.scope).toBe('TEAM')
+    expect(boundValues()).toContain(B)
+    expect(boundValues()).not.toContain(A)
+  })
+
+  it("a plain member's view is limited to their own events in their own team", async () => {
+    asUser('b-member')
+    const history = await getUsageHistory('b-member')
+    expect(history.scope).toBe('USER')
+    expect(boundValues()).toEqual(expect.arrayContaining(['b-member', B]))
+    expect(boundValues()).not.toContain(A)
+  })
+
+  it('a user outside any workspace never gets a workspace aggregate', async () => {
+    asUser('nobody')
+    db.user.rows.push({ id: 'nobody', displayName: 'N', email: 'n@x.com' })
+    const history = await getUsageHistory('nobody')
+    expect(history.scope).toBe('USER')
+    expect(boundValues()).not.toContain(A)
+    expect(boundValues()).not.toContain(B)
   })
 })
 

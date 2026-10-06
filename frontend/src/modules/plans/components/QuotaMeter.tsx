@@ -3,6 +3,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { apiErrorMessage } from '@/shared/utils/api-error'
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { usageService } from '../services'
 import type { UsageSummary } from '../types'
 import { formatPaisa } from '../utils'
@@ -36,7 +37,26 @@ const BAR_COLOR: Record<Tone, string> = {
  * (daily quotas apply) or while tiers aren't enforced, since there is nothing
  * meaningful to meter in either case.
  */
-export function QuotaMeter() {
+interface QuotaMeterProps {
+  /** Hide the "Usage details" link, e.g. on the usage page itself. */
+  readonly showDetailsLink?: boolean
+}
+
+function UsageDetailsLink({ visible }: Readonly<{ visible: boolean }>) {
+  if (!visible) return null
+  return (
+    <Link
+      to='/usage'
+      className='inline-block text-sm font-medium text-primary underline'
+    >
+      Usage details
+    </Link>
+  )
+}
+
+export function QuotaMeter({
+  showDetailsLink = true,
+}: Readonly<QuotaMeterProps>) {
   const { pricingTiersEnabled, enablePaymentProcessor } = useAuth()
   const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -168,6 +188,8 @@ export function QuotaMeter() {
           Top-ups need online payments, which aren&apos;t enabled here.
         </p>
       )}
+
+      <UsageDetailsLink visible={showDetailsLink} />
 
       {spendCap && (
         <p className='text-xs text-muted-foreground' data-testid='spend-cap'>

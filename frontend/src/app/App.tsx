@@ -25,6 +25,7 @@ import {
   PaymentResult,
   Plans,
   TopUpModalHost,
+  Usage,
 } from '@/modules/plans'
 import { Settings } from '@/modules/settings'
 import {
@@ -179,6 +180,14 @@ export default function App() {
           element={
             <ProtectedRoute resource='CORE_APP' requirePricingTiersEnabled>
               <PaymentResult />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/usage'
+          element={
+            <ProtectedRoute resource='CORE_APP' requirePricingTiersEnabled>
+              <Usage />
             </ProtectedRoute>
           }
         />

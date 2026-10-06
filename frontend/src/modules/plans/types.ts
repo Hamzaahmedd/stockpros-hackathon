@@ -75,3 +75,41 @@ export type UsageSummary = {
     remainingPaisa: number
   } | null
 }
+
+export type UsageHistoryRange = 'current' | 'previous'
+
+/** Whose usage the history aggregates: the caller's own, or the whole workspace (owner/admin). */
+export type UsageHistoryScope = 'USER' | 'TEAM'
+
+export type MeteredFeature = 'ai_forecast' | 'ai_decision'
+
+export type UsageHistoryDay = {
+  /** Calendar day in the requested time zone, `YYYY-MM-DD`. */
+  date: string
+  signals: number
+  creditSpentPaisa: number
+}
+
+export type UsageHistoryFeature = {
+  feature: MeteredFeature
+  signals: number
+  creditSpentPaisa: number
+}
+
+export type UsageHistory = {
+  plan: 'FREE' | 'PRO' | 'TEAM'
+  /** False for FREE: daily quotas apply instead, so there is no history. */
+  metered: boolean
+  scope: UsageHistoryScope | null
+  range: UsageHistoryRange
+  timezone: string
+  window: {
+    start: string
+    end: string | null
+    source: UsageWindowSource
+  } | null
+  totals: { signals: number; creditSpentPaisa: number }
+  /** Every day of the window so far, zero-filled, oldest first. */
+  daily: UsageHistoryDay[]
+  byFeature: UsageHistoryFeature[]
+}

@@ -7,9 +7,15 @@ import type {
   SubscriptionPaymentMethod,
   SubscriptionScope,
   SubscriptionSummary,
+  UsageHistory,
+  UsageHistoryRange,
   UsageSummary,
   VerifyTrackerResult,
 } from './types'
+
+/** The browser's IANA zone; UTC when the runtime cannot tell, which the API also defaults to. */
+const browserTimeZone = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 export const subscriptionService = {
   /**
@@ -99,6 +105,17 @@ export const usageService = {
   /** The caller's allowance this cycle: signals used vs. included, credit pool, and any spend cap. */
   getMyUsage: async (): Promise<UsageSummary> => {
     const res = await api.get('/api/v1/payments/me/usage')
+    return unwrapEnvelope(res)
+  },
+
+  /** Daily usage and per-feature totals for a cycle, bucketed by calendar day in `timeZone`. */
+  getHistory: async (
+    range: UsageHistoryRange = 'current',
+    timeZone: string = browserTimeZone(),
+  ): Promise<UsageHistory> => {
+    const res = await api.get('/api/v1/payments/me/usage/history', {
+      params: { range, tz: timeZone },
+    })
     return unwrapEnvelope(res)
   },
 }

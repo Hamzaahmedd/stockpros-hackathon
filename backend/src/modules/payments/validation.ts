@@ -2,10 +2,25 @@ import { z } from 'zod'
 import {
   CheckoutPlan,
   SubscriptionScope,
+  DEFAULT_USAGE_TIME_ZONE,
   TEAM_MAX_SEATS,
   TEAM_MIN_SEATS,
   TopupPackId,
+  UsageHistoryRange,
 } from './constants'
+
+// IANA names only ("Asia/Karachi", "UTC"). Offsets such as "+05:00" are rejected:
+// PostgreSQL reads them as POSIX zones with the opposite sign.
+const IANA_TIME_ZONE = /^(UTC|[A-Za-z]+(?:\/[A-Za-z0-9_+-]+){1,2})$/
+
+const isKnownTimeZone = (value: string): boolean => {
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: value })
+    return true
+  } catch {
+    return false
+  }
+}
 
 export const seatCountValidator = z
   .number({
@@ -82,6 +97,16 @@ export const creditLedgerQueryValidator = z.object({
   scope: subscriptionScopeValidator,
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().uuid('cursor must be a valid id').optional(),
+})
+
+export const usageHistoryQueryValidator = z.object({
+  range: z.nativeEnum(UsageHistoryRange).default(UsageHistoryRange.CURRENT),
+  tz: z
+    .string()
+    .max(64)
+    .regex(IANA_TIME_ZONE, 'tz must be an IANA time zone such as Asia/Karachi')
+    .refine(isKnownTimeZone, 'tz must be a known time zone')
+    .default(DEFAULT_USAGE_TIME_ZONE),
 })
 
 export const transactionsQueryValidator = z.object({

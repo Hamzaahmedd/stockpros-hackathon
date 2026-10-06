@@ -42,6 +42,11 @@ router.get(
   PaymentsController.getMyUsageHandler,
 )
 router.get(
+  '/me/usage/history',
+  authTokenMiddleware,
+  PaymentsController.getUsageHistoryHandler,
+)
+router.get(
   '/credits/ledger',
   authTokenMiddleware,
   PaymentsController.getCreditLedgerHandler,
