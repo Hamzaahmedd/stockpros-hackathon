@@ -72,3 +72,7 @@ export const otpCodeValidator = z.object({
     .trim()
     .regex(/^\d{6}$/, 'Verification code must be a 6-digit number'),
 })
+
+export const sessionIdParamValidator = z.object({
+  id: z.string().uuid({ message: 'Invalid session id' }),
+})

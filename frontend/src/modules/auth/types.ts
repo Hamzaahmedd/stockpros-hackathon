@@ -97,3 +97,13 @@ export interface SuggestedSymbol {
 
 export type NotificationPreferenceToggle =
   'inAppAlertsEnabled' | 'emailVolatilityAlertsEnabled' | 'dailyDigestEnabled'
+
+/** A signed-in device from `GET /auth/sessions`. */
+export interface ActiveSession {
+  id: string
+  device: string
+  location: string | null
+  createdAt: string
+  updatedAt: string
+  isCurrent: boolean
+}

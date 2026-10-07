@@ -34,6 +34,17 @@ router.post('/plan', authTokenMiddleware, AuthController.updateMyPlan)
 // ─── Session Management ──────────────────────────────────────────────────────
 router.post('/refresh-token', AuthController.refreshToken)
 router.post('/logout', AuthController.logout)
+router.get('/sessions', authTokenMiddleware, AuthController.listMySessions)
+router.delete(
+  '/sessions',
+  authTokenMiddleware,
+  AuthController.revokeMyOtherSessions,
+)
+router.delete(
+  '/sessions/:id',
+  authTokenMiddleware,
+  AuthController.revokeMySession,
+)
 
 // ─── Account Deletion ────────────────────────────────────────────────────────
 router.delete('/account', authTokenMiddleware, AuthController.deleteAccount)

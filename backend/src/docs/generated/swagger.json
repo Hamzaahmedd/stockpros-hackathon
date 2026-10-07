@@ -4911,6 +4911,92 @@
 				"type": "object",
 				"additionalProperties": true
 			},
+			"ActiveSession": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"example": "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f"
+					},
+					"device": {
+						"type": "string",
+						"example": "Chrome (Windows)"
+					},
+					"location": {
+						"type": "string",
+						"nullable": true,
+						"description": "Null when the IP cannot be resolved.",
+						"example": "Karachi, Sindh, PK"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"isCurrent": {
+						"type": "boolean",
+						"description": "True for the session making this request."
+					}
+				},
+				"required": [
+					"id",
+					"device",
+					"location",
+					"createdAt",
+					"updatedAt",
+					"isCurrent"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"ApiResponse_ActiveSession-Array_": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/ActiveSession"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"success",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
+			"RevokeOtherSessionsResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {},
+					"revoked": {
+						"type": "number",
+						"format": "double",
+						"description": "Number of sessions signed out.",
+						"example": 2
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"revoked"
+				],
+				"type": "object",
+				"additionalProperties": true
+			},
 			"MeResponse": {
 				"properties": {
 					"success": {
@@ -11766,6 +11852,105 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/auth/sessions": {
+			"get": {
+				"operationId": "ListSessions",
+				"responses": {
+					"200": {
+						"description": "Sessions fetched successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse_ActiveSession-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "List the caller's active (not revoked, not expired) sessions, newest activity first.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			},
+			"delete": {
+				"operationId": "RevokeOtherSessions",
+				"responses": {
+					"200": {
+						"description": "Signed out of other sessions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RevokeOtherSessionsResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Sign out of every session except the current one.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/sessions/{id}": {
+			"delete": {
+				"operationId": "RevokeSession",
+				"responses": {
+					"200": {
+						"description": "Session revoked",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Session not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke one of the caller's own sessions.",
+				"tags": [
+					"Authentication"
+				],
+				"security": [
+					{
+						"bearerAuth": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Session id",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/v1/auth/me": {

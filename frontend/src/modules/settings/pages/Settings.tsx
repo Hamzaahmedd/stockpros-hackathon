@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card'
+import { ActiveSessionsPanel } from '@/modules/auth/components/ActiveSessionsPanel'
 import { useAuth } from '@/modules/auth/hooks/useAuth'
 import { CreditLedgerPanel } from '@/modules/plans/components/CreditLedgerPanel'
 import { QuotaMeter } from '@/modules/plans/components/QuotaMeter'
@@ -647,6 +648,22 @@ const Settings: React.FC = () => {
                         and all associated data, you can do so in the Danger
                         Zone below.
                       </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Active Sessions Card */}
+                  <Card className='rounded-lg border border-border bg-card shadow-lg'>
+                    <CardHeader className='border-b border-border p-8'>
+                      <CardTitle className='text-xl font-bold'>
+                        Active sessions
+                      </CardTitle>
+                      <CardDescription className='text-sm font-medium'>
+                        Devices currently signed in to your account. Revoke any
+                        you don&apos;t recognise.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className='p-8'>
+                      <ActiveSessionsPanel />
                     </CardContent>
                   </Card>
 

@@ -29,12 +29,18 @@ import {
   verifyMagicLink,
   verifyOtp,
 } from './service'
+import {
+  listActiveSessions,
+  revokeOtherSessions,
+  revokeSession,
+} from './session-management'
 import { AuthenticatedRequest } from './types'
 import {
   completeOnboardingValidator,
   emailValidator,
   googleLoginValidator,
   magicLinkTokenValidator,
+  sessionIdParamValidator,
   setPlanValidator,
 } from './validation'
 
@@ -150,6 +156,57 @@ export const logout = async (
     res.clearCookie('refresh_token', defaultCookieOptions)
 
     return sendSuccess(res, { message: 'Logged out successfully' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ─── Active Sessions ──────────────────────────────────────────────────────────
+
+export const listMySessions = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const sessions = await listActiveSessions(userId, req.user?.sessionId)
+    return sendSuccess(res, {
+      message: 'Sessions fetched successfully',
+      data: sessions,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const revokeMySession = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const { id } = validateOrThrow(sessionIdParamValidator, req.params)
+    await revokeSession(userId, id)
+    return sendSuccess(res, { message: 'Session revoked' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const revokeMyOtherSessions = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = getUserId(req)
+    const revoked = await revokeOtherSessions(userId, req.user?.sessionId)
+    return sendSuccess(res, {
+      message: 'Signed out of other sessions',
+      extra: { revoked },
+    })
   } catch (error) {
     next(error)
   }

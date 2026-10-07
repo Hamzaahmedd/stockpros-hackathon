@@ -7,6 +7,7 @@ import {
   Tags,
   Security,
   Body,
+  Path,
   SuccessResponse,
   Response,
 } from 'tsoa'
@@ -15,6 +16,26 @@ import { ApiResponse, ApiErrorResponse } from '../../shared/docs-types'
 import type { AnnouncementBoot } from '../announcements/public'
 
 // ─── Auth models ──────────────────────────────────────────────────────────────
+
+export interface ActiveSession {
+  /** @example "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f" */
+  id: string
+  /** @example "Chrome (Windows)" */
+  device: string
+  /** Null when the IP cannot be resolved. @example "Karachi, Sindh, PK" */
+  location: string | null
+  /** @format date-time */
+  createdAt: string
+  /** @format date-time */
+  updatedAt: string
+  /** True for the session making this request. */
+  isCurrent: boolean
+}
+
+export interface RevokeOtherSessionsResponse extends ApiResponse {
+  /** Number of sessions signed out. @example 2 */
+  revoked: number
+}
 
 export interface UserProfile {
   /** @example "018f2e1a-9c3d-7b2a-9f1e-2a3b4c5d6e7f" */
@@ -194,6 +215,38 @@ export class AuthSwaggerController extends Controller {
   @Security('bearerAuth')
   @SuccessResponse(200, 'Logged out successfully')
   async logout(): Promise<ApiResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * List the caller's active (not revoked, not expired) sessions, newest activity first.
+   */
+  @Get('sessions')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Sessions fetched successfully')
+  async listSessions(): Promise<ApiResponse<ActiveSession[]>> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Sign out of every session except the current one.
+   */
+  @Delete('sessions')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Signed out of other sessions')
+  async revokeOtherSessions(): Promise<RevokeOtherSessionsResponse> {
+    throw new Error('tsoa spec-only')
+  }
+
+  /**
+   * Revoke one of the caller's own sessions.
+   * @param id Session id
+   */
+  @Delete('sessions/{id}')
+  @Security('bearerAuth')
+  @SuccessResponse(200, 'Session revoked')
+  @Response<ApiErrorResponse>(404, 'Session not found')
+  async revokeSession(@Path() id: string): Promise<ApiResponse> {
     throw new Error('tsoa spec-only')
   }
 

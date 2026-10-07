@@ -1,6 +1,7 @@
 import api from '@/shared/api/axios'
 import { unwrapEnvelope } from '@/shared/api/envelope'
 import {
+  type ActiveSession,
   DomainAuthPolicy,
   type LoginOptions,
   type OnboardingDto,
@@ -26,6 +27,14 @@ export const refresh = () => api.post('/api/v1/auth/refresh-token')
 
 export const deleteAccount = (confirmationPhrase: string) =>
   api.delete('/api/v1/auth/account', { data: { confirmationPhrase } })
+
+export const listSessions = async (): Promise<ActiveSession[]> =>
+  unwrapEnvelope<ActiveSession[]>(await api.get('/api/v1/auth/sessions'))
+
+export const revokeSession = (sessionId: string) =>
+  api.delete(`/api/v1/auth/sessions/${encodeURIComponent(sessionId)}`)
+
+export const revokeOtherSessions = () => api.delete('/api/v1/auth/sessions')
 
 export const requestPhoneOtp = (phoneNumber: string) =>
   api.post('/api/v1/auth/phone-verification/request', { phoneNumber })
