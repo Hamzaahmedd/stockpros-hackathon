@@ -444,7 +444,7 @@ const Watchlist: React.FC = () => {
                     </div>
                     {item.portfolioFit ? (
                       <div
-                        className={`flex gap-3 rounded-lg p-3 text-sm font-medium transition-colors duration-300 ${item.portfolioFit.overexposureWarning ? 'border border-red-500/20 bg-red-500/10 text-red-500' : 'border border-cyan-500/10 bg-cyan-500/5 text-cyan-600'}`}
+                        className={`flex gap-3 rounded-lg p-3 text-sm font-medium transition-colors duration-300 ${item.portfolioFit.overexposureWarning ? 'border border-red-500/20 bg-red-500/10 text-red-500' : 'border border-cyan-500/10 bg-cyan-500/5 text-cyan-700'}`}
                       >
                         {item.portfolioFit.overexposureWarning ? (
                           <FiAlertCircle className='mt-0.5 shrink-0' />
@@ -570,7 +570,7 @@ const Watchlist: React.FC = () => {
                               Entry
                             </p>
                             <p
-                              className={`text-sm font-black leading-snug ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-600'}`}
+                              className={`text-sm font-black leading-snug ${theme === 'dark' ? 'text-cyan-400' : 'text-cyan-700'}`}
                             >
                               {formatNumber(
                                 item.aiSuggested?.entry ?? null,

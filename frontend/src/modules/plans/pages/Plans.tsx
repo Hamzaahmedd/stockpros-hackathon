@@ -73,7 +73,7 @@ function FeatureRow({ label, included }: { label: string; included: boolean }) {
       )}
       <span
         className={
-          included ? 'text-foreground' : 'text-muted-foreground/60 line-through'
+          included ? 'text-foreground' : 'text-muted-foreground line-through'
         }
       >
         {label}

@@ -6,7 +6,11 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className='relative w-full overflow-auto'>
+  // Focusable so keyboard users can scroll a table wider than its container.
+  <div
+    className='relative w-full overflow-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
+    tabIndex={0}
+  >
     <table
       ref={ref}
       className={cn('w-full caption-bottom text-sm', className)}

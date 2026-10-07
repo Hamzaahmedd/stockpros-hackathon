@@ -49,7 +49,7 @@ function WhatsNewItem({
           <AnnouncementCta
             label={item.ctaLabel}
             url={item.ctaUrl}
-            className='text-xs font-bold text-cyan-600 hover:underline dark:text-cyan-400'
+            className='text-xs font-bold text-cyan-700 hover:underline dark:text-cyan-400'
             onFollow={() => {
               void markSeen(item.id)
               onOpen()

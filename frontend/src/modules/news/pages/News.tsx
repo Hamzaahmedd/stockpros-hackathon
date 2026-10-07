@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FiSearch, FiCalendar, FiX } from 'react-icons/fi'
 import { Sidebar } from '@/shared/components/Sidebar'
+import { DateField } from '@/modules/news/components/DateField'
 import { NewsArticleItem } from '@/modules/news/components/NewsArticleItem'
 import { newsService } from '../services'
 import { NewsArticle, NewsFeedParams, NewsCategory } from '../types'
@@ -63,9 +64,6 @@ export default function News() {
     startDate: '2026-01-01',
     endDate: TODAY,
   })
-
-  const fromDateRef = useRef<HTMLInputElement>(null)
-  const toDateRef = useRef<HTMLInputElement>(null)
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastElementRef = useCallback(
@@ -236,65 +234,25 @@ export default function News() {
 
             <div className='flex items-center gap-2'>
               <FiCalendar className='shrink-0 text-lg text-primary' />
-              {/* From date */}
-              <button
-                type='button'
-                onClick={() => fromDateRef.current?.showPicker?.()}
-                className='date-field-btn group relative flex cursor-pointer flex-col gap-0.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 transition-all hover:bg-primary/10'
-                title='Click to pick start date'
-              >
-                <span className='text-[9px] font-black uppercase tracking-widest text-primary'>
-                  From
-                </span>
-                <span className='text-xs font-bold text-foreground'>
-                  {dateRange.startDate}
-                </span>
-                <input
-                  ref={fromDateRef}
-                  type='date'
-                  value={dateRange.startDate}
-                  max={TODAY}
-                  onChange={(e) =>
-                    setDateRange((prev) => ({
-                      ...prev,
-                      startDate: e.target.value,
-                    }))
-                  }
-                  className='absolute inset-0 h-full w-full cursor-pointer opacity-0'
-                  tabIndex={-1}
-                />
-              </button>
+              <DateField
+                label='From'
+                value={dateRange.startDate}
+                max={TODAY}
+                onChange={(startDate) =>
+                  setDateRange((prev) => ({ ...prev, startDate }))
+                }
+              />
               <span className='text-sm font-bold text-muted-foreground/50'>
                 →
               </span>
-              {/* To date */}
-              <button
-                type='button'
-                onClick={() => toDateRef.current?.showPicker?.()}
-                className='date-field-btn group relative flex cursor-pointer flex-col gap-0.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 transition-all hover:bg-primary/10'
-                title='Click to pick end date'
-              >
-                <span className='text-[9px] font-black uppercase tracking-widest text-primary'>
-                  To
-                </span>
-                <span className='text-xs font-bold text-foreground'>
-                  {dateRange.endDate}
-                </span>
-                <input
-                  ref={toDateRef}
-                  type='date'
-                  value={dateRange.endDate}
-                  max={TODAY}
-                  onChange={(e) =>
-                    setDateRange((prev) => ({
-                      ...prev,
-                      endDate: e.target.value,
-                    }))
-                  }
-                  className='absolute inset-0 h-full w-full cursor-pointer opacity-0'
-                  tabIndex={-1}
-                />
-              </button>
+              <DateField
+                label='To'
+                value={dateRange.endDate}
+                max={TODAY}
+                onChange={(endDate) =>
+                  setDateRange((prev) => ({ ...prev, endDate }))
+                }
+              />
             </div>
           </div>
 
@@ -349,7 +307,7 @@ export default function News() {
               </div>
             ) : articles.length === 0 && !loading ? (
               <div className='rounded-3xl border border-dashed border-border bg-muted/20 py-20 text-center'>
-                <p className='text-sm font-bold uppercase tracking-widest text-gray-500'>
+                <p className='text-sm font-bold uppercase tracking-widest text-muted-foreground'>
                   No articles found matching your criteria
                 </p>
                 <Button
@@ -359,7 +317,7 @@ export default function News() {
                     setActiveCategory('ALL')
                     setSearchQuery('')
                   }}
-                  className='mt-4 text-xs font-black text-cyan-600 underline decoration-cyan-500/30 underline-offset-4 dark:text-cyan-400'
+                  className='mt-4 text-xs font-black text-cyan-700 underline decoration-cyan-500/30 underline-offset-4 dark:text-cyan-400'
                 >
                   Clear all filters
                 </Button>

@@ -263,7 +263,7 @@ export const LiveStockTable: React.FC<{ hideHeader?: boolean }> = ({
                         {fmtPrice(row.p)}
                       </span>
                     ) : (
-                      <span className='text-muted-foreground/60'>—</span>
+                      <span className='text-muted-foreground'>—</span>
                     )}
                   </td>
                   <td className='px-5 py-3 text-right tabular-nums text-muted-foreground'>

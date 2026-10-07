@@ -394,7 +394,7 @@ export const UnifiedNotifications: React.FC = () => {
               onClick={() => setActiveTab('news')}
               className={`flex flex-1 items-center justify-center gap-3 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
                 activeTab === 'news'
-                  ? 'border border-gray-200 bg-white text-cyan-600 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
+                  ? 'border border-gray-200 bg-white text-cyan-700 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
               }`}
             >
@@ -409,7 +409,7 @@ export const UnifiedNotifications: React.FC = () => {
               onClick={() => setActiveTab('alerts')}
               className={`flex flex-1 items-center justify-center gap-3 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
                 activeTab === 'alerts'
-                  ? 'border border-gray-200 bg-white text-cyan-600 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
+                  ? 'border border-gray-200 bg-white text-cyan-700 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
               }`}
             >
@@ -425,7 +425,7 @@ export const UnifiedNotifications: React.FC = () => {
                 onClick={() => setActiveTab('whatsnew')}
                 className={`flex flex-1 items-center justify-center gap-3 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
                   activeTab === 'whatsnew'
-                    ? 'border border-gray-200 bg-white text-cyan-600 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
+                    ? 'border border-gray-200 bg-white text-cyan-700 shadow-md dark:border-white/5 dark:bg-[#1a1c24] dark:text-cyan-400 dark:shadow-none'
                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
               >
@@ -451,7 +451,7 @@ export const UnifiedNotifications: React.FC = () => {
             {activeTab === 'whatsnew' ? (
               <button
                 onClick={() => void markAllSeen()}
-                className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
+                className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
               >
                 <FiCheck size={14} /> MARK ALL READ
               </button>
@@ -462,14 +462,14 @@ export const UnifiedNotifications: React.FC = () => {
                     await newsService.markAllRead()
                     fetchData()
                   }}
-                  className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
+                  className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
                 >
                   <FiCheck size={14} /> MARK ALL READ
                 </button>
                 <Link
                   to='/news'
                   onClick={() => setIsOpen(false)}
-                  className='rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
+                  className='rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
                 >
                   VIEW FEED
                 </Link>
@@ -480,7 +480,7 @@ export const UnifiedNotifications: React.FC = () => {
                   await notificationService.markAllRead()
                   fetchData()
                 }}
-                className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
+                className='flex items-center gap-2 rounded-xl border-2 border-cyan-500/30 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 transition-all hover:bg-cyan-500/10 dark:text-cyan-400'
               >
                 <FiCheck size={14} /> MARK ALL READ
               </button>
@@ -583,7 +583,7 @@ export const UnifiedNotifications: React.FC = () => {
                         <button
                           onClick={loadMoreNotifications}
                           disabled={loadingMore}
-                          className='rounded-xl border-2 border-cyan-500/30 px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 transition-all hover:bg-cyan-500/10 disabled:opacity-50 dark:text-cyan-400'
+                          className='rounded-xl border-2 border-cyan-500/30 px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 transition-all hover:bg-cyan-500/10 disabled:opacity-50 dark:text-cyan-400'
                         >
                           {loadingMore ? 'Loading...' : 'Load More'}
                         </button>
@@ -604,7 +604,7 @@ export const UnifiedNotifications: React.FC = () => {
             <Link
               to={activeTab === 'news' ? '/news' : '/dashboard'}
               onClick={() => setIsOpen(false)}
-              className='group flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.25em] text-gray-500 transition-colors hover:text-cyan-600 dark:hover:text-cyan-400'
+              className='group flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.25em] text-gray-500 transition-colors hover:text-cyan-700 dark:hover:text-cyan-400'
             >
               View All{' '}
               <FiChevronRight className='transition-transform group-hover:translate-x-1' />

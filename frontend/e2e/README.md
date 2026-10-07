@@ -4,6 +4,7 @@ Two frontend-only Playwright smoke tests, deliberately scoped to need **no backe
 process and no database** in CI:
 
 - `login.spec.ts` — `/login` renders the magic-link form with no console errors.
+- `a11y.spec.ts` — axe-core WCAG 2.2 AA scan of the main pages in light and dark themes (see the root README).
 - `not-found.spec.ts` — an unknown route renders the `NotFound` page and its
   "Back to Login" link works.
 

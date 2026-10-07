@@ -95,7 +95,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
 
         {/* Footer */}
-        <footer className='relative z-10 mx-auto mt-6 w-full max-w-md space-y-1 border-t border-white/10 pt-6 text-[11px] font-medium text-gray-500'>
+        <footer className='relative z-10 mx-auto mt-6 w-full max-w-md space-y-1 border-t border-white/10 pt-6 text-[11px] font-medium text-gray-400'>
           <div className='flex items-center justify-between gap-3'>
             <span>
               &copy; {new Date().getFullYear()} StockPros. All rights reserved.
